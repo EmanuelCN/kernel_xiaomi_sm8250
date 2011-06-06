@@ -684,6 +684,17 @@ void __mmdrop(struct mm_struct *mm)
 }
 EXPORT_SYMBOL_GPL(__mmdrop);
 
+/*
+ * RCU callback for delayed mm drop. Not strictly rcu, but we don't
+ * want another facility to make this work.
+ */
+void __mmdrop_delayed(struct rcu_head *rhp)
+{
+	struct mm_struct *mm = container_of(rhp, struct mm_struct, delayed_drop);
+
+	__mmdrop(mm);
+}
+
 static void mmdrop_async_fn(struct work_struct *work)
 {
 	struct mm_struct *mm;
