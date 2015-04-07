@@ -1,3 +1,6 @@
+[ THIS TREE CONTAINS ALSO THE DEV VERSION OF BFQ.
+  DETAILS AT THE END OF THIS DOCUMENT. ]
+
 BFQ (Budget Fair Queueing)
 ==========================
 
@@ -559,3 +562,55 @@ applications. Unset this tunable if you need/want to control weights.
     Slightly extended version:
     http://algogroup.unimore.it/people/paolo/disk_sched/bfq-v1-suite-
 							results.pdf
+
+----------------------------------------------------------------------
+
+DETAILS ON THE DEV VERSIONS IN THIS TREE
+
+The dev version of BFQ is available for both the legacy and the
+multi-queue block layers, as two additional I/O schedulers, named,
+respectively, bfq-sq-iosched and bfq-mq-iosched (the latter is
+available if also the changes introducing bfq-mq-iosched have been
+applied). In particular, this tree contains the dev version of bfq for
+Linux mainline 4.19.0, and has been obtained from the dev version for
+Linux 4.18.0. Rebasing from 4.18 to 4.19 involved two manual
+interventions.
+
+First, some conflicts had to be resolved, as follows:
+
+---------------------------------------------------------------
+
+diff --cc Makefile
+index 7727c1bf6fa5,69fa5c0310d8..c7cbdf0ad594
+--- a/Makefile
++++ b/Makefile
+@@@ -1,9 -1,9 +1,9 @@@
+  # SPDX-License-Identifier: GPL-2.0
+  VERSION = 4
+- PATCHLEVEL = 18
++ PATCHLEVEL = 19
+  SUBLEVEL = 0
+ -EXTRAVERSION =
+ +EXTRAVERSION = -bfq-mq
+- NAME = Merciless Moray
++ NAME = "People's Front"
+
+  # *DOCUMENTATION*
+  # To see a list of typical targets execute "make help"
+diff --cc include/linux/blkdev.h
+index 897c63322bd7,6980014357d4..8c4568ea6884
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@@ -56,7 -54,7 +54,7 @@@ struct blk_stat_callback
+   * Maximum number of blkcg policies allowed to be registered concurrently.
+   * Defined here to simplify include dependency.
+   */
+--#define BLKCG_MAX_POLS                5
+++#define BLKCG_MAX_POLS                7
+
+  typedef void (rq_end_io_fn)(struct request *, blk_status_t);
+
+---------------------------------------------------------------
+
+Second, the following port commit had to be made:
+port commit "block: use ktime_get_ns() instead of sched_clock() for cfq and bfq"
