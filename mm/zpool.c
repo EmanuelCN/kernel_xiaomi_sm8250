@@ -342,6 +342,35 @@ void zpool_unmap_handle(struct zpool *zpool, unsigned long handle)
 	zpool->driver->unmap(zpool->pool, handle);
 }
 
+ /**
+ * zpool_compact() - try to run compaction over zpool
+ * @pool       The zpool to compact
+ *
+ * Returns: the number of migrated pages
+ */
+unsigned long zpool_compact(struct zpool *zpool)
+{
+	if (!zpool->driver->compact)
+		return 0;
+
+	return zpool->driver->compact(zpool->pool);
+}
+
+
+/**
+ * zpool_get_num_compacted() - get the number of migrated/compacted pages
+ * @stats	stats to fill in
+ *
+ * Returns: the total number of migrated pages for the pool
+ */
+unsigned long zpool_get_num_compacted(struct zpool *zpool)
+{
+	if (!zpool->driver->get_num_compacted)
+		return 0;
+
+	return zpool->driver->get_num_compacted(zpool->pool);
+}
+
 /**
  * zpool_get_total_size() - The total size of the pool
  * @zpool:	The zpool to check
