@@ -568,6 +568,7 @@ static void bfq_weights_tree_add(struct bfq_data *bfqd,
 				 struct bfq_entity *entity,
 				 struct rb_root *root)
 {
+	struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
 	struct rb_node **new = &(root->rb_node), *parent = NULL;
 
 	/*
@@ -626,6 +627,22 @@ static void bfq_weights_tree_add(struct bfq_data *bfqd,
 
 inc_counter:
 	entity->weight_counter->num_active++;
+
+	if (bfqq) {
+		bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] weight %d symmetric %d",
+			     __func__, entity->weight,
+			     bfq_symmetric_scenario(bfqd));
+#ifdef BFQ_GROUP_IOSCHED_ENABLED
+	} else {
+		struct bfq_group *bfqg =
+			container_of(entity, struct bfq_group, entity);
+
+		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
+			     "[%s] weight %d symmetric %d",
+			     __func__, entity->weight,
+			     bfq_symmetric_scenario(bfqd));
+#endif
+	}
 }
 
 /*
@@ -634,10 +651,12 @@ inc_counter:
  * See the comments to the function bfq_weights_tree_add() for considerations
  * about overhead.
  */
-static void bfq_weights_tree_remove(struct bfq_data *bfqd,
-				    struct bfq_entity *entity,
-				    struct rb_root *root)
+static void __bfq_weights_tree_remove(struct bfq_data *bfqd,
+				      struct bfq_entity *entity,
+				      struct rb_root *root)
 {
+	struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
+
 	if (!entity->weight_counter)
 		return;
 
@@ -646,6 +665,7 @@ static void bfq_weights_tree_remove(struct bfq_data *bfqd,
 
 	BUG_ON(!entity->weight_counter->num_active);
 	entity->weight_counter->num_active--;
+
 	if (entity->weight_counter->num_active > 0)
 		goto reset_entity_pointer;
 
@@ -654,6 +674,65 @@ static void bfq_weights_tree_remove(struct bfq_data *bfqd,
 
 reset_entity_pointer:
 	entity->weight_counter = NULL;
+	if (bfqq) {
+		bfq_log_bfqq(bfqq->bfqd, bfqq,
+			     "[%s] weight %d symmetric %d",
+			     __func__, entity->weight,
+			     bfq_symmetric_scenario(bfqd));
+#ifdef BFQ_GROUP_IOSCHED_ENABLED
+	} else {
+		struct bfq_group *bfqg =
+			container_of(entity, struct bfq_group, entity);
+
+		bfq_log_bfqg(bfqd, bfqg,
+			     "[%s] weight %d symmetric %d",
+			     __func__, entity->weight,
+			     bfq_symmetric_scenario(bfqd));
+#endif
+	}
+}
+
+/*
+ * Invoke __bfq_weights_tree_remove on bfqq and all its inactive
+ * parent entities.
+ */
+static void bfq_weights_tree_remove(struct bfq_data *bfqd,
+				    struct bfq_queue *bfqq)
+{
+	struct bfq_entity *entity = bfqq->entity.parent;
+
+	__bfq_weights_tree_remove(bfqd, &bfqq->entity,
+				  &bfqd->queue_weights_tree);
+
+	for_each_entity(entity) {
+		struct bfq_sched_data *sd = entity->my_sched_data;
+
+		BUG_ON(entity->sched_data == NULL); /*
+						     * It would mean
+						     * that this is
+						     * the root group.
+						     */
+
+		if (sd->next_in_service || sd->in_service_entity) {
+			/*
+			 * entity is still active, because either
+			 * next_in_service or in_service_entity is not
+			 * NULL (see the comments on the definition of
+			 * next_in_service for details on why
+			 * in_service_entity must be checked too).
+			 *
+			 * As a consequence, the weight of entity is
+			 * not to be removed. In addition, if entity
+			 * is active, then its parent entities are
+			 * active as well, and thus their weights are
+			 * not to be removed either. In the end, this
+			 * loop must stop here.
+			 */
+			break;
+		}
+		__bfq_weights_tree_remove(bfqd, entity,
+					  &bfqd->group_weights_tree);
+	}
 }
 
 /*
@@ -4617,8 +4696,7 @@ static void bfq_completed_request(struct request_queue *q, struct request *rq)
 		 */
 		bfqq->budget_timeout = jiffies;
 
-		bfq_weights_tree_remove(bfqd, &bfqq->entity,
-					&bfqd->queue_weights_tree);
+		bfq_weights_tree_remove(bfqd, bfqq);
 	}
 
 	now_ns = ktime_get_ns();

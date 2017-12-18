@@ -532,9 +532,12 @@ static void bfq_weights_tree_add(struct bfq_data *bfqd,
 				 struct bfq_entity *entity,
 				 struct rb_root *root);
 
+static void __bfq_weights_tree_remove(struct bfq_data *bfqd,
+				      struct bfq_entity *entity,
+				      struct rb_root *root);
+
 static void bfq_weights_tree_remove(struct bfq_data *bfqd,
-				    struct bfq_entity *entity,
-				    struct rb_root *root);
+				    struct bfq_queue *bfqq);
 
 
 /**
@@ -577,10 +580,6 @@ static void bfq_active_insert(struct bfq_service_tree *st,
 	if (bfqq)
 		list_add(&bfqq->bfqq_list, &bfqq->bfqd->active_list);
 #ifdef BFQ_GROUP_IOSCHED_ENABLED
-	else { /* bfq_group */
-		BUG_ON(!bfqd);
-		bfq_weights_tree_add(bfqd, entity, &bfqd->group_weights_tree);
-	}
 	if (bfqg != bfqd->root_group) {
 		BUG_ON(!bfqg);
 		BUG_ON(!bfqd);
@@ -686,11 +685,6 @@ static void bfq_active_extract(struct bfq_service_tree *st,
 	if (bfqq)
 		list_del(&bfqq->bfqq_list);
 #ifdef BFQ_GROUP_IOSCHED_ENABLED
-	else { /* bfq_group */
-		BUG_ON(!bfqd);
-		bfq_weights_tree_remove(bfqd, entity,
-					&bfqd->group_weights_tree);
-	}
 	if (bfqg != bfqd->root_group) {
 		BUG_ON(!bfqg);
 		BUG_ON(!bfqd);
@@ -897,7 +891,7 @@ __bfq_entity_update_weight_prio(struct bfq_service_tree *old_st,
 
 			root = bfqq ? &bfqd->queue_weights_tree :
 				      &bfqd->group_weights_tree;
-			bfq_weights_tree_remove(bfqd, entity, root);
+			__bfq_weights_tree_remove(bfqd, entity, root);
 		}
 		entity->weight = new_weight;
 		/*
@@ -1125,7 +1119,7 @@ static void bfq_update_fin_time_enqueue(struct bfq_entity *entity,
  * one of its children receives a new request.
  *
  * Basically, this function updates the timestamps of entity and
- * inserts entity into its active tree, ater possibly extracting it
+ * inserts entity into its active tree, after possibly extracting it
  * from its idle tree.
  */
 static void __bfq_activate_entity(struct bfq_entity *entity,
@@ -1190,6 +1184,17 @@ static void __bfq_activate_entity(struct bfq_entity *entity,
 		BUG_ON(entity->on_st && !bfqq);
 		entity->on_st = true;
 	}
+
+#ifdef BFQ_GROUP_IOSCHED_ENABLED
+	if (!bfq_entity_to_bfqq(entity)) { /* bfq_group */
+		struct bfq_group *bfqg =
+			container_of(entity, struct bfq_group, entity);
+		struct bfq_data *bfqd = bfqg->bfqd;
+
+		BUG_ON(!bfqd);
+		bfq_weights_tree_add(bfqd, entity, &bfqd->group_weights_tree);
+	}
+#endif
 
 	bfq_update_fin_time_enqueue(entity, st, backshifted);
 }
@@ -2023,8 +2028,7 @@ static void bfq_del_bfqq_busy(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	bfqd->busy_queues--;
 
 	if (!bfqq->dispatched)
-		bfq_weights_tree_remove(bfqd, &bfqq->entity,
-					&bfqd->queue_weights_tree);
+		bfq_weights_tree_remove(bfqd, bfqq);
 
 	if (bfqq->wr_coeff > 1) {
 		bfqd->wr_busy_queues--;
