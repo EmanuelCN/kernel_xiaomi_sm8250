@@ -1214,6 +1214,11 @@ static int bfq_bfqq_budget_left(struct bfq_queue *bfqq)
 {
 	struct bfq_entity *entity = &bfqq->entity;
 
+	if (entity->budget < entity->service) {
+		pr_crit("budget %d service %d\n",
+			entity->budget, entity->service);
+		BUG();
+	}
 	return entity->budget - entity->service;
 }
 
@@ -1371,10 +1376,7 @@ static bool bfq_bfqq_update_budg_for_activation(struct bfq_data *bfqd,
 		 * remain unchanged after such an expiration, and the
 		 * following statement therefore assigns to
 		 * entity->budget the remaining budget on such an
-		 * expiration. For clarity, entity->service is not
-		 * updated on expiration in any case, and, in normal
-		 * operation, is reset only when bfqq is selected for
-		 * service (see bfq_get_next_queue).
+		 * expiration.
 		 */
 		BUG_ON(bfqq->max_budget < 0);
 		entity->budget = min_t(unsigned long,
@@ -1382,9 +1384,25 @@ static bool bfq_bfqq_update_budg_for_activation(struct bfq_data *bfqd,
 				       bfqq->max_budget);
 
 		BUG_ON(entity->budget < 0);
+
+		/*
+		 * At this point, we have used entity->service to get
+		 * the budget left (needed for updating
+		 * entity->budget). Thus we finally can, and have to,
+		 * reset entity->service. The latter must be reset
+		 * because bfqq would otherwise be charged again for
+		 * the service it has received during its previous
+		 * service slot(s).
+		 */
+		entity->service = 0;
+
 		return true;
 	}
 
+	/*
+	 * We can finally complete expiration, by setting service to 0.
+	 */
+	entity->service = 0;
 	BUG_ON(bfqq->max_budget < 0);
 	entity->budget = max_t(unsigned long, bfqq->max_budget,
 			       bfq_serv_to_charge(bfqq->next_rq, bfqq));
@@ -1822,8 +1840,7 @@ static void bfq_remove_request(struct request *rq)
 	struct bfq_data *bfqd = bfqq->bfqd;
 	const int sync = rq_is_sync(rq);
 
-	BUG_ON(bfqq->entity.service > bfqq->entity.budget &&
-	       bfqq == bfqd->in_service_queue);
+	BUG_ON(bfqq->entity.service > bfqq->entity.budget);
 
 	if (bfqq->next_rq == rq) {
 		bfqq->next_rq = bfq_find_next_rq(bfqd, bfqq, rq);
@@ -3449,9 +3466,10 @@ static void bfq_bfqq_expire(struct bfq_data *bfqd,
 	}
 
 	bfq_log_bfqq(bfqd, bfqq,
-		"expire (%s, slow %d, num_disp %d, short_ttime %d, weight %d)",
+	"expire (%s, slow %d, num_disp %d, short %d, weight %d, serv %d/%d)",
 		     reason_name[reason], slow, bfqq->dispatched,
-		     bfq_bfqq_has_short_ttime(bfqq), entity->weight);
+		     bfq_bfqq_has_short_ttime(bfqq), entity->weight,
+		     entity->service, entity->budget);
 
 	/*
 	 * Increase, decrease or leave budget unchanged according to
@@ -3464,15 +3482,29 @@ static void bfq_bfqq_expire(struct bfq_data *bfqd,
 	ref = bfqq->ref;
 	__bfq_bfqq_expire(bfqd, bfqq);
 
+	if (ref == 1) /* bfqq is gone, no more actions on it */
+		return;
+
 	BUG_ON(ref > 1 &&
 	       !bfq_bfqq_busy(bfqq) && reason == BFQ_BFQQ_BUDGET_EXHAUSTED &&
 		!bfq_class_idle(bfqq));
 
 	/* mark bfqq as waiting a request only if a bic still points to it */
-	if (ref > 1 && !bfq_bfqq_busy(bfqq) &&
+	if (!bfq_bfqq_busy(bfqq) &&
 	    reason != BFQ_BFQQ_BUDGET_TIMEOUT &&
-	    reason != BFQ_BFQQ_BUDGET_EXHAUSTED)
+	    reason != BFQ_BFQQ_BUDGET_EXHAUSTED) {
+		BUG_ON(!RB_EMPTY_ROOT(&bfqq->sort_list));
+		BUG_ON(bfqq->next_rq);
 		bfq_mark_bfqq_non_blocking_wait_rq(bfqq);
+		/*
+		 * Not setting service to 0, because, if the next rq
+		 * arrives in time, the queue will go on receiving
+		 * service with this same budget (as if it never expired)
+		 */
+	} else {
+		entity->service = 0;
+		bfq_log_bfqq(bfqd, bfqq, "[%s] resetting service", __func__);
+	}
 }
 
 /*
