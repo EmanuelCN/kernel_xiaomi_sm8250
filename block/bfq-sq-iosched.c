@@ -865,8 +865,10 @@ static void bfq_updated_next_req(struct bfq_data *bfqd,
 	BUG_ON(entity->tree != &st->active);
 	BUG_ON(entity == entity->sched_data->in_service_entity);
 
-	new_budget = max_t(unsigned long, bfqq->max_budget,
-			   bfq_serv_to_charge(next_rq, bfqq));
+	new_budget = max_t(unsigned long,
+			   max_t(unsigned long, bfqq->max_budget,
+				 bfq_serv_to_charge(next_rq, bfqq)),
+			   entity->service);
 	if (entity->budget != new_budget) {
 		entity->budget = new_budget;
 		bfq_log_bfqq(bfqd, bfqq, "new budget %lu",
