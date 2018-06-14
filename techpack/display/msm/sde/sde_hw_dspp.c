@@ -59,7 +59,7 @@ static void dspp_pcc(struct sde_hw_dspp *c)
 		c->ops.setup_pcc = sde_setup_dspp_pcc_v1_7;
 	else if (c->cap->sblk->pcc.version ==
 			(SDE_COLOR_PROCESS_VER(0x4, 0x0))) {
-		ret = reg_dmav1_init_dspp_op_v4(SDE_DSPP_PCC, c->idx);
+		ret = 1; // reg_dmav1_init_dspp_op_v4(SDE_DSPP_PCC, c->idx); use the sde one instead, with correct hsic settings possibilities
 		if (!ret)
 			c->ops.setup_pcc = reg_dmav1_setup_dspp_pccv4;
 		else
