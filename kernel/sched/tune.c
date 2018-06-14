@@ -737,12 +737,12 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 }
 
 static struct cftype files[] = {
+#ifdef CONFIG_SCHED_WALT
 	{
 		.name = "sched_boost_no_override",
 		.read_u64 = sched_boost_override_read,
 		.write_u64 = sched_boost_override_write,
 	},
-#ifdef CONFIG_SCHED_WALT
 	{
 		.name = "colocate",
 		.read_u64 = sched_colocate_read,
