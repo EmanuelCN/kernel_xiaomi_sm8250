@@ -442,6 +442,7 @@ static struct rcu_torture_ops rcu_ops = {
 	.stall_dur	= rcu_jiffies_till_stall_check,
 	.irq_capable	= 1,
 	.can_boost	= rcu_can_boost(),
+	.extendables	= RCUTORTURE_MAX_EXTEND,
 	.name		= "rcu"
 };
 
