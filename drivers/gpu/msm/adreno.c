@@ -34,7 +34,7 @@ static unsigned int counter_delta(struct kgsl_device *device,
 
 static struct devfreq_msm_adreno_tz_data adreno_tz_data = {
 	.bus = {
-		.max = 350,
+		.max = 1200,
 		.floating = true,
 	},
 	.device_id = KGSL_DEVICE_3D0,
