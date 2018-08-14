@@ -136,9 +136,13 @@ static bool bfq_update_next_in_service(struct bfq_sched_data *sd,
 	if (!change_without_lookup) /* lookup needed */
 		next_in_service = bfq_lookup_next_entity(sd, expiration);
 
-	if (next_in_service)
-		parent_sched_may_change = !sd->next_in_service ||
+	if (next_in_service) {
+		bool new_budget_triggers_change =
 			bfq_update_parent_budget(next_in_service);
+
+		parent_sched_may_change = !sd->next_in_service ||
+			new_budget_triggers_change;
+	}
 
 	sd->next_in_service = next_in_service;
 
@@ -201,6 +205,9 @@ static bool bfq_update_parent_budget(struct bfq_entity *next_in_service)
 	if (bfqg_entity) {
 		if (bfqg_entity->budget > next_in_service->budget)
 			ret = true;
+		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
+			"old budg: %d, new budg: %d",
+			bfqg_entity->budget, next_in_service->budget);
 		bfqg_entity->budget = next_in_service->budget;
 	}
 
