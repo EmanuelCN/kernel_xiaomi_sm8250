@@ -1385,10 +1385,17 @@ static bool __bfq_deactivate_entity(struct bfq_entity *entity,
 
 	BUG_ON(is_in_service && entity->tree && entity->tree != &st->active);
 
+	bfq_calc_finish(entity, entity->service);
+
 	if (is_in_service) {
-		bfq_calc_finish(entity, entity->service);
 		sd->in_service_entity = NULL;
-	}
+	} else
+		/*
+		 * Non in-service entity: nobody will take care of
+		 * resetting its service counter on expiration. Do it
+		 * now.
+		 */
+		entity->service = 0;
 
 	if (entity->tree == &st->active)
 		bfq_active_extract(st, entity);
