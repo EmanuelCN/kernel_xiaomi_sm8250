@@ -4720,8 +4720,8 @@ static void bfq_completed_request(struct request_queue *q, struct request *rq)
 	bfqd->rq_in_driver--;
 	bfqq->dispatched--;
 	bfqg_stats_update_completion(bfqq_group(bfqq),
-				     rq_start_time_ns(rq),
-				     rq_io_start_time_ns(rq),
+				     rq->start_time_ns,
+				     rq->io_start_time_ns,
 				     rq->cmd_flags);
 
 	if (!bfqq->dispatched && !bfq_bfqq_busy(bfqq)) {
