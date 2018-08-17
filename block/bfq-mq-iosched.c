@@ -3511,6 +3511,13 @@ static unsigned long bfq_bfqq_softrt_next_start(struct bfq_data *bfqd,
 		    jiffies + nsecs_to_jiffies(bfqq->bfqd->bfq_slice_idle) + 4);
 }
 
+static bool bfq_bfqq_injectable(struct bfq_queue *bfqq)
+{
+	return BFQQ_SEEKY(bfqq) && bfqq->wr_coeff == 1 &&
+		blk_queue_nonrot(bfqq->bfqd->queue) &&
+		bfqq->bfqd->hw_tag;
+}
+
 /**
  * bfq_bfqq_expire - expire a queue.
  * @bfqd: device owning the queue.
@@ -3635,6 +3642,8 @@ static void bfq_bfqq_expire(struct bfq_data *bfqd,
 	BUG_ON(ref > 1 &&
 	       !bfq_bfqq_busy(bfqq) && reason == BFQ_BFQQ_BUDGET_EXHAUSTED &&
 		!bfq_class_idle(bfqq));
+
+	bfqq->injected_service = 0;
 
 	/* mark bfqq as waiting a request only if a bic still points to it */
 	if (!bfq_bfqq_busy(bfqq) &&
@@ -3987,6 +3996,33 @@ static bool bfq_bfqq_must_idle(struct bfq_queue *bfqq)
 	return RB_EMPTY_ROOT(&bfqq->sort_list) && bfq_better_to_idle(bfqq);
 }
 
+static struct bfq_queue *bfq_choose_bfqq_for_injection(struct bfq_data *bfqd)
+{
+	struct bfq_queue *bfqq;
+
+	/*
+	 * A linear search; but, with a high probability, very few
+	 * steps are needed to find a candidate queue, i.e., a queue
+	 * with enough budget left for its next request. In fact:
+	 * - BFQ dynamically updates the budget of every queue so as
+	 *   to accomodate the expected backlog of the queue;
+	 * - if a queue gets all its requests dispatched as injected
+	 *   service, then the queue is removed from the active list
+	 *   (and re-added only if it gets new requests, but with
+	 *   enough budget for its new backlog).
+	 */
+	list_for_each_entry(bfqq, &bfqd->active_list, bfqq_list)
+		if (!RB_EMPTY_ROOT(&bfqq->sort_list) &&
+		    bfq_serv_to_charge(bfqq->next_rq, bfqq) <=
+		    bfq_bfqq_budget_left(bfqq)) {
+			bfq_log_bfqq(bfqd, bfqq, "returned this queue");
+			return bfqq;
+		}
+
+	bfq_log(bfqd, "no queue found");
+	return NULL;
+}
+
 /*
  * Select a queue for service.  If we have a current queue in service,
  * check whether to continue servicing it, or retrieve and set a new one.
@@ -4070,10 +4106,25 @@ check_queue:
 	 * No requests pending. However, if the in-service queue is idling
 	 * for a new request, or has requests waiting for a completion and
 	 * may idle after their completion, then keep it anyway.
+	 *
+	 * Yet, to boost throughput, inject service from other queues if
+	 * possible.
 	 */
 	if (bfq_bfqq_wait_request(bfqq) ||
 	    (bfqq->dispatched != 0 && bfq_better_to_idle(bfqq))) {
-		bfqq = NULL;
+		if (bfq_bfqq_injectable(bfqq) &&
+		    bfqq->injected_service * bfqq->inject_coeff <
+		    bfqq->entity.service * 10) {
+			bfq_log_bfqq(bfqd, bfqq, "looking for queue for injection");
+			bfqq = bfq_choose_bfqq_for_injection(bfqd);
+		} else {
+			if (BFQQ_SEEKY(bfqq))
+				bfq_log_bfqq(bfqd, bfqq,
+					"injection saturated %d * %d >= %d * 10",
+					bfqq->injected_service, bfqq->inject_coeff,
+					bfqq->entity.service);
+			bfqq = NULL;
+		}
 		goto keep_queue;
 	}
 
@@ -4182,6 +4233,24 @@ static struct request *bfq_dispatch_rq_from_bfqq(struct bfq_data *bfqd,
 
 	bfq_dispatch_remove(bfqd->queue, rq);
 
+	bfq_log_bfqq(bfqd, bfqq,
+	     "dispatched %u sec req (%llu), budg left %d, new disp_nr %d",
+			blk_rq_sectors(rq),
+			(unsigned long long) blk_rq_pos(rq),
+		     bfq_bfqq_budget_left(bfqq),
+		     bfqq->dispatched);
+
+	if (bfqq != bfqd->in_service_queue) {
+		if (likely(bfqd->in_service_queue)) {
+			bfqd->in_service_queue->injected_service +=
+				bfq_serv_to_charge(rq, bfqq);
+			bfq_log_bfqq(bfqd, bfqd->in_service_queue,
+				     "injected_service increased to %d",
+				     bfqd->in_service_queue->injected_service);
+		}
+		goto return_rq;
+	}
+
 	/*
 	 * If weight raising has to terminate for bfqq, then next
 	 * function causes an immediate update of bfqq's weight,
@@ -4195,25 +4264,17 @@ static struct request *bfq_dispatch_rq_from_bfqq(struct bfq_data *bfqd,
 	 */
 	bfq_update_wr_data(bfqd, bfqq);
 
-	bfq_log_bfqq(bfqd, bfqq,
-	     "dispatched %u sec req (%llu), budg left %d, new disp_nr %d",
-			blk_rq_sectors(rq),
-			(unsigned long long) blk_rq_pos(rq),
-		     bfq_bfqq_budget_left(bfqq),
-		     bfqq->dispatched);
-
 	/*
 	 * Expire bfqq, pretending that its budget expired, if bfqq
 	 * belongs to CLASS_IDLE and other queues are waiting for
 	 * service.
 	 */
-	if (bfqd->busy_queues > 1 && bfq_class_idle(bfqq))
-		goto expire;
+	if (!(bfqd->busy_queues > 1 && bfq_class_idle(bfqq)))
+		goto return_rq;
 
-	return rq;
-
-expire:
 	bfq_bfqq_expire(bfqd, bfqq, false, BFQ_BFQQ_BUDGET_EXHAUSTED);
+
+return_rq:
 	return rq;
 }
 
@@ -4319,9 +4380,11 @@ static struct request *__bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
 	if (!bfqq)
 		goto exit;
 
-	BUG_ON(bfqq->entity.budget < bfqq->entity.service);
+	BUG_ON(bfqq == bfqd->in_service_queue &&
+	       bfqq->entity.budget < bfqq->entity.service);
 
-	BUG_ON(bfq_bfqq_wait_request(bfqq));
+	BUG_ON(bfqq == bfqd->in_service_queue &&
+	       bfq_bfqq_wait_request(bfqq));
 
 	rq = bfq_dispatch_rq_from_bfqq(bfqd, bfqq);
 
@@ -4670,6 +4733,13 @@ static void bfq_init_bfqq(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 			bfq_mark_bfqq_has_short_ttime(bfqq);
 		bfq_mark_bfqq_sync(bfqq);
 		bfq_mark_bfqq_just_created(bfqq);
+		/*
+		 * Aggressively inject a lot of service: up to 90%.
+		 * This coefficient remains constant during bfqq life,
+		 * but this behavior might be changed, after enough
+		 * testing and tuning.
+		 */
+		bfqq->inject_coeff = 1;
 	} else
 		bfq_clear_bfqq_sync(bfqq);
 
