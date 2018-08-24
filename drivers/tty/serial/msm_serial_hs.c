@@ -2761,7 +2761,7 @@ static int uartdm_init_port(struct uart_port *uport)
 	kthread_init_worker(&tx->kworker);
 	tx->task = kthread_run(kthread_worker_fn,
 			&tx->kworker, "msm_serial_hs_%d_tx_work", uport->line);
-	if (IS_ERR(rx->task)) {
+	if (IS_ERR(tx->task)) {
 		MSM_HS_ERR("%s(): error creating task\n", __func__);
 		goto exit_lh_init;
 	}
