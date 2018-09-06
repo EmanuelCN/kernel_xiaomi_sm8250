@@ -109,15 +109,14 @@ struct bfq_sched_data {
 };
 
 /**
- * struct bfq_weight_counter - counter of the number of all active entities
+ * struct bfq_weight_counter - counter of the number of all active queues
  *                             with a given weight.
  */
 struct bfq_weight_counter {
-	unsigned int weight; /* weight of the entities this counter refers to */
-	unsigned int num_active; /* nr of active entities with this weight */
+	unsigned int weight; /* weight of the queues this counter refers to */
+	unsigned int num_active; /* nr of active queues with this weight */
 	/*
-	 * Weights tree member (see bfq_data's @queue_weights_tree and
-	 * @group_weights_tree)
+	 * Weights tree member (see bfq_data's @queue_weights_tree)
 	 */
 	struct rb_node weights_node;
 };
@@ -151,8 +150,6 @@ struct bfq_weight_counter {
  */
 struct bfq_entity {
 	struct rb_node rb_node; /* service_tree member */
-	/* pointer to the weight counter associated with this entity */
-	struct bfq_weight_counter *weight_counter;
 
 	/*
 	 * Flag, true if the entity is on a tree (either the active or
@@ -260,6 +257,9 @@ struct bfq_queue {
 
 	/* entity representing this queue in the scheduler */
 	struct bfq_entity entity;
+
+	/* pointer to the weight counter associated with this queue */
+	struct bfq_weight_counter *weight_counter;
 
 	/* maximum budget allowed from the feedback mechanism */
 	int max_budget;
@@ -442,14 +442,9 @@ struct bfq_data {
 	 */
 	struct rb_root queue_weights_tree;
 	/*
-	 * rbtree of non-queue @bfq_entity weight counters, sorted by
-	 * weight. Used to keep track of whether all @bfq_groups have
-	 * the same weight. The tree contains one counter for each
-	 * distinct weight associated to some active @bfq_group (see
-	 * the comments to the functions bfq_weights_tree_[add|remove]
-	 * for further details).
+	 * number of groups with requests still waiting for completion
 	 */
-	struct rb_root group_weights_tree;
+	unsigned int num_active_groups;
 
 	/*
 	 * Number of bfq_queues containing requests (including the
