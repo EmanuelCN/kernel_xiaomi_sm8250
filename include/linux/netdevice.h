@@ -2476,6 +2476,12 @@ struct pcpu_sw_netstats {
 	struct u64_stats_sync   syncp;
 };
 
+struct pcpu_lstats {
+	u64 packets;
+	u64 bytes;
+	struct u64_stats_sync syncp;
+};
+
 static inline void dev_lstats_add(struct net_device *dev, unsigned int len)
 {
 	struct pcpu_lstats *lstats = this_cpu_ptr(dev->lstats);
