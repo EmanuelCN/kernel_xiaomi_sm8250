@@ -1022,7 +1022,7 @@ static bool tcp_pacing_check(const struct sock *sk)
 
 static void tcp_update_skb_after_send(struct tcp_sock *tp, struct sk_buff *skb)
 {
-	skb->skb_mstamp = tp->tcp_mstamp;
+	skb->skb_mstamp_ns = tp->tcp_wstamp_ns;
 	list_move_tail(&skb->tcp_tsorted_anchor, &tp->tsorted_sent_queue);
 }
 
@@ -1069,7 +1069,7 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 		if (unlikely(!skb))
 			return -ENOBUFS;
 	}
-	skb->skb_mstamp = tp->tcp_mstamp;
+	skb->skb_mstamp_ns = tp->tcp_wstamp_ns;
 
 	inet = inet_sk(sk);
 	tcb = TCP_SKB_CB(skb);
@@ -1173,8 +1173,7 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 	skb_shinfo(skb)->gso_segs = tcp_skb_pcount(skb);
 	skb_shinfo(skb)->gso_size = tcp_skb_mss(skb);
 
-	/* Our usage of tstamp should remain private */
-	skb->tstamp = 0;
+	/* Leave earliest departure time in skb->tstamp (skb->skb_mstamp_ns) */
 
 	/* Cleanup our debris for IP stacks */
 	memset(skb->cb, 0, max(sizeof(struct inet_skb_parm),
@@ -2005,7 +2004,7 @@ static bool tcp_tso_should_defer(struct sock *sk, struct sk_buff *skb,
 	head = tcp_rtx_queue_head(sk);
 	if (!head)
 		goto send_now;
-	age = tcp_stamp_us_delta(tp->tcp_mstamp, head->skb_mstamp);
+	age = tcp_stamp_us_delta(tp->tcp_mstamp, tcp_skb_timestamp_us(head));
 	/* If next ACK is likely to come too late (half srtt), do not defer */
 	if (age < (tp->srtt_us >> 4))
 		goto send_now;
@@ -3278,10 +3277,10 @@ struct sk_buff *tcp_make_synack(const struct sock *sk, struct dst_entry *dst,
 	memset(&opts, 0, sizeof(opts));
 #ifdef CONFIG_SYN_COOKIES
 	if (unlikely(req->cookie_ts))
-		skb->skb_mstamp = cookie_init_timestamp(req);
+		skb->skb_mstamp_ns = cookie_init_timestamp(req);
 	else
 #endif
-		skb->skb_mstamp = tcp_clock_us();
+		skb->skb_mstamp_ns = tcp_clock_ns();
 
 #ifdef CONFIG_TCP_MD5SIG
 	rcu_read_lock();
@@ -3500,7 +3499,7 @@ static int tcp_send_syn_data(struct sock *sk, struct sk_buff *syn)
 
 	err = tcp_transmit_skb(sk, syn_data, 1, sk->sk_allocation);
 
-	syn->skb_mstamp = syn_data->skb_mstamp;
+	syn->skb_mstamp_ns = syn_data->skb_mstamp_ns;
 
 	/* Now full SYN+DATA was cloned and sent (or not),
 	 * remove the SYN from the original skb (syn_data)
