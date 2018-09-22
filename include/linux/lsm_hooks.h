@@ -1552,8 +1552,11 @@ static inline void security_delete_hooks(struct security_hook_list *hooks,
 #endif /* CONFIG_SECURITY_WRITABLE_HOOKS */
 
 extern void __init capability_add_hooks(void);
+
 #ifdef CONFIG_SECURITY
 void __init lsm_early_cred(struct cred *cred);
 #endif
+
+extern int lsm_inode_alloc(struct inode *inode);
 
 #endif /* ! __LINUX_LSM_HOOKS_H */
