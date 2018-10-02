@@ -2012,7 +2012,7 @@ static bool rcu_nocb_cpu_needs_barrier(int cpu)
 	 * (if a callback is in fact needed).  This is associated with an
 	 * atomic_inc() in the caller.
 	 */
-	ret = atomic_long_read(&rdp->nocb_q_count);
+	ret = rcu_get_n_cbs_nocb_cpu(rdp);
 
 #ifdef CONFIG_PROVE_RCU
 	rhp = READ_ONCE(rdp->nocb_head);
@@ -2067,7 +2067,7 @@ static void __call_rcu_nocb_enqueue(struct rcu_data *rdp,
 				    TPS("WakeNotPoll"));
 		return;
 	}
-	len = atomic_long_read(&rdp->nocb_q_count);
+	len = rcu_get_n_cbs_nocb_cpu(rdp);
 	if (old_rhpp == &rdp->nocb_head) {
 		if (!irqs_disabled_flags(flags)) {
 			/* ... if queue was empty ... */
@@ -2116,11 +2116,11 @@ static bool __call_rcu_nocb(struct rcu_data *rdp, struct rcu_head *rhp,
 		trace_rcu_kfree_callback(rcu_state.name, rhp,
 					 (unsigned long)rhp->func,
 					 -atomic_long_read(&rdp->nocb_q_count_lazy),
-					 -atomic_long_read(&rdp->nocb_q_count));
+					 -rcu_get_n_cbs_nocb_cpu(rdp));
 	else
 		trace_rcu_callback(rcu_state.name, rhp,
 				   -atomic_long_read(&rdp->nocb_q_count_lazy),
-				   -atomic_long_read(&rdp->nocb_q_count));
+				   -rcu_get_n_cbs_nocb_cpu(rdp));
 
 	/*
 	 * If called from an extended quiescent state with interrupts
@@ -2344,7 +2344,7 @@ static int rcu_nocb_kthread(void *arg)
 		/* Each pass through the following loop invokes a callback. */
 		trace_rcu_batch_start(rcu_state.name,
 				      atomic_long_read(&rdp->nocb_q_count_lazy),
-				      atomic_long_read(&rdp->nocb_q_count), -1);
+				      rcu_get_n_cbs_nocb_cpu(rdp), -1);
 		c = cl = 0;
 		while (list) {
 			next = list->next;
@@ -2615,6 +2615,15 @@ void rcu_bind_current_to_nocb(void)
 }
 EXPORT_SYMBOL_GPL(rcu_bind_current_to_nocb);
 
+/*
+ * Return the number of RCU callbacks still queued from the specified
+ * CPU, which must be a nocbs CPU.
+ */
+static unsigned long rcu_get_n_cbs_nocb_cpu(struct rcu_data *rdp)
+{
+	return atomic_long_read(&rdp->nocb_q_count);
+}
+
 #else /* #ifdef CONFIG_RCU_NOCB_CPU */
 
 static bool rcu_nocb_cpu_needs_barrier(int cpu)
@@ -2673,6 +2682,11 @@ static void __init rcu_spawn_nocb_kthreads(void)
 static bool init_nocb_callback_list(struct rcu_data *rdp)
 {
 	return false;
+}
+
+static unsigned long rcu_get_n_cbs_nocb_cpu(struct rcu_data *rdp)
+{
+	return 0;
 }
 
 #endif /* #else #ifdef CONFIG_RCU_NOCB_CPU */
