@@ -703,8 +703,8 @@ inc_counter:
 	entity->weight_counter->num_active++;
 
 	if (bfqq) {
-		bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] weight %d symmetric %d",
-			     __func__, entity->weight,
+		bfq_log_bfqq(bfqq->bfqd, bfqq, "weight %d symmetric %d",
+			     entity->weight,
 			     bfq_symmetric_scenario(bfqd));
 #ifdef BFQ_GROUP_IOSCHED_ENABLED
 	} else {
@@ -712,8 +712,8 @@ inc_counter:
 			container_of(entity, struct bfq_group, entity);
 
 		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-			     "[%s] weight %d symmetric %d",
-			     __func__, entity->weight,
+			     "weight %d symmetric %d",
+			     entity->weight,
 			     bfq_symmetric_scenario(bfqd));
 #endif
 	}
@@ -750,8 +750,8 @@ reset_entity_pointer:
 	entity->weight_counter = NULL;
 	if (bfqq) {
 		bfq_log_bfqq(bfqq->bfqd, bfqq,
-			     "[%s] weight %d symmetric %d",
-			     __func__, entity->weight,
+			     "weight %d symmetric %d",
+			     entity->weight,
 			     bfq_symmetric_scenario(bfqd));
 #ifdef BFQ_GROUP_IOSCHED_ENABLED
 	} else {
@@ -759,8 +759,8 @@ reset_entity_pointer:
 			container_of(entity, struct bfq_group, entity);
 
 		bfq_log_bfqg(bfqd, bfqg,
-			     "[%s] weight %d symmetric %d",
-			     __func__, entity->weight,
+			     "weight %d symmetric %d",
+			     entity->weight,
 			     bfq_symmetric_scenario(bfqd));
 #endif
 	}
@@ -3659,7 +3659,7 @@ static void bfq_bfqq_expire(struct bfq_data *bfqd,
 		 */
 	} else {
 		entity->service = 0;
-		bfq_log_bfqq(bfqd, bfqq, "[%s] resetting service", __func__);
+		bfq_log_bfqq(bfqd, bfqq, "resetting service");
 	}
 
 	/*
