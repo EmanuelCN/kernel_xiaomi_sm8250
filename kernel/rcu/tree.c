@@ -2692,6 +2692,8 @@ void rcu_fwd_progress_check(unsigned long j)
 	struct rcu_data *rdp;
 
 	if (rcu_gp_in_progress()) {
+		pr_info("%s: GP age %lu jiffies\n",
+			__func__, jiffies - rcu_state.gp_start);
 		show_rcu_gp_kthreads();
 	} else {
 		preempt_disable();
