@@ -1161,6 +1161,9 @@ struct ufs_hba {
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
+
+	struct device		bsg_dev;
+	struct request_queue	*bsg_queue;
 };
 
 static inline void ufshcd_mark_shutdown_ongoing(struct ufs_hba *hba)

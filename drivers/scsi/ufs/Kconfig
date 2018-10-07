@@ -256,3 +256,22 @@ config UFSTW_LPM_DISABLED_ON_HIBERN8_FLUSH
 	In addtion, if not runtime suspend(shutdown and system suspend),
 	fTurboWriteBufferFlushDuringHibnerEnter flag will be disabled in
 	suspend routines.
+
+config SCSI_UFS_BSG
+	bool "Universal Flash Storage BSG device node"
+	depends on SCSI_UFSHCD
+	select BLK_DEV_BSGLIB
+	help
+	  Universal Flash Storage (UFS) is SCSI transport specification for
+	  accessing flash storage on digital cameras, mobile phones and
+	  consumer electronic devices.
+	  A UFS controller communicates with a UFS device by exchanging
+	  UFS Protocol Information Units (UPIUs).
+	  UPIUs can not only be used as a transport layer for the SCSI protocol
+	  but are also used by the UFS native command set.
+	  This transport driver supports exchanging UFS protocol information units
+	  with a UFS device. See also the ufshcd driver, which is a SCSI driver
+	  that supports UFS devices.
+
+	  Select this if you need a bsg device node for your UFS controller.
+	  If unsure, say N.
