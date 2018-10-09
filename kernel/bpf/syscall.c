@@ -733,10 +733,16 @@ static int map_lookup_elem(union bpf_attr *attr)
 			ptr = map->ops->map_lookup_elem_sys_only(map, key);
 		else
 			ptr = map->ops->map_lookup_elem(map, key);
-		if (ptr)
+		ptr = map->ops->map_lookup_elem(map, key);
+		if (IS_ERR(ptr)) {
+			err = PTR_ERR(ptr);
+		} else if (!ptr) {
+			err = -ENOENT;
+		} else {
+			err = 0;
 			memcpy(value, ptr, value_size);
+		}
 		rcu_read_unlock();
-		err = ptr ? 0 : -ENOENT;
 	}
 	this_cpu_dec(bpf_prog_active);
 	preempt_enable();
