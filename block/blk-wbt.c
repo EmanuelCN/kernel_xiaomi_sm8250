@@ -719,8 +719,7 @@ void wbt_enable_default(struct request_queue *q)
 	if (!blk_queue_registered(q))
 		return;
 
-	if ((q->mq_ops && IS_ENABLED(CONFIG_BLK_WBT_MQ)) ||
-	    (q->request_fn && IS_ENABLED(CONFIG_BLK_WBT_SQ)))
+	if (q->mq_ops && IS_ENABLED(CONFIG_BLK_WBT_MQ))
 		wbt_init(q);
 }
 EXPORT_SYMBOL_GPL(wbt_enable_default);
