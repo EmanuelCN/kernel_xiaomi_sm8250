@@ -891,3 +891,7 @@ config FORCE_ALLOC_FROM_DMA_ZONE
 	  always using ZONE_DMA32 memory.
 
 	  If unsure, say "n".
+
+config VMSTAT_INTERVAL
+	int "Default interval in seconds to update vmstat"
+	default 20
