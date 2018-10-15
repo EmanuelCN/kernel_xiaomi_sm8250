@@ -4718,10 +4718,12 @@ static struct sock *sk_lookup(struct net *net, struct bpf_sock_tuple *tuple,
 					    src6, tuple->ipv6.sport,
 					    dst6, tuple->ipv6.dport,
 					    dif, sdif, &refcounted);
-		else
-			sk = __udp6_lib_lookup(net, src6, tuple->ipv6.sport,
-					       dst6, tuple->ipv6.dport,
-					       dif, sdif, &udp_table, skb);
+		else if (likely(ipv6_bpf_stub))
+			sk = ipv6_bpf_stub->udp6_lib_lookup(net,
+							    src6, tuple->ipv6.sport,
+							    dst6, tuple->ipv6.dport,
+							    dif, sdif,
+							    &udp_table, skb);
 #endif
 	}
 
