@@ -998,7 +998,8 @@ static bool tcp_pacing_check(const struct sock *sk)
 	       hrtimer_is_queued(&tcp_sk(sk)->pacing_timer);
 }
 
-static void tcp_update_skb_after_send(struct sock *sk, struct sk_buff *skb)
+static void tcp_update_skb_after_send(struct sock *sk, struct sk_buff *skb,
+				      u64 prior_wstamp)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 
@@ -1011,7 +1012,12 @@ static void tcp_update_skb_after_send(struct sock *sk, struct sk_buff *skb)
 		 * this is a minor annoyance.
 		 */
 		if (rate != ~0UL && rate && tp->data_segs_out >= 10) {
-			tp->tcp_wstamp_ns += div64_ul((u64)skb->len * NSEC_PER_SEC, rate);
+			u64 len_ns = div64_ul((u64)skb->len * NSEC_PER_SEC, rate);
+			u64 credit = tp->tcp_wstamp_ns - prior_wstamp;
+
+			/* take into account OS jitter */
+			len_ns -= min_t(u64, len_ns / 2, credit);
+			tp->tcp_wstamp_ns += len_ns;
 
 			tcp_internal_pacing(sk);
 		}
@@ -1042,6 +1048,7 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 	struct sk_buff *oskb = NULL;
 	struct tcp_md5sig_key *md5;
 	struct tcphdr *th;
+	u64 prior_wstamp;
 	int err;
 
 	BUG_ON(!skb || !tcp_skb_pcount(skb));
@@ -1063,7 +1070,7 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 			return -ENOBUFS;
 	}
 
-	/* TODO: might take care of jitter here */
+	prior_wstamp = tp->tcp_wstamp_ns;
 	tp->tcp_wstamp_ns = max(tp->tcp_wstamp_ns, tp->tcp_clock_cache);
 
 	skb->skb_mstamp_ns = tp->tcp_wstamp_ns;
@@ -1182,7 +1189,7 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 		err = net_xmit_eval(err);
 	}
 	if (!err && oskb) {
-		tcp_update_skb_after_send(sk, oskb);
+		tcp_update_skb_after_send(sk, oskb, prior_wstamp);
 		tcp_rate_skb_sent(sk, oskb);
 	}
 	return err;
@@ -2367,7 +2374,7 @@ static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
 
 		if (unlikely(tp->repair) && tp->repair_queue == TCP_SEND_QUEUE) {
 			/* "skb_mstamp" is used as a start point for the retransmit timer */
-			tcp_update_skb_after_send(sk, skb);
+			tcp_update_skb_after_send(sk, skb, tp->tcp_wstamp_ns);
 			goto repair; /* Skip network transmission */
 		}
 
@@ -2958,7 +2965,7 @@ int __tcp_retransmit_skb(struct sock *sk, struct sk_buff *skb, int segs)
 		} tcp_skb_tsorted_restore(skb);
 
 		if (!err) {
-			tcp_update_skb_after_send(sk, skb);
+			tcp_update_skb_after_send(sk, skb, tp->tcp_wstamp_ns);
 			tcp_rate_skb_sent(sk, skb);
 		}
 	} else {
