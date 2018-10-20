@@ -2565,6 +2565,23 @@ union bpf_attr {
  *		0 on success.
  *
  *		**-ENOENT** if the bpf-local-storage cannot be found.
+ *
+ * int bpf_msg_push_data(struct sk_buff *skb, u32 start, u32 len, u64 flags)
+ *	Description
+ *		For socket policies, insert *len* bytes into msg at offset
+ *		*start*.
+ *
+ *		If a program of type **BPF_PROG_TYPE_SK_MSG** is run on a
+ *		*msg* it may want to insert metadata or options into the msg.
+ *		This can later be read and used by any of the lower layer BPF
+ *		hooks.
+ *
+ *		This helper may fail if under memory pressure (a malloc
+ *		fails) in these cases BPF programs will get an appropriate
+ *		error and BPF programs will need to handle them.
+ *
+ *	Return
+ *		0 on success, or a negative error in case of failure.
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
