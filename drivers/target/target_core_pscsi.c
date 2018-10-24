@@ -1103,7 +1103,7 @@ static void pscsi_req_done(struct request *req, blk_status_t status)
 		break;
 	}
 
-	__blk_put_request(req->q, req);
+	blk_put_request(req);
 	kfree(pt);
 }
 

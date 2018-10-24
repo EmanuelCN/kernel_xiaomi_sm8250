@@ -823,15 +823,6 @@ static void blk_pm_put_request(struct request *rq)
 static inline void blk_pm_put_request(struct request *rq) {}
 #endif
 
-void __blk_put_request(struct request_queue *q, struct request *req)
-{
-	if (unlikely(!q))
-		return;
-
-	blk_mq_free_request(req);
-}
-EXPORT_SYMBOL_GPL(__blk_put_request);
-
 void blk_put_request(struct request *req)
 {
 	blk_mq_free_request(req);
