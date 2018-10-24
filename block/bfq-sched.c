@@ -887,30 +887,24 @@ __bfq_entity_update_weight_prio(struct bfq_service_tree *old_st,
 		 * queue, remove the entity from its old weight counter (if
 		 * there is a counter associated with the entity).
 		 */
-		if (prev_weight != new_weight) {
-			if (bfqq) {
-				bfq_log_bfqq(bfqq->bfqd, bfqq,
-					     "weight changed %d %d(%d %d)",
-					     prev_weight, new_weight,
-					     entity->orig_weight,
-					     bfqq->wr_coeff);
+		if (prev_weight != new_weight && bfqq) {
+			bfq_log_bfqq(bfqq->bfqd, bfqq,
+				     "weight changed %d %d(%d %d)",
+				     prev_weight, new_weight,
+				     entity->orig_weight,
+				     bfqq->wr_coeff);
 
-				root = &bfqd->queue_weights_tree;
-				__bfq_weights_tree_remove(bfqd, bfqq, root);
-			} else
-				bfqd->num_active_groups--;
+			root = &bfqd->queue_weights_tree;
+			__bfq_weights_tree_remove(bfqd, bfqq, root);
 		}
 		entity->weight = new_weight;
 		/*
 		 * Add the entity, if it is not a weight-raised queue, to the
 		 * counter associated with its new weight.
 		 */
-		if (prev_weight != new_weight) {
-			if (bfqq && bfqq->wr_coeff == 1) {
-				/* If we get here, root has been initialized. */
-				bfq_weights_tree_add(bfqd, bfqq, root);
-			} else
-				bfqd->num_active_groups++;
+		if (prev_weight != new_weight && bfqq && bfqq->wr_coeff == 1) {
+			/* If we get here, root has been initialized. */
+			bfq_weights_tree_add(bfqd, bfqq, root);
 		}
 
 		new_st->wsum += entity->weight;
@@ -1202,6 +1196,8 @@ static void __bfq_activate_entity(struct bfq_entity *entity,
 
 		BUG_ON(!bfqd);
 		bfqd->num_active_groups++;
+		bfq_log_bfqg(bfqd, bfqg, "num_active_groups %u",
+			     bfqd->num_active_groups);
 	}
 #endif
 

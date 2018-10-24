@@ -580,6 +580,10 @@ static void bfq_pos_tree_add_move(struct bfq_data *bfqd, struct bfq_queue *bfqq)
  */
 static bool bfq_varied_queue_weights_or_active_groups(struct bfq_data *bfqd)
 {
+#ifdef BFQ_GROUP_IOSCHED_ENABLED
+	bfq_log(bfqd, "num_active_groups %u", bfqd->num_active_groups);
+#endif
+
 	/*
 	 * For queue weights to differ, queue_weights_tree must contain
 	 * at least two nodes.
@@ -799,7 +803,10 @@ static void bfq_weights_tree_remove(struct bfq_data *bfqd,
 			 */
 			break;
 		}
+		BUG_ON(!bfqd->num_active_groups);
 		bfqd->num_active_groups--;
+		bfq_log_bfqq(bfqd, bfqq, "num_active_groups %u",
+			     bfqd->num_active_groups);
 	}
 }
 
