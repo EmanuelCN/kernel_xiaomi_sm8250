@@ -664,12 +664,6 @@ static int __init populate_rootfs(void)
 	}
 	free_initrd();
 	flush_delayed_fput();
-	/*
-	 * Try loading default modules from initramfs.  This gives
-	 * us a chance to load before device_initcalls.
-	 */
-	load_default_modules();
-
 	return 0;
 }
 rootfs_initcall(populate_rootfs);
