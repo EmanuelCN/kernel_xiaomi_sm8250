@@ -2239,6 +2239,8 @@ union bpf_attr {
  *		**CONFIG_NET** configuration option.
  *	Return
  *		Pointer to *struct bpf_sock*, or NULL in case of failure.
+ *		For sockets with reuseport option, *struct bpf_sock*
+ *		return is from reuse->socks[] using hash of the packet.
  *
  * struct bpf_sock *bpf_sk_lookup_udp(void *ctx, struct bpf_sock_tuple *tuple, u32 tuple_size, u32 netns, u64 flags)
  *	Description
@@ -2271,6 +2273,8 @@ union bpf_attr {
  *		**CONFIG_NET** configuration option.
  *	Return
  *		Pointer to *struct bpf_sock*, or NULL in case of failure.
+ *		For sockets with reuseport option, *struct bpf_sock*
+ *		return is from reuse->socks[] using hash of the packet.
  *
  * int bpf_sk_release(struct bpf_sock *sk)
  *	Description
