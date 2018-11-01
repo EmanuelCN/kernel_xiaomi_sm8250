@@ -1846,7 +1846,11 @@ static void bfq_remove_request(struct request *rq)
 	struct bfq_data *bfqd = bfqq->bfqd;
 	const int sync = rq_is_sync(rq);
 
-	BUG_ON(bfqq->entity.service > bfqq->entity.budget);
+	/*
+	 * NOTE:
+	 * (bfqq->entity.service > bfqq->entity.budget) may hold here,
+	 * in case of forced dispatches.
+	 */
 
 	if (bfqq->next_rq == rq) {
 		bfqq->next_rq = bfq_find_next_rq(bfqd, bfqq, rq);
