@@ -242,6 +242,8 @@ static inline void fsnotify_open(struct file *file)
 
 	if (S_ISDIR(inode->i_mode))
 		mask |= FS_ISDIR;
+	if (file->f_flags & __FMODE_EXEC)
+		mask |= FS_OPEN_EXEC;
 
 	if (path->dentry->d_op && path->dentry->d_op->d_canonical_path) {
 		path->dentry->d_op->d_canonical_path(path, &lower_path);
