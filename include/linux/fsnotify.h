@@ -26,13 +26,26 @@ static inline int fsnotify_parent(const struct path *path, struct dentry *dentry
 	return __fsnotify_parent(path, dentry, mask);
 }
 
+/*
+ * Simple wrapper to consolidate calls fsnotify_parent()/fsnotify() when
+ * an event is on a path.
+ */
+static inline int fsnotify_path(struct inode *inode, const struct path *path,
+				__u32 mask)
+{
+	int ret = fsnotify_parent(path, NULL, mask);
+
+	if (ret)
+		return ret;
+	return fsnotify(inode, mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
+}
+
 /* simple call site for access decisions */
 static inline int fsnotify_perm(struct file *file, int mask)
 {
 	const struct path *path = &file->f_path;
 	struct inode *inode = file_inode(file);
 	__u32 fsnotify_mask = 0;
-	int ret;
 
 	if (file->f_mode & FMODE_NONOTIFY)
 		return 0;
@@ -45,11 +58,7 @@ static inline int fsnotify_perm(struct file *file, int mask)
 	else
 		BUG();
 
-	ret = fsnotify_parent(path, NULL, fsnotify_mask);
-	if (ret)
-		return ret;
-
-	return fsnotify(inode, fsnotify_mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
+	return fsnotify_path(inode, path, fsnotify_mask);
 }
 
 /*
@@ -206,10 +215,8 @@ static inline void fsnotify_access(struct file *file)
 	if (S_ISDIR(inode->i_mode))
 		mask |= FS_ISDIR;
 
-	if (!(file->f_mode & FMODE_NONOTIFY)) {
-		fsnotify_parent(path, NULL, mask);
-		fsnotify(inode, mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
-	}
+	if (!(file->f_mode & FMODE_NONOTIFY))
+		fsnotify_path(inode, path, mask);
 }
 
 /*
@@ -224,10 +231,8 @@ static inline void fsnotify_modify(struct file *file)
 	if (S_ISDIR(inode->i_mode))
 		mask |= FS_ISDIR;
 
-	if (!(file->f_mode & FMODE_NONOTIFY)) {
-		fsnotify_parent(path, NULL, mask);
-		fsnotify(inode, mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
-	}
+	if (!(file->f_mode & FMODE_NONOTIFY))
+		fsnotify_path(inode, path, mask);
 }
 
 /*
@@ -253,8 +258,7 @@ static inline void fsnotify_open(struct file *file)
 		path_put(&lower_path);
 	}
 
-	fsnotify_parent(path, NULL, mask);
-	fsnotify(inode, mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
+	fsnotify_path(inode, path, mask);
 }
 
 /*
@@ -270,10 +274,8 @@ static inline void fsnotify_close(struct file *file)
 	if (S_ISDIR(inode->i_mode))
 		mask |= FS_ISDIR;
 
-	if (!(file->f_mode & FMODE_NONOTIFY)) {
-		fsnotify_parent(path, NULL, mask);
-		fsnotify(inode, mask, path, FSNOTIFY_EVENT_PATH, NULL, 0);
-	}
+	if (!(file->f_mode & FMODE_NONOTIFY))
+		fsnotify_path(inode, path, mask);
 }
 
 /*
