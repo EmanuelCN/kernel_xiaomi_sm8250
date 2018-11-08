@@ -2230,6 +2230,7 @@ typedef enum {
 	FILE_MEMLIST,
 	FILE_EFFECTIVE_CPULIST,
 	FILE_EFFECTIVE_MEMLIST,
+	FILE_SUBPARTS_CPULIST,
 	FILE_CPU_EXCLUSIVE,
 	FILE_MEM_EXCLUSIVE,
 	FILE_MEM_HARDWALL,
@@ -2452,6 +2453,9 @@ static int cpuset_common_seq_show(struct seq_file *sf, void *v)
 		break;
 	case FILE_EFFECTIVE_MEMLIST:
 		seq_printf(sf, "%*pbl\n", nodemask_pr_args(&cs->effective_mems));
+		break;
+	case FILE_SUBPARTS_CPULIST:
+		seq_printf(sf, "%*pbl\n", cpumask_pr_args(cs->subparts_cpus));
 		break;
 	default:
 		ret = -EINVAL;
@@ -2703,6 +2707,13 @@ static struct cftype dfl_files[] = {
 		.write = sched_partition_write,
 		.private = FILE_PARTITION_ROOT,
 		.flags = CFTYPE_NOT_ON_ROOT,
+	},
+
+	{
+		.name = "cpus.subpartitions",
+		.seq_show = cpuset_common_seq_show,
+		.private = FILE_SUBPARTS_CPULIST,
+		.flags = CFTYPE_DEBUG,
 	},
 
 	{ }	/* terminate */
