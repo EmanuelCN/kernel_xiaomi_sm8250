@@ -269,6 +269,7 @@ struct bpf_prog_offload_ops {
 	int (*insn_hook)(struct bpf_verifier_env *env,
 			 int insn_idx, int prev_insn_idx);
 	int (*finalize)(struct bpf_verifier_env *env);
+	int (*prepare)(struct net_device *netdev, struct bpf_verifier_env *env);
 };
 
 struct bpf_prog_offload {
@@ -278,7 +279,6 @@ struct bpf_prog_offload {
 	void			*dev_priv;
 	struct list_head	offloads;
 	bool			dev_state;
-	const struct bpf_prog_offload_ops *dev_ops;
 	void			*jited_image;
 	u32			jited_len;
 };
