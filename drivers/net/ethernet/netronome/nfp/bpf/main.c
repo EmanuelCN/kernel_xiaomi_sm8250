@@ -451,7 +451,7 @@ static int nfp_bpf_init(struct nfp_app *app)
 	if (err)
 		goto err_free_neutral_maps;
 
-	bpf->bpf_dev = bpf_offload_dev_create();
+	bpf->bpf_dev = bpf_offload_dev_create(&nfp_bpf_dev_ops);
 	err = PTR_ERR_OR_ZERO(bpf->bpf_dev);
 	if (err)
 		goto err_free_neutral_maps;

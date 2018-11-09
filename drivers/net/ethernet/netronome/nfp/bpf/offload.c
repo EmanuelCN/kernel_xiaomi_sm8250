@@ -237,7 +237,7 @@ nfp_bpf_verifier_prep(struct nfp_app *app, struct nfp_net *nn,
 		goto err_free;
 
 	nfp_prog->verifier_meta = nfp_prog_first_meta(nfp_prog);
-	bpf->verifier.ops = &nfp_bpf_analyzer_ops;
+	bpf->verifier.ops = &nfp_bpf_dev_ops;
 
 	return 0;
 

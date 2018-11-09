@@ -480,7 +480,7 @@ void nfp_bpf_jit_prepare(struct nfp_prog *nfp_prog, unsigned int cnt);
 int nfp_bpf_jit(struct nfp_prog *prog);
 bool nfp_bpf_supported_opcode(u8 code);
 
-extern const struct bpf_prog_offload_ops nfp_bpf_analyzer_ops;
+extern const struct bpf_prog_offload_ops nfp_bpf_dev_ops;
 
 struct netdev_bpf;
 struct nfp_app;
