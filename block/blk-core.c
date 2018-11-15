@@ -272,7 +272,7 @@ void blk_sync_queue(struct request_queue *q)
 	del_timer_sync(&q->timeout);
 	cancel_work_sync(&q->timeout_work);
 
-	if (q->mq_ops) {
+	if (queue_is_mq(q)) {
 		struct blk_mq_hw_ctx *hctx;
 		int i;
 
@@ -320,7 +320,7 @@ void blk_set_queue_dying(struct request_queue *q)
 	 */
 	blk_freeze_queue_start(q);
 
-	if (q->mq_ops)
+	if (queue_is_mq(q))
 		blk_mq_wake_waiters(q);
 
 	/* Make blk_queue_enter() reexamine the DYING flag. */
@@ -412,7 +412,7 @@ void blk_cleanup_queue(struct request_queue *q)
 	 * We rely on driver to deal with the race in case that queue
 	 * initialization isn't done.
 	 */
-	if (q->mq_ops && blk_queue_init_done(q))
+	if (queue_is_mq(q) && blk_queue_init_done(q))
 		blk_mq_quiesce_queue(q);
 
 	/* for synchronous bio-based driver finish in-flight integrity i/o */
@@ -430,7 +430,7 @@ void blk_cleanup_queue(struct request_queue *q)
 
 	blk_exit_queue(q);
 
-	if (q->mq_ops)
+	if (queue_is_mq(q))
 		blk_mq_exit_queue(q);
 
 	percpu_ref_exit(&q->q_usage_counter);
@@ -1083,7 +1083,7 @@ generic_make_request_checks(struct bio *bio)
 	 * For a REQ_NOWAIT based request, return -EOPNOTSUPP
 	 * if queue is not a request based queue.
 	 */
-	if ((bio->bi_opf & REQ_NOWAIT) && !queue_is_rq_based(q))
+	if ((bio->bi_opf & REQ_NOWAIT) && !queue_is_mq(q))
 		goto not_supported;
 
 	if (should_fail_bio(bio))
@@ -1805,7 +1805,7 @@ EXPORT_SYMBOL_GPL(rq_flush_dcache_pages);
  */
 int blk_lld_busy(struct request_queue *q)
 {
-	if (q->mq_ops && q->mq_ops->busy)
+	if (queue_is_mq(q) && q->mq_ops->busy)
 		return q->mq_ops->busy(q);
 
 	return 0;
