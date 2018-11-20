@@ -1468,12 +1468,12 @@ struct security_hook_list {
  * Security blob size or offset data.
  */
 struct lsm_blob_sizes {
-	int lbs_cred;
-	int lbs_file;
-	int lbs_inode;
-	int lbs_ipc;
-	int lbs_msg_msg;
-	int lbs_task;
+	int	lbs_cred;
+	int	lbs_file;
+	int	lbs_inode;
+	int	lbs_ipc;
+	int	lbs_msg_msg;
+	int	lbs_task;
 };
 
 /*
