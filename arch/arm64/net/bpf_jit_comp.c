@@ -963,6 +963,19 @@ out:
 	return prog;
 }
 
+void *bpf_jit_alloc_exec(unsigned long size)
+{
+	return __vmalloc_node_range(size, PAGE_SIZE, BPF_JIT_REGION_START,
+				    BPF_JIT_REGION_END, GFP_KERNEL,
+				    PAGE_KERNEL_EXEC, 0, NUMA_NO_NODE,
+				    __builtin_return_address(0));
+}
+
+void bpf_jit_free_exec(void *addr)
+{
+	return vfree(addr);
+}
+
 #ifdef CONFIG_CFI_CLANG
 bool arch_bpf_jit_check_func(const struct bpf_prog *prog)
 {
@@ -970,17 +983,10 @@ bool arch_bpf_jit_check_func(const struct bpf_prog *prog)
 
 	/*
 	 * bpf_func must be correctly aligned and within the correct region.
-	 * module_alloc places JIT code in the module region, unless
-	 * ARM64_MODULE_PLTS is enabled, in which case we might end up using
-	 * the vmalloc region too.
 	 */
 	if (unlikely(!IS_ALIGNED(func, sizeof(u32))))
 		return false;
 
-	if (IS_ENABLED(CONFIG_ARM64_MODULE_PLTS) &&
-			is_vmalloc_addr(prog->bpf_func))
-		return true;
-
-	return (func >= MODULES_VADDR && func < MODULES_END);
+	return (func >= BPF_JIT_REGION_START && func < BPF_JIT_REGION_END);
 }
 #endif
