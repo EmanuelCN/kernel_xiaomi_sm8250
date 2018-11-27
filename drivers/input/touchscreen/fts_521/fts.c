@@ -7723,6 +7723,16 @@ static int fts_probe(struct spi_device *client)
 #ifdef CONFIG_BL_CALLBACK
 	info->bl_notifier = fts_bl_noti_block;
 #endif
+
+	/*
+	 * This *must* be done before request_threaded_irq is called.
+	 * Otherwise, if an interrupt is received before request is added,
+	 * but after the interrupt has been subscribed to, pm_qos_req
+	 * may be accessed before initialization in the interrupt handler.
+	 */
+	pm_qos_add_request(&info->pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
+			PM_QOS_DEFAULT_VALUE);
+
 	MI_TOUCH_LOGD(1, "%s %s: Init Core Lib: \n", tag, __func__);
 	initCore(info);
 	/* init hardware device */
@@ -7929,6 +7939,7 @@ ProbeErrorExit_7:
 #endif
 
 ProbeErrorExit_6:
+	pm_qos_remove_request(&info->pm_qos_req);
 	power_supply_unreg_notifier(&info->power_supply_notifier);
 	input_unregister_device(info->input_dev);
 
@@ -7984,6 +7995,9 @@ static int fts_remove(struct spi_device *client)
 #ifdef CONFIG_BL_CALLBACK
 	backlight_unregister_notifier(&info->bl_notifier);
 #endif
+
+	pm_qos_remove_request(&info->pm_qos_req);
+
 #ifdef CONFIG_DRM
 	mi_drm_unregister_client(&info->notifier);
 #endif
