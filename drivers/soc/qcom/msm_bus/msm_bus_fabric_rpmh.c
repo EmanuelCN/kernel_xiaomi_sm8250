@@ -967,7 +967,7 @@ static int msm_bus_dev_init_qos(struct device *dev, void *data)
 		goto exit_init_qos;
 	}
 
-	if (node_dev->ap_owned) {
+	if (node_dev->ap_owned && node_dev->num_node_qos_clks) {
 		struct msm_bus_node_device_type *bus_node_info;
 
 		bus_node_info =
