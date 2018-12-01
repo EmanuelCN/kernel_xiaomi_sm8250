@@ -40,7 +40,6 @@
 /*
  * Control variables for per-CPU and per-rcu_node kthreads.
  */
-DEFINE_PER_CPU(unsigned int, rcu_cpu_kthread_status);
 DEFINE_PER_CPU(unsigned int, rcu_cpu_kthread_loops);
 DEFINE_PER_CPU(char, rcu_cpu_has_work);
 
@@ -1247,7 +1246,7 @@ static void invoke_rcu_callbacks_kthread(void)
 	if (__this_cpu_read(rcu_data.rcu_cpu_kthread_task) != NULL &&
 	    current != __this_cpu_read(rcu_data.rcu_cpu_kthread_task)) {
 		rcu_wake_cond(__this_cpu_read(rcu_data.rcu_cpu_kthread_task),
-			      __this_cpu_read(rcu_cpu_kthread_status));
+			      __this_cpu_read(rcu_data.rcu_cpu_kthread_status));
 	}
 	local_irq_restore(flags);
 }
@@ -1315,7 +1314,7 @@ static void rcu_cpu_kthread_setup(unsigned int cpu)
 
 static void rcu_cpu_kthread_park(unsigned int cpu)
 {
-	per_cpu(rcu_cpu_kthread_status, cpu) = RCU_KTHREAD_OFFCPU;
+	per_cpu(rcu_data.rcu_cpu_kthread_status, cpu) = RCU_KTHREAD_OFFCPU;
 }
 
 static int rcu_cpu_kthread_should_run(unsigned int cpu)
@@ -1330,7 +1329,7 @@ static int rcu_cpu_kthread_should_run(unsigned int cpu)
  */
 static void rcu_cpu_kthread(unsigned int cpu)
 {
-	unsigned int *statusp = this_cpu_ptr(&rcu_cpu_kthread_status);
+	unsigned int *statusp = this_cpu_ptr(&rcu_data.rcu_cpu_kthread_status);
 	char work, *workp = this_cpu_ptr(&rcu_cpu_has_work);
 	int spincnt;
 
