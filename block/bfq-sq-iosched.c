@@ -521,7 +521,8 @@ static void bfq_pos_tree_add_move(struct bfq_data *bfqd, struct bfq_queue *bfqq)
 static bool bfq_varied_queue_weights_or_active_groups(struct bfq_data *bfqd)
 {
 #ifdef BFQ_GROUP_IOSCHED_ENABLED
-	bfq_log(bfqd, "num_active_groups %u", bfqd->num_active_groups);
+	bfq_log(bfqd, "num_groups_with_pending_reqs %u",
+		bfqd->num_groups_with_pending_reqs);
 #endif
 
 	/*
@@ -533,7 +534,7 @@ static bool bfq_varied_queue_weights_or_active_groups(struct bfq_data *bfqd)
 		 bfqd->queue_weights_tree.rb_node->rb_right)
 #ifdef BFQ_GROUP_IOSCHED_ENABLED
 	       ) ||
-		(bfqd->num_active_groups > 0
+		(bfqd->num_groups_with_pending_reqs > 0
 #endif
 	       );
 }
@@ -730,6 +731,7 @@ static void bfq_weights_tree_remove(struct bfq_data *bfqd,
 						     */
 
 		if (sd->next_in_service || sd->in_service_entity) {
+			BUG_ON(!entity->in_groups_with_pending_reqs);
 			/*
 			 * entity is still active, because either
 			 * next_in_service or in_service_entity is not
@@ -743,10 +745,25 @@ static void bfq_weights_tree_remove(struct bfq_data *bfqd,
 			 */
 			break;
 		}
-		BUG_ON(!bfqd->num_active_groups);
-		bfqd->num_active_groups--;
-		bfq_log_bfqq(bfqd, bfqq, "num_active_groups %u",
-			     bfqd->num_active_groups);
+
+		BUG_ON(!bfqd->num_groups_with_pending_reqs &&
+		       entity->in_groups_with_pending_reqs);
+		/*
+		 * The decrement of num_groups_with_pending_reqs is
+		 * not performed immediately upon the deactivation of
+		 * entity, but it is delayed to when it also happens
+		 * that the first leaf descendant bfqq of entity gets
+		 * all its pending requests completed. The following
+		 * instructions perform this delayed decrement, if
+		 * needed. See the comments on
+		 * num_groups_with_pending_reqs for details.
+		 */
+		if (entity->in_groups_with_pending_reqs) {
+			entity->in_groups_with_pending_reqs = false;
+			bfqd->num_groups_with_pending_reqs--;
+		}
+		bfq_log_bfqq(bfqd, bfqq, "num_groups_with_pending_reqs %u",
+			     bfqd->num_groups_with_pending_reqs);
 	}
 }
 
@@ -5423,7 +5440,7 @@ static int bfq_init_queue(struct request_queue *q, struct elevator_type *e)
 	bfqd->idle_slice_timer.function = bfq_idle_slice_timer;
 
 	bfqd->queue_weights_tree = RB_ROOT;
-	bfqd->num_active_groups = 0;
+	bfqd->num_groups_with_pending_reqs = 0;
 
 	INIT_WORK(&bfqd->unplug_work, bfq_kick_queue);
 

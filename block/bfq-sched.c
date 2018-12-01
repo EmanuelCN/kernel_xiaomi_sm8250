@@ -1195,9 +1195,12 @@ static void __bfq_activate_entity(struct bfq_entity *entity,
 		struct bfq_data *bfqd = bfqg->bfqd;
 
 		BUG_ON(!bfqd);
-		bfqd->num_active_groups++;
-		bfq_log_bfqg(bfqd, bfqg, "num_active_groups %u",
-			     bfqd->num_active_groups);
+		if (!entity->in_groups_with_pending_reqs) {
+			entity->in_groups_with_pending_reqs = true;
+			bfqd->num_groups_with_pending_reqs++;
+		}
+		bfq_log_bfqg(bfqd, bfqg, "num_groups_with_pending_reqs %u",
+			     bfqd->num_groups_with_pending_reqs);
 	}
 #endif
 
