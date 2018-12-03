@@ -12962,31 +12962,35 @@ static struct bpf_test tests[] = {
 		.result = ACCEPT,
 	},
 	{
-		"calls: cross frame pruning",
+		"check wire_len is not readable by sockets",
 		.insns = {
-			/* r8 = !!random();
-			 * call pruner()
-			 * if (r8)
-			 *     do something bad;
-			 */
-			BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 0, 0,
-				     BPF_FUNC_get_prandom_u32),
-			BPF_MOV64_IMM(BPF_REG_8, 0),
-			BPF_JMP_IMM(BPF_JNE, BPF_REG_0, 0, 1),
-			BPF_MOV64_IMM(BPF_REG_8, 1),
-			BPF_MOV64_REG(BPF_REG_1, BPF_REG_8),
-			BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 1, 0, 4),
-			BPF_JMP_IMM(BPF_JEQ, BPF_REG_8, 1, 1),
-			BPF_LDX_MEM(BPF_B, BPF_REG_9, BPF_REG_1, 0),
-			BPF_MOV64_IMM(BPF_REG_0, 0),
-			BPF_EXIT_INSN(),
-			BPF_JMP_IMM(BPF_JEQ, BPF_REG_1, 0, 0),
+			BPF_LDX_MEM(BPF_W, BPF_REG_0, BPF_REG_1,
+				    offsetof(struct __sk_buff, wire_len)),
 			BPF_EXIT_INSN(),
 		},
-		.prog_type = BPF_PROG_TYPE_SOCKET_FILTER,
-		.errstr_unpriv = "function calls to other bpf functions are allowed for root only",
-		.result_unpriv = REJECT,
-		.errstr = "!read_ok",
+		.errstr = "invalid bpf_context access",
+		.result = REJECT,
+	},
+	{
+		"check wire_len is readable by tc classifier",
+		.insns = {
+			BPF_LDX_MEM(BPF_W, BPF_REG_0, BPF_REG_1,
+				    offsetof(struct __sk_buff, wire_len)),
+			BPF_EXIT_INSN(),
+		},
+		.prog_type = BPF_PROG_TYPE_SCHED_CLS,
+		.result = ACCEPT,
+	},
+	{
+		"check wire_len is not writable by tc classifier",
+		.insns = {
+			BPF_STX_MEM(BPF_W, BPF_REG_1, BPF_REG_1,
+				    offsetof(struct __sk_buff, wire_len)),
+			BPF_EXIT_INSN(),
+		},
+		.prog_type = BPF_PROG_TYPE_SCHED_CLS,
+		.errstr = "invalid bpf_context access",
+		.errstr_unpriv = "R1 leaks addr",
 		.result = REJECT,
 	},
 };
