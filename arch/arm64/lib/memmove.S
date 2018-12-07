@@ -198,4 +198,6 @@ WEAK(memmove)
 	b.ne	.Ltail63
 	ret
 ENDPIPROC(memmove)
+EXPORT_SYMBOL(memmove)
 ENDPROC(__memmove)
+EXPORT_SYMBOL(__memmove)
