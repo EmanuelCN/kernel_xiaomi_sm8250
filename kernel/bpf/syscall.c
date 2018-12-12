@@ -2078,13 +2078,6 @@ static struct bpf_insn *bpf_insn_prepare_dump(const struct bpf_prog *prog,
 			insns[i + 1].imm = 0;
 			continue;
 		}
-
-		if (!bpf_dump_raw_ok(f_cred) &&
-		    imm == (unsigned long)prog->aux) {
-			insns[i].imm = 0;
-			insns[i + 1].imm = 0;
-			continue;
-		}
 	}
 
 	return insns;
