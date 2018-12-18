@@ -575,31 +575,6 @@ static void bfq_pos_tree_add_move(struct bfq_data *bfqd, struct bfq_queue *bfqq)
 }
 
 /*
- * Tell whether there are active queues with different weights or
- * active groups.
- */
-static bool bfq_varied_queue_weights_or_active_groups(struct bfq_data *bfqd)
-{
-#ifdef BFQ_GROUP_IOSCHED_ENABLED
-	bfq_log(bfqd, "num_groups_with_pending_reqs %u",
-		bfqd->num_groups_with_pending_reqs);
-#endif
-
-	/*
-	 * For queue weights to differ, queue_weights_tree must contain
-	 * at least two nodes.
-	 */
-	return (!RB_EMPTY_ROOT(&bfqd->queue_weights_tree) &&
-		(bfqd->queue_weights_tree.rb_node->rb_left ||
-		 bfqd->queue_weights_tree.rb_node->rb_right)
-#ifdef BFQ_GROUP_IOSCHED_ENABLED
-	       ) ||
-		(bfqd->num_groups_with_pending_reqs > 0
-#endif
-	       );
-}
-
-/*
  * The following function returns true if every queue must receive the
  * same share of the throughput (this condition is used when deciding
  * whether idling may be disabled, see the comments in the function
@@ -607,25 +582,52 @@ static bool bfq_varied_queue_weights_or_active_groups(struct bfq_data *bfqd)
  *
  * Such a scenario occurs when:
  * 1) all active queues have the same weight,
- * 2) all active groups at the same level in the groups tree have the same
- *    weight,
+ * 2) all active queues belong to the same I/O-priority class,
  * 3) all active groups at the same level in the groups tree have the same
+ *    weight,
+ * 4) all active groups at the same level in the groups tree have the same
  *    number of children.
  *
  * Unfortunately, keeping the necessary state for evaluating exactly
  * the last two symmetry sub-conditions above would be quite complex
  * and time consuming. Therefore this function evaluates, instead,
- * only the following stronger two sub-conditions, for which it is
+ * only the following stronger three sub-conditions, for which it is
  * much easier to maintain the needed state:
  * 1) all active queues have the same weight,
- * 2) there are no active groups.
+ * 2) all active queues belong to the same I/O-priority class,
+ * 3) there are no active groups.
  * In particular, the last condition is always true if hierarchical
  * support or the cgroups interface are not enabled, thus no state
  * needs to be maintained in this case.
  */
 static bool bfq_symmetric_scenario(struct bfq_data *bfqd)
 {
-	return !bfq_varied_queue_weights_or_active_groups(bfqd);
+	/*
+	 * For queue weights to differ, queue_weights_tree must contain
+	 * at least two nodes.
+	 */
+	bool varied_queue_weights = !RB_EMPTY_ROOT(&bfqd->queue_weights_tree) &&
+		(bfqd->queue_weights_tree.rb_node->rb_left ||
+		 bfqd->queue_weights_tree.rb_node->rb_right);
+
+	bool multiple_classes_busy =
+		(bfqd->busy_queues[0] && bfqd->busy_queues[1]) ||
+		(bfqd->busy_queues[0] && bfqd->busy_queues[2]) ||
+		(bfqd->busy_queues[1] && bfqd->busy_queues[2]);
+
+	bfq_log(bfqd, "varied_queue_weights %d mul_classes %d",
+		varied_queue_weights, multiple_classes_busy);
+
+#ifdef BFQ_GROUP_IOSCHED_ENABLED
+	bfq_log(bfqd, "num_groups_with_pending_reqs %u",
+		bfqd->num_groups_with_pending_reqs);
+#endif
+
+	return !(varied_queue_weights || multiple_classes_busy
+#ifdef BFQ_GROUP_IOSCHED_ENABLED
+	       || bfqd->num_groups_with_pending_reqs > 0
+#endif
+		);
 }
 
 /*
@@ -685,15 +687,14 @@ static void bfq_weights_tree_add(struct bfq_data *bfqd,
 	/*
 	 * In the unlucky event of an allocation failure, we just
 	 * exit. This will cause the weight of queue to not be
-	 * considered in bfq_varied_queue_weights_or_active_groups,
-	 * which, in its turn, causes the scenario to be deemed
-	 * wrongly symmetric in case bfqq's weight would have been
-	 * the only weight making the scenario asymmetric.  On the
-	 * bright side, no unbalance will however occur when bfqq
-	 * becomes inactive again (the invocation of this function
-	 * is triggered by an activation of queue).  In fact,
-	 * bfq_weights_tree_remove does nothing if
-	 * !bfqq->weight_counter.
+	 * considered in bfq_symmetric_scenario, which, in its turn,
+	 * causes the scenario to be deemed wrongly symmetric in case
+	 * bfqq's weight would have been the only weight making the
+	 * scenario asymmetric.  On the bright side, no unbalance will
+	 * however occur when bfqq becomes inactive again (the
+	 * invocation of this function is triggered by an activation
+	 * of queue).  In fact, bfq_weights_tree_remove does nothing
+	 * if !bfqq->weight_counter.
 	 */
 	if (unlikely(!bfqq->weight_counter))
 		return;
@@ -1039,7 +1040,7 @@ bfq_bfqq_resume_state(struct bfq_queue *bfqq, struct bfq_data *bfqd,
 
 	if (old_wr_coeff == 1 && bfqq->wr_coeff > 1) {
 		bfqd->wr_busy_queues++;
-		BUG_ON(bfqd->wr_busy_queues > bfqd->busy_queues);
+		BUG_ON(bfqd->wr_busy_queues > bfq_tot_busy_queues(bfqd));
 	} else if (old_wr_coeff > 1 && bfqq->wr_coeff == 1) {
 		bfqd->wr_busy_queues--;
 		BUG_ON(bfqd->wr_busy_queues < 0);
@@ -1844,7 +1845,7 @@ static void bfq_add_request(struct request *rq)
 			bfqq->wr_cur_max_time = bfq_wr_duration(bfqd);
 
 			bfqd->wr_busy_queues++;
-			BUG_ON(bfqd->wr_busy_queues > bfqd->busy_queues);
+			BUG_ON(bfqd->wr_busy_queues > bfq_tot_busy_queues(bfqd));
 			bfqq->entity.prio_changed = 1;
 			bfq_log_bfqq(bfqd, bfqq,
 				     "non-idle wrais starting, "
@@ -2441,7 +2442,7 @@ bfq_setup_cooperator(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 		return NULL;
 
 	/* If there is only one backlogged queue, don't search. */
-	if (bfqd->busy_queues == 1)
+	if (bfq_tot_busy_queues(bfqd) == 1)
 		return NULL;
 
 	in_service_bfqq = bfqd->in_service_queue;
@@ -2550,7 +2551,8 @@ bfq_merge_bfqqs(struct bfq_data *bfqd, struct bfq_io_cq *bic,
 			bfqq->wr_start_at_switch_to_srt;
 		if (bfq_bfqq_busy(new_bfqq)) {
 			bfqd->wr_busy_queues++;
-			BUG_ON(bfqd->wr_busy_queues > bfqd->busy_queues);
+			BUG_ON(bfqd->wr_busy_queues >
+			       bfq_tot_busy_queues(bfqd));
 		}
 
 		new_bfqq->entity.prio_changed = 1;
@@ -2737,8 +2739,8 @@ static void __bfq_set_in_service_queue(struct bfq_data *bfqd,
 
 		bfq_set_budget_timeout(bfqd, bfqq);
 		bfq_log_bfqq(bfqd, bfqq,
-			     "cur-budget = %d",
-			     bfqq->entity.budget);
+			     "cur-budget = %d prio_class %d",
+			     bfqq->entity.budget, bfqq->ioprio_class);
 	} else
 		bfq_log(bfqd, "NULL");
 
@@ -3647,7 +3649,7 @@ static void bfq_bfqq_expire(struct bfq_data *bfqd,
 		 * of all the outstanding requests to discover whether
 		 * the request pattern is actually isochronous.
 		 */
-		BUG_ON(bfqd->busy_queues < 1);
+		BUG_ON(bfq_tot_busy_queues(bfqd) < 1);
 		if (bfqq->dispatched == 0 &&
 		    bfqq->wr_coeff != bfqd->bfq_wr_coeff) {
 			bfqq->soft_rt_next_start =
@@ -4038,14 +4040,15 @@ static bool bfq_better_to_idle(struct bfq_queue *bfqq)
 	 * the requests already queued in the device have been served.
 	 */
 	asymmetric_scenario = (bfqq->wr_coeff > 1 &&
-			       bfqd->wr_busy_queues < bfqd->busy_queues) ||
+			       bfqd->wr_busy_queues <
+			       bfq_tot_busy_queues(bfqd)) ||
 		!bfq_symmetric_scenario(bfqd);
 
 	bfq_log_bfqq(bfqd, bfqq,
 		     "wr_coeff %d wr_busy %d busy %d asymmetric %d",
 		     bfqq->wr_coeff,
 		     bfqd->wr_busy_queues,
-		     bfqd->busy_queues,
+		     bfq_tot_busy_queues(bfqd),
 		     asymmetric_scenario);
 
 	/*
@@ -4374,7 +4377,7 @@ static struct request *bfq_dispatch_rq_from_bfqq(struct bfq_data *bfqd,
 	 * belongs to CLASS_IDLE and other queues are waiting for
 	 * service.
 	 */
-	if (!(bfqd->busy_queues > 1 && bfq_class_idle(bfqq)))
+	if (!(bfq_tot_busy_queues(bfqd) > 1 && bfq_class_idle(bfqq)))
 		goto return_rq;
 
 	bfq_bfqq_expire(bfqd, bfqq, false, BFQ_BFQQ_BUDGET_EXHAUSTED);
@@ -4388,14 +4391,14 @@ static bool bfq_has_work(struct blk_mq_hw_ctx *hctx)
 	struct bfq_data *bfqd = hctx->queue->elevator->elevator_data;
 
 	bfq_log(bfqd, "dispatch_non_empty %d busy_queues %d",
-		!list_empty_careful(&bfqd->dispatch), bfqd->busy_queues > 0);
+		!list_empty_careful(&bfqd->dispatch), bfq_tot_busy_queues(bfqd) > 0);
 
 	/*
 	 * Avoiding lock: a race on bfqd->busy_queues should cause at
 	 * most a call to dispatch for nothing
 	 */
 	return !list_empty_careful(&bfqd->dispatch) ||
-		bfqd->busy_queues > 0;
+		bfq_tot_busy_queues(bfqd) > 0;
 }
 
 static struct request *__bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
@@ -4461,9 +4464,9 @@ static struct request *__bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
 		goto start_rq;
 	}
 
-	bfq_log(bfqd, "%d busy queues", bfqd->busy_queues);
+	bfq_log(bfqd, "%d busy queues", bfq_tot_busy_queues(bfqd));
 
-	if (bfqd->busy_queues == 0)
+	if (bfq_tot_busy_queues(bfqd) == 0)
 		goto exit;
 
 	/*
