@@ -324,7 +324,6 @@ void workingset_update_node(struct radix_tree_node *node);
 })
 
 /* linux/mm/page_alloc.c */
-extern unsigned long totalram_pages;
 extern unsigned long totalreserve_pages;
 extern unsigned long nr_free_buffer_pages(void);
 extern unsigned long nr_free_pagecache_pages(void);
