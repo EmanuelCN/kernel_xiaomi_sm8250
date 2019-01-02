@@ -447,7 +447,7 @@ struct bfq_data {
 	 * weight-raised @bfq_queue (see the comments to the functions
 	 * bfq_weights_tree_[add|remove] for further details).
 	 */
-	struct rb_root queue_weights_tree;
+	struct rb_root_cached queue_weights_tree;
 
 	/*
 	 * Number of groups with at least one descendant process that

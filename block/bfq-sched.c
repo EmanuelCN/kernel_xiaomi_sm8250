@@ -537,11 +537,11 @@ up:
 
 static void bfq_weights_tree_add(struct bfq_data *bfqd,
 				 struct bfq_queue *bfqq,
-				 struct rb_root *root);
+				 struct rb_root_cached *root);
 
 static void __bfq_weights_tree_remove(struct bfq_data *bfqd,
 				      struct bfq_queue *bfqq,
-				      struct rb_root *root);
+				      struct rb_root_cached *root);
 
 static void bfq_weights_tree_remove(struct bfq_data *bfqd,
 				    struct bfq_queue *bfqq);
@@ -822,7 +822,7 @@ __bfq_entity_update_weight_prio(struct bfq_service_tree *old_st,
 		struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
 		unsigned int prev_weight, new_weight;
 		struct bfq_data *bfqd = NULL;
-		struct rb_root *root;
+		struct rb_root_cached *root;
 #ifdef BFQ_GROUP_IOSCHED_ENABLED
 		struct bfq_sched_data *sd;
 		struct bfq_group *bfqg;
