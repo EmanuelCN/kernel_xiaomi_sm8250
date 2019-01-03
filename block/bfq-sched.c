@@ -2035,9 +2035,6 @@ static void bfq_del_bfqq_busy(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	BUG_ON(bfq_tot_busy_queues(bfqd) == 0);
 	bfqd->busy_queues[bfqq->ioprio_class - 1]--;
 
-	if (!bfqq->dispatched)
-		bfq_weights_tree_remove(bfqd, bfqq);
-
 	if (bfqq->wr_coeff > 1) {
 		bfqd->wr_busy_queues--;
 		BUG_ON(bfqd->wr_busy_queues < 0);
@@ -2048,6 +2045,8 @@ static void bfq_del_bfqq_busy(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	BUG_ON(bfqq->entity.budget < 0);
 
 	bfq_deactivate_bfqq(bfqd, bfqq, true, expiration);
+	if (!bfqq->dispatched)
+		bfq_weights_tree_remove(bfqd, bfqq);
 }
 
 /*

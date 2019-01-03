@@ -710,6 +710,7 @@ static void bfq_weights_tree_add(struct bfq_data *bfqd,
 
 inc_counter:
 	bfqq->weight_counter->num_active++;
+	bfqq->ref++;
 
 	bfq_log_bfqq(bfqq->bfqd, bfqq, "refs %d weight %d symmetric %d",
 				bfqq->ref,
@@ -751,6 +752,7 @@ reset_entity_pointer:
 		     bfqq->ref,
 		     entity->weight,
 		     bfq_symmetric_scenario(bfqd));
+	bfq_put_queue(bfqq);
 }
 
 /*
@@ -761,9 +763,6 @@ static void bfq_weights_tree_remove(struct bfq_data *bfqd,
 				    struct bfq_queue *bfqq)
 {
 	struct bfq_entity *entity = bfqq->entity.parent;
-
-	__bfq_weights_tree_remove(bfqd, bfqq,
-				  &bfqd->queue_weights_tree);
 
 	for_each_entity(entity) {
 		struct bfq_sched_data *sd = entity->my_sched_data;
@@ -809,6 +808,15 @@ static void bfq_weights_tree_remove(struct bfq_data *bfqd,
 		bfq_log_bfqq(bfqd, bfqq, "num_groups_with_pending_reqs %u",
 			     bfqd->num_groups_with_pending_reqs);
 	}
+
+	/*
+	 * Next function is invoked last, because it causes bfqq to be
+	 * freed if the following holds: bfqq is not in service and
+	 * has no dispatched request. DO NOT use bfqq after the next
+	 * function invocation.
+	 */
+	__bfq_weights_tree_remove(bfqd, bfqq,
+				  &bfqd->queue_weights_tree);
 }
 
 /*
@@ -1037,7 +1045,8 @@ static int bfqq_process_refs(struct bfq_queue *bfqq)
 	lockdep_assert_held(&bfqq->bfqd->lock);
 
 	io_refs = bfqq->allocated;
-	process_refs = bfqq->ref - io_refs - bfqq->entity.on_st;
+	process_refs = bfqq->ref - io_refs - bfqq->entity.on_st -
+		(bfqq->weight_counter != NULL);
 	BUG_ON(process_refs < 0);
 	return process_refs;
 }
