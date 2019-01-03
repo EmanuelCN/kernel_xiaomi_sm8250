@@ -318,8 +318,8 @@ static const unsigned long max_service_from_wr = 120000;
 #define BFQ_SERVICE_TREE_INIT	((struct bfq_service_tree)		\
 				{ RB_ROOT, RB_ROOT, NULL, NULL, 0, 0 })
 
-#define RQ_BIC(rq)		icq_to_bic((rq)->elv.priv[0])
-#define RQ_BFQQ(rq)		((rq)->elv.priv[1])
+#define RQ_BIC(rq)             icq_to_bic((rq)->elv.icq)
+#define RQ_BFQQ(rq)            ((rq)->elv.priv[0])
 
 static void bfq_schedule_dispatch(struct bfq_data *bfqd);
 
@@ -4863,7 +4863,7 @@ static void bfq_insert_request(struct request_queue *q, struct request *rq)
 			 * release rq reference on bfqq
 			 */
 			bfq_put_queue(bfqq);
-			rq->elv.priv[1] = new_bfqq;
+			rq->elv.priv[0] = new_bfqq;
 			bfqq = new_bfqq;
 		}
 	}
@@ -5104,7 +5104,6 @@ static void bfq_put_request(struct request *rq)
 		bfqq->allocated[rw]--;
 
 		rq->elv.priv[0] = NULL;
-		rq->elv.priv[1] = NULL;
 
 		bfq_log_bfqq(bfqq->bfqd, bfqq, "%p, %d",
 			     bfqq, bfqq->ref);
@@ -5246,8 +5245,7 @@ new_queue:
 	bfqq->ref++;
 	bfq_log_bfqq(bfqd, bfqq, "bfqq %p, %d", bfqq, bfqq->ref);
 
-	rq->elv.priv[0] = bic;
-	rq->elv.priv[1] = bfqq;
+	rq->elv.priv[0] = bfqq;
 
 	/*
 	 * If a bfq_queue has only one process reference, it is owned

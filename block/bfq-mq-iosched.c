@@ -324,8 +324,8 @@ static const unsigned long max_service_from_wr = 120000;
 #define BFQ_SERVICE_TREE_INIT	((struct bfq_service_tree)		\
 				{ RB_ROOT, RB_ROOT, NULL, NULL, 0, 0 })
 
-#define RQ_BIC(rq)		icq_to_bic((rq)->elv.priv[0])
-#define RQ_BFQQ(rq)		((rq)->elv.priv[1])
+#define RQ_BIC(rq)		icq_to_bic((rq)->elv.icq)
+#define RQ_BFQQ(rq)		((rq)->elv.priv[0])
 
 /**
  * icq_to_bic - convert iocontext queue structure to bfq_io_cq.
@@ -5134,7 +5134,7 @@ static bool __bfq_insert_request(struct bfq_data *bfqd, struct request *rq)
 			 * release rq reference on bfqq
 			 */
 			bfq_put_queue(bfqq);
-			rq->elv.priv[1] = new_bfqq;
+			rq->elv.priv[0] = new_bfqq;
 			bfqq = new_bfqq;
 		}
 	}
@@ -5550,7 +5550,7 @@ static void bfq_finish_requeue_request(struct request *rq)
 	 * or finish hooks of an elevator, for a request that is not
 	 * referred by that elevator.
 	 *
-	 * Resetting the following fields would break the
+	 * Resetting the following field would break the
 	 * request-insertion logic if rq is re-inserted into a bfq
 	 * internal queue, without a re-preparation. Here we assume
 	 * that re-insertions of requeued requests, without
@@ -5559,7 +5559,6 @@ static void bfq_finish_requeue_request(struct request *rq)
 	 * queues).
 	 */
 	rq->elv.priv[0] = NULL;
-	rq->elv.priv[1] = NULL;
 }
 
 /*
@@ -5675,9 +5674,9 @@ static void bfq_prepare_request(struct request *rq, struct bio *bio)
 	/*
 	 * Regardless of whether we have an icq attached, we have to
 	 * clear the scheduler pointers, as they might point to
-	 * previously allocated bic/bfqq structs.
+	 * a previously allocated bfqq struct.
 	 */
-	rq->elv.priv[0] = rq->elv.priv[1] = NULL;
+	rq->elv.priv[0] = NULL;
 }
 
 /*
@@ -5718,15 +5717,15 @@ static struct bfq_queue *bfq_init_rq(struct request *rq)
 		return NULL;
 
 	/*
-	 * Assuming that elv.priv[1] is set only if everything is set
+	 * Assuming that elv.priv[0] is set only if everything is set
 	 * for this rq. This holds true, because this function is
 	 * invoked only for insertion or merging, and, after such
 	 * events, a request cannot be manipulated any longer before
 	 * being removed from bfq.
 	 */
-	if (rq->elv.priv[1]) {
+	if (rq->elv.priv[0]) {
 		BUG_ON(!(rq->rq_flags & RQF_ELVPRIV));
-		return rq->elv.priv[1];
+		return rq->elv.priv[0];
 	}
 
 	bic = icq_to_bic(rq->elv.icq);
@@ -5770,8 +5769,7 @@ static struct bfq_queue *bfq_init_rq(struct request *rq)
 	bfqq->ref++;
 	bfq_log_bfqq(bfqd, bfqq, "%p: bfqq %p, %d", rq, bfqq, bfqq->ref);
 
-	rq->elv.priv[0] = bic;
-	rq->elv.priv[1] = bfqq;
+	rq->elv.priv[0] = bfqq;
 	rq->rq_flags &= ~RQF_DISP_LIST;
 
 	/*
