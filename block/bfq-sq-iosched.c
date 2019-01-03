@@ -651,21 +651,10 @@ static void bfq_weights_tree_add(struct bfq_data *bfqd,
 inc_counter:
 	bfqq->weight_counter->num_active++;
 
-	if (bfqq) {
-		bfq_log_bfqq(bfqq->bfqd, bfqq, "weight %d symmetric %d",
-			     entity->weight,
-			     bfq_symmetric_scenario(bfqd));
-#ifdef BFQ_GROUP_IOSCHED_ENABLED
-	} else {
-		struct bfq_group *bfqg =
-			container_of(entity, struct bfq_group, entity);
-
-		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-			     "weight %d symmetric %d",
-			     entity->weight,
-			     bfq_symmetric_scenario(bfqd));
-#endif
-	}
+	bfq_log_bfqq(bfqq->bfqd, bfqq, "refs %d weight %d symmetric %d",
+				bfqq->ref,
+				entity->weight,
+				bfq_symmetric_scenario(bfqd));
 }
 
 /*
@@ -697,22 +686,11 @@ static void __bfq_weights_tree_remove(struct bfq_data *bfqd,
 
 reset_entity_pointer:
 	bfqq->weight_counter = NULL;
-	if (bfqq) {
-		bfq_log_bfqq(bfqq->bfqd, bfqq,
-			     "weight %d symmetric %d",
-			     entity->weight,
-			     bfq_symmetric_scenario(bfqd));
-#ifdef BFQ_GROUP_IOSCHED_ENABLED
-	} else {
-		struct bfq_group *bfqg =
-			container_of(entity, struct bfq_group, entity);
-
-		bfq_log_bfqg(bfqd, bfqg,
-			     "weight %d symmetric %d",
-			     entity->weight,
-			     bfq_symmetric_scenario(bfqd));
-#endif
-	}
+	bfq_log_bfqq(bfqq->bfqd, bfqq,
+		     "refs %d weight %d symmetric %d",
+		     bfqq->ref,
+		     entity->weight,
+		     bfq_symmetric_scenario(bfqd));
 }
 
 /*
