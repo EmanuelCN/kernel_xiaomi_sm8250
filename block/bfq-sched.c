@@ -940,8 +940,11 @@ static void bfq_bfqq_served(struct bfq_queue *bfqq, int served)
 	if (!bfqq->service_from_backlogged)
 		bfqq->first_IO_time = jiffies;
 
-	if (bfqq->wr_coeff > 1)
+	if (bfqq->wr_coeff > 1) {
 		bfqq->service_from_wr += served;
+		bfq_log_bfqq(bfqq->bfqd, bfqq, "serv_from_wr: %lu",
+			     bfqq->service_from_wr);
+	}
 
 	bfqq->service_from_backlogged += served;
 	for_each_entity(entity) {
