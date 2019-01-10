@@ -6454,7 +6454,7 @@ static struct elevator_type iosched_bfq_mq = {
 		.exit_sched		= bfq_exit_queue,
 	},
 
-	.uses_mq = 		true,
+	.uses_mq =		true,
 	.icq_size =		sizeof(struct bfq_io_cq),
 	.icq_align =		__alignof__(struct bfq_io_cq),
 	.elevator_attrs =	bfq_attrs,
