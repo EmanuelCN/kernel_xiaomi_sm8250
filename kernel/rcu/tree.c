@@ -3857,5 +3857,6 @@ void __init rcu_init(void)
 	srcu_init();
 }
 
+#include "tree_stall.h"
 #include "tree_exp.h"
 #include "tree_plugin.h"
