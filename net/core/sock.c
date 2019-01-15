@@ -521,6 +521,34 @@ struct dst_entry *sk_dst_check(struct sock *sk, u32 cookie)
 }
 EXPORT_SYMBOL(sk_dst_check);
 
+static int sock_setbindtodevice_locked(struct sock *sk, int ifindex)
+{
+	int ret = -ENOPROTOOPT;
+#ifdef CONFIG_NETDEVICES
+	struct net *net = sock_net(sk);
+
+	/* Sorry... */
+	ret = -EPERM;
+	if (!ns_capable(net->user_ns, CAP_NET_RAW))
+		goto out;
+
+	ret = -EINVAL;
+	if (ifindex < 0)
+		goto out;
+
+	sk->sk_bound_dev_if = ifindex;
+	if (sk->sk_prot->rehash)
+		sk->sk_prot->rehash(sk);
+	sk_dst_reset(sk);
+
+	ret = 0;
+
+out:
+#endif
+
+	return ret;
+}
+
 static int sock_setbindtodevice(struct sock *sk, char __user *optval,
 				int optlen)
 {
@@ -567,11 +595,8 @@ static int sock_setbindtodevice(struct sock *sk, char __user *optval,
 	}
 
 	lock_sock(sk);
-	sk->sk_bound_dev_if = index;
-	sk_dst_reset(sk);
+	ret = sock_setbindtodevice_locked(sk, index);
 	release_sock(sk);
-
-	ret = 0;
 
 out:
 #endif
@@ -1059,6 +1084,10 @@ set_rcvbuf:
 		}
 		break;
 
+	case SO_BINDTOIFINDEX:
+		ret = sock_setbindtodevice_locked(sk, val);
+		break;
+
 	default:
 		ret = -ENOPROTOOPT;
 		break;
@@ -1415,6 +1444,10 @@ int sock_getsockopt(struct socket *sock, int level, int optname,
 				  SOF_TXTIME_DEADLINE_MODE : 0;
 		v.txtime.flags |= sk->sk_txtime_report_errors ?
 				  SOF_TXTIME_REPORT_ERRORS : 0;
+		break;
+
+	case SO_BINDTOIFINDEX:
+		v.val = sk->sk_bound_dev_if;
 		break;
 
 	default:
