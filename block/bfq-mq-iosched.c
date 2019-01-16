@@ -5317,7 +5317,8 @@ static void bfq_completed_request(struct bfq_queue *bfqq, struct bfq_data *bfqd)
 	bfqq->dispatched--;
 
 	bfq_log_bfqq(bfqd, bfqq,
-		     "new disp %d, new rq_in_driver %d",
+		     "in_serv %d, new disp %d, new rq_in_driver %d",
+		     bfqq == bfqd->in_service_queue,
 		     bfqq->dispatched, bfqd->rq_in_driver);
 
 	if (!bfqq->dispatched && !bfq_bfqq_busy(bfqq)) {
