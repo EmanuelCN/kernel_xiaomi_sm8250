@@ -195,6 +195,7 @@ struct bpf_insn_aux_data {
 	bool seen; /* this insn was processed by the verifier */
 	bool sanitize_stack_spill; /* subject to Spectre v4 sanitation */
 	u8 alu_state; /* used in combination with alu_limit */
+	unsigned int orig_idx; /* original instruction index */
 };
 
 #define MAX_USED_MAPS 64 /* max number of maps accessed by one eBPF program */
