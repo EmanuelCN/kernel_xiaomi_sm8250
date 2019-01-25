@@ -808,9 +808,9 @@ struct bfqg_stats {
 	/* total time with empty current active q with other requests queued */
 	struct blkg_stat		empty_time;
 	/* fields after this shouldn't be cleared on stat reset */
-	uint64_t			start_group_wait_time;
-	uint64_t			start_idle_time;
-	uint64_t			start_empty_time;
+	u64				start_group_wait_time;
+	u64				start_idle_time;
+	u64				start_empty_time;
 	uint16_t			flags;
 #endif /* BFQ_GROUP_IOSCHED_ENABLED && CONFIG_DEBUG_BLK_CGROUP */
 };
