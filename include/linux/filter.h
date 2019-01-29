@@ -632,7 +632,7 @@ static inline void bpf_jit_set_header_magic(struct bpf_binary_header *hdr)
 }
 #endif
 
-#define BPF_PROG_RUN(filter, ctx)  bpf_call_func(filter, ctx)
+#define BPF_PROG_RUN(filter, ctx)  ({ cant_sleep(); (*(filter)->bpf_func)(ctx, (filter)->insnsi); })
 
 #define BPF_SKB_CB_LEN QDISC_CB_PRIV_LEN
 
