@@ -3033,4 +3033,7 @@ struct bpf_line_info {
 	__u32	line_col;
 };
 
+struct bpf_spin_lock {
+	__u32	val;
+};
 #endif /* _UAPI__LINUX_BPF_H__ */
