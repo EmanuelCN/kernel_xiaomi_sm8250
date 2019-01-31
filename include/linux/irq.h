@@ -475,6 +475,8 @@ static inline irq_hw_number_t irqd_to_hwirq(struct irq_data *d)
  * @irq_set_vcpu_affinity:	optional to target a vCPU in a virtual machine
  * @ipi_send_single:	send a single IPI to destination cpus
  * @ipi_send_mask:	send an IPI to destination cpus in cpumask
+ * @irq_nmi_setup:	function called from core code before enabling an NMI
+ * @irq_nmi_teardown:	function called from core code after disabling an NMI
  * @flags:		chip specific flags
  */
 struct irq_chip {
@@ -523,6 +525,9 @@ struct irq_chip {
 	void		(*ipi_send_single)(struct irq_data *data, unsigned int cpu);
 	void		(*ipi_send_mask)(struct irq_data *data, const struct cpumask *dest);
 
+	int		(*irq_nmi_setup)(struct irq_data *data);
+	void		(*irq_nmi_teardown)(struct irq_data *data);
+
 	unsigned long	flags;
 };
 
@@ -539,6 +544,7 @@ struct irq_chip {
  * IRQCHIP_EOI_THREADED:	Chip requires eoi() on unmask in threaded mode
  * IRQCHIP_SUPPORTS_LEVEL_MSI	Chip can provide two doorbells for Level MSIs
  * IRQCHIP_AFFINITY_PRE_STARTUP:      Default affinity update before startup
+ * IRQCHIP_SUPPORTS_NMI:	Chip can deliver NMIs, only for root irqchips
  */
 enum {
 	IRQCHIP_SET_TYPE_MASKED		= (1 <<  0),
@@ -549,7 +555,9 @@ enum {
 	IRQCHIP_ONESHOT_SAFE		= (1 <<  5),
 	IRQCHIP_EOI_THREADED		= (1 <<  6),
 	IRQCHIP_SUPPORTS_LEVEL_MSI	= (1 <<  7),
-	IRQCHIP_AFFINITY_PRE_STARTUP	= (1 << 10),
+	IRQCHIP_SUPPORTS_NMI		= (1 <<  8),
+        IRQCHIP_AFFINITY_PRE_STARTUP    = (1 <<  9),
+
 };
 
 #include <linux/irqdesc.h>
