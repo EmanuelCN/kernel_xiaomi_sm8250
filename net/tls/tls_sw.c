@@ -1597,10 +1597,10 @@ int tls_sw_recvmsg(struct sock *sk,
 
 	while (len && (decrypted + copied < target || ctx->recv_pkt)) {
 		bool retain_skb = false;
-		bool async = false;
 		bool zc = false;
 		int to_decrypt;
 		int chunk = 0;
+		bool async;
 
 		skb = tls_wait_data(sk, psock, flags, timeo, &err);
 		if (!skb) {
@@ -1625,18 +1625,21 @@ int tls_sw_recvmsg(struct sock *sk,
 		    ctx->control == TLS_RECORD_TYPE_DATA)
 			zc = true;
 
+		/* Do not use async mode if record is non-data */
+		if (ctx->control == TLS_RECORD_TYPE_DATA)
+			async = ctx->async_capable;
+		else
+			async = false;
+
 		err = decrypt_skb_update(sk, skb, &msg->msg_iter,
-					 &chunk, &zc, ctx->async_capable);
+					 &chunk, &zc, async);
 		if (err < 0 && err != -EINPROGRESS) {
 			tls_err_abort(sk, EBADMSG);
 			goto recv_end;
 		}
 
-		if (err == -EINPROGRESS) {
-			async = true;
+		if (err == -EINPROGRESS)
 			num_async++;
-			goto pick_next_record;
-		}
 
 		if (!cmsg) {
 			int cerr;
@@ -1654,6 +1657,9 @@ int tls_sw_recvmsg(struct sock *sk,
 		} else if (control != ctx->control) {
 			goto recv_end;
 		}
+
+		if (async)
+			goto pick_next_record;
 
 		if (!zc) {
 			if (rxm->full_len > len) {
