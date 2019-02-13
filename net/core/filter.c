@@ -4905,7 +4905,7 @@ static int bpf_push_seg6_encap(struct sk_buff *skb, u32 type, void *hdr, u32 len
 static int bpf_push_ip_encap(struct sk_buff *skb, void *hdr, u32 len,
 			     bool ingress)
 {
-	return -EINVAL;  /* Implemented in the next patch. */
+	return bpf_lwt_push_ip_encap(skb, hdr, len, ingress);
 }
 #endif
 
