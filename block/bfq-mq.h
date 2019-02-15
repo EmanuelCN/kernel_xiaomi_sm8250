@@ -816,7 +816,7 @@ static struct blkcg_gq *bfqg_to_blkg(struct bfq_group *bfqg);
 
 #else /* CONFIG_BFQ_REDIRECT_TO_CONSOLE */
 
-#if !defined(CONFIG_BLK_DEV_IO_TRACE)
+#if defined(CONFIG_BFQ_MQ_NOLOG_BUG_ON) || !defined(CONFIG_BLK_DEV_IO_TRACE)
 
 /* Avoid possible "unused-variable" warning. See commit message. */
 
@@ -861,6 +861,13 @@ static struct blkcg_gq *bfqg_to_blkg(struct bfq_group *bfqg);
 
 #endif /* CONFIG_BLK_DEV_IO_TRACE */
 #endif /* CONFIG_BFQ_REDIRECT_TO_CONSOLE */
+
+#if defined(CONFIG_BFQ_MQ_NOLOG_BUG_ON)
+/* Avoid possible "unused-variable" warning. */
+#define BFQ_BUG_ON(cond)	((void) (cond))
+#else
+#define BFQ_BUG_ON(cond)	BUG_ON(cond)
+#endif
 
 /* Expiration reasons. */
 enum bfqq_expiration {
@@ -1013,8 +1020,8 @@ bfq_entity_service_tree(struct bfq_entity *entity)
 	struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
 	unsigned int idx = bfq_class_idx(entity);
 
-	BUG_ON(idx >= BFQ_IOPRIO_CLASSES);
-	BUG_ON(sched_data == NULL);
+	BFQ_BUG_ON(idx >= BFQ_IOPRIO_CLASSES);
+	BFQ_BUG_ON(sched_data == NULL);
 
 	if (bfqq)
 		bfq_log_bfqq(bfqq->bfqd, bfqq,

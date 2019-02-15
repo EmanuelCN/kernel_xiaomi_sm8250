@@ -283,7 +283,7 @@ static void bfqg_put(struct bfq_group *bfqg)
 #ifdef BFQ_MQ
 	bfqg->ref--;
 
-	BUG_ON(bfqg->ref < 0);
+	BFQ_BUG_ON(bfqg->ref < 0);
 	if (bfqg->ref == 0)
 		kfree(bfqg);
 #else
@@ -498,10 +498,10 @@ static void bfq_pd_init(struct blkg_policy_data *pd)
 	struct bfq_group_data *d;
 
 	blkg = pd_to_blkg(pd);
-	BUG_ON(!blkg);
+	BFQ_BUG_ON(!blkg);
 	bfqg = blkg_to_bfqg(blkg);
 	bfqd = blkg->q->elevator->elevator_data;
-	BUG_ON(bfqg == bfqd->root_group);
+	BFQ_BUG_ON(bfqg == bfqd->root_group);
 	entity = &bfqg->entity;
 	d = blkcg_to_bfqgd(blkg->blkcg);
 
@@ -540,9 +540,9 @@ static void bfq_group_set_parent(struct bfq_group *bfqg,
 {
 	struct bfq_entity *entity;
 
-	BUG_ON(!parent);
-	BUG_ON(!bfqg);
-	BUG_ON(bfqg == parent);
+	BFQ_BUG_ON(!parent);
+	BFQ_BUG_ON(!bfqg);
+	BFQ_BUG_ON(bfqg == parent);
 
 	entity = &bfqg->entity;
 	entity->parent = parent->my_entity;
@@ -579,12 +579,12 @@ static struct bfq_group *bfq_find_set_group(struct bfq_data *bfqd,
 	entity = &bfqg->entity;
 	for_each_entity(entity) {
 		bfqg = container_of(entity, struct bfq_group, entity);
-		BUG_ON(!bfqg);
+		BFQ_BUG_ON(!bfqg);
 		if (bfqg != bfqd->root_group) {
 			parent = bfqg_parent(bfqg);
 			if (!parent)
 				parent = bfqd->root_group;
-			BUG_ON(!parent);
+			BFQ_BUG_ON(!parent);
 			bfq_group_set_parent(bfqg, parent);
 		}
 	}
@@ -625,12 +625,12 @@ static void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 {
 	struct bfq_entity *entity = &bfqq->entity;
 
-	BUG_ON(!bfq_bfqq_busy(bfqq) && !RB_EMPTY_ROOT(&bfqq->sort_list));
-	BUG_ON(!RB_EMPTY_ROOT(&bfqq->sort_list) && !entity->on_st);
-	BUG_ON(bfq_bfqq_busy(bfqq) && RB_EMPTY_ROOT(&bfqq->sort_list)
+	BFQ_BUG_ON(!bfq_bfqq_busy(bfqq) && !RB_EMPTY_ROOT(&bfqq->sort_list));
+	BFQ_BUG_ON(!RB_EMPTY_ROOT(&bfqq->sort_list) && !entity->on_st);
+	BFQ_BUG_ON(bfq_bfqq_busy(bfqq) && RB_EMPTY_ROOT(&bfqq->sort_list)
 	       && entity->on_st &&
 	       bfqq != bfqd->in_service_queue);
-	BUG_ON(!bfq_bfqq_busy(bfqq) && bfqq == bfqd->in_service_queue);
+	BFQ_BUG_ON(!bfq_bfqq_busy(bfqq) && bfqq == bfqd->in_service_queue);
 
 	/* If bfqq is empty, then bfq_bfqq_expire also invokes
 	 * bfq_del_bfqq_busy, thereby removing bfqq and its entity
@@ -642,16 +642,16 @@ static void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 		bfq_bfqq_expire(bfqd, bfqd->in_service_queue,
 				false, BFQ_BFQQ_PREEMPTED);
 
-	BUG_ON(entity->on_st && !bfq_bfqq_busy(bfqq)
+	BFQ_BUG_ON(entity->on_st && !bfq_bfqq_busy(bfqq)
 	    && &bfq_entity_service_tree(entity)->idle !=
 	       entity->tree);
 
-	BUG_ON(RB_EMPTY_ROOT(&bfqq->sort_list) && bfq_bfqq_busy(bfqq));
+	BFQ_BUG_ON(RB_EMPTY_ROOT(&bfqq->sort_list) && bfq_bfqq_busy(bfqq));
 
 	if (bfq_bfqq_busy(bfqq))
 		bfq_deactivate_bfqq(bfqd, bfqq, false, false);
 	else if (entity->on_st) {
-		BUG_ON(&bfq_entity_service_tree(entity)->idle !=
+		BFQ_BUG_ON(&bfq_entity_service_tree(entity)->idle !=
 		       entity->tree);
 		bfq_put_idle_entity(bfq_entity_service_tree(entity), entity);
 	}
@@ -674,7 +674,7 @@ static void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	bfqg_get(bfqg);
 #endif
 
-	BUG_ON(RB_EMPTY_ROOT(&bfqq->sort_list) && bfq_bfqq_busy(bfqq));
+	BFQ_BUG_ON(RB_EMPTY_ROOT(&bfqq->sort_list) && bfq_bfqq_busy(bfqq));
 	if (bfq_bfqq_busy(bfqq)) {
 		if (unlikely(!bfqd->nonrot_with_queueing))
 			bfq_pos_tree_add_move(bfqd, bfqq);
@@ -683,7 +683,7 @@ static void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 
 	if (!bfqd->in_service_queue && !bfqd->rq_in_driver)
 		bfq_schedule_dispatch(bfqd);
-	BUG_ON(entity->on_st && !bfq_bfqq_busy(bfqq)
+	BFQ_BUG_ON(entity->on_st && !bfq_bfqq_busy(bfqq)
 	       && &bfq_entity_service_tree(entity)->idle !=
 	       entity->tree);
 }
@@ -840,7 +840,7 @@ static void bfq_reparent_leaf_entity(struct bfq_data *bfqd,
 {
 	struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
 
-	BUG_ON(!bfqq);
+	BFQ_BUG_ON(!bfqq);
 	bfq_bfqq_move(bfqd, bfqq, bfqd->root_group);
 }
 
@@ -888,11 +888,11 @@ static void bfq_pd_offline(struct blkg_policy_data *pd)
 #endif
 	int i;
 
-	BUG_ON(!pd);
+	BFQ_BUG_ON(!pd);
 	bfqg = pd_to_bfqg(pd);
-	BUG_ON(!bfqg);
+	BFQ_BUG_ON(!bfqg);
 	bfqd = bfqg->bfqd;
-	BUG_ON(bfqd && !bfqd->root_group);
+	BFQ_BUG_ON(bfqd && !bfqd->root_group);
 
 	entity = bfqg->my_entity;
 
@@ -908,7 +908,7 @@ static void bfq_pd_offline(struct blkg_policy_data *pd)
 	 * deactivating the group itself.
 	 */
 	for (i = 0; i < BFQ_IOPRIO_CLASSES; i++) {
-		BUG_ON(!bfqg->sched_data.service_tree);
+		BFQ_BUG_ON(!bfqg->sched_data.service_tree);
 		st = bfqg->sched_data.service_tree + i;
 		/*
 		 * The idle tree may still contain bfq_queues belonging
@@ -930,11 +930,11 @@ static void bfq_pd_offline(struct blkg_policy_data *pd)
 		 * scheduler has taken no reference.
 		 */
 		bfq_reparent_active_entities(bfqd, bfqg, st);
-		BUG_ON(!RB_EMPTY_ROOT(&st->active));
-		BUG_ON(!RB_EMPTY_ROOT(&st->idle));
+		BFQ_BUG_ON(!RB_EMPTY_ROOT(&st->active));
+		BFQ_BUG_ON(!RB_EMPTY_ROOT(&st->idle));
 	}
-	BUG_ON(bfqg->sched_data.next_in_service);
-	BUG_ON(bfqg->sched_data.in_service_entity);
+	BFQ_BUG_ON(bfqg->sched_data.next_in_service);
+	BFQ_BUG_ON(bfqg->sched_data.in_service_entity);
 
 	__bfq_deactivate_entity(entity, false);
 
@@ -959,7 +959,7 @@ static void bfq_end_wr_async(struct bfq_data *bfqd)
 
 	list_for_each_entry(blkg, &bfqd->queue->blkg_list, q_node) {
 		struct bfq_group *bfqg = blkg_to_bfqg(blkg);
-		BUG_ON(!bfqg);
+		BFQ_BUG_ON(!bfqg);
 
 		bfq_end_wr_async_queues(bfqd, bfqg);
 	}
