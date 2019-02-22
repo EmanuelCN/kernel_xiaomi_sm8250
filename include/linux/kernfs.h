@@ -378,6 +378,11 @@ __poll_t kernfs_generic_poll(struct kernfs_open_file *of,
 			     struct poll_table_struct *pt);
 void kernfs_notify(struct kernfs_node *kn);
 
+int kernfs_security_xattr_get(struct kernfs_node *kn, const char *suffix,
+			      void *value, size_t size);
+int kernfs_security_xattr_set(struct kernfs_node *kn, const char *suffix,
+			      void *value, size_t size, int flags);
+
 const void *kernfs_super_ns(struct super_block *sb);
 struct dentry *kernfs_mount_ns(struct file_system_type *fs_type, int flags,
 			       struct kernfs_root *root, unsigned long magic,
@@ -480,6 +485,16 @@ static inline int kernfs_setattr(struct kernfs_node *kn,
 { return -ENOSYS; }
 
 static inline void kernfs_notify(struct kernfs_node *kn) { }
+
+static inline int kernfs_security_xattr_get(struct kernfs_node *kn,
+					    const char *suffix, void *value,
+					    size_t size)
+{ return -ENOSYS; }
+
+static inline int kernfs_security_xattr_set(struct kernfs_node *kn,
+					    const char *suffix, void *value,
+					    size_t size, int flags)
+{ return -ENOSYS; }
 
 static inline const void *kernfs_super_ns(struct super_block *sb)
 { return NULL; }

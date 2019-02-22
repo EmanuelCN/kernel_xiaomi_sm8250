@@ -429,6 +429,15 @@
  *	to abort the copy up. Note that the caller is responsible for reading
  *	and writing the xattrs as this hook is merely a filter.
  *
+ * Security hooks for kernfs node operations
+ *
+ * @kernfs_init_security
+ *	Initialize the security context of a newly created kernfs node based
+ *	on its own and its parent's attributes.
+ *
+ *	@kn_dir the parent kernfs node
+ *	@kn the new child kernfs node
+ *
  * Security hooks for file operations
  *
  * @file_permission:
