@@ -2307,6 +2307,13 @@ union bpf_attr {
  *	Return
  *		A **struct bpf_tcp_sock** pointer on success, or NULL in
  *		case of failure.
+ *
+ * int bpf_skb_ecn_set_ce(struct sk_buf *skb)
+ *     Description
+ *             Sets ECN of IP header to ce (congestion encountered) if
+ *             current value is ect (ECN capable). Works with IPv6 and IPv4.
+ *     Return
+ *             1 if set, 0 if not set.
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
