@@ -6062,7 +6062,7 @@ static struct blkcg_policy blkcg_policy_bfq = {
 static int __init bfq_init(void)
 {
 	int ret;
-	char msg[60] = "BFQ I/O-scheduler: v9";
+	char msg[60] = "BFQ I/O-scheduler: v10";
 
 #ifdef BFQ_GROUP_IOSCHED_ENABLED
 	ret = blkcg_policy_register(&blkcg_policy_bfq);
