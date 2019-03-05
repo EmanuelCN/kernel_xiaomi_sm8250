@@ -432,6 +432,8 @@ static int filemap_check_and_keep_errors(struct address_space *mapping)
  * opposed to a regular memory cleansing writeback.  The difference between
  * these two operations is that if a dirty page/buffer is encountered, it must
  * be waited upon, and not just skipped over.
+ *
+ * Return: %0 on success, negative error code otherwise.
  */
 int __filemap_fdatawrite_range(struct address_space *mapping, loff_t start,
 				loff_t end, int sync_mode)
@@ -479,6 +481,8 @@ EXPORT_SYMBOL(filemap_fdatawrite_range);
  *
  * This is a mostly non-blocking flush.  Not suitable for data-integrity
  * purposes - I/O may not be started against all dirty pages.
+ *
+ * Return: %0 on success, negative error code otherwise.
  */
 int filemap_flush(struct address_space *mapping)
 {
@@ -494,6 +498,9 @@ EXPORT_SYMBOL(filemap_flush);
  *
  * Find at least one page in the range supplied, usually used to check if
  * direct writing in this range will trigger a writeback.
+ *
+ * Return: %true if at least one page exists in the specified range,
+ * %false otherwise.
  */
 bool filemap_range_has_page(struct address_space *mapping,
 			   loff_t start_byte, loff_t end_byte)
@@ -559,6 +566,8 @@ static void __filemap_fdatawait_range(struct address_space *mapping,
  * Since the error status of the address space is cleared by this function,
  * callers are responsible for checking the return value and handling and/or
  * reporting the error.
+ *
+ * Return: error status of the address space.
  */
 int filemap_fdatawait_range(struct address_space *mapping, loff_t start_byte,
 			    loff_t end_byte)
@@ -603,6 +612,8 @@ EXPORT_SYMBOL(filemap_fdatawait_range_keep_errors);
  * Since the error status of the file is advanced by this function,
  * callers are responsible for checking the return value and handling and/or
  * reporting the error.
+ *
+ * Return: error status of the address space vs. the file->f_wb_err cursor.
  */
 int file_fdatawait_range(struct file *file, loff_t start_byte, loff_t end_byte)
 {
@@ -624,6 +635,8 @@ EXPORT_SYMBOL(file_fdatawait_range);
  * Use this function if callers don't handle errors themselves.  Expected
  * call sites are system-wide / filesystem-wide data flushers: e.g. sync(2),
  * fsfreeze(8)
+ *
+ * Return: error status of the address space.
  */
 int filemap_fdatawait_keep_errors(struct address_space *mapping)
 {
@@ -675,6 +688,8 @@ EXPORT_SYMBOL(filemap_write_and_wait);
  *
  * Note that @lend is inclusive (describes the last byte to be written) so
  * that this function can be used to write to the very end-of-file (end = -1).
+ *
+ * Return: error status of the address space.
  */
 int filemap_write_and_wait_range(struct address_space *mapping,
 				 loff_t lstart, loff_t lend)
@@ -730,6 +745,8 @@ EXPORT_SYMBOL(__filemap_set_wb_err);
  * While we handle mapping->wb_err with atomic operations, the f_wb_err
  * value is protected by the f_lock since we must ensure that it reflects
  * the latest value swapped in for this file descriptor.
+ *
+ * Return: %0 on success, negative error code otherwise.
  */
 int file_check_and_advance_wb_err(struct file *file)
 {
@@ -772,6 +789,8 @@ EXPORT_SYMBOL(file_check_and_advance_wb_err);
  *
  * After writing out and waiting on the data, we check and advance the
  * f_wb_err cursor to the latest value, and return any errors detected there.
+ *
+ * Return: %0 on success, negative error code otherwise.
  */
 int file_write_and_wait_range(struct file *file, loff_t lstart, loff_t lend)
 {
@@ -806,6 +825,8 @@ EXPORT_SYMBOL(file_write_and_wait_range);
  *
  * The remove + add is atomic.  The only way this function can fail is
  * memory allocation failure.
+ *
+ * Return: %0
  */
 int replace_page_cache_page(struct page *old, struct page *new, gfp_t gfp_mask)
 {
@@ -915,6 +936,8 @@ err_insert:
  *
  * This function is used to add a page to the pagecache. It must be locked.
  * This function does not add the page to the LRU.  The caller must do that.
+ *
+ * Return: %0 on success, negative error code otherwise.
  */
 int add_to_page_cache_locked(struct page *page, struct address_space *mapping,
 		pgoff_t offset, gfp_t gfp_mask)
@@ -1521,7 +1544,7 @@ EXPORT_SYMBOL(page_cache_prev_hole);
  * If the slot holds a shadow entry of a previously evicted page, or a
  * swap entry from shmem/tmpfs, it is returned.
  *
- * Otherwise, %NULL is returned.
+ * Return: the found page or shadow entry, %NULL if nothing is found.
  */
 struct page *find_get_entry(struct address_space *mapping, pgoff_t offset)
 {
@@ -1586,9 +1609,9 @@ EXPORT_SYMBOL(find_get_entry);
  * If the slot holds a shadow entry of a previously evicted page, or a
  * swap entry from shmem/tmpfs, it is returned.
  *
- * Otherwise, %NULL is returned.
- *
  * find_lock_entry() may sleep.
+ *
+ * Return: the found page or shadow entry, %NULL if nothing is found.
  */
 struct page *find_lock_entry(struct address_space *mapping, pgoff_t offset)
 {
@@ -1637,6 +1660,8 @@ EXPORT_SYMBOL(find_lock_entry);
  * if the GFP flags specified for FGP_CREAT are atomic.
  *
  * If there is a page cache page, it is returned with an increased refcount.
+ *
+ * Return: the found page or %NULL otherwise.
  */
 struct page *pagecache_get_page(struct address_space *mapping, pgoff_t offset,
 	int fgp_flags, gfp_t gfp_mask)
@@ -1731,8 +1756,7 @@ EXPORT_SYMBOL(pagecache_get_page);
  * Any shadow entries of evicted pages, or swap entries from
  * shmem/tmpfs, are included in the returned array.
  *
- * find_get_entries() returns the number of pages and shadow entries
- * which were found.
+ * Return: the number of pages and shadow entries which were found.
  */
 unsigned find_get_entries(struct address_space *mapping,
 			  pgoff_t start, unsigned int nr_entries,
@@ -1807,8 +1831,8 @@ export:
  * indexes.  There may be holes in the indices due to not-present pages.
  * We also update @start to index the next page for the traversal.
  *
- * find_get_pages_range() returns the number of pages which were found. If this
- * number is smaller than @nr_pages, the end of specified range has been
+ * Return: the number of pages which were found. If this number is
+ * smaller than @nr_pages, the end of specified range has been
  * reached.
  */
 unsigned find_get_pages_range(struct address_space *mapping, pgoff_t *start,
@@ -1895,7 +1919,7 @@ out:
  * find_get_pages_contig() works exactly like find_get_pages(), except
  * that the returned number of pages are guaranteed to be contiguous.
  *
- * find_get_pages_contig() returns the number of pages which were found.
+ * Return: the number of pages which were found.
  */
 unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t index,
 			       unsigned int nr_pages, struct page **pages)
@@ -1975,6 +1999,8 @@ EXPORT_SYMBOL(find_get_pages_contig);
  *
  * Like find_get_pages, except we only return pages which are tagged with
  * @tag.   We update @index to index the next page for the traversal.
+ *
+ * Return: the number of pages which were found.
  */
 unsigned find_get_pages_range_tag(struct address_space *mapping, pgoff_t *index,
 			pgoff_t end, int tag, unsigned int nr_pages,
@@ -2068,6 +2094,8 @@ EXPORT_SYMBOL(find_get_pages_range_tag);
  *
  * Like find_get_entries, except we only return entries which are tagged with
  * @tag.
+ *
+ * Return: the number of entries which were found.
  */
 unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
 			int tag, unsigned int nr_entries,
@@ -2159,6 +2187,10 @@ static void shrink_readahead_size_eio(struct file *filp,
  *
  * This is really ugly. But the goto's actually try to clarify some
  * of the logic when it comes to error handling etc.
+ *
+ * Return:
+ * * total number of bytes copied, including those the were already @written
+ * * negative error code if nothing was copied
  */
 static ssize_t generic_file_buffered_read(struct kiocb *iocb,
 		struct iov_iter *iter, ssize_t written)
@@ -2420,6 +2452,9 @@ out:
  *
  * This is the "read_iter()" routine for all filesystems
  * that can use the page cache directly.
+ * Return:
+ * * number of bytes copied, even for partial reads
+ * * negative error code if nothing was read
  */
 ssize_t
 generic_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
@@ -2644,6 +2679,8 @@ static struct file *do_async_mmap_readahead(struct vm_fault *vmf,
  * has not been released.
  *
  * We never return with VM_FAULT_RETRY and a bit from VM_FAULT_ERROR set.
+ *
+ * Return: bitwise-OR of %VM_FAULT_ codes.
  */
 vm_fault_t filemap_fault(struct vm_fault *vmf)
 {
@@ -3065,6 +3102,8 @@ out:
  * not set, try to fill the page and wait for it to become unlocked.
  *
  * If the page does not get brought uptodate, return -EIO.
+ *
+ * Return: up to date page on success, ERR_PTR() on failure.
  */
 struct page *read_cache_page(struct address_space *mapping,
 				pgoff_t index,
@@ -3085,6 +3124,8 @@ EXPORT_SYMBOL(read_cache_page);
  * any new page allocations done using the specified allocation flags.
  *
  * If the page does not get brought uptodate, return -EIO.
+ *
+ * Return: up to date page on success, ERR_PTR() on failure.
  */
 struct page *read_cache_page_gfp(struct address_space *mapping,
 				pgoff_t index,
@@ -3377,6 +3418,10 @@ EXPORT_SYMBOL(generic_perform_write);
  * This function does *not* take care of syncing data in case of O_SYNC write.
  * A caller has to handle it. This is mainly due to the fact that we want to
  * avoid syncing under i_mutex.
+ *
+ * Return:
+ * * number of bytes written, even for truncated writes
+ * * negative error code if no data has been written at all
  */
 ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 {
@@ -3461,6 +3506,10 @@ EXPORT_SYMBOL(__generic_file_write_iter);
  * This is a wrapper around __generic_file_write_iter() to be used by most
  * filesystems. It takes care of syncing the file in case of O_SYNC file
  * and acquires i_mutex as needed.
+ * Return:
+ * * negative error code if no data has been written at all of
+ *   vfs_fsync_range() failed for a synchronous write
+ * * number of bytes written, even for truncated writes
  */
 ssize_t generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 {
@@ -3487,8 +3536,7 @@ EXPORT_SYMBOL(generic_file_write_iter);
  * @gfp_mask: memory allocation flags (and I/O mode)
  *
  * The address_space is to try to release any data against the page
- * (presumably at page->private).  If the release was successful, return '1'.
- * Otherwise return zero.
+ * (presumably at page->private).
  *
  * This may also be called if PG_fscache is set on a page, indicating that the
  * page is known to the local caching routines.
@@ -3496,6 +3544,7 @@ EXPORT_SYMBOL(generic_file_write_iter);
  * The @gfp_mask argument specifies whether I/O may be performed to release
  * this page (__GFP_IO), and whether the call may block (__GFP_RECLAIM & __GFP_FS).
  *
+ * Return: %1 if the release was successful, otherwise return zero.
  */
 int try_to_release_page(struct page *page, gfp_t gfp_mask)
 {

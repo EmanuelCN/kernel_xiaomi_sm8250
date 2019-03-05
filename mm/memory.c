@@ -1821,6 +1821,8 @@ out:
  * under mm->mmap_sem write-lock, so it can change vma->vm_flags.
  * Caller must set VM_MIXEDMAP on vma if it wants to call this
  * function from other places, for example from page-fault handler.
+ *
+ * Return: %0 on success, negative error code otherwise.
  */
 int vm_insert_page(struct vm_area_struct *vma, unsigned long addr,
 			struct page *page)
@@ -2151,7 +2153,9 @@ static inline int remap_p4d_range(struct mm_struct *mm, pgd_t *pgd,
  * @size: size of map area
  * @prot: page protection flags for this mapping
  *
- *  Note: this is only safe if the mm semaphore is held when called.
+ * Note: this is only safe if the mm semaphore is held when called.
+ *
+ * Return: %0 on success, negative error code otherwise.
  */
 int remap_pfn_range(struct vm_area_struct *vma, unsigned long addr,
 		    unsigned long pfn, unsigned long size, pgprot_t prot)
@@ -2224,6 +2228,8 @@ EXPORT_SYMBOL(remap_pfn_range);
  *
  * NOTE! Some drivers might want to tweak vma->vm_page_prot first to get
  * whatever write-combining details or similar.
+ *
+ * Return: %0 on success, negative error code otherwise.
  */
 int vm_iomap_memory(struct vm_area_struct *vma, phys_addr_t start, unsigned long len)
 {
@@ -2786,12 +2792,13 @@ oom:
  *
  * This function handles all that is needed to finish a write page fault in a
  * shared mapping due to PTE being read-only once the mapped page is prepared.
- * It handles locking of PTE and modifying it. The function returns
- * VM_FAULT_WRITE on success, 0 when PTE got changed before we acquired PTE
- * lock.
+ * It handles locking of PTE and modifying it.
  *
  * The function expects the page to be locked or other protection against
  * concurrent faults / writeback (such as DAX radix tree locks).
+ *
+ * Return: %VM_FAULT_WRITE on success, %0 when PTE got changed before
+ * we acquired PTE lock.
  */
 vm_fault_t finish_mkwrite_fault(struct vm_fault *vmf)
 {
@@ -3646,6 +3653,8 @@ static vm_fault_t do_set_pmd(struct vm_fault *vmf, struct page *page)
  *
  * Target users are page handler itself and implementations of
  * vm_ops->map_pages.
+ *
+ * Return: %0 on success, %VM_FAULT_ code in case of error.
  */
 vm_fault_t alloc_set_pte(struct vm_fault *vmf, struct mem_cgroup *memcg,
 		struct page *page)
@@ -3710,11 +3719,12 @@ vm_fault_t alloc_set_pte(struct vm_fault *vmf, struct mem_cgroup *memcg,
  * This function handles all that is needed to finish a page fault once the
  * page to fault in is prepared. It handles locking of PTEs, inserts PTE for
  * given page, adds reverse page mapping, handles memcg charges and LRU
- * addition. The function returns 0 on success, VM_FAULT_ code in case of
- * error.
+ * addition.
  *
  * The function expects the page to be locked and on success it consumes a
  * reference of a page being mapped (for the PTE which maps it).
+ *
+ * Return: %0 on success, %VM_FAULT_ code in case of error.
  */
 vm_fault_t finish_fault(struct vm_fault *vmf)
 {
@@ -4611,7 +4621,7 @@ EXPORT_SYMBOL(follow_pte_pmd);
  *
  * Only IO mappings and raw PFN mappings are allowed.
  *
- * Returns zero and the pfn at @pfn on success, -ve otherwise.
+ * Return: zero and the pfn at @pfn on success, -ve otherwise.
  */
 int follow_pfn(struct vm_area_struct *vma, unsigned long address,
 	unsigned long *pfn)
@@ -4763,6 +4773,8 @@ int __access_remote_vm(struct task_struct *tsk, struct mm_struct *mm,
  * @gup_flags:	flags modifying lookup behaviour
  *
  * The caller must hold a reference on @mm.
+ *
+ * Return: number of bytes copied from source to destination.
  */
 int access_remote_vm(struct mm_struct *mm, unsigned long addr,
 		void *buf, int len, unsigned int gup_flags)
