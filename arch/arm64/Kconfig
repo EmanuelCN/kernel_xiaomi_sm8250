@@ -1030,6 +1030,9 @@ config ARM64_DMA_IOMMU_ALIGNMENT
 
 endif
 
+config ARCH_ENABLE_SPLIT_PMD_PTLOCK
+	def_bool y if PGTABLE_LEVELS > 2
+
 config SECCOMP
 	bool "Enable seccomp to safely compute untrusted bytecode"
 	---help---
