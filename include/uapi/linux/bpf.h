@@ -2314,6 +2314,14 @@ union bpf_attr {
  *             current value is ect (ECN capable). Works with IPv6 and IPv4.
  *     Return
  *             1 if set, 0 if not set.
+ *
+ * struct bpf_sock *bpf_get_listener_sock(struct bpf_sock *sk)
+ *	Description
+ *		Return a **struct bpf_sock** pointer in TCP_LISTEN state.
+ *		bpf_sk_release() is unnecessary and not allowed.
+ *	Return
+ *		A **struct bpf_sock** pointer on success, or NULL in
+ *		case of failure.
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
