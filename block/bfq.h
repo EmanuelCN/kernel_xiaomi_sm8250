@@ -43,6 +43,8 @@
 #define BFQ_DEFAULT_GRP_IOPRIO	0
 #define BFQ_DEFAULT_GRP_CLASS	IOPRIO_CLASS_BE
 
+#define MAX_PID_STR_LENGTH 12
+
 /*
  * Soft real-time applications are extremely more latency sensitive
  * than interactive ones. Over-raise the weight of the former to
@@ -751,6 +753,14 @@ BFQ_BFQQ_FNS(softrt_update);
 #undef BFQ_BFQQ_FNS
 
 /* Logging facilities. */
+static inline void bfq_pid_to_str(int pid, char *str, int len)
+{
+	if (pid != -1)
+		snprintf(str, len, "%d", pid);
+	else
+		snprintf(str, len, "SHARED-");
+}
+
 #ifdef CONFIG_BFQ_REDIRECT_TO_CONSOLE
 
 static const char *checked_dev_name(const struct device *dev)
@@ -769,12 +779,14 @@ static struct blkcg_gq *bfqg_to_blkg(struct bfq_group *bfqg);
 
 #define bfq_log_bfqq(bfqd, bfqq, fmt, args...)	do {			\
 	char __pbuf[128];						\
+	char pid_str[MAX_PID_STR_LENGTH];	\
 									\
 	assert_spin_locked((bfqd)->queue->queue_lock);			\
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH);	\
 	blkg_path(bfqg_to_blkg(bfqq_group(bfqq)), __pbuf, sizeof(__pbuf)); \
-	pr_crit("%s bfq%d%c %s [%s] " fmt "\n",				\
+	pr_crit("%s bfq%s%c %s [%s] " fmt "\n",				\
 		checked_dev_name((bfqd)->queue->backing_dev_info->dev),	\
-		(bfqq)->pid,						\
+		pid_str,						\
 		bfq_bfqq_sync((bfqq)) ? 'S' : 'A',			\
 		__pbuf, __func__, ##args);				\
 } while (0)
@@ -790,11 +802,14 @@ static struct blkcg_gq *bfqg_to_blkg(struct bfq_group *bfqg);
 
 #else /* BFQ_GROUP_IOSCHED_ENABLED */
 
-#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)				\
-	pr_crit("%s bfq%d%c [%s] " fmt "\n",				\
+#define bfq_log_bfqq(bfqd, bfqq, fmt, args...) do {	\
+	char pid_str[MAX_PID_STR_LENGTH];	\
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH);	\
+	pr_crit("%s bfq%s%c [%s] " fmt "\n",				\
 		checked_dev_name((bfqd)->queue->backing_dev_info->dev),	\
-		(bfqq)->pid, bfq_bfqq_sync((bfqq)) ? 'S' : 'A',		\
-		__func__, ##args)
+		pid_str, bfq_bfqq_sync((bfqq)) ? 'S' : 'A',		\
+		__func__, ##args);	\
+} while (0)
 #define bfq_log_bfqg(bfqd, bfqg, fmt, args...)		do {} while (0)
 
 #endif /* BFQ_GROUP_IOSCHED_ENABLED */
@@ -826,16 +841,18 @@ static struct blkcg_gq *bfqg_to_blkg(struct bfq_group *bfqg);
 
 #define bfq_log_bfqq(bfqd, bfqq, fmt, args...)	do {			\
 	char __pbuf[128];						\
+	char pid_str[MAX_PID_STR_LENGTH];	\
 									\
 	assert_spin_locked((bfqd)->queue->queue_lock);			\
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH);	\
 	blkg_path(bfqg_to_blkg(bfqq_group(bfqq)), __pbuf, sizeof(__pbuf)); \
-	blk_add_trace_msg((bfqd)->queue, "bfq%d%c %s [%s] " fmt, \
-			  (bfqq)->pid,			  \
+	blk_add_trace_msg((bfqd)->queue, "bfq%s%c %s [%s] " fmt, \
+			  pid_str,			  \
 			  bfq_bfqq_sync((bfqq)) ? 'S' : 'A',	\
 			  __pbuf, __func__, ##args);			\
 } while (0)
 
-#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)	do {			\
+#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)	do {	\
 	char __pbuf[128];						\
 									\
 	blkg_path(bfqg_to_blkg(bfqg), __pbuf, sizeof(__pbuf));		\
@@ -845,10 +862,13 @@ static struct blkcg_gq *bfqg_to_blkg(struct bfq_group *bfqg);
 
 #else /* BFQ_GROUP_IOSCHED_ENABLED */
 
-#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)	\
-	blk_add_trace_msg((bfqd)->queue, "bfq%d%c [%s] " fmt, (bfqq)->pid, \
+#define bfq_log_bfqq(bfqd, bfqq, fmt, args...) do {	\
+	char pid_str[MAX_PID_STR_LENGTH];	\
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH);	\
+	blk_add_trace_msg((bfqd)->queue, "bfq%s%c [%s] " fmt, pid_str, \
 			bfq_bfqq_sync((bfqq)) ? 'S' : 'A',		\
-				__func__, ##args)
+				__func__, ##args);	\
+} while (0)
 #define bfq_log_bfqg(bfqd, bfqg, fmt, args...)		do {} while (0)
 
 #endif /* BFQ_GROUP_IOSCHED_ENABLED */
