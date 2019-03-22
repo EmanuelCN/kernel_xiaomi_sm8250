@@ -164,7 +164,6 @@ static inline void rwsem_clear_reader_owned(struct rw_semaphore *sem)
 }
 #endif
 
-#ifdef CONFIG_RWSEM_XCHGADD_ALGORITHM
 /*
  * lock for reading
  */
@@ -271,8 +270,6 @@ static inline void __downgrade_write(struct rw_semaphore *sem)
 	if (tmp < 0)
 		rwsem_downgrade_wake(sem);
 }
-
-#endif /* CONFIG_RWSEM_XCHGADD_ALGORITHM */
 
 #ifdef CONFIG_RWSEM_PRIO_AWARE
 
