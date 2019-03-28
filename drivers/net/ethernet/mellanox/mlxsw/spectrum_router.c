@@ -3542,7 +3542,7 @@ static bool mlxsw_sp_nexthop4_ipip_type(const struct mlxsw_sp *mlxsw_sp,
 					const struct fib_nh *fib_nh,
 					enum mlxsw_sp_ipip_type *p_ipipt)
 {
-	struct net_device *dev = fib_nh->nh_dev;
+	struct net_device *dev = fib_nh->fib_nh_dev;
 
 	return dev &&
 	       fib_nh->nh_parent->fib_type == RTN_UNICAST &&
@@ -3569,7 +3569,7 @@ static int mlxsw_sp_nexthop4_type_init(struct mlxsw_sp *mlxsw_sp,
 				       struct fib_nh *fib_nh)
 {
 	const struct mlxsw_sp_ipip_ops *ipip_ops;
-	struct net_device *dev = fib_nh->nh_dev;
+	struct net_device *dev = fib_nh->fib_nh_dev;
 	struct mlxsw_sp_ipip_entry *ipip_entry;
 	struct mlxsw_sp_rif *rif;
 	int err;
@@ -3613,18 +3613,18 @@ static int mlxsw_sp_nexthop4_init(struct mlxsw_sp *mlxsw_sp,
 				  struct mlxsw_sp_nexthop *nh,
 				  struct fib_nh *fib_nh)
 {
-	struct net_device *dev = fib_nh->nh_dev;
+	struct net_device *dev = fib_nh->fib_nh_dev;
 	struct in_device *in_dev;
 	int err;
 
 	nh->nh_grp = nh_grp;
 	nh->key.fib_nh = fib_nh;
 #ifdef CONFIG_IP_ROUTE_MULTIPATH
-	nh->nh_weight = fib_nh->nh_weight;
+	nh->nh_weight = fib_nh->fib_nh_weight;
 #else
 	nh->nh_weight = 1;
 #endif
-	memcpy(&nh->gw_addr, &fib_nh->nh_gw, sizeof(fib_nh->nh_gw));
+	memcpy(&nh->gw_addr, &fib_nh->fib_nh_gw4, sizeof(fib_nh->fib_nh_gw4));
 	err = mlxsw_sp_nexthop_insert(mlxsw_sp, nh);
 	if (err)
 		return err;
@@ -3637,7 +3637,7 @@ static int mlxsw_sp_nexthop4_init(struct mlxsw_sp *mlxsw_sp,
 
 	in_dev = __in_dev_get_rtnl(dev);
 	if (in_dev && IN_DEV_IGNORE_ROUTES_WITH_LINKDOWN(in_dev) &&
-	    fib_nh->nh_flags & RTNH_F_LINKDOWN)
+	    fib_nh->fib_nh_flags & RTNH_F_LINKDOWN)
 		return 0;
 
 	err = mlxsw_sp_nexthop4_type_init(mlxsw_sp, nh, fib_nh);
@@ -3736,7 +3736,7 @@ static void mlxsw_sp_nexthop_rif_gone_sync(struct mlxsw_sp *mlxsw_sp,
 static bool mlxsw_sp_fi_is_gateway(const struct mlxsw_sp *mlxsw_sp,
 				   const struct fib_info *fi)
 {
-	return fi->fib_nh->nh_scope == RT_SCOPE_LINK ||
+	return fi->fib_nh->fib_nh_scope == RT_SCOPE_LINK ||
 	       mlxsw_sp_nexthop4_ipip_type(mlxsw_sp, fi->fib_nh, NULL);
 }
 
@@ -3896,7 +3896,7 @@ mlxsw_sp_fib4_entry_offload_set(struct mlxsw_sp_fib_entry *fib_entry)
 
 	if (fib_entry->type == MLXSW_SP_FIB_ENTRY_TYPE_LOCAL ||
 	    fib_entry->type == MLXSW_SP_FIB_ENTRY_TYPE_IPIP_DECAP) {
-		nh_grp->nexthops->key.fib_nh->nh_flags |= RTNH_F_OFFLOAD;
+		nh_grp->nexthops->key.fib_nh->fib_nh_flags |= RTNH_F_OFFLOAD;
 		return;
 	}
 
@@ -3904,9 +3904,9 @@ mlxsw_sp_fib4_entry_offload_set(struct mlxsw_sp_fib_entry *fib_entry)
 		struct mlxsw_sp_nexthop *nh = &nh_grp->nexthops[i];
 
 		if (nh->offloaded)
-			nh->key.fib_nh->nh_flags |= RTNH_F_OFFLOAD;
+			nh->key.fib_nh->fib_nh_flags |= RTNH_F_OFFLOAD;
 		else
-			nh->key.fib_nh->nh_flags &= ~RTNH_F_OFFLOAD;
+			nh->key.fib_nh->fib_nh_flags &= ~RTNH_F_OFFLOAD;
 	}
 }
 
@@ -3922,7 +3922,7 @@ mlxsw_sp_fib4_entry_offload_unset(struct mlxsw_sp_fib_entry *fib_entry)
 	for (i = 0; i < nh_grp->count; i++) {
 		struct mlxsw_sp_nexthop *nh = &nh_grp->nexthops[i];
 
-		nh->key.fib_nh->nh_flags &= ~RTNH_F_OFFLOAD;
+		nh->key.fib_nh->fib_nh_flags &= ~RTNH_F_OFFLOAD;
 	}
 }
 
