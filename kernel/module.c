@@ -3173,6 +3173,11 @@ static int find_module_sections(struct module *mod, struct load_info *info)
 					     sizeof(*mod->tracepoints_ptrs),
 					     &mod->num_tracepoints);
 #endif
+#ifdef CONFIG_TREE_SRCU
+	mod->srcu_struct_ptrs = section_objs(info, "___srcu_struct_ptrs",
+					     sizeof(*mod->srcu_struct_ptrs),
+					     &mod->num_srcu_structs);
+#endif
 #ifdef CONFIG_JUMP_LABEL
 	mod->jump_entries = section_objs(info, "__jump_table",
 					sizeof(*mod->jump_entries),
