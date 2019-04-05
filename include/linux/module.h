@@ -24,6 +24,7 @@
 #include <linux/tracepoint-defs.h>
 #include <linux/cfi.h>
 #include <linux/android_kabi.h>
+#include <linux/srcu.h>
 
 #include <linux/percpu.h>
 #include <asm/module.h>
@@ -441,6 +442,10 @@ struct module {
 #ifdef CONFIG_TRACEPOINTS
 	unsigned int num_tracepoints;
 	tracepoint_ptr_t *tracepoints_ptrs;
+#endif
+#ifdef CONFIG_TREE_SRCU
+	unsigned int num_srcu_structs;
+	struct srcu_struct **srcu_struct_ptrs;
 #endif
 #ifdef CONFIG_JUMP_LABEL
 	struct jump_entry *jump_entries;
