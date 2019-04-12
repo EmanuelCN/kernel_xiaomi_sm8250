@@ -1383,7 +1383,7 @@ static void rcu_prepare_for_idle(void)
 	int tne;
 
 	lockdep_assert_irqs_disabled();
-	if (rcu_is_nocb_cpu(smp_processor_id()))
+	if (rcu_segcblist_is_offloaded(&rdp->cblist))
 		return;
 
 	/* Handle nohz enablement switches conservatively. */
@@ -1432,8 +1432,10 @@ static void rcu_prepare_for_idle(void)
  */
 static void rcu_cleanup_after_idle(void)
 {
+	struct rcu_data *rdp = this_cpu_ptr(&rcu_data);
+
 	lockdep_assert_irqs_disabled();
-	if (rcu_is_nocb_cpu(smp_processor_id()))
+	if (rcu_segcblist_is_offloaded(&rdp->cblist))
 		return;
 	if (rcu_try_advance_all_cbs())
 		invoke_rcu_core();
@@ -1695,7 +1697,7 @@ static bool __call_rcu_nocb(struct rcu_data *rdp, struct rcu_head *rhp,
 			    bool lazy, unsigned long flags)
 {
 
-	if (!rcu_is_nocb_cpu(rdp->cpu))
+	if (!rcu_segcblist_is_offloaded(&rdp->cblist))
 		return false;
 	__call_rcu_nocb_enqueue(rdp, rhp, &rhp->next, 1, lazy, flags);
 	if (__is_kfree_rcu_offset((unsigned long)rhp->func))
@@ -1730,7 +1732,7 @@ static bool __maybe_unused rcu_nocb_adopt_orphan_cbs(struct rcu_data *my_rdp,
 						     unsigned long flags)
 {
 	lockdep_assert_irqs_disabled();
-	if (!rcu_is_nocb_cpu(smp_processor_id()))
+	if (!rcu_segcblist_is_offloaded(&my_rdp->cblist))
 		return false; /* Not NOCBs CPU, caller must migrate CBs. */
 	__call_rcu_nocb_enqueue(my_rdp, rcu_segcblist_head(&rdp->cblist),
 				rcu_segcblist_tail(&rdp->cblist),
@@ -2193,6 +2195,7 @@ static bool init_nocb_callback_list(struct rcu_data *rdp)
 	}
 	rcu_segcblist_init(&rdp->cblist);
 	rcu_segcblist_disable(&rdp->cblist);
+	rcu_segcblist_offload(&rdp->cblist);
 	return true;
 }
 
