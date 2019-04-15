@@ -17,6 +17,7 @@
 #include "mdss_mdp.h"
 #include "mdss_mdp_trace.h"
 #include "mdss_debug.h"
+#include "mdss_dsi.h"
 
 #define MDSS_MDP_QSEED3_VER_DOWNSCALE_LIM 2
 #define NUM_MIXERCFG_REGS 3
@@ -4267,6 +4268,14 @@ int mdss_mdp_ctl_destroy(struct mdss_mdp_ctl *ctl)
 	return 0;
 }
 
+static void mdss_mdp_wait_for_panel_on(struct mdss_panel_data *pdata)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata =
+		container_of(pdata, typeof(*ctrl_pdata), panel_data);
+
+	wait_for_completion(&ctrl_pdata->wake_comp);
+}
+
 int mdss_mdp_ctl_intf_event(struct mdss_mdp_ctl *ctl, int event, void *arg,
 	u32 flags)
 {
@@ -4290,8 +4299,11 @@ int mdss_mdp_ctl_intf_event(struct mdss_mdp_ctl *ctl, int event, void *arg,
 	pr_debug("sending ctl=%d event=%d flag=0x%x\n", ctl->num, event, flags);
 
 	do {
-		if (pdata->event_handler)
+		if (pdata->event_handler) {
 			rc = pdata->event_handler(pdata, event, arg);
+			if (event == MDSS_EVENT_LINK_READY)
+				mdss_mdp_wait_for_panel_on(pdata);
+		}
 		pdata = pdata->next;
 	} while (rc == 0 && pdata && pdata->active &&
 		!(flags & CTL_INTF_EVENT_FLAG_SKIP_BROADCAST));
