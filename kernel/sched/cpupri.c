@@ -121,11 +121,11 @@ retry:
 		if (skip)
 			continue;
 
-		if (cpumask_any_and(&p->cpus_allowed, vec->mask) >= nr_cpu_ids)
+		if (cpumask_any_and(p->cpus_ptr, vec->mask) >= nr_cpu_ids)
 			continue;
 
 		if (lowest_mask) {
-			cpumask_and(lowest_mask, &p->cpus_allowed, vec->mask);
+			cpumask_and(lowest_mask, p->cpus_ptr, vec->mask);
 			cpumask_andnot(lowest_mask, lowest_mask,
 				       cpu_isolated_mask);
 			if (drop_nopreempts)
