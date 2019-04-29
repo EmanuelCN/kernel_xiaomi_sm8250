@@ -6250,6 +6250,8 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
 		if (req) {
 			tcp_rcv_synrecv_state_fastopen(sk);
 		} else {
+			tcp_try_undo_spurious_syn(sk);
+			tp->retrans_stamp = 0;
 			tcp_init_transfer(sk, BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB);
 			WRITE_ONCE(tp->copied_seq, tp->rcv_nxt);
 		}
