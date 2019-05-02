@@ -177,7 +177,7 @@ static int cluster_select(struct lpm_cluster *cluster, bool from_idle)
 					&level->num_cpu_votes))
 			continue;
 
-		if (from_idle && latency_us < pwr_params->exit_latency)
+		if (from_idle && latency_us <= pwr_params->exit_latency)
 			break;
 
 		if (sleep_us < (pwr_params->exit_latency +
