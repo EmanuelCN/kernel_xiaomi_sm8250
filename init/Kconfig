@@ -1235,6 +1235,16 @@ config SCHED_TUNE
 
 	  If unsure, say N.
 
+config STUNE_ASSIST
+	bool "SchedTune configuration helper"
+	depends on SCHED_TUNE
+	depends on ANDROID
+	help
+	  This option enables the configuration of default SchedTune
+	  parameters from kernel.
+
+	  If unsure, say N.
+
 config CPUSETS_ASSIST
 	bool "Cpusets configuration helper"
 	depends on CPUSETS
