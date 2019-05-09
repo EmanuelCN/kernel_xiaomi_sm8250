@@ -864,6 +864,7 @@ static int subsys_start(struct subsys_device *subsys)
 		return ret;
 	}
 	subsys_set_state(subsys, SUBSYS_ONLINE);
+	subsys_set_crash_status(subsys, CRASH_STATUS_NO_CRASH);
 
 	notify_each_subsys_device(&subsys, 1, SUBSYS_AFTER_POWERUP,
 								NULL);
