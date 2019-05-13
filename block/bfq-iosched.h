@@ -699,6 +699,8 @@ struct bfq_data {
 	struct bfq_io_cq *bio_bic;
 	/* bfqq associated with the task issuing current bio for merging */
 	struct bfq_queue *bio_bfqq;
+	/* Extra flag used only for TESTING */
+	bool bio_bfqq_set;
 
 	/*
 	 * Depth limits used in bfq_limit_depth (see comments on the
@@ -1006,32 +1008,118 @@ void bfq_add_bfqq_busy(struct bfq_data *bfqd, struct bfq_queue *bfqq);
 /* --------------- end of interface of B-WF2Q+ ---------------- */
 
 /* Logging facilities. */
-#ifdef CONFIG_BFQ_GROUP_IOSCHED
-struct bfq_group *bfqq_group(struct bfq_queue *bfqq);
+static inline void bfq_pid_to_str(int pid, char *str, int len)
+{
+	if (pid != -1)
+		snprintf(str, len, "%d", pid);
+	else
+		snprintf(str, len, "SHARED-");
+}
 
-#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)	do {			\
-	blk_add_cgroup_trace_msg((bfqd)->queue,				\
-			bfqg_to_blkg(bfqq_group(bfqq))->blkcg,		\
-			"bfq%d%c " fmt, (bfqq)->pid,			\
-			bfq_bfqq_sync((bfqq)) ? 'S' : 'A', ##args);	\
+#ifdef CONFIG_BFQ_REDIRECT_TO_CONSOLE
+
+static const char *checked_dev_name(const struct device *dev)
+{
+	static const char nodev[] = "nodev";
+
+	if (dev)
+		return dev_name(dev);
+
+	return nodev;
+}
+
+#ifdef CONFIG_BFQ_GROUP_IOSCHED
+
+#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)  do {		\
+	char pid_str[MAX_PID_STR_LENGTH];			\
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH); \
+	pr_crit("%s bfq%s%c %s [%s] " fmt "\n",			\
+		checked_dev_name((bfqd)->queue->backing_dev_info->dev), \
+		pid_str,					\
+		bfq_bfqq_sync((bfqq)) ? 'S' : 'A',		\
+		bfqq_group(bfqq)->blkg_path, __func__, ##args);	\
 } while (0)
 
-#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)	do {			\
-	blk_add_cgroup_trace_msg((bfqd)->queue,				\
-		bfqg_to_blkg(bfqg)->blkcg, fmt, ##args);		\
+#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)  do {                    \
+	pr_crit("%s %s [%s] " fmt "\n",				\
+		checked_dev_name((bfqd)->queue->backing_dev_info->dev),	\
+		bfqg->blkg_path, __func__, ##args);		\
 } while (0)
 
 #else /* CONFIG_BFQ_GROUP_IOSCHED */
 
-#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)	\
-	blk_add_trace_msg((bfqd)->queue, "bfq%d%c " fmt, (bfqq)->pid,	\
-			bfq_bfqq_sync((bfqq)) ? 'S' : 'A',		\
-				##args)
-#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)		do {} while (0)
+#define bfq_log_bfqq(bfqd, bfqq, fmt, args...) do {			\
+	char pid_str[MAX_PID_STR_LENGTH];			\
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH); \
+	pr_crit("%s bfq%s%c %s [%s] " fmt "\n",			\
+		checked_dev_name((bfqd)->queue->backing_dev_info->dev), \
+		pid_str, bfq_bfqq_sync((bfqq)) ? 'S' : 'A',	\
+		__func__, ##args);				\
+	} while (0)
+#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)          do {} while (0)
+
+#endif /* CONFIG_BFQ_GROUP_IOSCHED */
+#define bfq_log(bfqd, fmt, args...)					\
+	pr_crit("%s bfq [%s] " fmt "\n",				\
+		checked_dev_name((bfqd)->queue->backing_dev_info->dev), \
+		__func__, ##args)
+
+#else /* CONFIG_BFQ_REDIRECT_TO_CONSOLE */
+
+#if defined(CONFIG_BFQ_MQ_NOLOG_BUG_ON) || !defined(CONFIG_BLK_DEV_IO_TRACE)
+
+/* Avoid possible "unused-variable" warning. See commit message. */
+
+#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)  ((void) (bfqq))
+
+#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)  ((void) (bfqg))
+
+#define bfq_log(bfqd, fmt, args...)             do {} while (0)
+
+#else /* CONFIG_BLK_DEV_IO_TRACE */
+
+#include <linux/blktrace_api.h>
+
+#ifdef CONFIG_BFQ_GROUP_IOSCHED
+
+#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)  do {		\
+	char pid_str[MAX_PID_STR_LENGTH];			\
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH); \
+	blk_add_trace_msg((bfqd)->queue, "bfq%s%c %s [%s] " fmt, \
+			  pid_str,				\
+			  bfq_bfqq_sync((bfqq)) ? 'S' : 'A',    \
+			  bfqq_group(bfqq)->blkg_path, __func__, ##args); \
+	} while (0)
+
+#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)  do {                    \
+	blk_add_trace_msg((bfqd)->queue, "%s [%s] " fmt, bfqg->blkg_path, \
+				  __func__, ##args);			\
+	} while (0)
+
+#else /* CONFIG_BFQ_GROUP_IOSCHED */
+
+#define bfq_log_bfqq(bfqd, bfqq, fmt, args...) do {			\
+	char pid_str[MAX_PID_STR_LENGTH];			\
+	bfq_pid_to_str((bfqq)->pid, pid_str, MAX_PID_STR_LENGTH); \
+	blk_add_trace_msg((bfqd)->queue, "bfq%s%c [%s] " fmt, pid_str, \
+			  bfq_bfqq_sync((bfqq)) ? 'S' : 'A',	\
+			  __func__, ##args);			\
+	} while (0)
+#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)          do {} while (0)
 
 #endif /* CONFIG_BFQ_GROUP_IOSCHED */
 
-#define bfq_log(bfqd, fmt, args...) \
-	blk_add_trace_msg((bfqd)->queue, "bfq " fmt, ##args)
+#define bfq_log(bfqd, fmt, args...)					\
+	blk_add_trace_msg((bfqd)->queue, "bfq [%s] " fmt, __func__, ##args)
+
+#endif /* CONFIG_BLK_DEV_IO_TRACE */
+#endif /* CONFIG_BFQ_REDIRECT_TO_CONSOLE */
+
+#if defined(CONFIG_BFQ_MQ_NOLOG_BUG_ON)
+/* Avoid possible "unused-variable" warning. */
+#define BFQ_BUG_ON(cond)        ((void) (cond))
+#else
+#define BFQ_BUG_ON(cond)        BUG_ON(cond)
+#endif
 
 #endif /* _BFQ_H */
