@@ -1073,7 +1073,7 @@ static void __init_discard_policy(struct f2fs_sb_info *sbi,
 			dpolicy->granularity = MIN_DISCARD_GRANULARITY;
 			if (atomic_read(&dcc->discard_cmd_cnt))
 				dpolicy->max_interval =
-					dcc->min_discard_issue_time;
+					DEF_MAX_DISCARD_URGENT_ISSUE_TIME;
 		}
 	} else if (discard_type == DPOLICY_FORCE) {
 		dpolicy->min_interval = dcc->min_discard_issue_time;
