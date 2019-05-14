@@ -3140,8 +3140,11 @@ result:
 					ret = 0;
 					if (wbc->sync_mode == WB_SYNC_ALL) {
 						cond_resched();
-						congestion_wait(BLK_RW_ASYNC,
-							DEFAULT_IO_TIMEOUT);
+#if (CONFIG_HZ > 100)
+						congestion_wait(BLK_RW_ASYNC, 2);
+#else
+						congestion_wait(BLK_RW_ASYNC, 1);
+#endif
 						goto retry_write;
 					}
 					goto next;
