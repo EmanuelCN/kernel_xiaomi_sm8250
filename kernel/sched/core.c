@@ -5782,84 +5782,6 @@ out_put_task:
 }
 EXPORT_SYMBOL_GPL(sched_setaffinity);
 
-char sched_lib_name[LIB_PATH_LENGTH];
-unsigned int sched_lib_mask_check;
-unsigned int sched_lib_mask_force;
-static inline bool is_sched_lib_based_app(pid_t pid)
-{
-	const char *name = NULL;
-	char *libname, *lib_list;
-	struct vm_area_struct *vma;
-	char path_buf[LIB_PATH_LENGTH];
-	char *tmp_lib_name;
-	bool found = false;
-	struct task_struct *p;
-
-	if (strnlen(sched_lib_name, LIB_PATH_LENGTH) == 0)
-		return false;
-
-	tmp_lib_name = kmalloc(LIB_PATH_LENGTH, GFP_KERNEL);
-	if (!tmp_lib_name)
-		return false;
-
-	rcu_read_lock();
-
-	p = find_process_by_pid(pid);
-	if (!p) {
-		rcu_read_unlock();
-		kfree(tmp_lib_name);
-		return false;
-	}
-
-	/* Prevent p going away */
-	get_task_struct(p);
-	rcu_read_unlock();
-
-	if (!p->mm)
-		goto put_task_struct;
-
-	down_read(&p->mm->mmap_sem);
-	for (vma = p->mm->mmap; vma ; vma = vma->vm_next) {
-		if (vma->vm_file && vma->vm_flags & VM_EXEC) {
-			name = d_path(&vma->vm_file->f_path,
-					path_buf, LIB_PATH_LENGTH);
-			if (IS_ERR(name))
-				goto release_sem;
-
-			strlcpy(tmp_lib_name, sched_lib_name, LIB_PATH_LENGTH);
-			lib_list = tmp_lib_name;
-			while ((libname = strsep(&lib_list, ","))) {
-				libname = skip_spaces(libname);
-				if (strnstr(name, libname,
-					strnlen(name, LIB_PATH_LENGTH))) {
-					found = true;
-					goto release_sem;
-				}
-			}
-		}
-	}
-
-release_sem:
-	up_read(&p->mm->mmap_sem);
-put_task_struct:
-	put_task_struct(p);
-	kfree(tmp_lib_name);
-	return found;
-}
-
-long msm_sched_setaffinity(pid_t pid, struct cpumask *new_mask)
-{
-	if (sched_lib_mask_check != 0 && sched_lib_mask_force != 0 &&
-		(cpumask_bits(new_mask)[0] == sched_lib_mask_check) &&
-		is_sched_lib_based_app(pid)) {
-
-		cpumask_t forced_mask = { {sched_lib_mask_force} };
-
-		cpumask_copy(new_mask, &forced_mask);
-	}
-	return sched_setaffinity(pid, new_mask);
-}
-
 static int get_user_cpu_mask(unsigned long __user *user_mask_ptr, unsigned len,
 			     struct cpumask *new_mask)
 {
@@ -5890,7 +5812,7 @@ SYSCALL_DEFINE3(sched_setaffinity, pid_t, pid, unsigned int, len,
 
 	retval = get_user_cpu_mask(user_mask_ptr, len, new_mask);
 	if (retval == 0)
-		retval = msm_sched_setaffinity(pid, new_mask);
+		retval = sched_setaffinity(pid, new_mask);
 	free_cpumask_var(new_mask);
 	return retval;
 }
