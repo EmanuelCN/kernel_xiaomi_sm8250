@@ -166,6 +166,7 @@ static inline void fsnotify_unlink(struct inode *dir, struct dentry *dentry)
 	WARN_ON_ONCE(d_is_negative(dentry));
 
 	/* TODO: call fsnotify_dirent() */
+	fsnotify_nameremove(dentry, 0);
 }
 
 /*
@@ -192,6 +193,7 @@ static inline void fsnotify_rmdir(struct inode *dir, struct dentry *dentry)
 	WARN_ON_ONCE(d_is_negative(dentry));
 
 	/* TODO: call fsnotify_dirent() */
+	fsnotify_nameremove(dentry, 1);
 }
 
 /*
