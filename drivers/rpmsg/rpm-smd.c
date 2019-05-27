@@ -36,6 +36,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/trace_rpm_smd.h>
 
+#define WAIT_FOR_ACK_TIMEOUT		5 * HZ
+
 #define DEFAULT_BUFFER_SIZE 256
 #define DEBUG_PRINT_BUFFER_SIZE 512
 #define MAX_SLEEP_BUFFER 128
@@ -1371,7 +1373,14 @@ int msm_rpm_wait_for_ack(uint32_t msg_id)
 	if (!elem)
 		return rc;
 
-	wait_for_completion(&elem->ack);
+	rc = wait_for_completion_timeout(&elem->ack, WAIT_FOR_ACK_TIMEOUT);
+	if (rc == 0) {
+		if (elem->errno == 0)
+			elem->errno = -ETIMEDOUT;
+
+		pr_err("Timeout while waiting for ack.\n");
+	}
+
 	trace_rpm_smd_ack_recvd(0, msg_id, 0xDEADFEED);
 
 	rc = elem->errno;
