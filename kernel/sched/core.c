@@ -1657,7 +1657,7 @@ void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
 	if (queued)
 		enqueue_task(rq, p, ENQUEUE_RESTORE | ENQUEUE_NOCLOCK);
 	if (running)
-		set_curr_task(rq, p);
+		set_next_task(rq, p);
 }
 
 /*
@@ -4285,7 +4285,7 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 
 		p = fair_sched_class.pick_next_task(rq, prev, rf);
 		if (unlikely(p == RETRY_TASK))
-			goto again;
+			goto restart;
 
 		/* Assumes fair_sched_class->next == idle_sched_class */
 		if (unlikely(!p))
@@ -4294,14 +4294,28 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 		return p;
 	}
 
-again:
+restart:
+#ifdef CONFIG_SMP
+	/*
+	 * We must do the balancing pass before put_next_task(), such
+	 * that when we release the rq->lock the task is in the same
+	 * state as before we took rq->lock.
+	 *
+	 * We can terminate the balance pass as soon as we know there is
+	 * a runnable task of @class priority or higher.
+	 */
+	for_class_range(class, prev->sched_class, &idle_sched_class) {
+		if (class->balance(rq, prev, rf))
+			break;
+	}
+#endif
+
+	put_prev_task(rq, prev);
+
 	for_each_class(class) {
-		p = class->pick_next_task(rq, prev, rf);
-		if (p) {
-			if (unlikely(p == RETRY_TASK))
-				goto again;
+		p = class->pick_next_task(rq, NULL, NULL);
+		if (p)
 			return p;
-		}
 	}
 
 	/* The idle class should always have a runnable task: */
@@ -4867,7 +4881,7 @@ void rt_mutex_setprio(struct task_struct *p, struct task_struct *pi_task)
 	if (queued)
 		enqueue_task(rq, p, queue_flag);
 	if (running)
-		set_curr_task(rq, p);
+		set_next_task(rq, p);
 
 	check_class_changed(rq, p, prev_class, oldprio);
 out_unlock:
@@ -4934,7 +4948,7 @@ void set_user_nice(struct task_struct *p, long nice)
 			resched_curr(rq);
 	}
 	if (running)
-		set_curr_task(rq, p);
+		set_next_task(rq, p);
 out_unlock:
 	task_rq_unlock(rq, p, &rf);
 }
@@ -5380,7 +5394,7 @@ change:
 		enqueue_task(rq, p, queue_flags);
 	}
 	if (running)
-		set_curr_task(rq, p);
+		set_next_task(rq, p);
 
 	check_class_changed(rq, p, prev_class, oldprio);
 
@@ -6747,7 +6761,7 @@ void sched_setnuma(struct task_struct *p, int nid)
 	if (queued)
 		enqueue_task(rq, p, ENQUEUE_RESTORE | ENQUEUE_NOCLOCK);
 	if (running)
-		set_curr_task(rq, p);
+		set_next_task(rq, p);
 	task_rq_unlock(rq, p, &rf);
 }
 #endif /* CONFIG_NUMA_BALANCING */
@@ -6788,21 +6802,22 @@ static void calc_load_migrate(struct rq *rq)
 		atomic_long_add(delta, &calc_load_tasks);
 }
 
-static void put_prev_task_fake(struct rq *rq, struct task_struct *prev)
+static struct task_struct *__pick_migrate_task(struct rq *rq)
 {
+	const struct sched_class *class;
+	struct task_struct *next;
+
+	for_each_class(class) {
+		next = class->pick_next_task(rq, NULL, NULL);
+		if (next) {
+			next->sched_class->put_prev_task(rq, next);
+			return next;
+		}
+	}
+
+	/* The idle class should always have a runnable task */
+	BUG();
 }
-
-static const struct sched_class fake_sched_class = {
-	.put_prev_task = put_prev_task_fake,
-};
-
-static struct task_struct fake_task = {
-	/*
-	 * Avoid pull_{rt,dl}_task()
-	 */
-	.prio = MAX_PRIO + 1,
-	.sched_class = &fake_sched_class,
-};
 
 /*
  * Remove a task from the runqueue and pretend that it's migrating. This
@@ -6882,12 +6897,7 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf,
 		if (rq->nr_running == 1)
 			break;
 
-		/*
-		 * pick_next_task() assumes pinned rq->lock:
-		 */
-		next = pick_next_task(rq, &fake_task, rf);
-		BUG_ON(!next);
-		put_prev_task(rq, next);
+		next = __pick_migrate_task(rq);
 
 		if (!migrate_pinned_tasks && next->flags & PF_KTHREAD &&
 			!cpumask_intersects(&avail_cpus, &next->cpus_allowed)) {
@@ -7932,8 +7942,15 @@ void sched_move_task(struct task_struct *tsk)
 
 	if (queued)
 		enqueue_task(rq, tsk, queue_flags);
-	if (running)
-		set_curr_task(rq, tsk);
+	if (running) {
+		set_next_task(rq, tsk);
+		/*
+		 * After changing group, the running task may have joined a
+		 * throttled one but it's still the running task. Trigger a
+		 * resched to make sure that task can still run.
+		 */
+		resched_curr(rq);
+	}
 
 	task_rq_unlock(rq, tsk, &rf);
 }
