@@ -6153,6 +6153,8 @@ static void bfq_update_inject_limit(struct bfq_data *bfqd,
 		     "tot_time_ns %llu last_serv_time_ns %llu old limit %u",
 		     tot_time_ns, bfqq->last_serv_time_ns, old_limit);
 
+	bfq_log_bfqq(bfqd, bfqq, "rq_in_driver %d", bfqd->rq_in_driver);
+
 	if (bfqq->last_serv_time_ns > 0) {
 		u64 threshold = (bfqq->last_serv_time_ns * 3)>>1;
 
@@ -6169,6 +6171,8 @@ static void bfq_update_inject_limit(struct bfq_data *bfqd,
 			bfqq->inject_limit);
 	}
 	BUG_ON(bfqq->last_serv_time_ns == 0 && old_limit > 1);
+
+	BUG_ON(bfqd->rq_in_driver < 1);
 
 	/*
 	 * Either we still have to compute the base value for the
