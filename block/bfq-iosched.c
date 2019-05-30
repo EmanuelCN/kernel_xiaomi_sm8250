@@ -4826,6 +4826,11 @@ check_queue:
 							async_bfqq),
 				     bfq_bfqq_budget_left(async_bfqq)
 				);
+		BFQ_BUG_ON(bfqq->waker_bfqq == bfqq);
+		BFQ_BUG_ON(bfq_bfqq_has_waker(bfqq) &&
+			   bfq_bfqq_busy(bfqq->waker_bfqq) &&
+			   !bfqq->waker_bfqq->next_rq);
+
 		/*
 		 * The next three mutually-exclusive ifs decide
 		 * whether to try injection, and choose the queue to
