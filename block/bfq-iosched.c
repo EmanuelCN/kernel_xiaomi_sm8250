@@ -970,7 +970,11 @@ static struct request *bfq_find_next_rq(struct bfq_data *bfqd,
 static unsigned long bfq_serv_to_charge(struct request *rq,
 					struct bfq_queue *bfqq)
 {
-	if (bfq_bfqq_sync(bfqq) || bfqq->wr_coeff > 1)
+	BFQ_BUG_ON(!bfqq->bfqd);
+	BFQ_BUG_ON(!rq);
+
+	if (bfq_bfqq_sync(bfqq) || bfqq->wr_coeff > 1 ||
+	    bfq_asymmetric_scenario(bfqq->bfqd, bfqq))
 		return blk_rq_sectors(rq);
 
 	return blk_rq_sectors(rq) * bfq_async_charge_factor;
