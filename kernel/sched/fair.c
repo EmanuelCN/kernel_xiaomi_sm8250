@@ -5496,6 +5496,8 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 {
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
+	bool prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
+				(schedtune_prefer_idle(p) > 0) : 0;
 
 	/*
 	 * The code below (indirectly) updates schedutil which looks at
@@ -5582,8 +5584,14 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		 * the PELT signals of tasks to converge before taking them
 		 * into account, but that is not straightforward to implement,
 		 * and the following generally works well enough in practice.
+		 *
+		 * If the task prefers idle cpu, and it also is the first
+		 * task enqueued in this runqueue, then we don't check
+		 * overutilized. Hopefully the cpu util will be back to
+		 * normal before next overutilized check.
 		 */
-		if (flags & ENQUEUE_WAKEUP)
+		if ((flags & ENQUEUE_WAKEUP) &&
+		    !(prefer_idle && rq->nr_running == 1))
 			update_overutilized_status(rq);
 	}
 
@@ -6958,6 +6966,7 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 	bool prefer_idle = schedtune_prefer_idle(p);
 	bool boosted;
 	/* Initialise with deepest possible cstate (INT_MAX) */
+	unsigned long best_idle_util = ULONG_MAX;
 	int shallowest_idle_cstate = INT_MAX;
 	struct sched_domain *start_sd;
 	struct sched_group *sg;
@@ -7078,9 +7087,15 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 			 * Ensure minimum capacity to grant the required boost.
 			 * The target CPU can be already at a capacity level higher
 			 * than the one required to boost the task.
+			 * However, if the task prefers idle cpu and that
+			 * cpu is idle, skip this check, but still need to make
+			 * sure the task fits in that cpu after considering
+			 * capacity margin.
 			 */
 			new_util = max(min_util, new_util);
-			if (new_util > capacity_orig)
+			if ((!(prefer_idle && idle_cpu(i))
+				&& new_util > capacity_orig) ||
+				!task_fits_capacity(p, capacity_orig, i))
 				continue;
 
 			/*
@@ -7150,12 +7165,23 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 					 * shallowest.
 					 */
 					if (capacity_orig == target_capacity &&
-					    sysctl_sched_cstate_aware &&
-					    idle_idx >= shallowest_idle_cstate)
-						continue;
+					    sysctl_sched_cstate_aware) {
+						if (shallowest_idle_cstate <
+						    idle_idx)
+							continue;
+						/*
+						 * If idle state of cpu is the
+						 * same, select least utilized.
+						 */
+						else if (shallowest_idle_cstate
+						     == idle_idx &&
+						    best_idle_util <= new_util)
+							continue;
+					}
 
 					target_capacity = capacity_orig;
 					shallowest_idle_cstate = idle_idx;
+					best_idle_util = new_util;
 					best_idle_cpu = i;
 					continue;
 				}
