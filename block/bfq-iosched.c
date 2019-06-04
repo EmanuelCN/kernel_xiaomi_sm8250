@@ -4911,6 +4911,10 @@ check_queue:
 		    icq_to_bic(async_bfqq->next_rq->elv.icq) == bfqq->bic &&
 		    bfq_serv_to_charge(async_bfqq->next_rq, async_bfqq) <=
 		    bfq_bfqq_budget_left(async_bfqq)) {
+			bfq_log_bfqq(bfqd, bfqq,
+				     "choosing directly the async queue %d",
+				     bfqq->bic->bfqq[0]->pid);
+			BUG_ON(bfqq->bic->bfqq[0] == bfqq);
 			bfqq = bfqq->bic->bfqq[0];
 			bfq_log_bfqq(bfqd, bfqq,
 				     "chosen directly this async queue");
@@ -4923,17 +4927,22 @@ check_queue:
 			bfq_log_bfqq(bfqd, bfqq,
 				     "choosing directly the waker queue %d",
 				     bfqq->waker_bfqq->pid);
+			BUG_ON(bfqq->waker_bfqq == bfqq);
 			bfqq = bfqq->waker_bfqq;
 			bfq_log_bfqq(bfqd, bfqq,
 				     "chosen directly this waker queue");
 		} else if (!idling_boosts_thr_without_issues(bfqd, bfqq) &&
 			 (bfqq->wr_coeff == 1 || bfqd->wr_busy_queues > 1 ||
 			  !bfq_bfqq_has_short_ttime(bfqq))) {
+			struct bfq_queue *new_bfqq;
+
 			bfq_log_bfqq(bfqd, bfqq,
 				     "looking inject wr_busy %d long_tt %d",
 				     bfqd->wr_busy_queues,
 				     !bfq_bfqq_has_short_ttime(bfqq));
-			bfqq = bfq_choose_bfqq_for_injection(bfqd);
+			new_bfqq = bfq_choose_bfqq_for_injection(bfqd);
+			BUG_ON(new_bfqq == bfqq);
+			bfqq = new_bfqq;
 		} else {
 			bfqq = NULL;
 		}
