@@ -55,6 +55,22 @@ module_param_named(debug_mask, binder_alloc_debug_mask,
 			pr_info_ratelimited(x); \
 	} while (0)
 
+static struct kmem_cache *binder_buffer_pool;
+
+int binder_buffer_pool_create(void)
+{
+	binder_buffer_pool = KMEM_CACHE(binder_buffer, SLAB_HWCACHE_ALIGN);
+	if (!binder_buffer_pool)
+		return -ENOMEM;
+
+	return 0;
+}
+
+void binder_buffer_pool_destroy(void)
+{
+	kmem_cache_destroy(binder_buffer_pool);
+}
+
 static struct binder_buffer *binder_buffer_next(struct binder_buffer *buffer)
 {
 	return list_entry(buffer->entry.next, struct binder_buffer, entry);
@@ -510,7 +526,7 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 	if (buffer_size != size) {
 		struct binder_buffer *new_buffer;
 
-		new_buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
+		new_buffer = kmem_cache_zalloc(binder_buffer_pool, GFP_KERNEL);
 		if (!new_buffer) {
 			pr_err("%s: %d failed to alloc new buffer struct\n",
 			       __func__, alloc->pid);
@@ -645,7 +661,7 @@ static void binder_delete_free_buffer(struct binder_alloc *alloc,
 					 buffer_start_page(buffer) + PAGE_SIZE);
 	}
 	list_del(&buffer->entry);
-	kfree(buffer);
+	kmem_cache_free(binder_buffer_pool, buffer);
 }
 
 static void binder_free_buf_locked(struct binder_alloc *alloc,
@@ -759,7 +775,7 @@ int binder_alloc_mmap_handler(struct binder_alloc *alloc,
 	}
 	alloc->buffer_size = vma->vm_end - vma->vm_start;
 
-	buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
+	buffer = kmem_cache_zalloc(binder_buffer_pool, GFP_KERNEL);
 	if (!buffer) {
 		ret = -ENOMEM;
 		failure_string = "alloc buffer struct";
@@ -819,7 +835,7 @@ void binder_alloc_deferred_release(struct binder_alloc *alloc)
 
 		list_del(&buffer->entry);
 		WARN_ON_ONCE(!list_empty(&alloc->buffers));
-		kfree(buffer);
+		kmem_cache_free(binder_buffer_pool, buffer);
 	}
 
 	page_count = 0;
