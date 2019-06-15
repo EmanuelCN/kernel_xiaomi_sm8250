@@ -5318,7 +5318,6 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	disable_irq(device->pwrctrl.interrupt_num);
 
 	rwlock_init(&device->context_lock);
-	spin_lock_init(&device->submit_lock);
 
 	timer_setup(&device->idle_timer, kgsl_timer, 0);
 
