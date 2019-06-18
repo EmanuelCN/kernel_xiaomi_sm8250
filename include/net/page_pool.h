@@ -132,6 +132,20 @@ static inline void page_pool_recycle_direct(struct page_pool *pool,
 	__page_pool_put_page(pool, page, true);
 }
 
+/* Disconnects a page (from a page_pool).  API users can have a need
+ * to disconnect a page (from a page_pool), to allow it to be used as
+ * a regular page (that will eventually be returned to the normal
+ * page-allocator via put_page).
+ */
+void page_pool_unmap_page(struct page_pool *pool, struct page *page);
+static inline void page_pool_release_page(struct page_pool *pool,
+					  struct page *page)
+{
+#ifdef CONFIG_PAGE_POOL
+	page_pool_unmap_page(pool, page);
+#endif
+}
+
 static inline dma_addr_t page_pool_get_dma_addr(struct page *page)
 {
 	return page->dma_addr;
