@@ -404,7 +404,7 @@ static irqreturn_t ch101_store_time(int irq, void *p)
 {
 	struct iio_poll_func *pf = p;
 
-	pf->timestamp = ktime_get_boot_ns();
+	pf->timestamp = ktime_get_boottime_ns();
 	pr_info(TAG "%s: t: %llu\n", __func__, pf->timestamp);
 
 	return IRQ_WAKE_THREAD;
@@ -555,7 +555,7 @@ static enum hrtimer_restart ch101_hrtimer_handler(struct hrtimer *t)
 	}
 
 	pr_info(TAG "%s: t: %lld, counter: %d\n",
-		__func__, ktime_get_boot_ns(), data->counter);
+		__func__, ktime_get_boottime_ns(), data->counter);
 
 	complete(&data->data_completion);
 

@@ -115,7 +115,7 @@ static enum hrtimer_restart tdk_thermistor_hrtimer_handler(struct hrtimer *t)
 		return HRTIMER_NORESTART;
 
 	pr_info(TAG "%s: t: %lld\n",
-		__func__, ktime_get_boot_ns());
+		__func__, ktime_get_boottime_ns());
 
 	if (data->trig != NULL)
 		iio_trigger_poll(data->trig);
@@ -263,7 +263,7 @@ static irqreturn_t tdk_thermistor_store_time(int irq, void *p)
 {
 	struct iio_poll_func *pf = p;
 
-	pf->timestamp = ktime_get_boot_ns();
+	pf->timestamp = ktime_get_boottime_ns();
 	pr_info(TAG "%s: t: %llx\n", __func__, pf->timestamp);
 
 	return IRQ_WAKE_THREAD;

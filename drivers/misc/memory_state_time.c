@@ -129,7 +129,7 @@ static ssize_t show_stat_show(struct kobject *kobj,
 			}
 		}
 	}
-	pr_debug("Current Time: %llu\n", ktime_get_boot_ns());
+	pr_debug("Current Time: %llu\n", ktime_get_boottime_ns());
 	return len;
 }
 KERNEL_ATTR_RO(show_stat);
@@ -212,7 +212,7 @@ static void memory_state_freq_update(struct memory_state_update_block *ub,
 				return;
 			INIT_WORK(&freq_container->update_state,
 					freq_update_do_work);
-			freq_container->time_now = ktime_get_boot_ns();
+			freq_container->time_now = ktime_get_boottime_ns();
 			freq_container->value = value;
 			pr_debug("Scheduling freq update in work queue\n");
 			queue_work(memory_wq, &freq_container->update_state);
@@ -234,7 +234,7 @@ static void memory_state_bw_update(struct memory_state_update_block *ub,
 				return;
 			INIT_WORK(&bw_container->update_state,
 					bw_update_do_work);
-			bw_container->time_now = ktime_get_boot_ns();
+			bw_container->time_now = ktime_get_boottime_ns();
 			bw_container->value = value;
 			bw_container->id = ub->id;
 			pr_debug("Scheduling bandwidth update in work queue\n");
@@ -400,7 +400,7 @@ static int memory_state_time_probe(struct platform_device *pdev)
 	error = freq_buckets_init(&pdev->dev);
 	if (error)
 		return error;
-	last_update = ktime_get_boot_ns();
+	last_update = ktime_get_boottime_ns();
 	init_success = true;
 
 	pr_debug("memory_state_time initialized with num_freqs %d\n",
