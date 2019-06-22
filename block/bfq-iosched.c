@@ -5807,11 +5807,13 @@ bfq_update_io_seektime(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 {
 	bfqq->seek_history <<= 1;
 	bfqq->seek_history |= BFQ_RQ_SEEKY(bfqd, bfqq->last_request_pos, rq);
-	bfq_log_bfqq(bfqd, bfqq, "rq %p, distant %d, small %d, hist %x (%u)",
+	bfq_log_bfqq(bfqd, bfqq,
+		     "rq %p, distant %d, small %d, hist %x (%u), tot_seeky %d",
 		     rq, get_sdist(bfqq->last_request_pos, rq) > BFQQ_SEEK_THR,
 		     blk_rq_sectors(rq) < BFQQ_SECT_THR_NONROT,
 		     bfqq->seek_history,
-		     hweight32(bfqq->seek_history));
+		     hweight32(bfqq->seek_history),
+		     BFQQ_TOTALLY_SEEKY(bfqq));
 
 	if (bfqq->wr_coeff > 1 &&
 	    bfqq->wr_cur_max_time == bfqd->bfq_wr_rt_max_time &&
