@@ -570,6 +570,7 @@ bfq_rq_pos_tree_lookup(struct bfq_data *bfqd, struct rb_root *root,
 
 		parent = *p;
 		bfqq = rb_entry(parent, struct bfq_queue, pos_node);
+		BFQ_BUG_ON(bfqq && !bfqq->next_rq);
 
 		/*
 		 * Sort strictly based on sector. Smallest to the left,
@@ -2638,6 +2639,7 @@ static struct bfq_queue *bfqq_find_close(struct bfq_data *bfqd,
 	 * next_request position).
 	 */
 	__bfqq = rb_entry(parent, struct bfq_queue, pos_node);
+	BFQ_BUG_ON(!__bfqq->next_rq);
 	if (bfq_rq_close_to_sector(__bfqq->next_rq, true, sector))
 		return __bfqq;
 
@@ -2649,6 +2651,7 @@ static struct bfq_queue *bfqq_find_close(struct bfq_data *bfqd,
 		return NULL;
 
 	__bfqq = rb_entry(node, struct bfq_queue, pos_node);
+	BFQ_BUG_ON(!__bfqq->next_rq);
 	if (bfq_rq_close_to_sector(__bfqq->next_rq, true, sector))
 		return __bfqq;
 
