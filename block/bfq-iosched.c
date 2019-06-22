@@ -1869,6 +1869,19 @@ static void bfq_bfqq_handle_idle_busy_switch(struct bfq_data *bfqd,
 
 	bfq_add_bfqq_busy(bfqd, bfqq);
 
+	if (bfqd->in_service_queue)
+		bfq_log_bfqq(bfqd, bfqq,
+			     "wants to preempt %d, higher %d, may preempt %d",
+			     bfqq_wants_to_preempt,
+			     bfq_bfqq_higher_class_or_weight(bfqq,
+							     bfqd->
+							     in_service_queue),
+			     next_queue_may_preempt(bfqd)
+			);
+	else
+		bfq_log_bfqq(bfqd, bfqq,
+			     "no queue in service");
+
 	/*
 	 * Expire in-service queue only if preemption may be needed
 	 * for guarantees. In particular, we care only about two
@@ -3675,10 +3688,19 @@ static void bfq_dispatch_remove(struct request_queue *q, struct request *rq)
 static bool idling_needed_for_service_guarantees(struct bfq_data *bfqd,
 						 struct bfq_queue *bfqq)
 {
-	return (bfqq->wr_coeff > 1 &&
-		bfqd->wr_busy_queues <
-		bfq_tot_busy_queues(bfqd)) ||
+	bool asymmetric_scenario = (bfqq->wr_coeff > 1 &&
+				    bfqd->wr_busy_queues <
+				    bfq_tot_busy_queues(bfqd)) ||
 		bfq_asymmetric_scenario(bfqd, bfqq);
+
+	bfq_log_bfqq(bfqd, bfqq,
+		     "wr_coeff %d wr_busy %d busy %d asymmetric %d",
+		     bfqq->wr_coeff,
+		     bfqd->wr_busy_queues,
+		     bfq_tot_busy_queues(bfqd),
+		     asymmetric_scenario);
+
+	return asymmetric_scenario;
 }
 
 static bool __bfq_bfqq_expire(struct bfq_data *bfqd, struct bfq_queue *bfqq,
