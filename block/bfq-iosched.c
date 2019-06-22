@@ -5297,6 +5297,7 @@ static struct request *__bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
 	       bfq_bfqq_wait_request(bfqq));
 
 	rq = bfq_dispatch_rq_from_bfqq(bfqd, bfqq);
+	bfqq->last_dispatch = ktime_get_ns();
 
 	BFQ_BUG_ON(bfqq->entity.budget < bfqq->entity.service);
 
@@ -6243,6 +6244,9 @@ static void bfq_completed_request(struct bfq_queue *bfqq, struct bfq_data *bfqd)
 	}
 
 	now_ns = ktime_get_ns();
+
+	bfq_log_bfqq(bfqd, bfqq, "rq completion time: %llu us",
+		     div_u64(now_ns - bfqq->last_dispatch, NSEC_PER_USEC));
 
 	bfqq->ttime.last_end_request = now_ns;
 

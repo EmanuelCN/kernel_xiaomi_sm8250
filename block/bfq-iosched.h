@@ -398,6 +398,10 @@ struct bfq_queue {
 	 * the woken queues when this queue exits.
 	 */
 	struct hlist_head woken_list;
+
+	/* time of last rq dispatch (ns) */
+	u64 last_dispatch;
+
 };
 
 /**
