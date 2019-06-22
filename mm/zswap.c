@@ -113,6 +113,9 @@ static bool zswap_same_filled_pages_enabled = true;
 module_param_named(same_filled_pages_enabled, zswap_same_filled_pages_enabled,
 		   bool, 0644);
 
+/* zpool is shared by all of zswap backend  */
+static struct zpool *zswap_pool;
+
 /*********************************
 * data structures
 **********************************/
@@ -469,6 +472,7 @@ static struct zswap_pool *zswap_pool_create(char *type, char *compressor)
 		pr_err("%s zpool not available\n", type);
 		goto error;
 	}
+	zswap_pool = pool->zpool;
 	pr_debug("using %s zpool\n", zpool_get_type(pool->zpool));
 
 	strlcpy(pool->tfm_name, compressor, sizeof(pool->tfm_name));
@@ -496,8 +500,10 @@ static struct zswap_pool *zswap_pool_create(char *type, char *compressor)
 
 error:
 	free_percpu(pool->tfm);
-	if (pool->zpool)
+	if (pool->zpool) {
 		zpool_destroy_pool(pool->zpool);
+		zswap_pool = NULL;
+	}
 	kfree(pool);
 	return NULL;
 }
@@ -549,6 +555,7 @@ static void zswap_pool_destroy(struct zswap_pool *pool)
 	cpuhp_state_remove_instance(CPUHP_MM_ZSWP_POOL_PREPARE, &pool->node);
 	free_percpu(pool->tfm);
 	zpool_destroy_pool(pool->zpool);
+	zswap_pool = NULL;
 	kfree(pool);
 }
 
@@ -934,6 +941,15 @@ freeentry:
 	spin_unlock(&tree->lock);
 
 	return 0;
+}
+
+void zswap_compact(void) {
+	if (!zswap_pool)
+		return;
+
+	pr_info("zswap_compact++\n");
+	zpool_compact(zswap_pool);
+	pr_info("zswap_compact--\n");
 }
 
 /* frees an entry in zswap */
