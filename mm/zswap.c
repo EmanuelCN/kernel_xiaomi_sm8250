@@ -915,9 +915,10 @@ static int zswap_frontswap_load(unsigned type, pgoff_t offset,
 			ZPOOL_MM_RO);
 	dst = kmap_atomic(page);
 
-	if (entry->length == PAGE_SIZE)
+	if (entry->length == PAGE_SIZE) {
+		ret = 0;
 		copy_page(dst, src);
-	else {
+	} else {
 		tfm = *get_cpu_ptr(entry->pool->tfm);
 		ret = crypto_comp_decompress(tfm, src, entry->length, dst, &dlen);
 		put_cpu_ptr(entry->pool->tfm);
