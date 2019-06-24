@@ -5739,6 +5739,10 @@ static bool __bfq_insert_request(struct bfq_data *bfqd, struct request *rq)
 	bfq_update_has_short_ttime(bfqd, bfqq, RQ_BIC(rq));
 	bfq_update_io_seektime(bfqd, bfqq, rq);
 
+	bfq_log_bfqq(bfqd, bfqq,
+		     "has_short_ttime=%d (seeky %d)",
+		     bfq_bfqq_has_short_ttime(bfqq), BFQQ_SEEKY(bfqq));
+
 	waiting = bfqq && bfq_bfqq_wait_request(bfqq);
 	bfq_add_request(rq);
 	idle_timer_disabled = waiting && !bfq_bfqq_wait_request(bfqq);
