@@ -1918,6 +1918,8 @@ static void bfq_reset_inject_limit(struct bfq_data *bfqd,
 		bfqq->inject_limit = 1;
 
 	bfqq->decrease_time_jif = jiffies;
+
+	bfq_log_bfqq(bfqd, bfqq, "");
 }
 
 static void bfq_add_request(struct request *rq)
