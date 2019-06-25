@@ -542,6 +542,69 @@ void __pm_pr_dbg(bool defer, const char *fmt, ...)
 static inline void pm_print_times_init(void) {}
 #endif /* CONFIG_PM_SLEEP_DEBUG */
 
+#ifdef CONFIG_PM_SLEEP_MONITOR
+/* If set, devices will stuck at suspend for verification */
+static bool pm_hang_enabled;
+
+static int pm_notify_test(struct notifier_block *nb,
+			     unsigned long mode, void *_unused)
+{
+	pr_info("Jump into infinite loop now\n");
+
+	/* Suspend thread stuck at a loop forever */
+	for(;;)
+		;
+
+	pr_info("Fail to stuck at loop\n");
+
+	return 0;
+}
+
+static struct notifier_block pm_notify_nb = {
+	.notifier_call = pm_notify_test,
+};
+
+static ssize_t pm_hang_show(struct kobject *kobj, struct kobj_attribute *attr,
+			     char *buf)
+{
+	return snprintf(buf, 10, "%d\n", pm_hang_enabled);
+}
+
+static ssize_t pm_hang_store(struct kobject *kobj, struct kobj_attribute *attr,
+			      const char *buf, size_t n)
+{
+	unsigned long val;
+	int result;
+
+	if (kstrtoul(buf, 10, &val))
+		return -EINVAL;
+
+	if (val > 1)
+		return -EINVAL;
+
+	pm_hang_enabled = !!val;
+
+	if (pm_hang_enabled == true) {
+
+		result = register_pm_notifier(&pm_notify_nb);
+		if (result)
+			pr_warn("Can not register suspend notifier, return %d\n",
+				result);
+
+	} else {
+
+		result = unregister_pm_notifier(&pm_notify_nb);
+		if (result)
+			pr_warn("Can not unregister suspend notifier, return %d\n",
+				result);
+	}
+
+	return n;
+}
+
+power_attr(pm_hang);
+#endif
+
 struct kobject *power_kobj;
 EXPORT_SYMBOL_GPL(power_kobj);
 
@@ -939,6 +1002,9 @@ static struct attribute * g[] = {
 	&pm_print_times_attr.attr,
 	&pm_wakeup_irq_attr.attr,
 	&pm_debug_messages_attr.attr,
+#endif
+#ifdef CONFIG_PM_SLEEP_MONITOR
+	&pm_hang_attr.attr,
 #endif
 #endif
 #ifdef CONFIG_FREEZER

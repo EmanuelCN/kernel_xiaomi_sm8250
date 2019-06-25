@@ -185,6 +185,15 @@ config PM_SLEEP_DEBUG
 	def_bool y
 	depends on PM_DEBUG && PM_SLEEP
 
+config PM_SLEEP_MONITOR
+	bool "Linux kernel suspend/resume process monitor"
+	depends on PM_SLEEP
+	---help---
+	This option will enable suspend/resume monitor to prevent device
+	stuck during suspend/resume process. Suspend timeout handler will
+	dump disk sleep task at first round timeout and trigger kernel panic
+	at second round timeout. The default timer for each round is 30 seconds.
+
 config DPM_WATCHDOG
 	bool "Device suspend/resume watchdog"
 	depends on PM_DEBUG && PSTORE && EXPERT
