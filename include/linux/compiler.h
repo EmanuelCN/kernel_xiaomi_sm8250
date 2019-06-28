@@ -178,9 +178,13 @@ void ftrace_likely_update(struct ftrace_likely_data *f, int val,
 })
 #endif /* CONFIG_DEBUG_ENTRY */
 
+/* Annotate a C jump table to allow objtool to follow the code flow */
+#define __annotate_jump_table __section(".rodata..c_jump_table")
+
 #else
 #define annotate_reachable()
 #define annotate_unreachable()
+#define __annotate_jump_table
 #endif
 
 #ifndef instrumentation_begin
