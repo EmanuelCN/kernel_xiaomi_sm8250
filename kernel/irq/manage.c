@@ -2107,7 +2107,7 @@ static const void *__cleanup_nmi(unsigned int irq, struct irq_desc *desc)
 	}
 
 	irq_settings_clr_disable_unlazy(desc);
-	irq_shutdown(desc);
+	irq_shutdown_and_deactivate(desc);
 
 	irq_release_resources(desc);
 
