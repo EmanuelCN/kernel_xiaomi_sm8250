@@ -787,11 +787,24 @@ static int subsystem_powerup(struct subsys_device *dev, void *data)
 			|| system_state == SYSTEM_POWER_OFF)
 			WARN(1, "SSR aborted: %s, system reboot/shutdown is under way\n",
 				name);
-		else if (!dev->desc->ignore_ssr_failure)
-			panic("[%s:%d]: Powerup error: %s!",
-				current->comm, current->pid, name);
-		else
+		else {
+			if (!dev->desc->ignore_ssr_failure) {
+				/*
+				 * There is a slight window between reboot and
+				 * system_state changing to SYSTEM_RESTART or
+				 * SYSTEM_POWER_OFF. Add a delay before panic
+				 * to ensure SSR that happens during reboot
+				 * will not result in a kernel panic.
+				 */
+				msleep(3000);
+				if (system_state != SYSTEM_RESTART
+					&& system_state != SYSTEM_POWER_OFF)
+					panic("[%s:%d]: Powerup error: %s!",
+						current->comm,
+						current->pid, name);
+			}
 			pr_err("Powerup failure on %s\n", name);
+		}
 		return ret;
 	}
 
