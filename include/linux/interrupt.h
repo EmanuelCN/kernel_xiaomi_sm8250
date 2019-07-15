@@ -247,6 +247,7 @@ extern void suspend_device_irqs(void);
 extern void resume_device_irqs(void);
 extern void unaffine_perf_irqs(void);
 extern void reaffine_perf_irqs(bool from_hotplug);
+extern void rearm_wake_irq(unsigned int irq);
 
 /**
  * struct irq_affinity_notify - context for notification of IRQ affinity changes
