@@ -1877,7 +1877,7 @@ static int cgroup_remount(struct kernfs_root *kf_root, int *flags, char *data)
  */
 static bool use_task_css_set_links __read_mostly;
 
-static void cgroup_enable_task_cg_lists(void)
+void cgroup_enable_task_cg_lists(void)
 {
 	struct task_struct *p, *g;
 
