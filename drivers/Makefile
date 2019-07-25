@@ -12,3 +12,4 @@ obj-$(CONFIG_SPECTRA_CAMERA) += cam_jpeg/
 obj-$(CONFIG_SPECTRA_CAMERA) += cam_fd/
 obj-$(CONFIG_SPECTRA_CAMERA) += cam_lrme/
 obj-$(CONFIG_SPECTRA_CAMERA) += cam_cust/
+obj-$(CONFIG_SPECTRA_CAMERA) += cam_ope/

@@ -39,6 +39,8 @@
 /* CAM_PERF: Used for performance (clock, BW etc) logs */
 #define CAM_PERF       (1 << 25)
 #define CAM_CUSTOM     (1 << 26)
+#define CAM_OPE        (1 << 28)
+#define CAM_PRESIL     (1 << 27)
 
 #define STR_BUFFER_MAX_LENGTH  1024
 

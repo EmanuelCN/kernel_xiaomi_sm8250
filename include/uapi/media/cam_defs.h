@@ -178,6 +178,16 @@ struct cam_iommu_handle {
 #define CAM_FORMAT_ARGB_16                      48
 #define CAM_FORMAT_MAX                          49
 
+/* Pixel Patterns */
+#define PIXEL_PATTERN_RGRGRG                    0x0
+#define PIXEL_PATTERN_GRGRGR                    0x1
+#define PIXEL_PATTERN_BGBGBG                    0x2
+#define PIXEL_PATTERN_GBGBGB                    0x3
+#define PIXEL_PATTERN_YCBYCR                    0x4
+#define PIXEL_PATTERN_YCRYCB                    0x5
+#define PIXEL_PATTERN_CBYCRY                    0x6
+#define PIXEL_PATTERN_CRYCBY                    0x7
+
 /* camera rotaion */
 #define CAM_ROTATE_CW_0_DEGREE                  0
 #define CAM_ROTATE_CW_90_DEGREE                 1
@@ -217,7 +227,9 @@ struct cam_iommu_handle {
 #define CAM_PACKET_DEV_IFE                      15
 #define CAM_PACKET_DEV_ICP                      16
 #define CAM_PACKET_DEV_LRME                     17
-#define CAM_PACKET_DEV_MAX                      18
+#define CAM_PACKET_DEV_TFE                      18
+#define CAM_PACKET_DEV_OPE                      19
+#define CAM_PACKET_DEV_MAX                      20
 
 /* Register base type */
 #define CAM_REG_DUMP_BASE_TYPE_ISP_LEFT         1
