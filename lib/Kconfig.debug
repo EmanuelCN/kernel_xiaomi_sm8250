@@ -1053,7 +1053,6 @@ config SCHEDSTATS
 
 config SCHED_STACK_END_CHECK
 	bool "Detect stack corruption on calls to schedule()"
-	depends on DEBUG_KERNEL
 	default n
 	help
 	  This option checks for a stack overrun on calls to schedule().
