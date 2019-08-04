@@ -1245,15 +1245,60 @@ config STUNE_ASSIST
 
 	  If unsure, say N.
 
-config CPUSETS_ASSIST
-	bool "Cpusets configuration helper"
+config CPUSET_ASSIST
+	bool "Cpuset configuration helper"
 	depends on CPUSETS
 	depends on ANDROID
 	help
-	  This option enables the configuration of default cpusets
-	  parameters from kernel.
+	  This option enables in-kernel overrides for cpuset values.
 
 	  If unsure, say N.
+
+if CPUSET_ASSIST
+
+config CPUSET_AUDIO_APP
+	string "Value for 'audio-app' cpuset"
+	default "1-2"
+	help
+	  The CPU mask to use for the audio-app cpuset.
+
+config CPUSET_BG
+	string "Value for 'background' cpuset"
+	default "0-3"
+	help
+	  The CPU mask to use for the background cpuset.
+
+config CPUSET_CAMERA
+	string "Value for 'camera-daemon' cpuset"
+	default "0-7"
+	help
+	  The CPU mask to use for the camera-daemon cpuset.
+
+config CPUSET_FG
+	string "Value for 'foreground' cpuset"
+	default "0-6"
+	help
+	  The CPU mask to use for the foreground cpuset.
+
+config CPUSET_RESTRICTED
+	string "Value for 'restricted' cpuset"
+	default "0-7"
+	help
+	  The CPU mask to use for the restricted cpuset.
+
+config CPUSET_SYSTEM_BG
+	string "Value for 'system-background' cpuset"
+	default "0-3"
+	help
+	  The CPU mask to use for the system-background cpuset.
+
+config CPUSET_TOP_APP
+	string "Value for 'top-app' cpuset"
+	default "0-7"
+	help
+	  The CPU mask to use for the top-app cpuset.
+
+endif
 
 config SYSFS_DEPRECATED
 	bool "Enable deprecated sysfs features to support old userspace tools"
