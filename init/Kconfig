@@ -1244,13 +1244,11 @@ config SCHED_TUNE
 	  If unsure, say N.
 
 config STUNE_ASSIST
-        bool "SchedTune configuration helper"
-        depends on SCHED_TUNE
-        depends on ANDROID
-        help
-          This option enables the configuration of default SchedTune
-          parameters from kernel.
-
+	bool "SchedTune configuration helper"
+	depends on SCHED_TUNE
+	depends on ANDROID
+	help
+	  This option enables in-kernel overrides for SchedTune values.
           If unsure, say N.
 
 config CPUSET_ASSIST
