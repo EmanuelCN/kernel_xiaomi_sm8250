@@ -2531,6 +2531,9 @@ static void bfq_requests_merged(struct request_queue *q, struct request *rq,
 	BFQ_BUG_ON(rq->rq_flags & RQF_DISP_LIST);
 	BFQ_BUG_ON(next->rq_flags & RQF_DISP_LIST);
 
+	if (!bfqq)
+		return;
+
 	lockdep_assert_held(&bfqq->bfqd->lock);
 
 	bfq_log_bfqq(bfqq->bfqd, bfqq,
@@ -6169,8 +6172,11 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 	BFQ_BUG_ON(!bfqq && !(at_head || blk_rq_is_passthrough(rq)));
 	BFQ_BUG_ON(bfqq && bic_to_bfqq(RQ_BIC(rq), rq_is_sync(rq)) != bfqq);
 
-	if (at_head || blk_rq_is_passthrough(rq)) {
-	} else {
+	if (!bfqq || at_head || blk_rq_is_passthrough(rq)) {
+		if (at_head)
+			list_add(&rq->queuelist, &bfqd->dispatch);
+		else
+			list_add_tail(&rq->queuelist, &bfqd->dispatch);
 
 		rq->rq_flags |= RQF_DISP_LIST;
 		if (bfqq)
@@ -6181,7 +6187,7 @@ static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 			bfq_log(bfqd,
 				"%p in disp: at_head %d",
 				rq, at_head);
-	} else { /* bfqq is assumed to be non null here */
+	} else {
 		BFQ_BUG_ON(!bfqq);
 		BFQ_BUG_ON(!(rq->rq_flags & RQF_GOT));
 		rq->rq_flags &= ~RQF_GOT;
