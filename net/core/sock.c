@@ -1755,6 +1755,12 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
 		}
 		RCU_INIT_POINTER(newsk->sk_reuseport_cb, NULL);
 
+		if (bpf_sk_storage_clone(sk, newsk)) {
+			sk_free_unlock_clone(newsk);
+			newsk = NULL;
+			goto out;
+		}
+
 		newsk->sk_err	   = 0;
 		newsk->sk_err_soft = 0;
 		newsk->sk_priority = 0;
