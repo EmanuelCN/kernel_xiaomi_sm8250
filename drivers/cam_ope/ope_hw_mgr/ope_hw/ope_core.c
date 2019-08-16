@@ -1711,9 +1711,26 @@ int cam_ope_process_cmd(void *device_priv, uint32_t cmd_type,
 		struct cam_ope_dev_clk_update *clk_upd_cmd =
 			(struct cam_ope_dev_clk_update *)cmd_args;
 
+		if (core_info->clk_enable == false) {
+			rc = cam_soc_util_clk_enable_default(soc_info,
+				CAM_SVS_VOTE);
+			if (rc) {
+				CAM_ERR(CAM_OPE, "Clock enable is failed");
+				return rc;
+			}
+			core_info->clk_enable = true;
+		}
+
 		rc = cam_ope_update_clk_rate(soc_info, clk_upd_cmd->clk_rate);
 		if (rc)
 			CAM_ERR(CAM_OPE, "Failed to update clk: %d", rc);
+		}
+		break;
+	case OPE_HW_CLK_DISABLE: {
+		if (core_info->clk_enable == true)
+			cam_soc_util_clk_disable_default(soc_info);
+
+		core_info->clk_enable = false;
 		}
 		break;
 	case OPE_HW_BW_UPDATE: {

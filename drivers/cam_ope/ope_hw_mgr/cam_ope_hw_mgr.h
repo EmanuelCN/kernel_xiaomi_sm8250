@@ -52,6 +52,112 @@
 
 #define OPE_MAX_CDM_BLS           16
 
+#define CAM_OPE_MAX_PER_PATH_VOTES 6
+#define CAM_OPE_BW_CONFIG_UNKNOWN  0
+#define CAM_OPE_BW_CONFIG_V2       2
+
+#define CLK_HW_OPE                 0x0
+#define CLK_HW_MAX                 0x1
+
+#define OPE_DEVICE_IDLE_TIMEOUT    400
+
+
+/**
+ * struct cam_ope_clk_bw_request_v2
+ * @budget_ns: Time required to process frame
+ * @frame_cycles: Frame cycles needed to process the frame
+ * @rt_flag: Flag to indicate real time stream
+ * @num_paths: Number of paths for per path bw vote
+ * @axi_path: Per path vote info for OPE
+ */
+struct cam_ope_clk_bw_req_internal_v2 {
+	uint64_t budget_ns;
+	uint32_t frame_cycles;
+	uint32_t rt_flag;
+	uint32_t num_paths;
+	struct cam_axi_per_path_bw_vote axi_path[CAM_OPE_MAX_PER_PATH_VOTES];
+};
+
+/**
+ * struct cam_ope_clk_bw_request
+ * @budget_ns: Time required to process frame
+ * @frame_cycles: Frame cycles needed to process the frame
+ * @rt_flag: Flag to indicate real time stream
+ * @uncompressed_bw: Bandwidth required to process frame
+ * @compressed_bw: Compressed bandwidth to process frame
+ */
+struct cam_ope_clk_bw_request {
+	uint64_t budget_ns;
+	uint32_t frame_cycles;
+	uint32_t rt_flag;
+	uint64_t uncompressed_bw;
+	uint64_t compressed_bw;
+};
+
+/**
+ * struct cam_ctx_clk_info
+ * @curr_fc: Context latest request frame cycles
+ * @rt_flag: Flag to indicate real time request
+ * @base_clk: Base clock to process the request
+ * @reserved: Reserved field
+ * @uncompressed_bw: Current bandwidth voting
+ * @compressed_bw: Current compressed bandwidth voting
+ * @clk_rate: Supported clock rates for the context
+ * @num_paths: Number of valid AXI paths
+ * @axi_path: ctx based per path bw vote
+ */
+struct cam_ctx_clk_info {
+	uint32_t curr_fc;
+	uint32_t rt_flag;
+	uint32_t base_clk;
+	uint32_t reserved;
+	uint64_t uncompressed_bw;
+	uint64_t compressed_bw;
+	int32_t clk_rate[CAM_MAX_VOTE];
+	uint32_t num_paths;
+	struct cam_axi_per_path_bw_vote axi_path[CAM_OPE_MAX_PER_PATH_VOTES];
+};
+
+/**
+ * struct ope_cmd_generic_blob
+ * @ctx: Current context info
+ * @req_info_idx: Index used for request
+ * @io_buf_addr: pointer to io buffer address
+ */
+struct ope_cmd_generic_blob {
+	struct cam_ope_ctx *ctx;
+	uint32_t req_idx;
+	uint64_t *io_buf_addr;
+};
+
+/**
+ * struct cam_ope_clk_info
+ * @base_clk: Base clock to process request
+ * @curr_clk: Current clock of hadrware
+ * @threshold: Threshold for overclk count
+ * @over_clked: Over clock count
+ * @uncompressed_bw: Current bandwidth voting
+ * @compressed_bw: Current compressed bandwidth voting
+ * @num_paths: Number of AXI vote paths
+ * @axi_path: Current per path bw vote info
+ * @hw_type: IPE/BPS device type
+ * @watch_dog: watchdog timer handle
+ * @watch_dog_reset_counter: Counter for watch dog reset
+ */
+struct cam_ope_clk_info {
+	uint32_t base_clk;
+	uint32_t curr_clk;
+	uint32_t threshold;
+	uint32_t over_clked;
+	uint64_t uncompressed_bw;
+	uint64_t compressed_bw;
+	uint32_t num_paths;
+	struct cam_axi_per_path_bw_vote axi_path[CAM_OPE_MAX_PER_PATH_VOTES];
+	uint32_t hw_type;
+	struct cam_req_mgr_timer *watch_dog;
+	uint32_t watch_dog_reset_counter;
+};
+
 /**
  * struct ope_cmd_work_data
  *
@@ -273,6 +379,8 @@ struct ope_io_buf {
  * @ope_debug_buf:       Debug buffer
  * @io_buf:              IO config info of a request
  * @cdm_cmd:             CDM command for OPE CDM
+ * @clk_info:            Clock Info V1
+ * @clk_info_v2:         Clock Info V2
  */
 struct cam_ope_request {
 	uint64_t request_id;
@@ -290,6 +398,8 @@ struct cam_ope_request {
 	struct ope_debug_buffer ope_debug_buf;
 	struct ope_io_buf io_buf[OPE_MAX_BATCH_SIZE][OPE_MAX_IO_BUFS];
 	struct cam_cdm_bl_request *cdm_cmd;
+	struct cam_ope_clk_bw_request clk_info;
+	struct cam_ope_clk_bw_req_internal_v2 clk_info_v2;
 };
 
 /**
@@ -320,6 +430,10 @@ struct cam_ope_cdm {
  * @req_list:        Request List
  * @ope_cdm:         OPE CDM info
  * @req_watch_dog:   Watchdog for requests
+ * @req_watch_dog_reset_counter: Request reset counter
+ * @clk_info:        OPE Ctx clock info
+ * @clk_watch_dog:   Clock watchdog
+ * @clk_watch_dog_reset_counter: Reset counter
  */
 struct cam_ope_ctx {
 	void *context_priv;
@@ -336,6 +450,10 @@ struct cam_ope_ctx {
 	struct cam_ope_request *req_list[CAM_CTX_REQ_MAX];
 	struct cam_ope_cdm ope_cdm;
 	struct cam_req_mgr_timer *req_watch_dog;
+	uint32_t req_watch_dog_reset_counter;
+	struct cam_ctx_clk_info clk_info;
+	struct cam_req_mgr_timer *clk_watch_dog;
+	uint32_t clk_watch_dog_reset_counter;
 };
 
 /**
@@ -366,6 +484,7 @@ struct cam_ope_ctx {
  * @timer_work_data:   Timer work data
  * @ope_dev_intf:      OPE device interface
  * @cdm_reg_map:       OPE CDM register map
+ * @clk_info:          OPE clock Info for HW manager
  */
 struct cam_ope_hw_mgr {
 	int32_t             open_cnt;
@@ -394,6 +513,7 @@ struct cam_ope_hw_mgr {
 	struct ope_clk_work_data *timer_work_data;
 	struct cam_hw_intf *ope_dev_intf[OPE_DEV_MAX];
 	struct cam_soc_reg_map *cdm_reg_map[OPE_DEV_MAX][OPE_BASE_MAX];
+	struct cam_ope_clk_info clk_info;
 };
 
 #endif /* CAM_OPE_HW_MGR_H */

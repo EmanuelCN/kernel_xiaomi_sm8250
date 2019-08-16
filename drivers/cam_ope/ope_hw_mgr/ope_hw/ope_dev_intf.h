@@ -12,20 +12,22 @@
 #include "cam_cpas_api.h"
 
 
-#define OPE_HW_INIT       0x1
-#define OPE_HW_DEINIT     0x2
-#define OPE_HW_ACQUIRE    0x3
-#define OPE_HW_RELEASE    0x4
-#define OPE_HW_START      0x5
-#define OPE_HW_STOP       0x6
-#define OPE_HW_FLUSH      0x7
-#define OPE_HW_PREPARE    0x8
-#define OPE_HW_ISR        0x9
-#define OPE_HW_PROBE      0xA
-#define OPE_HW_CLK_UPDATE 0xB
-#define OPE_HW_BW_UPDATE  0xC
-#define OPE_HW_RESET      0xD
-#define OPE_HW_SET_IRQ_CB 0xE
+#define OPE_HW_INIT        0x1
+#define OPE_HW_DEINIT      0x2
+#define OPE_HW_ACQUIRE     0x3
+#define OPE_HW_RELEASE     0x4
+#define OPE_HW_START       0x5
+#define OPE_HW_STOP        0x6
+#define OPE_HW_FLUSH       0x7
+#define OPE_HW_PREPARE     0x8
+#define OPE_HW_ISR         0x9
+#define OPE_HW_PROBE       0xA
+#define OPE_HW_CLK_UPDATE  0xB
+#define OPE_HW_BW_UPDATE   0xC
+#define OPE_HW_RESET       0xD
+#define OPE_HW_SET_IRQ_CB  0xE
+#define OPE_HW_CLK_DISABLE 0xF
+#define OPE_HW_CLK_ENABLE  0x10
 
 /**
  * struct cam_ope_dev_probe
