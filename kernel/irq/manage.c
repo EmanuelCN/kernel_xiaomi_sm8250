@@ -36,7 +36,7 @@ static int perf_cpu_index = -1;
 static int prime_cpu_index = -1;
 static bool perf_crit_suspended;
 
-#ifdef CONFIG_IRQ_FORCED_THREADING
+#if defined(CONFIG_IRQ_FORCED_THREADING) && !defined(CONFIG_PREEMPT_RT)
 __read_mostly bool force_irqthreads;
 EXPORT_SYMBOL_GPL(force_irqthreads);
 
