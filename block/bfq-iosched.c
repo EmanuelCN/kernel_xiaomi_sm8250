@@ -5066,6 +5066,10 @@ check_queue:
 				     !bfq_bfqq_has_short_ttime(bfqq));
 			new_bfqq = bfq_choose_bfqq_for_injection(bfqd);
 			BUG_ON(new_bfqq == bfqq);
+			if (new_bfqq)
+				bfq_log_bfqq(bfqd, bfqq,
+					"chosen the queue %d for injection",
+					new_bfqq->pid);
 			bfqq = new_bfqq;
 		} else {
 			bfqq = NULL;
