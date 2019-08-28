@@ -115,7 +115,7 @@ struct cam_isp_bw_config_internal {
 /**
  * struct cam_isp_prepare_hw_update_data - hw prepare data
  *
- * @ife_mgr_ctx:            IFE HW manager Context for current request
+ * @isp_mgr_ctx:            ISP HW manager Context for current request
  * @packet_opcode_type:     Packet header opcode in the packet header
  *                          this opcode defines, packet is init packet or
  *                          update packet
@@ -129,7 +129,7 @@ struct cam_isp_bw_config_internal {
  *
  */
 struct cam_isp_prepare_hw_update_data {
-	struct cam_ife_hw_mgr_ctx            *ife_mgr_ctx;
+	void                                 *isp_mgr_ctx;
 	uint32_t                              packet_opcode_type;
 	uint32_t                              bw_config_version;
 	struct cam_isp_bw_config_internal     bw_config[CAM_IFE_HW_NUM_MAX];

@@ -224,13 +224,6 @@ struct cam_isp_hw_get_cmd_update {
 		void                                 *data;
 		struct cam_isp_hw_get_wm_update      *wm_update;
 		struct cam_isp_hw_get_wm_update      *rm_update;
-		struct cam_isp_port_hfr_config       *hfr_update;
-		struct cam_isp_clock_config          *clock_update;
-		struct cam_isp_bw_config             *bw_update;
-		struct cam_ubwc_plane_cfg_v1         *ubwc_update;
-		struct cam_fe_config                 *fe_update;
-		struct cam_vfe_generic_ubwc_config   *ubwc_config;
-		struct cam_isp_vfe_wm_config         *wm_config;
 	};
 };
 

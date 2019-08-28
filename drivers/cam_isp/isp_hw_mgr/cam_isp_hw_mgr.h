@@ -6,8 +6,11 @@
 #ifndef _CAM_ISP_HW_MGR_H_
 #define _CAM_ISP_HW_MGR_H_
 
+#include <uapi/media/cam_defs.h>
 #include "cam_isp_hw_mgr_intf.h"
 #include "cam_tasklet_util.h"
+#include "cam_isp_hw.h"
+
 
 #define CAM_ISP_HW_NUM_MAX                       7
 
@@ -50,18 +53,43 @@ struct cam_isp_hw_mgr {
 };
 
 /**
- * struct cam_hw_event_recovery_data - Payload for the recovery procedure
+ * struct cam_isp_hw_mgr_res- HW resources for the ISP hw manager
  *
- * @error_type:               Error type that causes the recovery
- * @affected_core:            Array of the hardware cores that are affected
- * @affected_ctx:             Array of the hardware contexts that are affected
- * @no_of_context:            Actual number of the affected context
+ * @list:                used by the resource list
+ * @res_type:            ISP manager resource type
+ * @res_id:              resource id based on the resource type for root or
+ *                       leaf resource, it matches the KMD interface port id.
+ *                       For branch resrouce, it is defined by the ISP HW
+ *                       layer
+ * @is_dual_isp          is dual isp hw resource
+ * @hw_res:              hw layer resource array. For single ISP, only one ISP
+ *                       hw resrouce will be acquired. For dual ISP, two hw
+ *                       resources from different ISP HW device will be
+ *                       acquired
+ * @is_secure            informs whether the resource is in secure mode or not
+ * @num_children:        number of the child resource node.
  *
  */
-struct cam_hw_event_recovery_data {
-	uint32_t                   error_type;
-	uint32_t                   affected_core[CAM_ISP_HW_NUM_MAX];
-	struct cam_ife_hw_mgr_ctx *affected_ctx[CAM_CTX_MAX];
-	uint32_t                   no_of_context;
+struct cam_isp_hw_mgr_res {
+	struct list_head                 list;
+	enum cam_isp_resource_type       res_type;
+	uint32_t                         res_id;
+	uint32_t                         is_dual_isp;
+	struct cam_isp_resource_node    *hw_res[CAM_ISP_HW_SPLIT_MAX];
+	uint32_t                         is_secure;
+	uint32_t                         num_children;
+};
+
+
+/**
+ * struct cam_isp_ctx_base_info - Base hardware information for the context
+ *
+ * @idx:                 Base resource index
+ * @split_id:            Split info for the base resource
+ *
+ */
+struct cam_isp_ctx_base_info {
+	uint32_t                       idx;
+	enum cam_isp_hw_split_id       split_id;
 };
 #endif /* _CAM_ISP_HW_MGR_H_ */

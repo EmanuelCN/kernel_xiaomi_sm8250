@@ -13,67 +13,10 @@
 #include "cam_ife_csid_hw_intf.h"
 #include "cam_tasklet_util.h"
 
-/* enum cam_ife_hw_mgr_res_type - manager resource node type */
-enum cam_ife_hw_mgr_res_type {
-	CAM_IFE_HW_MGR_RES_UNINIT,
-	CAM_IFE_HW_MGR_RES_ROOT,
-	CAM_IFE_HW_MGR_RES_CID,
-	CAM_IFE_HW_MGR_RES_CSID,
-	CAM_IFE_HW_MGR_RES_IFE_SRC,
-	CAM_IFE_HW_MGR_RES_IFE_IN_RD,
-	CAM_IFE_HW_MGR_RES_IFE_OUT,
-};
-
 /* IFE resource constants */
 #define CAM_IFE_HW_IN_RES_MAX            (CAM_ISP_IFE_IN_RES_MAX & 0xFF)
 #define CAM_IFE_HW_OUT_RES_MAX           (CAM_ISP_IFE_OUT_RES_MAX & 0xFF)
 #define CAM_IFE_HW_RES_POOL_MAX          64
-
-/**
- * struct cam_vfe_hw_mgr_res- HW resources for the VFE manager
- *
- * @list:                used by the resource list
- * @res_type:            IFE manager resource type
- * @res_id:              resource id based on the resource type for root or
- *                       leaf resource, it matches the KMD interface port id.
- *                       For branch resrouce, it is defined by the ISP HW
- *                       layer
- * @hw_res:              hw layer resource array. For single VFE, only one VFE
- *                       hw resrouce will be acquired. For dual VFE, two hw
- *                       resources from different VFE HW device will be
- *                       acquired
- * @parent:              point to the parent resource node.
- * @children:            point to the children resource nodes
- * @child_num:           numbe of the child resource node.
- * @is_secure            informs whether the resource is in secure mode or not
- *
- */
-struct cam_ife_hw_mgr_res {
-	struct list_head                 list;
-	enum cam_ife_hw_mgr_res_type     res_type;
-	uint32_t                         res_id;
-	uint32_t                         is_dual_vfe;
-	struct cam_isp_resource_node    *hw_res[CAM_ISP_HW_SPLIT_MAX];
-
-	/* graph */
-	struct cam_ife_hw_mgr_res       *parent;
-	struct cam_ife_hw_mgr_res       *child[CAM_IFE_HW_OUT_RES_MAX];
-	uint32_t                         num_children;
-	uint32_t                         is_secure;
-};
-
-
-/**
- * struct ctx_base_info - Base hardware information for the context
- *
- * @idx:                 Base resource index
- * @split_id:            Split info for the base resource
- *
- */
-struct ctx_base_info {
-	uint32_t                       idx;
-	enum cam_isp_hw_split_id       split_id;
-};
 
 /**
  * struct cam_ife_hw_mgr_debug - contain the debug information
@@ -147,20 +90,20 @@ struct cam_ife_hw_mgr_ctx {
 	struct cam_ife_hw_mgr          *hw_mgr;
 	uint32_t                        ctx_in_use;
 
-	struct cam_ife_hw_mgr_res       res_list_ife_in;
+	struct cam_isp_hw_mgr_res       res_list_ife_in;
 	struct list_head                res_list_ife_cid;
 	struct list_head                res_list_ife_csid;
 	struct list_head                res_list_ife_src;
 	struct list_head                res_list_ife_in_rd;
-	struct cam_ife_hw_mgr_res       res_list_ife_out[
+	struct cam_isp_hw_mgr_res       res_list_ife_out[
 						CAM_IFE_HW_OUT_RES_MAX];
 
 	struct list_head                free_res_list;
-	struct cam_ife_hw_mgr_res       res_pool[CAM_IFE_HW_RES_POOL_MAX];
+	struct cam_isp_hw_mgr_res       res_pool[CAM_IFE_HW_RES_POOL_MAX];
 
 	uint32_t                        irq_status0_mask[CAM_IFE_HW_NUM_MAX];
 	uint32_t                        irq_status1_mask[CAM_IFE_HW_NUM_MAX];
-	struct ctx_base_info            base[CAM_IFE_HW_NUM_MAX];
+	struct cam_isp_ctx_base_info    base[CAM_IFE_HW_NUM_MAX];
 	uint32_t                        num_base;
 	uint32_t                        cdm_handle;
 	struct cam_cdm_utils_ops       *cdm_ops;
@@ -219,6 +162,22 @@ struct cam_ife_hw_mgr {
 	struct cam_vfe_hw_get_hw_cap   ife_dev_caps[CAM_IFE_HW_NUM_MAX];
 	struct cam_req_mgr_core_workq *workq;
 	struct cam_ife_hw_mgr_debug    debug_cfg;
+};
+
+/**
+ * struct cam_ife_hw_event_recovery_data - Payload for the recovery procedure
+ *
+ * @error_type:               Error type that causes the recovery
+ * @affected_core:            Array of the hardware cores that are affected
+ * @affected_ctx:             Array of the hardware contexts that are affected
+ * @no_of_context:            Actual number of the affected context
+ *
+ */
+struct cam_ife_hw_event_recovery_data {
+	uint32_t                   error_type;
+	uint32_t                   affected_core[CAM_ISP_HW_NUM_MAX];
+	struct cam_ife_hw_mgr_ctx *affected_ctx[CAM_CTX_MAX];
+	uint32_t                   no_of_context;
 };
 
 /**

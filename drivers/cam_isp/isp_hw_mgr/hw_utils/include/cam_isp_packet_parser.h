@@ -9,7 +9,7 @@
 #include <linux/types.h>
 #include <media/cam_isp.h>
 #include "cam_isp_hw_mgr_intf.h"
-#include "cam_ife_hw_mgr.h"
+#include "cam_isp_hw_mgr.h"
 #include "cam_hw_intf.h"
 #include "cam_packet_util.h"
 
@@ -25,12 +25,12 @@ enum cam_isp_cdm_bl_type {
  * struct cam_isp_generic_blob_info
  *
  * @prepare:            Payload for prepare command
- * @ctx_base_info:      Base hardware information for the context
+ * @base_info:          Base hardware information for the context
  * @kmd_buf_info:       Kmd buffer to store the custom cmd data
  */
 struct cam_isp_generic_blob_info {
 	struct cam_hw_prepare_update_args     *prepare;
-	struct ctx_base_info                  *base_info;
+	struct cam_isp_ctx_base_info          *base_info;
 	struct cam_kmd_buf_info               *kmd_buf_info;
 };
 
@@ -77,7 +77,7 @@ int cam_isp_add_change_base(
  *                         otherwise returns bytes used
  */
 int cam_isp_add_cmd_buf_update(
-	struct cam_ife_hw_mgr_res            *hw_mgr_res,
+	struct cam_isp_hw_mgr_res            *hw_mgr_res,
 	uint32_t                              cmd_type,
 	uint32_t                              hw_cmd_type,
 	uint32_t                              base_idx,
@@ -105,9 +105,9 @@ int cam_isp_add_cmd_buf_update(
 int cam_isp_add_command_buffers(
 	struct cam_hw_prepare_update_args  *prepare,
 	struct cam_kmd_buf_info            *kmd_buf_info,
-	struct ctx_base_info               *base_info,
+	struct cam_isp_ctx_base_info       *base_info,
 	cam_packet_generic_blob_handler     blob_handler_cb,
-	struct cam_ife_hw_mgr_res          *res_list_isp_out,
+	struct cam_isp_hw_mgr_res          *res_list_isp_out,
 	uint32_t                            size_isp_out);
 
 /*
@@ -137,7 +137,7 @@ int cam_isp_add_io_buffers(
 	struct cam_hw_prepare_update_args    *prepare,
 	uint32_t                              base_idx,
 	struct cam_kmd_buf_info              *kmd_buf_info,
-	struct cam_ife_hw_mgr_res            *res_list_isp_out,
+	struct cam_isp_hw_mgr_res            *res_list_isp_out,
 	struct list_head                     *res_list_ife_in_rd,
 	uint32_t                              size_isp_out,
 	bool                                  fill_fence);

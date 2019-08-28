@@ -3200,7 +3200,7 @@ static int cam_vfe_bus_ver3_update_hfr(void *priv, void *cmd_args,
 	}
 
 	reg_val_pair = &vfe_out_data->common_data->io_buf_update[0];
-	hfr_cfg = update_hfr->hfr_update;
+	hfr_cfg = (struct cam_isp_port_hfr_config *)update_hfr->data;
 
 	for (i = 0, j = 0; i < vfe_out_data->num_wm; i++) {
 		if (j >= (MAX_REG_VAL_PAIR_SIZE - MAX_BUF_UPDATE_REG_NUM * 2)) {
@@ -3315,7 +3315,8 @@ static int cam_vfe_bus_ver3_update_ubwc_config_v2(void *cmd_args)
 		goto end;
 	}
 
-	ubwc_generic_cfg = update_ubwc->ubwc_config;
+	ubwc_generic_cfg = (struct cam_vfe_generic_ubwc_config *)
+		update_ubwc->data;
 
 	for (i = 0; i < vfe_out_data->num_wm; i++) {
 
@@ -3483,7 +3484,8 @@ static int cam_vfe_bus_ver3_update_wm_config(
 
 	wm_config_update = cmd_args;
 	vfe_out_data = wm_config_update->res->res_priv;
-	wm_config = wm_config_update->wm_config;
+	wm_config = (struct cam_isp_vfe_wm_config  *)
+		wm_config_update->data;
 
 	if (!vfe_out_data || !vfe_out_data->cdm_util_ops || !wm_config) {
 		CAM_ERR(CAM_ISP, "Invalid data");
