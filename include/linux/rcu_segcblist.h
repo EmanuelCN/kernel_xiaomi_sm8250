@@ -35,7 +35,6 @@ struct rcu_cblist {
 	struct rcu_head *head;
 	struct rcu_head **tail;
 	long len;
-	long len_lazy;
 };
 
 #define RCU_CBLIST_INITIALIZER(n) { .head = NULL, .tail = &n.head }
@@ -86,7 +85,6 @@ struct rcu_segcblist {
 #else
 	long len;
 #endif
-	long len_lazy;
 	u8 enabled;
 	u8 offloaded;
 };
