@@ -2768,8 +2768,10 @@ static void kfree_rcu_work(struct work_struct *work)
 		rcu_lock_acquire(&rcu_callback_map);
 		trace_rcu_invoke_kfree_callback(rcu_state.name, head, offset);
 
-		/* Could be possible to optimize with kfree_bulk in future */
-		kfree((void *)head - offset);
+		if (!WARN_ON_ONCE(!__is_kfree_rcu_offset(offset))) {
+			/* Could be optimized with kfree_bulk() in future. */
+			kfree((void *)head - offset);
+		}
 
 		rcu_lock_release(&rcu_callback_map);
 		cond_resched_tasks_rcu_qs();
@@ -2841,16 +2843,6 @@ static void kfree_rcu_monitor(struct work_struct *work)
 }
 
 /*
- * This version of kfree_call_rcu does not do batching of kfree_rcu() requests.
- * Used only by rcuperf torture test for comparison with kfree_rcu_batch().
- */
-void kfree_call_rcu_nobatch(struct rcu_head *head, rcu_callback_t func)
-{
-	__call_rcu(head, func);
-}
-EXPORT_SYMBOL_GPL(kfree_call_rcu_nobatch);
-
-/*
  * Queue a request for lazy invocation of kfree() after a grace period.
  *
  * Each kfree_call_rcu() request is added to a batch. The batch will be drained
@@ -2868,8 +2860,6 @@ void kfree_call_rcu(struct rcu_head *head, rcu_callback_t func)
 {
 	unsigned long flags;
 	struct kfree_rcu_cpu *krcp;
-
-	head->func = func;
 
 	local_irq_save(flags);	// For safely calling this_cpu_ptr().
 	krcp = this_cpu_ptr(&krc);
