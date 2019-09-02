@@ -627,7 +627,8 @@ static int rt_mutex_adjust_prio_chain(struct task_struct *task,
 		}
 
 		/* [10] Grab the next task, i.e. owner of @lock */
-		task = get_task_struct(rt_mutex_owner(lock));
+		task = rt_mutex_owner(lock);
+		get_task_struct(task);
 		raw_spin_lock(&task->pi_lock);
 
 		/*
@@ -707,7 +708,8 @@ static int rt_mutex_adjust_prio_chain(struct task_struct *task,
 	}
 
 	/* [10] Grab the next task, i.e. the owner of @lock */
-	task = get_task_struct(rt_mutex_owner(lock));
+	task = rt_mutex_owner(lock);
+	get_task_struct(task);
 	raw_spin_lock(&task->pi_lock);
 
 	/* [11] requeue the pi waiters if necessary */
