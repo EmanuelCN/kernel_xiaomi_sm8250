@@ -177,6 +177,7 @@ struct cam_isp_resource_node {
  * @res_id:         Unique resource ID
  * @hw_idx:         IFE hw index
  * @err_type:       Error type if any
+ * @th_reg_val:     Any critical register value captured during th
  *
  */
 struct cam_isp_hw_event_info {
@@ -184,6 +185,7 @@ struct cam_isp_hw_event_info {
 	uint32_t                       res_id;
 	uint32_t                       hw_idx;
 	uint32_t                       err_type;
+	uint32_t                       th_reg_val;
 };
 
 /*
