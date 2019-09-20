@@ -106,6 +106,8 @@ enum cam_camnoc_hw_irq_type {
  * @CAM_CAMNOC_JPEG: Indicates JPEG HW connection to camnoc
  * @CAM_CAMNOC_FD: Indicates FD HW connection to camnoc
  * @CAM_CAMNOC_ICP: Indicates ICP HW connection to camnoc
+ * @CAM_CAMNOC_TFE: Indicates TFE HW connection to camnoc
+ * @CAM_CAMNOC_OPE: Indicates OPE HW connection to camnoc
  */
 enum cam_camnoc_port_type {
 	CAM_CAMNOC_CDM,
@@ -128,6 +130,8 @@ enum cam_camnoc_port_type {
 	CAM_CAMNOC_JPEG,
 	CAM_CAMNOC_FD,
 	CAM_CAMNOC_ICP,
+	CAM_CAMNOC_TFE,
+	CAM_CAMNOC_OPE,
 };
 
 /**
