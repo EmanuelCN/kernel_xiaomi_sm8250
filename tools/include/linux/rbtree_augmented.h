@@ -64,7 +64,7 @@ rb_insert_augmented(struct rb_node *node, struct rb_root *root,
 }
 
 /*
- * Template for declaring augmented rbtree callbacks
+ * Template for declaring augmented rbtree callbacks (generic case)
  *
  * RBSTATIC:    'static' or empty
  * RBNAME:      name of the rb_augment_callbacks structure
