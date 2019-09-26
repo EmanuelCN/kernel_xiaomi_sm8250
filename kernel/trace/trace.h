@@ -318,7 +318,7 @@ static inline struct trace_array *top_trace_array(void)
 #define IF_ASSIGN(var, entry, etype, id)		\
 	if (FTRACE_CMP_TYPE(var, etype)) {		\
 		var = (typeof(var))(entry);		\
-		WARN_ON(id && (entry)->type != id);	\
+		WARN_ON(id !=0 && (entry)->type != id);	\
 		break;					\
 	}
 
