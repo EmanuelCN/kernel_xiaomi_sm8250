@@ -462,7 +462,7 @@ static uint32_t *ope_create_frame_cmd_prefetch_dis(
 	struct ope_bus_wr_io_port_cdm_info *wr_cdm_info;
 	struct ope_bus_rd_io_port_cdm_info *rd_cdm_info;
 	struct ope_frame_process *frm_proc;
-	uint64_t iova_addr;
+	dma_addr_t iova_addr;
 	uintptr_t cpu_addr;
 	size_t buf_len;
 	uint32_t print_idx;
@@ -574,7 +574,7 @@ static uint32_t *ope_create_frame_cmd_batch(struct cam_ope_hw_mgr *hw_mgr,
 	struct ope_bus_wr_io_port_cdm_info *wr_cdm_info;
 	struct ope_bus_rd_io_port_cdm_info *rd_cdm_info;
 	struct ope_frame_process *frm_proc;
-	uint64_t iova_addr;
+	dma_addr_t iova_addr;
 	uintptr_t cpu_addr;
 	size_t buf_len;
 	uint32_t print_idx;
@@ -729,7 +729,7 @@ static uint32_t *ope_create_frame_cmd(struct cam_ope_hw_mgr *hw_mgr,
 	struct ope_bus_wr_io_port_cdm_info *wr_cdm_info;
 	struct ope_bus_rd_io_port_cdm_info *rd_cdm_info;
 	struct ope_frame_process *frm_proc;
-	uint64_t iova_addr;
+	dma_addr_t iova_addr;
 	uintptr_t cpu_addr;
 	size_t buf_len;
 	uint32_t print_idx;
@@ -833,7 +833,7 @@ static uint32_t *ope_create_stripe_cmd(struct cam_ope_hw_mgr *hw_mgr,
 	int rc = 0, i, j, k;
 	uint32_t temp[3];
 	struct cdm_dmi_cmd *dmi_cmd;
-	uint64_t iova_addr;
+	dma_addr_t iova_addr;
 	uintptr_t cpu_addr;
 	size_t buf_len;
 	uint32_t print_idx;

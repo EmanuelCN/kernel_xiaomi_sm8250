@@ -1363,7 +1363,7 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 {
 	int rc = 0;
 	int i, j, k, l;
-	uint64_t iova_addr;
+	dma_addr_t iova_addr;
 	size_t len;
 	struct ope_frame_process *in_frame_process;
 	struct ope_frame_set *in_frame_set;
@@ -1522,8 +1522,8 @@ static int cam_ope_mgr_process_cmd_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 {
 	int rc = 0;
 	int i, j;
-	uint64_t iova_addr;
-	uint64_t iova_cdm_addr;
+	dma_addr_t iova_addr;
+	dma_addr_t iova_cdm_addr;
 	uintptr_t cpu_addr;
 	size_t len;
 	struct ope_frame_process *frame_process;
