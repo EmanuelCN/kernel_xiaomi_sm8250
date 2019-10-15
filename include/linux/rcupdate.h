@@ -904,7 +904,6 @@ rcu_head_after_call_rcu(struct rcu_head *rhp, rcu_callback_t f)
 	return false;
 }
 
-
 /* Transitional pre-consolidation compatibility definitions. */
 
 static inline void synchronize_rcu_bh(void)
@@ -956,5 +955,9 @@ static inline void cond_synchronize_sched(unsigned long oldstate)
 {
 	cond_synchronize_rcu(oldstate);
 }
+
+/* kernel/ksysfs.c definitions */
+extern int rcu_expedited;
+extern int rcu_normal;
 
 #endif /* __LINUX_RCUPDATE_H */
