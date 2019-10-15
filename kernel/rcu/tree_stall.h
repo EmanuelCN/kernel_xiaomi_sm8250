@@ -163,7 +163,11 @@ static void rcu_iw_handler(struct irq_work *iwp)
 //
 // Printing RCU CPU stall warnings
 
+<<<<<<< HEAD
 #ifdef CONFIG_PREEMPT
+=======
+#ifdef CONFIG_PREEMPT_RCU
+>>>>>>> c130d2dc93cd... rcu: Rename some instance of CONFIG_PREEMPTION to CONFIG_PREEMPT_RCU
 
 /*
  * Dump detailed information for all tasks blocking the current RCU
@@ -215,7 +219,11 @@ static int rcu_print_task_stall(struct rcu_node *rnp)
 	return ndetected;
 }
 
+<<<<<<< HEAD
 #else /* #ifdef CONFIG_PREEMPT */
+=======
+#else /* #ifdef CONFIG_PREEMPT_RCU */
+>>>>>>> c130d2dc93cd... rcu: Rename some instance of CONFIG_PREEMPTION to CONFIG_PREEMPT_RCU
 
 /*
  * Because preemptible RCU does not exist, we never have to check for
@@ -233,7 +241,11 @@ static int rcu_print_task_stall(struct rcu_node *rnp)
 {
 	return 0;
 }
+<<<<<<< HEAD
 #endif /* #else #ifdef CONFIG_PREEMPT */
+=======
+#endif /* #else #ifdef CONFIG_PREEMPT_RCU */
+>>>>>>> c130d2dc93cd... rcu: Rename some instance of CONFIG_PREEMPTION to CONFIG_PREEMPT_RCU
 
 /*
  * Dump stacks of all tasks running on stalled CPUs.  First try using
