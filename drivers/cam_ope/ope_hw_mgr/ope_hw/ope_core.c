@@ -772,7 +772,7 @@ static uint32_t *ope_create_frame_cmd(struct cam_ope_hw_mgr *hw_mgr,
 					hw_mgr->iommu_hdl);
 				return NULL;
 			}
-			iova_addr = iova_addr + frm_proc->cmd_buf[j][i].offset;
+			iova_addr = iova_addr + frm_proc->cmd_buf[i][j].offset;
 
 			rc = cam_mem_get_cpu_buf(
 				frm_proc->cmd_buf[i][j].mem_handle,
@@ -1123,7 +1123,7 @@ static uint32_t *ope_create_stripes_nrt(struct cam_ope_hw_mgr *hw_mgr,
 	struct cam_ope_ctx *ctx_data, uint32_t req_idx,
 	uint32_t *kmd_buf,
 	struct cam_ope_dev_prepare_req *ope_dev_prepare_req,
-	uint32_t kmd_buf_offset)
+	uint32_t *kmd_buf_offset, uint32_t **cdm_kmd_start_addr)
 {
 	int i, j;
 	struct cam_ope_request *ope_request;
@@ -1133,13 +1133,10 @@ static uint32_t *ope_create_stripes_nrt(struct cam_ope_hw_mgr *hw_mgr,
 	uint32_t stripe_idx = 0;
 	struct cam_cdm_utils_ops *cdm_ops;
 	uint32_t len;
-	uint32_t *cdm_kmd_start_addr;
 	int num_nrt_stripes, num_arb;
 
 	frm_proc = ope_dev_prepare_req->frame_process;
 	ope_request = ctx_data->req_list[req_idx];
-	cdm_kmd_start_addr = (uint32_t *)ope_request->ope_kmd_buf.cpu_addr +
-		(kmd_buf_offset / sizeof(len));
 	num_nrt_stripes = ctx_data->ope_acquire.nrt_stripes_for_arb;
 	num_arb = ope_request->num_stripes[0] /
 		ctx_data->ope_acquire.nrt_stripes_for_arb;
@@ -1162,17 +1159,17 @@ static uint32_t *ope_create_stripes_nrt(struct cam_ope_hw_mgr *hw_mgr,
 				kmd_buf = cdm_ops->cdm_write_wait_comp_event(
 					kmd_buf,
 					OPE_WAIT_COMP_IDLE, 0x0);
-				len = (kmd_buf - cdm_kmd_start_addr) *
+				len = (kmd_buf - *cdm_kmd_start_addr) *
 					sizeof(uint32_t);
 				cam_ope_dev_prepare_cdm_request(
 					ope_dev_prepare_req->hw_mgr,
 					ope_dev_prepare_req->prepare_args,
 					ope_dev_prepare_req->ctx_data,
 					ope_dev_prepare_req->req_idx,
-					kmd_buf_offset, ope_dev_prepare_req,
+					*kmd_buf_offset, ope_dev_prepare_req,
 					len, true);
-				cdm_kmd_start_addr = kmd_buf;
-				kmd_buf_offset += len;
+				*cdm_kmd_start_addr = kmd_buf;
+				*kmd_buf_offset += len;
 			}
 			/* cmd buffer stripes */
 			kmd_buf = ope_create_stripe_cmd(hw_mgr, ctx_data,
@@ -1317,7 +1314,7 @@ static int cam_ope_dev_create_kmd_buf_nrt(struct cam_ope_hw_mgr *hw_mgr,
 
 	/* Stripes */
 	kmd_buf = ope_create_stripes_nrt(hw_mgr, ctx_data, req_idx, kmd_buf,
-		ope_dev_prepare_req, kmd_buf_offset);
+		ope_dev_prepare_req, &kmd_buf_offset, &cdm_kmd_start_addr);
 	if (!kmd_buf) {
 		rc = -EINVAL;
 		goto end;
@@ -1358,7 +1355,7 @@ static int cam_ope_dev_create_kmd_buf_batch(struct cam_ope_hw_mgr *hw_mgr,
 	frm_proc = ope_dev_prepare_req->frame_process;
 	ope_request = ctx_data->req_list[req_idx];
 	kmd_buf = (uint32_t *)ope_request->ope_kmd_buf.cpu_addr +
-		kmd_buf_offset;
+		(kmd_buf_offset / sizeof(len));
 	cdm_kmd_start_addr = kmd_buf;
 	cdm_ops = ctx_data->ope_cdm.cdm_ops;
 
@@ -1436,11 +1433,11 @@ static int cam_ope_dev_create_kmd_buf_batch(struct cam_ope_hw_mgr *hw_mgr,
 			OPE_WAIT_COMP_IDLE, 0x0);
 
 	/* prepare CDM submit packet */
-	len = (cdm_kmd_start_addr - kmd_buf) * sizeof(uint32_t);
+	len = (kmd_buf - cdm_kmd_start_addr) * sizeof(uint32_t);
 	cam_ope_dev_prepare_cdm_request(ope_dev_prepare_req->hw_mgr,
 		ope_dev_prepare_req->prepare_args,
 		ope_dev_prepare_req->ctx_data, ope_dev_prepare_req->req_idx,
-		ope_dev_prepare_req->kmd_buf_offset, ope_dev_prepare_req,
+		kmd_buf_offset, ope_dev_prepare_req,
 		len, false);
 
 end:

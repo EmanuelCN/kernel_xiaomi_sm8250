@@ -1504,6 +1504,8 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 					stripe_info->pack_format = pack_format;
 					stripe_info->unpack_format =
 						unpack_format;
+					stripe_info->disable_bus =
+						in_stripe_info->disable_bus;
 					cam_ope_mgr_print_stripe_info(i, j,
 						k, l, stripe_info, iova_addr);
 				}

@@ -346,11 +346,15 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 
 	header_size =
 	cdm_ops->cdm_get_cmd_header_size(CAM_CDM_CMD_REG_RANDOM);
-	io_port_cdm->go_cmd_addr = kmd_buf;
-	io_port_cdm->go_cmd_len =
-		sizeof(temp) * (count + header_size);
-	io_port_cdm->go_cmd_offset =
-		prepare->kmd_buf_offset;
+	for (i = 0; i < ope_request->num_batch; i++) {
+		io_port_cdm =
+			&bus_rd_ctx->io_port_cdm_batch.io_port_cdm[i];
+		io_port_cdm->go_cmd_addr = kmd_buf;
+		io_port_cdm->go_cmd_len =
+			sizeof(temp) * (count + header_size);
+		io_port_cdm->go_cmd_offset =
+			prepare->kmd_buf_offset;
+	}
 	kmd_buf = cdm_ops->cdm_write_regrandom(
 		kmd_buf, count/2, temp_reg);
 	prepare->kmd_buf_offset +=
