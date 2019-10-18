@@ -359,7 +359,6 @@ TRACE_EVENT(sched_load_balance_sg_stats,
 	TP_PROTO(unsigned long sg_cpus, int group_type, unsigned int idle_cpus,
 		unsigned int sum_nr_running, unsigned long group_load,
 		unsigned long group_capacity, unsigned long group_util,
-		int group_no_capacity, unsigned long load_per_task,
 		unsigned long misfit_load, unsigned long busiest),
 
 	TP_ARGS(sg_cpus, group_type, idle_cpus, sum_nr_running, group_load,
@@ -406,24 +405,22 @@ TRACE_EVENT(sched_load_balance_sg_stats,
 TRACE_EVENT(sched_load_balance_stats,
 
 	TP_PROTO(unsigned long busiest, int bgroup_type,
-		unsigned long bavg_load, unsigned long bload_per_task,
+		unsigned long bavg_load,
 		unsigned long local, int lgroup_type, unsigned long lavg_load,
-		unsigned long lload_per_task, unsigned long sds_avg_load,
+	        unsigned long sds_avg_load,
 		unsigned long imbalance),
 
-	TP_ARGS(busiest, bgroup_type, bavg_load, bload_per_task, local,
-		lgroup_type, lavg_load, lload_per_task, sds_avg_load,
+	TP_ARGS(busiest, bgroup_type, bavg_load, local,
+		lgroup_type, lavg_load, sds_avg_load,
 		imbalance),
 
 	TP_STRUCT__entry(
 		__field(unsigned long,		busiest)
 		__field(int,			bgp_type)
 		__field(unsigned long,		bavg_load)
-		__field(unsigned long,		blpt)
 		__field(unsigned long,		local)
 		__field(int,			lgp_type)
 		__field(unsigned long,		lavg_load)
-		__field(unsigned long,		llpt)
 		__field(unsigned long,		sds_avg)
 		__field(unsigned long,		imbalance)
 	),
@@ -432,20 +429,18 @@ TRACE_EVENT(sched_load_balance_stats,
 		__entry->busiest			= busiest;
 		__entry->bgp_type			= bgroup_type;
 		__entry->bavg_load			= bavg_load;
-		__entry->blpt				= bload_per_task;
 		__entry->bgp_type			= bgroup_type;
 		__entry->local				= local;
 		__entry->lgp_type			= lgroup_type;
 		__entry->lavg_load			= lavg_load;
-		__entry->llpt				= lload_per_task;
 		__entry->sds_avg			= sds_avg_load;
 		__entry->imbalance			= imbalance;
 	),
 
 	TP_printk("busiest_group=%#lx busiest_type=%d busiest_avg_load=%ld busiest_lpt=%ld local_group=%#lx local_type=%d local_avg_load=%ld local_lpt=%ld domain_avg_load=%ld imbalance=%ld",
 		__entry->busiest, __entry->bgp_type, __entry->bavg_load,
-		__entry->blpt, __entry->local, __entry->lgp_type,
-		__entry->lavg_load, __entry->llpt, __entry->sds_avg,
+		__entry->local, __entry->lgp_type,
+		__entry->lavg_load, __entry->sds_avg,
 		__entry->imbalance)
 );
 #endif /* NR_CPUS > BITS_PER_LONG */
