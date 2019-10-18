@@ -376,6 +376,38 @@ static const char *__cam_isp_resource_handle_id_to_type(
 	}
 }
 
+static const char *__cam_isp_tfe_resource_handle_id_to_type(
+	uint32_t resource_handle)
+{
+
+	switch (resource_handle) {
+	case CAM_ISP_TFE_OUT_RES_FULL:
+		return "FULL";
+	case CAM_ISP_TFE_OUT_RES_RAW_DUMP:
+		return "RAW_DUMP";
+	case CAM_ISP_TFE_OUT_RES_PDAF:
+		return "PDAF";
+	case CAM_ISP_TFE_OUT_RES_RDI_0:
+		return "RDI_0";
+	case CAM_ISP_TFE_OUT_RES_RDI_1:
+		return "RDI_1";
+	case CAM_ISP_TFE_OUT_RES_RDI_2:
+		return "RDI_2";
+	case CAM_ISP_TFE_OUT_RES_STATS_HDR_BE:
+		return "STATS_HDR_BE";
+	case CAM_ISP_TFE_OUT_RES_STATS_HDR_BHIST:
+		return "STATS_HDR_BHIST";
+	case CAM_ISP_TFE_OUT_RES_STATS_TL_BG:
+		return "STATS_TL_BG";
+	case CAM_ISP_TFE_OUT_RES_STATS_BF:
+		return "STATS_BF";
+	case CAM_ISP_TFE_OUT_RES_STATS_AWB_BG:
+		return "STATS_AWB_BG";
+	default:
+		return "CAM_ISP_Invalid_Resource_Type";
+	}
+}
+
 static uint64_t __cam_isp_ctx_get_event_ts(uint32_t evt_id, void *evt_data)
 {
 	uint64_t ts = 0;
@@ -471,9 +503,11 @@ static void __cam_isp_ctx_send_sof_timestamp(
 }
 
 static void __cam_isp_ctx_handle_buf_done_fail_log(
-	uint64_t request_id, struct cam_isp_ctx_req *req_isp)
+	uint64_t request_id, struct cam_isp_ctx_req *req_isp,
+	uint32_t isp_device_type)
 {
 	int i;
+	const char *handle_type;
 
 	if (req_isp->num_fence_map_out >= CAM_ISP_CTX_RES_MAX) {
 		CAM_ERR(CAM_ISP,
@@ -490,10 +524,18 @@ static void __cam_isp_ctx_handle_buf_done_fail_log(
 		"Resource Handles that fail to generate buf_done in prev frame");
 	for (i = 0; i < req_isp->num_fence_map_out; i++) {
 		if (req_isp->fence_map_out[i].sync_id != -1) {
+			if (isp_device_type == CAM_IFE_DEVICE_TYPE)
+				handle_type =
+				__cam_isp_resource_handle_id_to_type(
+				req_isp->fence_map_out[i].resource_handle);
+			else
+				handle_type =
+				__cam_isp_tfe_resource_handle_id_to_type(
+				req_isp->fence_map_out[i].resource_handle);
+
 			CAM_WARN(CAM_ISP,
 			"Resource_Handle: [%s][0x%x] Sync_ID: [0x%x]",
-			__cam_isp_resource_handle_id_to_type(
-			req_isp->fence_map_out[i].resource_handle),
+			handle_type,
 			req_isp->fence_map_out[i].resource_handle,
 			req_isp->fence_map_out[i].sync_id);
 		}
@@ -512,6 +554,7 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 	struct cam_isp_ctx_req  *req_isp;
 	struct cam_context *ctx = ctx_isp->base;
 	uint64_t buf_done_req_id;
+	const char *handle_type;
 
 	trace_cam_buf_done("ISP", ctx, req);
 
@@ -541,11 +584,18 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 		}
 
 		if (req_isp->fence_map_out[j].sync_id == -1) {
+			if (ctx_isp->isp_device_type == CAM_IFE_DEVICE_TYPE)
+				handle_type =
+				__cam_isp_resource_handle_id_to_type(
+				req_isp->fence_map_out[i].resource_handle);
+			else
+				handle_type =
+				__cam_isp_tfe_resource_handle_id_to_type(
+				req_isp->fence_map_out[i].resource_handle);
+
 			CAM_WARN(CAM_ISP,
 				"Duplicate BUF_DONE for req %lld : i=%d, j=%d, res=%s",
-				req->request_id, i, j,
-				__cam_isp_resource_handle_id_to_type(
-				done->resource_handle[i]));
+				req->request_id, i, j, handle_type);
 
 			if (done_next_req) {
 				done_next_req->resource_handle
@@ -1967,7 +2017,8 @@ static int __cam_isp_ctx_apply_req_in_activated_state(
 			active_req_isp =
 				(struct cam_isp_ctx_req *) active_req->req_priv;
 			__cam_isp_ctx_handle_buf_done_fail_log(
-				active_req->request_id, active_req_isp);
+				active_req->request_id, active_req_isp,
+				ctx_isp->isp_device_type);
 		}
 
 		rc = -EFAULT;
@@ -4345,7 +4396,8 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 	struct cam_context *ctx_base,
 	struct cam_req_mgr_kmd_ops *crm_node_intf,
 	struct cam_hw_mgr_intf *hw_intf,
-	uint32_t ctx_id)
+	uint32_t ctx_id,
+	uint32_t isp_device_type)
 
 {
 	int rc = -1;
@@ -4369,6 +4421,7 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 	ctx->substate_machine = cam_isp_ctx_activated_state_machine;
 	ctx->substate_machine_irq = cam_isp_ctx_activated_state_machine_irq;
 	ctx->init_timestamp = jiffies_to_msecs(jiffies);
+	ctx->isp_device_type = isp_device_type;
 
 	for (i = 0; i < CAM_CTX_REQ_MAX; i++) {
 		ctx->req_base[i].req_priv = &ctx->req_isp[i];

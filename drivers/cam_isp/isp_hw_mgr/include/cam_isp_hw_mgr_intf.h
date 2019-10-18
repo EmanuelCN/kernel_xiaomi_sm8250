@@ -17,6 +17,8 @@
 #define CAM_IFE_RDI_NUM_MAX  4
 #define CAM_ISP_BW_CONFIG_V1 1
 #define CAM_ISP_BW_CONFIG_V2 2
+#define CAM_TFE_HW_NUM_MAX   3
+#define CAM_TFE_RDI_NUM_MAX  3
 
 /* Appliacble vote paths for dual ife, based on no. of UAPI definitions */
 #define CAM_ISP_MAX_PER_PATH_VOTES 30
@@ -252,12 +254,12 @@ struct cam_isp_hw_cmd_args {
  *
  * @brief:              Initialization function for the ISP hardware manager
  *
- * @of_node:            Device node input
+ * @device_name_str:    Device name string
  * @hw_mgr:             Input/output structure for the ISP hardware manager
  *                          initialization
  * @iommu_hdl:          Iommu handle to be returned
  */
-int cam_isp_hw_mgr_init(struct device_node *of_node,
+int cam_isp_hw_mgr_init(const char    *device_name_str,
 	struct cam_hw_mgr_intf *hw_mgr, int *iommu_hdl);
 
 #endif /* __CAM_ISP_HW_MGR_INTF_H__ */

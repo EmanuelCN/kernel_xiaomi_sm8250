@@ -31,6 +31,7 @@
 #define CAM_OIS_DEVICE_TYPE       (CAM_DEVICE_TYPE_BASE + 13)
 #define CAM_CUSTOM_DEVICE_TYPE    (CAM_DEVICE_TYPE_BASE + 14)
 #define CAM_OPE_DEVICE_TYPE       (CAM_DEVICE_TYPE_BASE + 15)
+#define CAM_TFE_DEVICE_TYPE       (CAM_DEVICE_TYPE_BASE + 16)
 
 /* cam_req_mgr hdl info */
 #define CAM_REQ_MGR_HDL_IDX_POS           8
