@@ -6039,6 +6039,11 @@ static unsigned long cpu_runnable_load(struct rq *rq)
 	return cfs_rq_runnable_load_avg(&rq->cfs);
 }
 
+static unsigned long cpu_load(struct rq *rq)
+{
+	return cfs_rq_load_avg(&rq->cfs);
+}
+
 static void record_wakee(struct task_struct *p)
 {
 	/*
@@ -9701,7 +9706,7 @@ static inline void update_sg_lb_stats(struct lb_env *env,
 		if ((env->flags & LBF_NOHZ_STATS) && update_nohz_stats(rq, false))
 			env->flags |= LBF_NOHZ_AGAIN;
 
-		sgs->group_load += cpu_runnable_load(rq);
+		sgs->group_load += cpu_load(rq);
 		sgs->group_util += cpu_util(i);
 		sgs->sum_h_nr_running += rq->cfs.h_nr_running;
 
@@ -10196,7 +10201,7 @@ static struct sched_group *find_busiest_group(struct lb_env *env)
 	init_sd_lb_stats(&sds);
 
 	/*
-	 * Compute the various statistics relavent for load balancing at
+	 * Compute the various statistics relevant for load balancing at
 	 * this level.
 	 */
 	update_sd_lb_stats(env, &sds);
@@ -10358,11 +10363,10 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 		switch (env->migration_type) {
 		case migrate_load:
 			/*
-			 * When comparing with load imbalance, use
-			 * cpu_runnable_load() which is not scaled with the CPU
-			 * capacity.
+			 * When comparing with load imbalance, use cpu_load()
+			 * which is not scaled with the CPU capacity.
 			 */
-			load = cpu_runnable_load(rq);
+			load = cpu_load(rq);
 
 			if (nr_running == 1 && load > env->imbalance &&
 			    !check_cpu_capacity(rq, env->sd))
@@ -10370,10 +10374,10 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 
 			/*
 			 * For the load comparisons with the other CPUs,
-			 * consider the cpu_runnable_load() scaled with the CPU
-			 * capacity, so that the load can be moved away from
-			 * the CPU that is potentially running at a lower
-			 * capacity.
+			 * consider the cpu_load() scaled with the CPU
+			 * capacity, so that the load can be moved away
+			 * from the CPU that is potentially running at a
+			 * lower capacity.
 			 *
 			 * Thus we're looking for max(load_i / capacity_i),
 			 * crosswise multiplication to rid ourselves of the
