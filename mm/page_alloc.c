@@ -3520,7 +3520,7 @@ alloc_flags_nofragment(struct zone *zone, gfp_t gfp_mask)
 		return alloc_flags;
 
 	if (zone_idx(zone) != ZONE_NORMAL)
-		return alloc_flags;
+		goto out;
 
 	/*
 	 * If ZONE_DMA32 exists, assume it is the one after ZONE_NORMAL and
@@ -3529,9 +3529,9 @@ alloc_flags_nofragment(struct zone *zone, gfp_t gfp_mask)
 	 */
 	BUILD_BUG_ON(ZONE_NORMAL - ZONE_DMA32 != 1);
 	if (nr_online_nodes > 1 && !populated_zone(--zone))
-		return alloc_flags;
+		goto out;
 
-	alloc_flags |= ALLOC_NOFRAGMENT;
+out:
 #endif /* CONFIG_ZONE_DMA32 */
 	return alloc_flags;
 }
