@@ -61,7 +61,6 @@ _kgsl_get_pool_from_order(unsigned int order)
 static void
 _kgsl_pool_add_page(struct kgsl_page_pool *pool, struct page *p)
 {
-	kgsl_zero_page(p, pool->pool_order);
 
 	llist_add((struct llist_node *)&p->lru, &pool->page_list);
 	atomic_inc(&pool->page_count);
@@ -246,7 +245,8 @@ static int kgsl_pool_get_retry_order(unsigned int order)
  * Return total page count on success and negative value on failure
  */
 int kgsl_pool_alloc_page(int *page_size, struct page **pages,
-			unsigned int pages_len, unsigned int *align)
+			unsigned int pages_len, unsigned int *align,
+			struct device *dev)
 {
 	int j;
 	int pcount = 0;
@@ -274,7 +274,6 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
 			} else
 				return -ENOMEM;
 		}
-		kgsl_zero_page(page, order);
 		goto done;
 	}
 
@@ -294,7 +293,6 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
 			page = alloc_pages(gfp_mask, order);
 			if (page == NULL)
 				return -ENOMEM;
-			kgsl_zero_page(page, order);
 			goto done;
 		}
 	}
@@ -325,10 +323,10 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
 				return -ENOMEM;
 		}
 
-		kgsl_zero_page(page, order);
 	}
 
 done:
+	kgsl_zero_page(page, order, dev);
 	for (j = 0; j < (*page_size >> PAGE_SHIFT); j++) {
 		p = nth_page(page, j);
 		pages[pcount] = p;
