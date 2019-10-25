@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_lrme_hw_core.h"
@@ -416,12 +416,14 @@ static int cam_lrme_hw_util_submit_req(struct cam_lrme_core *lrme_core,
 		cdm_cmd->flag = false;
 		cdm_cmd->userdata = NULL;
 		cdm_cmd->cookie = 0;
+		cdm_cmd->gen_irq_arb = false;
 
 		for (i = 0; i <= frame_req->num_hw_update_entries; i++) {
 			cmd = (frame_req->hw_update_entries + i);
 			cdm_cmd->cmd[i].bl_addr.mem_handle = cmd->handle;
 			cdm_cmd->cmd[i].offset = cmd->offset;
 			cdm_cmd->cmd[i].len = cmd->len;
+			cdm_cmd->cmd[i].arbitrate = false;
 		}
 
 		rc = cam_cdm_submit_bls(hw_cdm_info->cdm_handle, cdm_cmd);

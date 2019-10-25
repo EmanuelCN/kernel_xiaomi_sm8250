@@ -2719,8 +2719,9 @@ static int cam_ife_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 			cdm_acquire.base_array[j++] =
 				ife_hw_mgr->cdm_reg_map[i];
 	}
-	cdm_acquire.base_array_cnt = j;
 
+	cdm_acquire.base_array_cnt = j;
+	cdm_acquire.priority = CAM_CDM_BL_FIFO_0;
 	cdm_acquire.id = CAM_CDM_VIRTUAL;
 	cdm_acquire.cam_cdm_callback = cam_ife_cam_cdm_callback;
 	rc = cam_cdm_acquire(&cdm_acquire);
@@ -2907,9 +2908,9 @@ static int cam_ife_mgr_acquire_dev(void *hw_mgr_priv, void *acquire_hw_args)
 			cdm_acquire.base_array[j++] =
 				ife_hw_mgr->cdm_reg_map[i];
 	}
+
 	cdm_acquire.base_array_cnt = j;
-
-
+	cdm_acquire.priority = CAM_CDM_BL_FIFO_0;
 	cdm_acquire.id = CAM_CDM_VIRTUAL;
 	cdm_acquire.cam_cdm_callback = cam_ife_cam_cdm_callback;
 	rc = cam_cdm_acquire(&cdm_acquire);
@@ -3426,6 +3427,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 		cdm_cmd->flag = true;
 		cdm_cmd->userdata = hw_update_data;
 		cdm_cmd->cookie = cfg->request_id;
+		cdm_cmd->gen_irq_arb = false;
 
 		for (i = 0 ; i < cfg->num_hw_update_entries; i++) {
 			cmd = (cfg->hw_update_entries + i);
@@ -3444,6 +3446,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 			cdm_cmd->cmd[i - skip].bl_addr.mem_handle = cmd->handle;
 			cdm_cmd->cmd[i - skip].offset = cmd->offset;
 			cdm_cmd->cmd[i - skip].len = cmd->len;
+			cdm_cmd->cmd[i - skip].arbitrate = false;
 		}
 		cdm_cmd->cmd_arrary_count = cfg->num_hw_update_entries - skip;
 

@@ -303,6 +303,7 @@ static int cam_jpeg_insert_cdm_change_base(
 		config_args->hw_update_entries[CAM_JPEG_CHBASE].offset;
 	cdm_cmd->cmd[cdm_cmd->cmd_arrary_count].len = size * sizeof(uint32_t);
 	cdm_cmd->cmd_arrary_count++;
+	cdm_cmd->gen_irq_arb = false;
 
 	ch_base_iova_addr += size;
 	*ch_base_iova_addr = 0;
@@ -439,6 +440,7 @@ static int cam_jpeg_mgr_process_cmd(void *priv, void *data)
 	cdm_cmd->userdata = NULL;
 	cdm_cmd->cookie = 0;
 	cdm_cmd->cmd_arrary_count = 0;
+	cdm_cmd->gen_irq_arb = false;
 
 	rc = cam_jpeg_insert_cdm_change_base(config_args,
 		ctx_data, hw_mgr);
@@ -457,6 +459,8 @@ static int cam_jpeg_mgr_process_cmd(void *priv, void *data)
 			cmd->offset;
 		cdm_cmd->cmd[cdm_cmd->cmd_arrary_count].len =
 			cmd->len;
+		cdm_cmd->cmd[cdm_cmd->cmd_arrary_count].arbitrate =
+			false;
 		CAM_DBG(CAM_JPEG, "i %d entry h %d o %d l %d",
 			i, cmd->handle, cmd->offset, cmd->len);
 		cdm_cmd->cmd_arrary_count++;
@@ -1186,6 +1190,7 @@ static int cam_jpeg_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 		cdm_acquire.base_array_cnt = 1;
 		cdm_acquire.id = CAM_CDM_VIRTUAL;
 		cdm_acquire.cam_cdm_callback = NULL;
+		cdm_acquire.priority = CAM_CDM_BL_FIFO_0;
 
 		rc = cam_cdm_acquire(&cdm_acquire);
 		if (rc) {

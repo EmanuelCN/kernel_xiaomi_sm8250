@@ -53,6 +53,7 @@ static int cam_lrme_hw_dev_util_cdm_acquire(struct cam_lrme_core *lrme_core,
 	cdm_acquire.cam_cdm_callback = NULL;
 	cdm_acquire.id = CAM_CDM_VIRTUAL;
 	cdm_acquire.base_array_cnt = lrme_hw->soc_info.num_reg_map;
+	cdm_acquire.priority = CAM_CDM_BL_FIFO_0;
 	for (i = 0; i < lrme_hw->soc_info.num_reg_map; i++)
 		cdm_acquire.base_array[i] = &lrme_hw->soc_info.reg_map[i];
 
