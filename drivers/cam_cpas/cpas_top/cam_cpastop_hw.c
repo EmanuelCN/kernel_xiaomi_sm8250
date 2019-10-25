@@ -519,7 +519,7 @@ done:
 
 static int cam_cpastop_poweron(struct cam_hw_info *cpas_hw)
 {
-	int i;
+	int i, reg_val;
 	struct cam_cpas_hw_errata_wa_list *errata_wa_list =
 		camnoc_info->errata_wa_list;
 	struct cam_cpas_hw_errata_wa *errata_wa;
@@ -547,8 +547,9 @@ static int cam_cpastop_poweron(struct cam_hw_info *cpas_hw)
 	if (errata_wa_list) {
 		errata_wa = &errata_wa_list->tcsr_camera_hf_sf_ares_glitch;
 		if (errata_wa->enable) {
-			scm_io_write(errata_wa->data.reg_info.offset,
-				errata_wa->data.reg_info.value);
+			reg_val = scm_io_read(errata_wa->data.reg_info.offset);
+			reg_val |= errata_wa->data.reg_info.value;
+			scm_io_write(errata_wa->data.reg_info.offset, reg_val);
 		}
 	}
 
