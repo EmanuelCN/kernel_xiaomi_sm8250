@@ -2348,6 +2348,7 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 		return -EINVAL;
 
 	hw_update_data = (struct cam_isp_prepare_hw_update_data  *) cfg->priv;
+	hw_update_data->isp_mgr_ctx = ctx;
 
 	for (i = 0; i < CAM_TFE_HW_NUM_MAX; i++) {
 		if (hw_update_data->bw_config_valid[i] == true) {

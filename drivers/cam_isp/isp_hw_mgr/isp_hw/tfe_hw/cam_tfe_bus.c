@@ -933,6 +933,7 @@ static int cam_tfe_bus_start_comp_grp(
 			val = cam_io_r(common_data->mem_base +
 				common_data->common_reg->comp_cfg_0);
 			val |= (0x1 << rsrc_data->comp_grp_id);
+			val |= (0x1 << (rsrc_data->comp_grp_id + 16));
 			cam_io_w(val, common_data->mem_base +
 				common_data->common_reg->comp_cfg_0);
 

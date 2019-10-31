@@ -444,17 +444,29 @@ static int cam_top_tpg_start(void *hw_priv, void *start_args,
 		 tpg_reg->tpg_num_dts_shift_val) | tpg_data->vc_num;
 	cam_io_w_mb(val, soc_info->reg_map[0].mem_base + tpg_reg->tpg_vc_cfg0);
 
-	/* HBlank count 500 and V blank count is 600 */
-	cam_io_w_mb(0x2581F4,
+	/*
+	 * if hblank is notset configureHBlank count 500 and
+	 * V blank count is 600
+	 */
+
+	if (tpg_data->h_blank_count)
+		cam_io_w_mb(tpg_data->h_blank_count,
+			soc_info->reg_map[0].mem_base + tpg_reg->tpg_vc_cfg1);
+	else
+		cam_io_w_mb(0x2581F4,
 		soc_info->reg_map[0].mem_base + tpg_reg->tpg_vc_cfg1);
 
 	val = (1 << tpg_reg->tpg_split_en_shift);
 	cam_io_w_mb(tpg_data->pix_pattern, soc_info->reg_map[0].mem_base +
 		tpg_reg->tpg_common_gen_cfg);
-	cam_io_w_mb(0xAFFF,
-		soc_info->reg_map[0].mem_base + tpg_reg->tpg_vbi_cfg);
-	CAM_DBG(CAM_ISP, "TPG:%d set TPG VBI to  0xAFFF",
-		tpg_hw->hw_intf->hw_idx);
+
+	/* if VBI is notset configureVBI to 0xAFF */
+	if (tpg_data->v_blank_count)
+		cam_io_w_mb(tpg_data->v_blank_count,
+			soc_info->reg_map[0].mem_base + tpg_reg->tpg_vbi_cfg);
+	else
+		cam_io_w_mb(0xAFFF,
+			soc_info->reg_map[0].mem_base + tpg_reg->tpg_vbi_cfg);
 
 	/* Set the TOP tpg mux sel*/
 	cam_io_w_mb((1 << tpg_hw->hw_intf->hw_idx),
