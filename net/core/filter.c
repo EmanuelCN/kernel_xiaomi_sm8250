@@ -4167,7 +4167,7 @@ BPF_CALL_1(bpf_skb_cgroup_id, const struct sk_buff *, skb)
 		return 0;
 
 	cgrp = sock_cgroup_ptr(&sk->sk_cgrp_data);
-	return cgrp->kn->id.id;
+	return cgrp->kn->id;
 }
 
 static const struct bpf_func_proto bpf_skb_cgroup_id_proto = {
@@ -4192,7 +4192,7 @@ BPF_CALL_2(bpf_skb_ancestor_cgroup_id, const struct sk_buff *, skb, int,
 	if (!ancestor)
 		return 0;
 
-	return ancestor->kn->id.id;
+	return ancestor->kn->id;
 }
 
 static const struct bpf_func_proto bpf_skb_ancestor_cgroup_id_proto = {

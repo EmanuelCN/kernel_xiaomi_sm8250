@@ -136,7 +136,7 @@ DEFINE_EVENT(writeback_dirty_inode_template, writeback_dirty_inode,
 
 static inline unsigned int __trace_wb_assign_cgroup(struct bdi_writeback *wb)
 {
-	return wb->memcg_css->cgroup->kn->id.ino;
+	return cgroup_ino(wb->memcg_css->cgroup);
 }
 
 static inline unsigned int __trace_wbc_assign_cgroup(struct writeback_control *wbc)
