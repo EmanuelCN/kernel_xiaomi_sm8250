@@ -33,7 +33,7 @@ static bool irq_work_claim(struct irq_work *work)
 	oflags = atomic_fetch_or(IRQ_WORK_CLAIMED, &work->flags);
 	/*
 	 * If the work is already pending, no need to raise the IPI.
-	 * The pairing atomic_xchg() in irq_work_run() makes sure
+	 * The pairing atomic_fetch_andnot() in irq_work_run() makes sure
 	 * everything we did before is visible.
 	 */
 	if (oflags & IRQ_WORK_PENDING)
@@ -134,7 +134,6 @@ static void irq_work_run_list(struct llist_head *list)
 {
 	struct irq_work *work, *tmp;
 	struct llist_node *llnode;
-	int flags;
 
 	BUG_ON(!irqs_disabled());
 
@@ -143,6 +142,7 @@ static void irq_work_run_list(struct llist_head *list)
 
 	llnode = llist_del_all(list);
 	llist_for_each_entry_safe(work, tmp, llnode, llnode) {
+		int flags;
 		/*
 		 * Clear the PENDING bit, after this point the @work
 		 * can be re-used.
@@ -150,8 +150,7 @@ static void irq_work_run_list(struct llist_head *list)
 		 * to claim that work don't rely on us to handle their data
 		 * while we are in the middle of the func.
 		 */
-		flags = atomic_read(&work->flags) & ~IRQ_WORK_PENDING;
-		atomic_xchg(&work->flags, flags);
+		flags = atomic_fetch_andnot(IRQ_WORK_PENDING, &work->flags);
 
 		lockdep_irq_work_enter(work);
 		work->func(work);
