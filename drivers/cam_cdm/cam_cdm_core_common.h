@@ -17,7 +17,7 @@
 #define CAM_CDM_AHB_BURST_LEN_4  (BIT(2) - 1)
 #define CAM_CDM_AHB_BURST_LEN_8  (BIT(3) - 1)
 #define CAM_CDM_AHB_BURST_LEN_16 (BIT(4) - 1)
-#define CAM_CDM_AHB_BURST_EN      BIT(5)
+#define CAM_CDM_AHB_BURST_EN      BIT(4)
 #define CAM_CDM_AHB_STOP_ON_ERROR BIT(8)
 #define CAM_CDM_ARB_SEL_RR        BIT(16)
 #define CAM_CDM_IMPLICIT_WAIT_EN  BIT(17)
