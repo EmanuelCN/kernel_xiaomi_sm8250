@@ -3193,7 +3193,7 @@ static inline void walt_fixup_cum_window_demand(struct rq *rq,
 #ifdef CONFIG_SMP
 static inline unsigned long thermal_cap(int cpu)
 {
-	return cpu_rq(cpu)->cpu_capacity_orig;
+	return SCHED_CAPACITY_SCALE;
 }
 #endif
 
