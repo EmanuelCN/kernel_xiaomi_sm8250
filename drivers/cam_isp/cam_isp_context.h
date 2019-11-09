@@ -10,6 +10,7 @@
 #include <linux/spinlock.h>
 #include <media/cam_isp.h>
 #include <media/cam_defs.h>
+#include <media/cam_tfe.h>
 
 #include "cam_context.h"
 #include "cam_isp_hw_mgr_intf.h"
@@ -177,6 +178,7 @@ struct cam_isp_context_state_monitor {
  * @init_received:             Indicate whether init config packet is received
  * @split_acquire:             Indicate whether a separate acquire is expected
  * @init_timestamp:            Timestamp at which this context is initialized
+ * @isp_device_type            ISP device type
  *
  */
 struct cam_isp_context {
@@ -207,6 +209,7 @@ struct cam_isp_context {
 	bool                                  init_received;
 	bool                                  split_acquire;
 	unsigned int                          init_timestamp;
+	uint32_t                              isp_device_type;
 };
 
 /**
@@ -218,13 +221,15 @@ struct cam_isp_context {
  * @bridge_ops:         Bridge call back funciton
  * @hw_intf:            ISP hw manager interface
  * @ctx_id:             ID for this context
+ * @isp_device_type     Isp device type
  *
  */
 int cam_isp_context_init(struct cam_isp_context *ctx,
 	struct cam_context *ctx_base,
 	struct cam_req_mgr_kmd_ops *bridge_ops,
 	struct cam_hw_mgr_intf *hw_intf,
-	uint32_t ctx_id);
+	uint32_t ctx_id,
+	uint32_t isp_device_type);
 
 /**
  * cam_isp_context_deinit()

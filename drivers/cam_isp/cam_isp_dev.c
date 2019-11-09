@@ -117,12 +117,30 @@ static int cam_isp_dev_probe(struct platform_device *pdev)
 	int i;
 	struct cam_hw_mgr_intf         hw_mgr_intf;
 	struct cam_node               *node;
+	const char                    *compat_str = NULL;
+	uint32_t                       isp_device_type;
+
 	int iommu_hdl = -1;
+
+	rc = of_property_read_string_index(pdev->dev.of_node, "arch-compat", 0,
+		(const char **)&compat_str);
 
 	g_isp_dev.sd.internal_ops = &cam_isp_subdev_internal_ops;
 	/* Initialize the v4l2 subdevice first. (create cam_node) */
-	rc = cam_subdev_probe(&g_isp_dev.sd, pdev, CAM_ISP_DEV_NAME,
+	if (strnstr(compat_str, "ife", strlen(compat_str))) {
+		rc = cam_subdev_probe(&g_isp_dev.sd, pdev, CAM_ISP_DEV_NAME,
 		CAM_IFE_DEVICE_TYPE);
+		isp_device_type = CAM_IFE_DEVICE_TYPE;
+	} else if (strnstr(compat_str, "tfe", strlen(compat_str))) {
+		rc = cam_subdev_probe(&g_isp_dev.sd, pdev, CAM_ISP_DEV_NAME,
+		CAM_TFE_DEVICE_TYPE);
+		isp_device_type = CAM_TFE_DEVICE_TYPE;
+	} else  {
+		CAM_ERR(CAM_ISP, "Invalid ISP hw type %s", compat_str);
+		rc = -EINVAL;
+		goto err;
+	}
+
 	if (rc) {
 		CAM_ERR(CAM_ISP, "ISP cam_subdev_probe failed!");
 		goto err;
@@ -130,7 +148,7 @@ static int cam_isp_dev_probe(struct platform_device *pdev)
 	node = (struct cam_node *) g_isp_dev.sd.token;
 
 	memset(&hw_mgr_intf, 0, sizeof(hw_mgr_intf));
-	rc = cam_isp_hw_mgr_init(pdev->dev.of_node, &hw_mgr_intf, &iommu_hdl);
+	rc = cam_isp_hw_mgr_init(compat_str, &hw_mgr_intf, &iommu_hdl);
 	if (rc != 0) {
 		CAM_ERR(CAM_ISP, "Can not initialized ISP HW manager!");
 		goto unregister;
@@ -141,7 +159,8 @@ static int cam_isp_dev_probe(struct platform_device *pdev)
 			&g_isp_dev.ctx[i],
 			&node->crm_node_intf,
 			&node->hw_mgr_intf,
-			i);
+			i,
+			isp_device_type);
 		if (rc) {
 			CAM_ERR(CAM_ISP, "ISP context init failed!");
 			goto unregister;
