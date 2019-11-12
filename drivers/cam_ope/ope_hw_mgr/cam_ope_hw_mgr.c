@@ -312,16 +312,21 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 
 	if (device_share_ratio > 1) {
 		for (i = 0; i < clk_update.axi_vote.num_paths; i++) {
-			clk_update.axi_vote.axi_path[i].camnoc_bw /=
-				device_share_ratio;
-			clk_update.axi_vote.axi_path[i].mnoc_ab_bw /=
-				device_share_ratio;
-			clk_update.axi_vote.axi_path[i].mnoc_ib_bw /=
-				device_share_ratio;
-			clk_update.axi_vote.axi_path[i].ddr_ab_bw /=
-				device_share_ratio;
-			clk_update.axi_vote.axi_path[i].ddr_ib_bw /=
-				device_share_ratio;
+			do_div(
+			clk_update.axi_vote.axi_path[i].camnoc_bw,
+				device_share_ratio);
+			do_div(
+			clk_update.axi_vote.axi_path[i].mnoc_ab_bw,
+				device_share_ratio);
+			do_div(
+			clk_update.axi_vote.axi_path[i].mnoc_ib_bw,
+				device_share_ratio);
+			do_div(
+			clk_update.axi_vote.axi_path[i].ddr_ab_bw,
+				device_share_ratio);
+			do_div(
+			clk_update.axi_vote.axi_path[i].ddr_ib_bw,
+				device_share_ratio);
 		}
 	}
 
@@ -637,10 +642,10 @@ static int cam_ope_calc_total_clk(struct cam_ope_hw_mgr *hw_mgr,
 static uint32_t cam_ope_mgr_calc_base_clk(uint32_t frame_cycles,
 	uint64_t budget)
 {
-	uint64_t base_clk;
 	uint64_t mul = 1000000000;
+	uint64_t base_clk = frame_cycles * mul;
 
-	base_clk = (frame_cycles * mul) / budget;
+	do_div(base_clk, budget);
 
 	CAM_DBG(CAM_OPE, "budget = %lld fc = %d ib = %lld base_clk = %lld",
 		budget, frame_cycles,
