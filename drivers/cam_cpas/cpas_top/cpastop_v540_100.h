@@ -88,21 +88,21 @@ static struct cam_camnoc_specific
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0xE30, /* CDM_PRIORITYLUT_LOW */
-			.value = 0x22222222,
+			.value = 0x33333333,
 		},
 		.priority_lut_high = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0xE34, /* CDM_PRIORITYLUT_HIGH */
-			.value = 0x22222222,
+			.value = 0x33333333,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0xE38, /* CDM_URGENCY_LOW */
-			.value = 0x2,
+			.value = 0x00000003,
 		},
 		.danger_lut = {
 			.enable = false,
@@ -131,7 +131,7 @@ static struct cam_camnoc_specific
 			.masked_value = 0,
 			/* TFE_PRIORITYLUT_LOW */
 			.offset = 0x30,
-			.value = 0x66665433,
+			.value = 0x44443333,
 		},
 		.priority_lut_high = {
 			.enable = true,
@@ -139,26 +139,26 @@ static struct cam_camnoc_specific
 			.masked_value = 0,
 			/* TFE_PRIORITYLUT_HIGH */
 			.offset = 0x34,
-			.value = 0x66666666,
+			.value = 0x66665555,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x38, /* TFE_URGENCY_LOW */
-			.value = 0X10030,
+			.value = 0x00001030,
 		},
 		.danger_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.offset = 0x40, /* TFE_DANGERLUT_LOW */
-			.value = 0xFFAA5500,
+			.value = 0xffff0000,
 		},
 		.safe_lut = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.offset = 0x48, /* TFE_SAFELUT_LOW */
-			.value = 0xFF00,
+			.value = 0x00000003,
 		},
 		.ubwc_ctl = {
 			/*
@@ -177,20 +177,20 @@ static struct cam_camnoc_specific
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x430, /* OPE_PRIORITYLUT_LOW */
-			.value = 0x66665433,
+			.value = 0x33333333,
 		},
 		.priority_lut_high = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.masked_value = 0,
 			.offset = 0x434, /* OPE_PRIORITYLUT_HIGH */
-			.value = 0x66666666,
+			.value = 0x33333333,
 		},
 		.urgency = {
 			.enable = true,
 			.access_type = CAM_REG_TYPE_READ_WRITE,
 			.offset = 0x438, /* OPE_URGENCY_LOW */
-			.value = 0x3,
+			.value = 0x00000033,
 		},
 		.danger_lut = {
 			.enable = true,
