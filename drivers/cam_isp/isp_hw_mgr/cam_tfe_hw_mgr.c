@@ -4053,7 +4053,7 @@ static void cam_tfe_mgr_print_io_bufs(struct cam_packet *packet,
 					io_cfg[i].mem_handle[j]);
 				continue;
 			}
-			if (iova_addr >> 32) {
+			if ((iova_addr & 0xFFFFFFFF) != iova_addr) {
 				CAM_ERR(CAM_ISP, "Invalid mapped address");
 				rc = -EINVAL;
 				continue;
