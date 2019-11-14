@@ -256,12 +256,18 @@ static inline void ftrace_free_mem(struct module *mod, void *start, void *end) {
 #ifdef CONFIG_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
 int register_ftrace_direct(unsigned long ip, unsigned long addr);
 int unregister_ftrace_direct(unsigned long ip, unsigned long addr);
+int modify_ftrace_direct(unsigned long ip, unsigned long old_addr, unsigned long new_addr);
 #else
 static inline int register_ftrace_direct(unsigned long ip, unsigned long addr)
 {
 	return -ENODEV;
 }
 static inline int unregister_ftrace_direct(unsigned long ip, unsigned long addr)
+{
+	return -ENODEV;
+}
+static inline int modify_ftrace_direct(unsigned long ip,
+				       unsigned long old_addr, unsigned long new_addr)
 {
 	return -ENODEV;
 }
