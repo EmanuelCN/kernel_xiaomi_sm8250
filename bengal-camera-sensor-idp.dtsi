@@ -329,10 +329,14 @@
 			<&tlmm 66 0>,
 			<&tlmm 67 0>;
 		gpio-reset = <1>;
+		gpio-custom1 = <2>;
+		gpio-custom2 = <3>;
 		gpio-req-tbl-num = <0 1>;
 		gpio-req-tbl-flags = <1 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK2",
-					"CAM_RESET2";
+					"CAM_RESET2",
+					"CAM_CSIMUX_OE0",
+					"CAM_CSIMUX_SEL0";
 		sensor-mode = <0>;
 		cci-master = <1>;
 		status = "ok";
@@ -378,10 +382,14 @@
 			<&tlmm 66 0>,
 			<&tlmm 67 0>;
 		gpio-reset = <1>;
+		gpio-custom1 = <2>;
+		gpio-custom2 = <3>;
 		gpio-req-tbl-num = <0 1>;
 		gpio-req-tbl-flags = <1 0>;
 		gpio-req-tbl-label = "CAMIF_MCLK3",
-					"CAM_RESET3";
+					"CAM_RESET3",
+					"CAM_CSIMUX_OE1",
+					"CAM_CSIMUX_SEL1";
 		sensor-mode = <0>;
 		cci-master = <0>;
 		status = "ok";
