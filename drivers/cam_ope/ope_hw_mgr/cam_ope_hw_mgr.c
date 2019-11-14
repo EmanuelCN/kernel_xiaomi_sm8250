@@ -499,7 +499,7 @@ static void cam_ope_device_timer_cb(struct timer_list *timer_data)
 	task_data->data = timer->parent;
 	task_data->type = OPE_WORKQ_TASK_MSG_TYPE;
 	task->process_cb = cam_ope_deinit_idle_clk;
-	cam_req_mgr_workq_enqueue_task(task, &ope_hw_mgr,
+	cam_req_mgr_workq_enqueue_task(task, ope_hw_mgr,
 		CRM_TASK_PRIORITY_0);
 	spin_unlock_irqrestore(&ope_hw_mgr->hw_mgr_lock, flags);
 }
