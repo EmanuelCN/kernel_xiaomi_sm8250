@@ -251,7 +251,7 @@ struct bpf_func_proto {
 		};
 		enum bpf_arg_type arg_type[5];
 	};
-	u32 *btf_id; /* BTF ids of arguments */
+	int *btf_id; /* BTF ids of arguments */
 };
 
 /* bpf_context is intentionally undefined structure. Pointer to bpf_context is
@@ -888,12 +888,14 @@ int btf_struct_access(struct bpf_verifier_log *log,
 		      const struct btf_type *t, int off, int size,
 		      enum bpf_access_type atype,
 		      u32 *next_btf_id);
+int btf_resolve_helper_id(struct bpf_verifier_log *log,
+			  const struct bpf_func_proto *fn, int);
+
 int btf_distill_func_proto(struct bpf_verifier_log *log,
 			   struct btf *btf,
 			   const struct btf_type *func_proto,
 			   const char *func_name,
 			   struct btf_func_model *m);
-u32 btf_resolve_helper_id(struct bpf_verifier_log *log, void *, int);
 
 static inline bool unprivileged_ebpf_enabled(void)
 {
