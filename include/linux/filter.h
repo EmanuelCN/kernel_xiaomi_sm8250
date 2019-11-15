@@ -559,13 +559,15 @@ struct sock_fprog_kern {
 
 #define BPF_BINARY_HEADER_MAGIC	0x05de0e82
 
+/* Some arches need doubleword alignment for their instructions and/or data */
+#define BPF_IMAGE_ALIGNMENT 8
+
 struct bpf_binary_header {
 #ifdef CONFIG_CFI_CLANG
 	u32 magic;
 #endif
 	u32 pages;
-	/* Some arches need word alignment for their instructions */
-	u8 image[] __aligned(4);
+	u8 image[] __aligned(BPF_IMAGE_ALIGNMENT);
 };
 
 struct bpf_prog {
