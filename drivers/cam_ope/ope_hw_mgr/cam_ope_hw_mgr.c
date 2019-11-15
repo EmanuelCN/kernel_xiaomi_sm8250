@@ -1383,6 +1383,7 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 	uint32_t unpack_format;
 	struct ope_in_res_info *in_res;
 	struct ope_out_res_info *out_res;
+	bool is_secure;
 
 	in_frame_process = (struct ope_frame_process *)frame_process_addr;
 
@@ -1471,9 +1472,19 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 			for (k = 0; k < in_io_buf->num_planes; k++) {
 				io_buf->num_stripes[k] =
 					in_io_buf->num_stripes[k];
-				rc = cam_mem_get_io_buf(
-					in_io_buf->mem_handle[k],
-					hw_mgr->iommu_hdl, &iova_addr, &len);
+				is_secure = cam_mem_is_secure_buf(
+					in_io_buf->mem_handle[k]);
+				if (is_secure)
+					rc = cam_mem_get_io_buf(
+						in_io_buf->mem_handle[k],
+						hw_mgr->iommu_sec_hdl,
+						&iova_addr, &len);
+				else
+					rc = cam_mem_get_io_buf(
+						in_io_buf->mem_handle[k],
+						hw_mgr->iommu_hdl,
+						&iova_addr, &len);
+
 				if (rc) {
 					CAM_ERR(CAM_OPE, "get buf failed: %d",
 						rc);

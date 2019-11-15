@@ -5200,7 +5200,7 @@ static int cam_isp_packet_generic_blob_handler(void *user_data,
 		memset(&prepare_hw_data->bw_config_v2[bw_config->usage_type],
 			0, sizeof(
 			prepare_hw_data->bw_config_v2[bw_config->usage_type]));
-		bw_config_size = sizeof(struct cam_isp_bw_config_internal_v2) +
+		bw_config_size = sizeof(struct cam_isp_bw_config_v2) +
 			((bw_config->num_paths - 1) *
 			sizeof(struct cam_axi_per_path_bw_vote));
 		memcpy(&prepare_hw_data->bw_config_v2[bw_config->usage_type],

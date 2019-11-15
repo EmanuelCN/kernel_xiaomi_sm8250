@@ -475,6 +475,7 @@ int cam_isp_add_io_buffers(
 	struct cam_isp_hw_get_wm_update     bus_rd_update;
 	struct cam_hw_fence_map_entry      *out_map_entries;
 	struct cam_hw_fence_map_entry      *in_map_entries;
+	struct cam_isp_hw_get_cmd_update    secure_mode;
 	uint32_t                            kmd_buf_remain_size;
 	uint32_t                            i, j, num_out_buf, num_in_buf;
 	uint32_t                            res_id_out, res_id_in, plane_id;
@@ -482,7 +483,8 @@ int cam_isp_add_io_buffers(
 	size_t                              size;
 	int32_t                             hdl;
 	int                                 mmu_hdl;
-	bool                                mode, is_buf_secure;
+	bool                                is_buf_secure;
+	uint32_t                            mode;
 
 	io_cfg = (struct cam_buf_io_cfg *) ((uint8_t *)
 			&prepare->packet->payload +
@@ -611,10 +613,16 @@ int cam_isp_add_io_buffers(
 					break;
 
 				hdl = io_cfg[i].mem_handle[plane_id];
+				secure_mode.cmd_type =
+					CAM_ISP_HW_CMD_GET_SECURE_MODE;
+				secure_mode.res = res;
+				secure_mode.data = (void *)&mode;
 				rc = res->hw_intf->hw_ops.process_cmd(
 					res->hw_intf->hw_priv,
 					CAM_ISP_HW_CMD_GET_SECURE_MODE,
-					&mode, sizeof(bool));
+					&secure_mode,
+					sizeof(
+					struct cam_isp_hw_get_cmd_update));
 				if (rc)
 					return -EINVAL;
 
@@ -722,10 +730,16 @@ int cam_isp_add_io_buffers(
 					break;
 
 				hdl = io_cfg[i].mem_handle[plane_id];
+				secure_mode.cmd_type =
+					CAM_ISP_HW_CMD_GET_SECURE_MODE;
+				secure_mode.res = res;
+				secure_mode.data = (void *)&mode;
 				rc = res->hw_intf->hw_ops.process_cmd(
 					res->hw_intf->hw_priv,
 					CAM_ISP_HW_CMD_GET_SECURE_MODE,
-					&mode, sizeof(bool));
+					&secure_mode,
+					sizeof(
+					struct cam_isp_hw_get_cmd_update));
 				if (rc)
 					return -EINVAL;
 

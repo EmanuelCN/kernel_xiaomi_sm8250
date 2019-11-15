@@ -1043,12 +1043,13 @@ static int cam_tfe_bus_deinit_comp_grp(
 static int cam_tfe_bus_get_secure_mode(void *priv, void *cmd_args,
 	uint32_t arg_size)
 {
-	bool *mode = cmd_args;
-	struct cam_isp_resource_node *res =
-		(struct cam_isp_resource_node *) priv;
-	struct cam_tfe_bus_tfe_out_data *rsrc_data =
-		(struct cam_tfe_bus_tfe_out_data *)res->res_priv;
+	struct cam_isp_hw_get_cmd_update    *secure_mode = cmd_args;
+	struct cam_tfe_bus_tfe_out_data     *rsrc_data;
+	uint32_t                            *mode;
 
+	rsrc_data = (struct cam_tfe_bus_tfe_out_data *)
+		secure_mode->res->res_priv;
+	mode = (uint32_t *)secure_mode->data;
 	*mode = (rsrc_data->secure_mode == CAM_SECURE_MODE_SECURE) ?
 		true : false;
 
@@ -1657,7 +1658,7 @@ static int cam_tfe_bus_update_wm(void *priv, void *cmd_args,
 			wm_data->index, reg_val_pair[j-1]);
 
 		val = io_cfg->planes[i].plane_stride;
-		CAM_DBG(CAM_ISP, "before stride %d", val);
+		CAM_DBG(CAM_ISP, "before stride 0x%x", val);
 		val = ALIGNUP(val, 16);
 		if (val != io_cfg->planes[i].plane_stride &&
 			val != wm_data->stride)
@@ -1674,7 +1675,7 @@ static int cam_tfe_bus_update_wm(void *priv, void *cmd_args,
 			CAM_TFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 				wm_data->hw_regs->image_cfg_2,
 				io_cfg->planes[i].plane_stride);
-			wm_data->stride = val;
+			wm_data->stride = io_cfg->planes[i].plane_stride;
 			CAM_DBG(CAM_ISP, "WM %d image stride 0x%x",
 				wm_data->index, reg_val_pair[j-1]);
 		}
@@ -1833,7 +1834,7 @@ static int cam_tfe_bus_update_stripe_cfg(void *priv, void *cmd_args,
 		wm_data = tfe_out_data->wm_res[i]->res_priv;
 		wm_data->width = stripe_config->width;
 		wm_data->offset = stripe_config->offset;
-		CAM_DBG(CAM_ISP, "id:%x WM:%d width:0x%x offset:%x",
+		CAM_DBG(CAM_ISP, "id:%x WM:%d width:0x%x offset:0x%x",
 			stripe_args->res->res_id, wm_data->index,
 			wm_data->width, wm_data->offset);
 	}

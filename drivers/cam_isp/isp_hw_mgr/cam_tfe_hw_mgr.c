@@ -2354,7 +2354,7 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 		if (hw_update_data->bw_config_valid[i] == true) {
 
 			CAM_DBG(CAM_ISP, "idx=%d, bw_config_version=%d",
-				ctx, ctx->ctx_index, i,
+				ctx->ctx_index, i,
 				hw_update_data->bw_config_version);
 			if (hw_update_data->bw_config_version ==
 				CAM_ISP_BW_CONFIG_V2) {
@@ -3486,7 +3486,7 @@ static int cam_isp_tfe_packet_generic_blob_handler(void *user_data,
 		memset(&prepare_hw_data->bw_config_v2[bw_config->usage_type],
 			0, sizeof(
 			prepare_hw_data->bw_config_v2[bw_config->usage_type]));
-		bw_config_size = sizeof(struct cam_isp_bw_config_internal_v2) +
+		bw_config_size = sizeof(struct cam_isp_tfe_bw_config_v2) +
 			((bw_config->num_paths - 1) *
 			sizeof(struct cam_axi_per_path_bw_vote));
 		memcpy(&prepare_hw_data->bw_config_v2[bw_config->usage_type],

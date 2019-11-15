@@ -1980,12 +1980,14 @@ static int cam_vfe_bus_deinit_comp_grp(
 static int cam_vfe_bus_get_secure_mode(void *priv, void *cmd_args,
 	uint32_t arg_size)
 {
-	bool *mode = cmd_args;
-	struct cam_isp_resource_node *res =
-		(struct cam_isp_resource_node *) priv;
-	struct cam_vfe_bus_ver2_vfe_out_data *rsrc_data =
-		(struct cam_vfe_bus_ver2_vfe_out_data *)res->res_priv;
 
+	struct cam_isp_hw_get_cmd_update      *secure_mode = cmd_args;
+	struct cam_vfe_bus_ver2_vfe_out_data  *rsrc_data;
+	uint32_t                              *mode;
+
+	rsrc_data = (struct cam_vfe_bus_ver2_vfe_out_data *)
+		secure_mode->res->res_priv;
+	mode = (uint32_t *)secure_mode->data;
 	*mode =
 		(rsrc_data->secure_mode == CAM_SECURE_MODE_SECURE) ?
 		true : false;

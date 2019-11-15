@@ -702,6 +702,7 @@ irqreturn_t cam_tfe_irq(int irq_num, void *data)
 		return IRQ_HANDLED;
 	}
 
+	spin_lock(&core_info->spin_lock);
 	for (i = 0; i < CAM_TFE_TOP_IRQ_REG_NUM; i++)
 		top_irq_status[i] = cam_io_r(mem_base  +
 		core_info->tfe_hw_info->top_irq_status[i]);
@@ -740,6 +741,7 @@ irqreturn_t cam_tfe_irq(int irq_num, void *data)
 			core_info->core_index, bus_irq_status[0],
 			bus_irq_status[1]);
 	}
+	spin_unlock(&core_info->spin_lock);
 
 	/* check reset */
 	if ((top_irq_status[0] & core_info->tfe_hw_info->reset_irq_mask[0]) ||
