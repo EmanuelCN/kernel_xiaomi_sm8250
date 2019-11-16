@@ -66,6 +66,10 @@ static int cam_ope_top_reset(struct ope_hw *ope_hw_info,
 		rc = 0;
 	}
 
+	/* enable interrupt mask */
+	cam_io_w_mb(top_reg_val->irq_mask,
+		ope_hw_info->top_reg->base + top_reg->irq_mask);
+
 	return rc;
 }
 
@@ -130,6 +134,10 @@ static int cam_ope_top_init(struct ope_hw *ope_hw_info,
 	rc = wait_for_completion_timeout(
 			&ope_top_info.reset_complete,
 			msecs_to_jiffies(30));
+
+	/* enable interrupt mask */
+	cam_io_w_mb(top_reg_val->irq_mask,
+		ope_hw_info->top_reg->base + top_reg->irq_mask);
 
 	if (!rc || rc < 0) {
 		CAM_ERR(CAM_OPE, "reset error result = %d", rc);

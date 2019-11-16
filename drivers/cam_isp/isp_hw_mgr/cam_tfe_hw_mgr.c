@@ -3372,7 +3372,7 @@ static int cam_isp_tfe_packet_generic_blob_handler(void *user_data,
 		if ((hfr_config->num_ports != 0) && (blob_size <
 			(sizeof(struct cam_isp_tfe_resource_hfr_config) +
 			(hfr_config->num_ports - 1) *
-			sizeof(struct cam_isp_tfe_resource_hfr_config)))) {
+			sizeof(struct cam_isp_tfe_port_hfr_config)))) {
 			CAM_ERR(CAM_ISP, "Invalid blob size %u expected %lu",
 				blob_size,
 				sizeof(struct cam_isp_tfe_resource_hfr_config) +

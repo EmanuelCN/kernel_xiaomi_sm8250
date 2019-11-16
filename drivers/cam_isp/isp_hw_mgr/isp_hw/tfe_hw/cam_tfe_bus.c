@@ -535,7 +535,7 @@ static int cam_tfe_bus_acquire_wm(
 				rsrc_data->format);
 			return -EINVAL;
 		}
-	} else if (rsrc_data->index == 0) {
+	} else if (rsrc_data->index == 0 || rsrc_data->index == 1) {
 	/*  WM 0 FULL_OUT */
 		switch (rsrc_data->format) {
 		case CAM_FORMAT_MIPI_RAW_8:
@@ -571,12 +571,6 @@ static int cam_tfe_bus_acquire_wm(
 		rsrc_data->height = 0;
 		rsrc_data->stride = 1;
 		rsrc_data->en_cfg = (0x1 << 16) | 0x1;
-	} else if (rsrc_data->index == 1) {
-		/* WM 1 Raw dump */
-		rsrc_data->stride = rsrc_data->width;
-		rsrc_data->en_cfg = 0x1;
-		/* LSB aligned */
-		rsrc_data->pack_fmt |= 0x10;
 	} else {
 		CAM_ERR(CAM_ISP, "Invalid WM:%d requested", rsrc_data->index);
 		return -EINVAL;

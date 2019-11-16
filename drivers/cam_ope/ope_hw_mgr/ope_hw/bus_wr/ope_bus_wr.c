@@ -691,7 +691,6 @@ static int cam_ope_bus_wr_isr(struct ope_hw *ope_hw_info,
 	uint32_t irq_status_0, irq_status_1;
 	struct cam_ope_bus_wr_reg *bus_wr_reg;
 	struct cam_ope_bus_wr_reg_val *bus_wr_reg_val;
-	struct cam_ope_irq_data *irq_data = data;
 
 	if (!ope_hw_info) {
 		CAM_ERR(CAM_OPE, "Invalid ope_hw_info");
@@ -713,17 +712,14 @@ static int cam_ope_bus_wr_isr(struct ope_hw *ope_hw_info,
 		bus_wr_reg->base + bus_wr_reg->irq_cmd);
 
 	if (irq_status_0 & bus_wr_reg_val->cons_violation) {
-		irq_data->error = 1;
 		CAM_ERR(CAM_OPE, "ope bus wr cons_violation");
 	}
 
 	if (irq_status_0 & bus_wr_reg_val->violation) {
-		irq_data->error = 1;
 		CAM_ERR(CAM_OPE, "ope bus wr  vioalation");
 	}
 
 	if (irq_status_0 & bus_wr_reg_val->img_size_violation) {
-		irq_data->error = 1;
 		CAM_ERR(CAM_OPE, "ope bus wr  img_size_violation");
 	}
 

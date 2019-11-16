@@ -1858,13 +1858,6 @@ static int cam_ope_get_acquire_info(struct cam_ope_hw_mgr *hw_mgr,
 		return -EINVAL;
 	}
 
-	if (args->acquire_info_size <
-		sizeof(struct ope_acquire_dev_info)) {
-		CAM_ERR(CAM_OPE, "Invalid acquire size = %d",
-			args->acquire_info_size);
-		return -EINVAL;
-	}
-
 	if (copy_from_user(&ctx->ope_acquire,
 		(void __user *)args->acquire_info,
 		sizeof(struct ope_acquire_dev_info))) {
