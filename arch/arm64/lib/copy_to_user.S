@@ -65,11 +65,9 @@
 end	.req	x5
 srcin	.req	x15
 SYM_FUNC_START(__arch_copy_to_user)
-	uaccess_enable_not_uao x3, x4, x5
 	add	end, x0, x2
 	mov	srcin, x1
 #include "copy_template.S"
-	uaccess_disable_not_uao x3, x4
 	mov	x0, #0
 	ret
 SYM_FUNC_END(__arch_copy_to_user)
@@ -84,6 +82,5 @@ EXPORT_SYMBOL(__arch_copy_to_user)
 USER(9998f, sttrb tmp1w, [dst])
 	add	dst, dst, #1
 9998:	sub	x0, end, dst			// bytes not copied
-	uaccess_disable_not_uao x3, x4
 	ret
 	.previous
