@@ -90,7 +90,6 @@ struct schedtune {
 	/* Boost value for tasks on that SchedTune CGroup */
 	int boost;
 
-#ifdef CONFIG_SCHED_WALT
 	/* Toggle ability to override sched boost enabled */
 	bool sched_boost_no_override;
 
@@ -147,7 +146,6 @@ static inline struct schedtune *parent_st(struct schedtune *st)
 static struct schedtune
 root_schedtune = {
 	.boost	= 0,
-#ifdef CONFIG_SCHED_WALT
 	.sched_boost_no_override = false,
 	.sched_boost_enabled = true,
 	.colocate = false,
@@ -205,7 +203,6 @@ struct boost_groups {
 /* Boost groups affecting each CPU in the system */
 DEFINE_PER_CPU(struct boost_groups, cpu_boost_groups);
 
-#ifdef CONFIG_SCHED_WALT
 static inline void init_sched_boost(struct schedtune *st)
 {
 	st->sched_boost_no_override = false;
@@ -272,8 +269,6 @@ static int sched_boost_override_write(struct cgroup_subsys_state *css,
 
 	return 0;
 }
-
-#endif /* CONFIG_SCHED_WALT */
 
 static inline bool schedtune_boost_timeout(u64 now, u64 ts)
 {
@@ -488,11 +483,6 @@ bool schedtune_task_colocated(struct task_struct *p)
 
 	return colocated;
 }
-
-#else /* CONFIG_SCHED_WALT */
-
-static inline void init_sched_boost(struct schedtune *st) { }
-
 #endif /* CONFIG_SCHED_WALT */
 
 void schedtune_cancel_attach(struct cgroup_taskset *tset)
@@ -782,12 +772,12 @@ static int prefer_idle_write_wrapper(struct cgroup_subsys_state *css,
 #endif
 
 static struct cftype files[] = {
-#ifdef CONFIG_SCHED_WALT
 	{
 		.name = "sched_boost_no_override",
 		.read_u64 = sched_boost_override_read,
 		.write_u64 = sched_boost_override_write_wrapper,
 	},
+#ifdef CONFIG_SCHED_WALT
 	{
 		.name = "colocate",
 		.read_u64 = sched_colocate_read,
