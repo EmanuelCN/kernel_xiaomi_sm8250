@@ -307,6 +307,33 @@ config CPU_FREQ_MIN_PERFP
 
 	  If in doubt, say 0 to use the hardware's minimum frequency.
 
+config CPU_FREQ_IDLE_LP
+	int "Default idle frequency for the little cluster"
+	default 0
+	help
+	  This sets the default idle frequency (in kHz) for the little CPU
+	  cluster.
+
+	  If in doubt, say 0 to use the hardware's minimum frequency.
+
+config CPU_FREQ_IDLE_PERF
+	int "Default idle frequency for the big cluster"
+	default 0
+	help
+	  This sets the default idle frequency (in kHz) for the big CPU
+	  cluster.
+
+	  If in doubt, say 0 to use the hardware's minimum frequency.
+
+config CPU_FREQ_IDLE_PERFP
+	int "Default idle frequency for the prime cluster"
+	default 0
+	help
+	  This sets the default idle frequency (in kHz) for the prime CPU
+	  cluster.
+
+	  If in doubt, say 0 to use the hardware's minimum frequency.
+
 endif
 
 comment "CPU frequency scaling drivers"
