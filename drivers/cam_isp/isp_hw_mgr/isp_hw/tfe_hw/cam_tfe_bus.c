@@ -1656,11 +1656,7 @@ static int cam_tfe_bus_update_wm(void *priv, void *cmd_args,
 
 		wm_data = tfe_out_data->wm_res[i]->res_priv;
 		/* update width register */
-		val = cam_io_r_mb(wm_data->common_data->mem_base +
-			wm_data->hw_regs->image_cfg_0);
-		/* mask previously written width but preserve height */
-		val = val & 0xFFFF0000;
-		val |= wm_data->width;
+		val = ((wm_data->height << 16) | (wm_data->width & 0xFFFF));
 		CAM_TFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 			wm_data->hw_regs->image_cfg_0, val);
 		CAM_DBG(CAM_ISP, "WM:%d image height and width 0x%x",

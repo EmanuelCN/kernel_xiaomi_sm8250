@@ -315,6 +315,10 @@ static int cam_tfe_csid_global_reset(struct cam_tfe_csid_hw *csid_hw)
 		rc = -ETIMEDOUT;
 	}
 
+	status = cam_io_r(soc_info->reg_map[0].mem_base +
+		csid_reg->cmn_reg->csid_top_irq_status_addr);
+	CAM_DBG(CAM_ISP, "Status reg %d", status);
+
 	/* perform the SW registers reset */
 	reinit_completion(&csid_hw->csid_top_complete);
 	cam_io_w_mb(csid_reg->cmn_reg->csid_reg_rst_stb,
@@ -1834,12 +1838,16 @@ static int cam_tfe_csid_reset_retain_sw_reg(
 	if (rc < 0) {
 		CAM_ERR(CAM_ISP, "CSID:%d csid_reset fail rc = %d",
 			  csid_hw->hw_intf->hw_idx, rc);
-		rc = -ETIMEDOUT;
+		status = cam_io_r(soc_info->reg_map[0].mem_base +
+			csid_reg->cmn_reg->csid_top_irq_status_addr);
+		CAM_DBG(CAM_ISP, "Status reg %d", status);
+		rc = 0;
 	} else {
 		CAM_DBG(CAM_ISP, "CSID:%d hw reset completed %d",
 			csid_hw->hw_intf->hw_idx, rc);
 		rc = 0;
 	}
+
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_top_irq_clear_addr);
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
