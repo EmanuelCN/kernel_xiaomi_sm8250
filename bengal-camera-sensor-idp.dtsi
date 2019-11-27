@@ -118,8 +118,8 @@
 				&cam_sensor_rear1_reset_active>;
 		pinctrl-1 = <&cam_sensor_mclk1_suspend
 				&cam_sensor_rear1_reset_suspend>;
-		gpios = <&tlmm 19 0>,
-			<&tlmm 21 0>;
+		gpios = <&tlmm 21 0>,
+			<&tlmm 19 0>;
 		gpio-reset = <1>;
 		gpio-req-tbl-num = <0 1>;
 		gpio-req-tbl-flags = <1 0>;
@@ -278,8 +278,8 @@
 				&cam_sensor_rear1_reset_active>;
 		pinctrl-1 = <&cam_sensor_mclk1_suspend
 				&cam_sensor_rear1_reset_suspend>;
-		gpios = <&tlmm 19 0>,
-			<&tlmm 21 0>;
+		gpios = <&tlmm 21 0>,
+			<&tlmm 19 0>;
 		gpio-reset = <1>;
 		gpio-req-tbl-num = <0 1>;
 		gpio-req-tbl-flags = <1 0>;
