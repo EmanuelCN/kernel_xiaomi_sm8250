@@ -8323,7 +8323,8 @@ redo:
 		if (sched_feat(LB_MIN) && load < 16 && !env->sd->nr_balance_failed)
 			goto next;
 
-		if ((load / 2) > env->imbalance)
+		if ((load / 2) > env->imbalance &&
+		    env->sd->nr_balance_failed <= env->sd->cache_nice_tries)
 			goto next;
 
 		detach_task(p, env);
