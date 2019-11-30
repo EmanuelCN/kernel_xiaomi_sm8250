@@ -114,6 +114,7 @@ int cam_ope_probe(struct platform_device *pdev)
 	int                                rc = 0;
 	uint32_t hw_idx;
 	struct cam_ope_dev_probe ope_probe;
+	struct cam_ope_cpas_vote cpas_vote;
 
 	of_property_read_u32(pdev->dev.of_node,
 		"cell-index", &hw_idx);
@@ -176,17 +177,6 @@ int cam_ope_probe(struct platform_device *pdev)
 		CAM_ERR(CAM_OPE, "failed to init_soc");
 		goto init_soc_failed;
 	}
-
-	rc = cam_ope_enable_soc_resources(&ope_dev->soc_info);
-	if (rc < 0) {
-		CAM_ERR(CAM_OPE, "enable soc resorce failed: %d", rc);
-		goto enable_soc_failed;
-	}
-
-	rc = cam_ope_init_hw_version(&ope_dev->soc_info, ope_dev->core_info);
-	if (rc)
-		goto init_hw_failure;
-
 	core_info->hw_type = OPE_DEV_OPE;
 	core_info->hw_idx = hw_idx;
 	rc = cam_ope_register_cpas(&ope_dev->soc_info,
@@ -194,7 +184,38 @@ int cam_ope_probe(struct platform_device *pdev)
 	if (rc < 0)
 		goto register_cpas_failed;
 
+	rc = cam_ope_enable_soc_resources(&ope_dev->soc_info);
+	if (rc < 0) {
+		CAM_ERR(CAM_OPE, "enable soc resorce failed: %d", rc);
+		goto enable_soc_failed;
+	}
+	cpas_vote.ahb_vote.type = CAM_VOTE_ABSOLUTE;
+	cpas_vote.ahb_vote.vote.level = CAM_SVS_VOTE;
+	cpas_vote.axi_vote.num_paths = 1;
+	cpas_vote.axi_vote.axi_path[0].path_data_type =
+		CAM_AXI_PATH_DATA_OPE_WR_VID;
+	cpas_vote.axi_vote.axi_path[0].transac_type =
+		CAM_AXI_TRANSACTION_WRITE;
+	cpas_vote.axi_vote.axi_path[0].camnoc_bw =
+		CAM_CPAS_DEFAULT_AXI_BW;
+	cpas_vote.axi_vote.axi_path[0].mnoc_ab_bw =
+		CAM_CPAS_DEFAULT_AXI_BW;
+	cpas_vote.axi_vote.axi_path[0].mnoc_ib_bw =
+		CAM_CPAS_DEFAULT_AXI_BW;
+	cpas_vote.axi_vote.axi_path[0].ddr_ab_bw =
+		CAM_CPAS_DEFAULT_AXI_BW;
+	cpas_vote.axi_vote.axi_path[0].ddr_ib_bw =
+		CAM_CPAS_DEFAULT_AXI_BW;
+
+	rc = cam_cpas_start(core_info->cpas_handle,
+		&cpas_vote.ahb_vote, &cpas_vote.axi_vote);
+
+	rc = cam_ope_init_hw_version(&ope_dev->soc_info, ope_dev->core_info);
+	if (rc)
+		goto init_hw_failure;
+
 	cam_ope_disable_soc_resources(&ope_dev->soc_info, true);
+	cam_cpas_stop(core_info->cpas_handle);
 	ope_dev->hw_state = CAM_HW_STATE_POWER_DOWN;
 
 	ope_probe.hfi_en = ope_soc_info.hfi_en;

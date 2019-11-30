@@ -82,9 +82,42 @@ static int cam_ope_bus_rd_combo_idx(uint32_t format)
 	return rc;
 }
 
+static int cam_ope_bus_is_rm_enabled(
+	struct cam_ope_request *ope_request,
+	uint32_t batch_idx,
+	uint32_t rm_id)
+{
+	int i, k;
+	int32_t combo_idx;
+	struct ope_io_buf *io_buf;
+	struct ope_bus_in_port_to_rm *in_port_to_rm;
+
+	if (batch_idx >= OPE_MAX_BATCH_SIZE) {
+		CAM_ERR(CAM_OPE, "Invalid batch idx: %d", batch_idx);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < ope_request->num_io_bufs[batch_idx]; i++) {
+		io_buf = &ope_request->io_buf[batch_idx][i];
+		if (io_buf->direction != CAM_BUF_INPUT)
+			continue;
+		in_port_to_rm =
+			&bus_rd->in_port_to_rm[io_buf->resource_type - 1];
+		combo_idx = cam_ope_bus_rd_combo_idx(io_buf->format);
+		for (k = 0; k < io_buf->num_planes; k++) {
+			if (rm_id ==
+				in_port_to_rm->rm_port_id[combo_idx][k])
+				return true;
+		}
+	}
+
+	return false;
+}
+
 static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 	int32_t ctx_id, uint32_t *kmd_buf, int batch_idx,
-	int io_idx, struct cam_ope_dev_prepare_req *prepare)
+	int io_idx, struct cam_ope_dev_prepare_req *prepare,
+	int32_t *num_stripes)
 {
 	int k, l, m;
 	uint32_t idx;
@@ -154,6 +187,7 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 
 	for (k = 0; k < io_buf->num_planes; k++) {
 		for (l = 0; l < io_buf->num_stripes[k]; l++) {
+			*num_stripes = io_buf->num_stripes[k];
 			stripe_io = &io_buf->s_io[k][l];
 			rsc_type = io_buf->resource_type - 1;
 			/* frame level info */
@@ -259,6 +293,97 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 	return kmd_buf;
 }
 
+static uint32_t *cam_ope_bus_rm_disable(struct ope_hw *ope_hw_info,
+	int32_t ctx_id, struct cam_ope_dev_prepare_req *prepare,
+	int batch_idx, int rm_idx,
+	uint32_t *kmd_buf, uint32_t num_stripes)
+{
+	int l;
+	uint32_t idx;
+	uint32_t req_idx;
+	uint32_t temp_reg[128];
+	uint32_t count = 0;
+	uint32_t temp = 0;
+	uint32_t header_size;
+	struct cam_ope_ctx *ctx_data;
+	struct ope_bus_rd_ctx *bus_rd_ctx;
+	struct cam_ope_bus_rd_reg *rd_reg;
+	struct cam_ope_bus_rd_client_reg *rd_reg_client;
+	struct ope_bus_rd_io_port_cdm_batch *io_port_cdm_batch;
+	struct ope_bus_rd_io_port_cdm_info *io_port_cdm;
+	struct cam_cdm_utils_ops *cdm_ops;
+
+
+	if (ctx_id < 0 || !prepare) {
+		CAM_ERR(CAM_OPE, "Invalid data: %d %x", ctx_id, prepare);
+		return NULL;
+	}
+
+	if (batch_idx >= OPE_MAX_BATCH_SIZE) {
+		CAM_ERR(CAM_OPE, "Invalid batch idx: %d", batch_idx);
+		return NULL;
+	}
+
+	ctx_data = prepare->ctx_data;
+	req_idx = prepare->req_idx;
+	cdm_ops = ctx_data->ope_cdm.cdm_ops;
+
+	bus_rd_ctx = &bus_rd->bus_rd_ctx[ctx_id];
+	io_port_cdm_batch = &bus_rd_ctx->io_port_cdm_batch;
+	rd_reg = ope_hw_info->bus_rd_reg;
+
+	CAM_DBG(CAM_OPE, "kmd_buf = %x req_idx = %d offset = %d",
+		kmd_buf, req_idx, prepare->kmd_buf_offset);
+
+	io_port_cdm =
+		&bus_rd_ctx->io_port_cdm_batch.io_port_cdm[batch_idx];
+
+	for (l = 0; l < num_stripes; l++) {
+		/* stripe level info */
+		rd_reg_client = &rd_reg->rd_clients[rm_idx];
+
+		/* Core cfg: enable, Mode */
+		temp_reg[count++] = rd_reg->offset +
+			rd_reg_client->core_cfg;
+		temp_reg[count++] = 0;
+
+		header_size = cdm_ops->cdm_get_cmd_header_size(
+			CAM_CDM_CMD_REG_RANDOM);
+		idx = io_port_cdm->num_s_cmd_bufs[l];
+		io_port_cdm->s_cdm_info[l][idx].len =
+			sizeof(temp) * (count + header_size);
+		io_port_cdm->s_cdm_info[l][idx].offset =
+			prepare->kmd_buf_offset;
+		io_port_cdm->s_cdm_info[l][idx].addr = kmd_buf;
+		io_port_cdm->num_s_cmd_bufs[l]++;
+
+		kmd_buf = cdm_ops->cdm_write_regrandom(
+			kmd_buf, count/2, temp_reg);
+		prepare->kmd_buf_offset += ((count + header_size) *
+			sizeof(temp));
+
+		CAM_DBG(CAM_OPE, "b:%d s:%d",
+			batch_idx, l);
+		CAM_DBG(CAM_OPE, "kmdbuf:%x, offset:%d",
+			kmd_buf, prepare->kmd_buf_offset);
+		CAM_DBG(CAM_OPE, "count:%d temp_reg:%x",
+			count, temp_reg, header_size);
+		CAM_DBG(CAM_OPE, "header_size:%d", header_size);
+			CAM_DBG(CAM_OPE, "RD cmd bufs = %d",
+			io_port_cdm->num_s_cmd_bufs[l]);
+		CAM_DBG(CAM_OPE, "off:%d len:%d",
+			io_port_cdm->s_cdm_info[l][idx].offset,
+			io_port_cdm->s_cdm_info[l][idx].len);
+		CAM_DBG(CAM_OPE, "b:%d s:%d",
+			batch_idx, l);
+		count = 0;
+	}
+
+	prepare->rd_cdm_batch = &bus_rd_ctx->io_port_cdm_batch;
+
+	return kmd_buf;
+}
+
 static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 	int32_t ctx_id, void *data)
 {
@@ -269,6 +394,7 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 	uint32_t temp_reg[32] = {0};
 	uint32_t header_size;
 	uint32_t *kmd_buf;
+	int is_rm_enabled;
 	struct cam_ope_dev_prepare_req *prepare;
 	struct cam_ope_ctx *ctx_data;
 	struct cam_ope_request *ope_request;
@@ -279,6 +405,7 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 	struct ope_bus_rd_io_port_cdm_batch *io_port_cdm_batch;
 	struct ope_bus_rd_io_port_cdm_info *io_port_cdm;
 	struct cam_cdm_utils_ops *cdm_ops;
+	int32_t num_stripes;
 
 	if (ctx_id < 0 || !data) {
 		CAM_ERR(CAM_OPE, "Invalid data: %d %x", ctx_id, data);
@@ -323,7 +450,8 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 			}
 
 			kmd_buf = cam_ope_bus_rd_update(ope_hw_info,
-				ctx_id, kmd_buf, i, j, prepare);
+				ctx_id, kmd_buf, i, j, prepare,
+				&num_stripes);
 			if (!kmd_buf) {
 				rc = -EINVAL;
 				goto end;
@@ -334,6 +462,20 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 	if (!io_port_cdm) {
 		rc = -EINVAL;
 		goto end;
+	}
+
+	/* Disable RMs which are not enabled */
+	for (i = 0; i < ope_request->num_batch; i++) {
+		for (j = 0; j < rd_reg_val->num_clients; j++) {
+			is_rm_enabled = cam_ope_bus_is_rm_enabled(
+				ope_request, i, j);
+			if (is_rm_enabled)
+				continue;
+
+			kmd_buf = cam_ope_bus_rm_disable(ope_hw_info,
+				ctx_id, prepare, i, j,
+				kmd_buf, num_stripes);
+		}
 	}
 
 	/* Go command */

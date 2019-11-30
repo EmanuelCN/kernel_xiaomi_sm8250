@@ -2544,7 +2544,7 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 		return -EINVAL;
 	}
 	set_bit(request_idx, ctx_data->bitmap);
-
+	cam_ope_req_timer_reset(ctx_data);
 	ctx_data->req_list[request_idx] =
 		kzalloc(sizeof(struct cam_ope_request), GFP_KERNEL);
 	if (!ctx_data->req_list[request_idx]) {
@@ -2718,7 +2718,6 @@ static int cam_ope_mgr_config_hw(void *hw_priv, void *hw_config_args)
 
 	CAM_DBG(CAM_OPE, "req_id %llu, io config", ope_req->request_id);
 
-	cam_ope_req_timer_modify(ctx_data, 200);
 	mutex_unlock(&ctx_data->ctx_mutex);
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 
