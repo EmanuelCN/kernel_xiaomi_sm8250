@@ -283,22 +283,26 @@
 			"gcc_camss_top_ahb_clk",
 			"gcc_camss_top_ahb_clk_src",
 			"gcc_camss_axi_clk",
-			"gcc_camss_axi_clk_src";
+			"gcc_camss_axi_clk_src",
+			"gcc_camss_nrt_axi_clk",
+			"gcc_camss_rt_axi_clk";
 		clocks =
 			<&gcc GCC_CAMERA_AHB_CLK>,
 			<&gcc GCC_CAMSS_TOP_AHB_CLK>,
 			<&gcc GCC_CAMSS_TOP_AHB_CLK_SRC>,
 			<&gcc GCC_CAMSS_AXI_CLK>,
-			<&gcc GCC_CAMSS_AXI_CLK_SRC>;
+			<&gcc GCC_CAMSS_AXI_CLK_SRC>,
+			<&gcc GCC_CAMSS_NRT_AXI_CLK>,
+			<&gcc GCC_CAMSS_RT_AXI_CLK>;
 		src-clock-name = "gcc_camss_axi_clk_src";
 		clock-rates =
-			<0        0        0         0         0>,
-			<0 80000000 80000000  19200000  19200000>,
-			<0 80000000 80000000 150000000 150000000>,
-			<0 80000000 80000000 200000000 200000000>,
-			<0 80000000 80000000 300000000 300000000>,
-			<0 80000000 80000000 300000000 300000000>,
-			<0 80000000 80000000 300000000 300000000>;
+			<0        0        0         0         0 0 0>,
+			<0 80000000 80000000  19200000  19200000 0 0>,
+			<0 80000000 80000000 150000000 150000000 0 0>,
+			<0 80000000 80000000 200000000 200000000 0 0>,
+			<0 80000000 80000000 300000000 300000000 0 0>,
+			<0 80000000 80000000 300000000 300000000 0 0>,
+			<0 80000000 80000000 300000000 300000000 0 0>;
 		clock-cntl-level = "suspend", "minsvs", "lowsvs", "svs",
 			"svs_l1", "nominal", "turbo";
 		control-camnoc-axi-clk;
@@ -782,14 +786,16 @@
 		camss-supply = <&gcc_camss_top_gdsc>;
 		clock-names =
 			"cphy_rx_clk_src",
-			"tfe_0_cphy_rx_clk";
+			"tfe_0_cphy_rx_clk",
+			"gcc_camss_cphy_0_clk";
 		clocks =
 			<&gcc GCC_CAMSS_TFE_CPHY_RX_CLK_SRC>,
-			<&gcc GCC_CAMSS_TFE_0_CPHY_RX_CLK>;
+			<&gcc GCC_CAMSS_TFE_0_CPHY_RX_CLK>,
+			<&gcc GCC_CAMSS_CPHY_0_CLK>;
 		clock-rates =
-			<240000000 240000000>,
-			<341333333 341333333>,
-			<384000000 384000000>;
+			<240000000 240000000 0>,
+			<341333333 341333333 0>,
+			<384000000 384000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "cphy_rx_clk_src";
 		clock-control-debugfs = "false";
@@ -807,14 +813,16 @@
 		camss-supply = <&gcc_camss_top_gdsc>;
 		clock-names =
 			"cphy_rx_clk_src",
-			"tfe_1_cphy_rx_clk";
+			"tfe_1_cphy_rx_clk",
+			"gcc_camss_cphy_1_clk";
 		clocks =
 			<&gcc GCC_CAMSS_TFE_CPHY_RX_CLK_SRC>,
-			<&gcc GCC_CAMSS_TFE_1_CPHY_RX_CLK>;
+			<&gcc GCC_CAMSS_TFE_1_CPHY_RX_CLK>,
+			<&gcc GCC_CAMSS_CPHY_1_CLK>;
 		clock-rates =
-			<240000000 240000000>,
-			<341333333 341333333>,
-			<384000000 384000000>;
+			<240000000 240000000 0>,
+			<341333333 341333333 0>,
+			<384000000 384000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "cphy_rx_clk_src";
 		clock-control-debugfs = "false";
