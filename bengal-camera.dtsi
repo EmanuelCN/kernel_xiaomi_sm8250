@@ -417,6 +417,10 @@
 					traffic-data = <CAM_CPAS_PATH_DATA_ALL>;
 					traffic-transaction-type =
 					<CAM_CPAS_TRANSACTION_WRITE>;
+					constituent-paths =
+						<CAM_CPAS_PATH_DATA_OPE_WR_VID
+						CAM_CPAS_PATH_DATA_OPE_WR_DISP
+						CAM_CPAS_PATH_DATA_OPE_WR_REF>;
 					parent-node = <&level1_nrt0_rd_wr>;
 				};
 
@@ -427,6 +431,9 @@
 					traffic-data = <CAM_CPAS_PATH_DATA_ALL>;
 					traffic-transaction-type =
 					<CAM_CPAS_TRANSACTION_READ>;
+					constituent-paths =
+						<CAM_CPAS_PATH_DATA_OPE_RD_IN
+						CAM_CPAS_PATH_DATA_OPE_RD_REF>;
 					parent-node = <&level1_nrt0_rd_wr>;
 				};
 
