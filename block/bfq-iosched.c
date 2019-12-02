@@ -3743,11 +3743,17 @@ static void bfq_dispatch_remove(struct request_queue *q, struct request *rq)
 static bool idling_needed_for_service_guarantees(struct bfq_data *bfqd,
 						 struct bfq_queue *bfqq)
 {
-	bool asymmetric_scenario = (bfqq->wr_coeff > 1 &&
-				    (bfqd->wr_busy_queues <
-				     bfq_tot_busy_queues(bfqd) ||
-				     bfqd->rq_in_driver >=
-				     bfqq->dispatched + 4)) ||
+	bool asymmetric_scenario;
+
+	/* No point in idling for bfqq if it won't get requests any longer */
+	if (unlikely(!bfqq_process_refs(bfqq)))
+		return false;
+
+	asymmetric_scenario = (bfqq->wr_coeff > 1 &&
+			       (bfqd->wr_busy_queues <
+				bfq_tot_busy_queues(bfqd) ||
+				bfqd->rq_in_driver >=
+				bfqq->dispatched + 4)) ||
 		bfq_asymmetric_scenario(bfqd, bfqq);
 
 	bfq_log_bfqq(bfqd, bfqq,
@@ -4446,6 +4452,10 @@ static bool bfq_better_to_idle(struct bfq_queue *bfqq)
 	    bfq_class_idle(bfqq))
 		return false;
 
+	/* No point in idling for bfqq if it won't get requests any longer */
+	if (unlikely(!bfqq_process_refs(bfqq)))
+		return false;
+
 	bfqq_sequential_and_IO_bound = !BFQQ_SEEKY(bfqq) &&
 		bfq_bfqq_IO_bound(bfqq) && bfq_bfqq_has_short_ttime(bfqq);
 
@@ -4544,6 +4554,10 @@ static bool bfq_better_to_idle(struct bfq_queue *bfqq)
 {
 	struct bfq_data *bfqd = bfqq->bfqd;
 	bool idling_boosts_thr_with_no_issue, idling_needed_for_service_guar;
+
+	/* No point in idling for bfqq if it won't get requests any longer */
+	if (unlikely(!bfqq_process_refs(bfqq)))
+		return false;
 
 	if (unlikely(bfqd->strict_guarantees))
 		return true;
