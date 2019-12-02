@@ -3807,6 +3807,8 @@ static bool __bfq_bfqq_expire(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 
 		bfq_del_bfqq_busy(bfqd, bfqq, true);
 	} else {
+		BFQ_BUG_ON(RB_EMPTY_ROOT(&bfqq->sort_list) &&
+			   !bfqq_process_refs(bfqq));
 		bfq_requeue_bfqq(bfqd, bfqq, true);
 		/*
 		 * Resort priority tree of potential close cooperators.
