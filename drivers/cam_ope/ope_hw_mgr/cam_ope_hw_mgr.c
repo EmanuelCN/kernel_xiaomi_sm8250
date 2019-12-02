@@ -2804,6 +2804,7 @@ static int cam_ope_mgr_flush_all(struct cam_ope_ctx *ctx_data,
 
 	rc = cam_cdm_flush_hw(ctx_data->ope_cdm.cdm_handle);
 
+	mutex_lock(&ctx_data->ctx_mutex);
 	for (i = 0; i < hw_mgr->num_ope; i++) {
 		rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 			hw_mgr->ope_dev_intf[i]->hw_priv, OPE_HW_RESET,
@@ -2823,6 +2824,7 @@ static int cam_ope_mgr_flush_all(struct cam_ope_ctx *ctx_data,
 		ctx_data->req_list[i] = NULL;
 		clear_bit(i, ctx_data->bitmap);
 	}
+	mutex_unlock(&ctx_data->ctx_mutex);
 
 	return rc;
 }
@@ -2855,9 +2857,7 @@ static int cam_ope_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 
 	switch (flush_args->flush_type) {
 	case CAM_FLUSH_TYPE_ALL:
-		mutex_lock(&ctx_data->ctx_mutex);
 		cam_ope_mgr_flush_all(ctx_data, flush_args);
-		mutex_unlock(&ctx_data->ctx_mutex);
 		break;
 	case CAM_FLUSH_TYPE_REQ:
 		mutex_lock(&ctx_data->ctx_mutex);
