@@ -17,6 +17,7 @@ int cam_cci_init(struct v4l2_subdev *sd,
 	struct cam_axi_vote axi_vote = {0};
 	struct cam_hw_soc_info *soc_info = NULL;
 	void __iomem *base = NULL;
+	uint32_t max_queue_0_size = 0, max_queue_1_size = 0;
 
 	cci_dev = v4l2_get_subdevdata(sd);
 	if (!cci_dev || !c_ctrl) {
@@ -116,14 +117,23 @@ int cam_cci_init(struct v4l2_subdev *sd,
 		MSM_CCI_WRITE_DATA_PAYLOAD_SIZE_11;
 	cci_dev->support_seq_write = 1;
 
+	if (of_device_is_compatible(soc_info->dev->of_node,
+						"qcom,cci-v1.2")) {
+		max_queue_0_size = CCI_I2C_QUEUE_0_SIZE_V_1_2;
+		max_queue_1_size = CCI_I2C_QUEUE_1_SIZE_V_1_2;
+	} else {
+		max_queue_0_size = CCI_I2C_QUEUE_0_SIZE;
+		max_queue_1_size = CCI_I2C_QUEUE_1_SIZE;
+	}
+
 	for (i = 0; i < NUM_MASTERS; i++) {
 		for (j = 0; j < NUM_QUEUES; j++) {
 			if (j == QUEUE_0)
 				cci_dev->cci_i2c_queue_info[i][j].max_queue_size
-					= CCI_I2C_QUEUE_0_SIZE;
+					= max_queue_0_size;
 			else
 				cci_dev->cci_i2c_queue_info[i][j].max_queue_size
-					= CCI_I2C_QUEUE_1_SIZE;
+					= max_queue_1_size;
 
 			CAM_DBG(CAM_CCI, "CCI Master[%d] :: Q0 : %d Q1 : %d", i,
 			cci_dev->cci_i2c_queue_info[i][j].max_queue_size,
