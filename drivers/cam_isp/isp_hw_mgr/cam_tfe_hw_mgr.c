@@ -1445,7 +1445,7 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_csid_rdi(
 		csid_acquire.res_type = CAM_ISP_RESOURCE_PIX_PATH;
 		csid_acquire.res_id = path_res_id;
 		csid_acquire.in_port = in_port;
-		csid_acquire.out_port = in_port->data;
+		csid_acquire.out_port = out_port;
 		csid_acquire.sync_mode = CAM_ISP_HW_SYNC_NONE;
 		csid_acquire.node_res = NULL;
 

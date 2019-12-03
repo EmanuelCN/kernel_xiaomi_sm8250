@@ -710,6 +710,9 @@ irqreturn_t cam_tfe_irq(int irq_num, void *data)
 		cam_io_w(top_irq_status[i], mem_base +
 			core_info->tfe_hw_info->top_irq_clear[i]);
 
+	cam_io_w_mb(core_info->tfe_hw_info->global_clear_bitmask,
+		mem_base + core_info->tfe_hw_info->top_irq_cmd);
+
 	CAM_DBG(CAM_ISP, "TFE:%d IRQ status_0:0x%x status_1:0x%x status_2:0x%x",
 		core_info->core_index, top_irq_status[0],
 		top_irq_status[1], top_irq_status[2]);
@@ -737,9 +740,6 @@ irqreturn_t cam_tfe_irq(int irq_num, void *data)
 			core_info->core_index, bus_irq_status[0],
 			bus_irq_status[1]);
 	}
-
-	cam_io_w_mb(core_info->tfe_hw_info->global_clear_bitmask,
-		mem_base + core_info->tfe_hw_info->top_irq_cmd);
 
 	/* check reset */
 	if ((top_irq_status[0] & core_info->tfe_hw_info->reset_irq_mask[0]) ||
