@@ -273,6 +273,7 @@
 		reg = <0x5c11000 0x1000>,
 			<0x5c13000 0x4000>;
 		reg-cam-base = <0x11000 0x13000>;
+		cam_hw_fuse = <CAM_CPAS_SECURE_CAMERA_ENABLE 0x01B401E4 8>;
 		interrupt-names = "cpas_camnoc";
 		interrupts = <GIC_SPI 159 IRQ_TYPE_EDGE_RISING>;
 		camnoc-axi-min-ib-bw = <3000000000>;  /*Need to be verified*/
