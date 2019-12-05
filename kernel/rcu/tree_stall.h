@@ -395,7 +395,7 @@ static void print_other_cpu_stall(unsigned long gp_seq)
 
 	/* Kick and suppress, if so configured. */
 	rcu_stall_kick_kthreads();
-	if (rcu_cpu_stall_suppress)
+	if (rcu_stall_is_suppressed())
 		return;
 
 	/*
@@ -464,7 +464,7 @@ static void print_cpu_stall(void)
 
 	/* Kick and suppress, if so configured. */
 	rcu_stall_kick_kthreads();
-	if (rcu_cpu_stall_suppress)
+	if (rcu_stall_is_suppressed())
 		return;
 
 	/*
@@ -516,7 +516,7 @@ static void check_cpu_stall(struct rcu_data *rdp)
 	unsigned long js;
 	struct rcu_node *rnp;
 
-	if ((rcu_cpu_stall_suppress && !rcu_kick_kthreads) ||
+	if ((rcu_stall_is_suppressed() && !rcu_kick_kthreads) ||
 	    !rcu_gp_in_progress())
 		return;
 	rcu_stall_kick_kthreads();
