@@ -9914,7 +9914,10 @@ static int check_attach_btf_id(struct bpf_verifier_env *env)
 				ret = -EINVAL;
 				goto out;
 			}
-			addr = (long) tgt_prog->aux->func[subprog]->bpf_func;
+			if (subprog == 0)
+				addr = (long) tgt_prog->bpf_func;
+			else
+				addr = (long) tgt_prog->aux->func[subprog]->bpf_func;
 		} else {
 			addr = kallsyms_lookup_name(tname);
 			if (!addr) {
