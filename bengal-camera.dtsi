@@ -98,7 +98,7 @@
 
 	cam_cci0: qcom,cci0 {
 		cell-index = <0>;
-		compatible = "qcom,cci";
+		compatible = "qcom,cci-v1.2", "qcom,cci";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0x05C1B000 0x1000>;
