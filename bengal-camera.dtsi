@@ -197,8 +197,7 @@
 
 		msm_cam_smmu_tfe {
 			compatible = "qcom,msm-cam-smmu-cb";
-			iommus = <&apps_smmu 0x400 0x000>,
-				<&apps_smmu 0x401 0x000>;
+			iommus = <&apps_smmu 0x400 0x000>;
 			qcom,iommu-faults = "non-fatal";
 			qcom,iommu-dma-addr-pool = <0x7400000 0xd8c00000>;
 			label = "tfe";
@@ -217,9 +216,7 @@
 		msm_cam_smmu_ope {
 			compatible = "qcom,msm-cam-smmu-cb";
 			iommus = <&apps_smmu 0x820 0x000>,
-				<&apps_smmu 0x821 0x020>,
-				<&apps_smmu 0x840 0x000>,
-				<&apps_smmu 0x841 0x000>;
+				<&apps_smmu 0x840 0x000>;
 			qcom,iommu-faults = "non-fatal";
 			multiple-client-devices;
 			qcom,iommu-dma-addr-pool = <0x7400000 0xd8c00000>;
@@ -238,8 +235,7 @@
 
 		msm_cam_smmu_cpas_cdm {
 			compatible = "qcom,msm-cam-smmu-cb";
-			iommus = <&apps_smmu 0x800 0x000>,
-				<&apps_smmu 0x801 0x020>;
+			iommus = <&apps_smmu 0x800 0x000>;
 			label = "cpas-cdm0";
 			qcom,iommu-faults = "non-fatal";
 			qcom,iommu-dma-addr-pool = <0x7400000 0xd8c00000>;
