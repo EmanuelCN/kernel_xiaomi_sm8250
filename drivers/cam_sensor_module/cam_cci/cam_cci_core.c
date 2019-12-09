@@ -1498,6 +1498,76 @@ static int32_t cam_cci_i2c_write_async(struct v4l2_subdev *sd,
 	return rc;
 }
 
+static int32_t cam_cci_read_bytes_v_1_2(struct v4l2_subdev *sd,
+	struct cam_cci_ctrl *c_ctrl)
+{
+	int32_t rc = 0;
+	struct cci_device *cci_dev = NULL;
+	enum cci_i2c_master_t master;
+	struct cam_cci_read_cfg *read_cfg = NULL;
+	uint16_t read_bytes = 0;
+
+	if (!sd || !c_ctrl) {
+		CAM_ERR(CAM_CCI, "sd %pK c_ctrl %pK", sd, c_ctrl);
+		return -EINVAL;
+	}
+	if (!c_ctrl->cci_info) {
+		CAM_ERR(CAM_CCI, "cci_info NULL");
+		return -EINVAL;
+	}
+	cci_dev = v4l2_get_subdevdata(sd);
+	if (!cci_dev) {
+		CAM_ERR(CAM_CCI, "cci_dev NULL");
+		return -EINVAL;
+	}
+	if (cci_dev->cci_state != CCI_STATE_ENABLED) {
+		CAM_ERR(CAM_CCI, "invalid cci state %d", cci_dev->cci_state);
+		return -EINVAL;
+	}
+
+	if (c_ctrl->cci_info->cci_i2c_master >= MASTER_MAX
+			|| c_ctrl->cci_info->cci_i2c_master < 0) {
+		CAM_ERR(CAM_CCI, "Invalid I2C master addr");
+		return -EINVAL;
+	}
+
+	master = c_ctrl->cci_info->cci_i2c_master;
+	read_cfg = &c_ctrl->cfg.cci_i2c_read_cfg;
+	if ((!read_cfg->num_byte) || (read_cfg->num_byte > CCI_I2C_MAX_READ)) {
+		CAM_ERR(CAM_CCI, "read num bytes 0");
+		rc = -EINVAL;
+		goto ERROR;
+	}
+
+	read_bytes = read_cfg->num_byte;
+	CAM_DBG(CAM_CCI, "Bytes to read %u", read_bytes);
+	do {
+		if (read_bytes >= CCI_READ_MAX_V_1_2)
+			read_cfg->num_byte = CCI_READ_MAX_V_1_2;
+		else
+			read_cfg->num_byte = read_bytes;
+
+		cci_dev->is_burst_read = false;
+		rc = cam_cci_read(sd, c_ctrl);
+		if (rc) {
+			CAM_ERR(CAM_CCI, "failed to read rc:%d", rc);
+			goto ERROR;
+		}
+
+		if (read_bytes >= CCI_READ_MAX_V_1_2) {
+			read_cfg->addr += CCI_READ_MAX_V_1_2;
+			read_cfg->data += CCI_READ_MAX_V_1_2;
+			read_bytes -= CCI_READ_MAX_V_1_2;
+		} else {
+			read_bytes = 0;
+		}
+	} while (read_bytes);
+
+ERROR:
+	cci_dev->is_burst_read = false;
+	return rc;
+}
+
 static int32_t cam_cci_read_bytes(struct v4l2_subdev *sd,
 	struct cam_cci_ctrl *c_ctrl)
 {
@@ -1701,7 +1771,16 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 		mutex_unlock(&cci_dev->init_mutex);
 		break;
 	case MSM_CCI_I2C_READ:
-		rc = cam_cci_read_bytes(sd, cci_ctrl);
+		/*
+		 * CCI version 1.2 does not support burst read
+		 * due to the absence of the read threshold register
+		 */
+		if (cci_dev->hw_version == CCI_VERSION_1_2_9) {
+			CAM_DBG(CAM_CCI, "cci-v1.2 no burst read");
+			rc = cam_cci_read_bytes_v_1_2(sd, cci_ctrl);
+		} else {
+			rc = cam_cci_read_bytes(sd, cci_ctrl);
+		}
 		break;
 	case MSM_CCI_I2C_WRITE:
 	case MSM_CCI_I2C_WRITE_SEQ:

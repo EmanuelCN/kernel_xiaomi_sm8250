@@ -117,8 +117,7 @@ int cam_cci_init(struct v4l2_subdev *sd,
 		MSM_CCI_WRITE_DATA_PAYLOAD_SIZE_11;
 	cci_dev->support_seq_write = 1;
 
-	if (of_device_is_compatible(soc_info->dev->of_node,
-						"qcom,cci-v1.2")) {
+	if (cci_dev->hw_version == CCI_VERSION_1_2_9) {
 		max_queue_0_size = CCI_I2C_QUEUE_0_SIZE_V_1_2;
 		max_queue_1_size = CCI_I2C_QUEUE_1_SIZE_V_1_2;
 	} else {
@@ -177,10 +176,12 @@ int cam_cci_init(struct v4l2_subdev *sd,
 	}
 
 	/* Set RD FIFO threshold for M0 & M1 */
-	cam_io_w_mb(CCI_I2C_RD_THRESHOLD_VALUE,
-		base + CCI_I2C_M0_RD_THRESHOLD_ADDR);
-	cam_io_w_mb(CCI_I2C_RD_THRESHOLD_VALUE,
-		base + CCI_I2C_M1_RD_THRESHOLD_ADDR);
+	if (cci_dev->hw_version != CCI_VERSION_1_2_9) {
+		cam_io_w_mb(CCI_I2C_RD_THRESHOLD_VALUE,
+				base + CCI_I2C_M0_RD_THRESHOLD_ADDR);
+		cam_io_w_mb(CCI_I2C_RD_THRESHOLD_VALUE,
+				base + CCI_I2C_M1_RD_THRESHOLD_ADDR);
+	}
 
 	cci_dev->cci_state = CCI_STATE_ENABLED;
 
