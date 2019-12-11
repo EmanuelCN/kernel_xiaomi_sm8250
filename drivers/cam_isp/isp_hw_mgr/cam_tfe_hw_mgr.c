@@ -1328,6 +1328,8 @@ acquire_successful:
 			goto end;
 		}
 		csid_res_temp->hw_res[1] = csid_acquire.node_res;
+		tfe_ctx->slave_hw_idx =
+			csid_res_temp->hw_res[1]->hw_intf->hw_idx;
 		CAM_DBG(CAM_ISP, "CSID right acquired success is_dual %d",
 			in_port->usage_type);
 	}
@@ -2679,6 +2681,9 @@ static int cam_tfe_mgr_reset_tfe_hw(struct cam_tfe_hw_mgr *hw_mgr,
 	tfe_reset_type = CAM_TFE_HW_RESET_HW;
 
 	for (i = 0; i < CAM_TFE_HW_NUM_MAX; i++) {
+		if (!hw_mgr->tfe_devices[i])
+			continue;
+
 		if (hw_idx != hw_mgr->tfe_devices[i]->hw_idx)
 			continue;
 		CAM_DBG(CAM_ISP, "TFE (id = %d) reset", hw_idx);
@@ -4665,11 +4670,14 @@ static int cam_tfe_hw_mgr_check_irq_for_dual_tfe(
 {
 	int32_t                               rc = -EINVAL;
 	uint32_t                             *event_cnt = NULL;
-	uint32_t                              core_idx0 = 0;
-	uint32_t                              core_idx1 = 1;
+	uint32_t                              master_hw_idx;
+	uint32_t                              slave_hw_idx;
 
 	if (!tfe_hw_mgr_ctx->is_dual)
 		return 0;
+
+	master_hw_idx = tfe_hw_mgr_ctx->master_hw_idx;
+	slave_hw_idx = tfe_hw_mgr_ctx->slave_hw_idx;
 
 	switch (hw_event_type) {
 	case CAM_ISP_HW_EVENT_SOF:
@@ -4685,19 +4693,18 @@ static int cam_tfe_hw_mgr_check_irq_for_dual_tfe(
 		return 0;
 	}
 
-	if (event_cnt[core_idx0] == event_cnt[core_idx1]) {
+	if (event_cnt[master_hw_idx] == event_cnt[slave_hw_idx]) {
 
-		event_cnt[core_idx0] = 0;
-		event_cnt[core_idx1] = 0;
+		event_cnt[master_hw_idx] = 0;
+		event_cnt[slave_hw_idx] = 0;
 
-		rc = 0;
-		return rc;
+		return 0;
 	}
 
-	if ((event_cnt[core_idx0] &&
-		(event_cnt[core_idx0] - event_cnt[core_idx1] > 1)) ||
-		(event_cnt[core_idx1] &&
-		(event_cnt[core_idx1] - event_cnt[core_idx0] > 1))) {
+	if ((event_cnt[master_hw_idx] &&
+		(event_cnt[master_hw_idx] - event_cnt[slave_hw_idx] > 1)) ||
+		(event_cnt[slave_hw_idx] &&
+		(event_cnt[slave_hw_idx] - event_cnt[master_hw_idx] > 1))) {
 
 		if (tfe_hw_mgr_ctx->dual_tfe_irq_mismatch_cnt > 10) {
 			rc = -1;
@@ -4705,15 +4712,15 @@ static int cam_tfe_hw_mgr_check_irq_for_dual_tfe(
 		}
 
 		CAM_ERR_RATE_LIMIT(CAM_ISP,
-			"One TFE could not generate hw event %d id0:%d id1:%d",
-			hw_event_type, event_cnt[core_idx0],
-			event_cnt[core_idx1]);
-		if (event_cnt[core_idx0] >= 2) {
-			event_cnt[core_idx0]--;
+			"One TFE could not generate hw event %d master id :%d slave id:%d",
+			hw_event_type, event_cnt[master_hw_idx],
+			event_cnt[slave_hw_idx]);
+		if (event_cnt[master_hw_idx] >= 2) {
+			event_cnt[master_hw_idx]--;
 			tfe_hw_mgr_ctx->dual_tfe_irq_mismatch_cnt++;
 		}
-		if (event_cnt[core_idx1] >= 2) {
-			event_cnt[core_idx1]--;
+		if (event_cnt[slave_hw_idx] >= 2) {
+			event_cnt[slave_hw_idx]--;
 			tfe_hw_mgr_ctx->dual_tfe_irq_mismatch_cnt++;
 		}
 
