@@ -2158,6 +2158,7 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 		}
 	}
 
+	bw_update.ahb_vote_valid = false;
 	for (i = 0; i < ope_hw_mgr->num_ope; i++) {
 		bw_update.axi_vote.num_paths = 1;
 		bw_update.axi_vote_valid = true;
