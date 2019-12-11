@@ -1273,6 +1273,12 @@ config CPUSET_CAMERA
 	help
 	  The CPU mask to use for the camera-daemon cpuset.
 
+config CPUSET_DISPLAY
+	string "Value for 'display' cpuset"
+	default "4-7"
+	help
+	  The CPU mask to use for the display cpuset.
+
 config CPUSET_FG
 	string "Value for 'foreground' cpuset"
 	default "0-6"
