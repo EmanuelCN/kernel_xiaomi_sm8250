@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -1932,6 +1932,7 @@ static int cam_tfe_mgr_acquire_hw(void *hw_mgr_priv, void *acquire_hw_args)
 
 	acquire_args->ctxt_to_hw_map = tfe_ctx;
 	tfe_ctx->ctx_in_use = 1;
+	tfe_ctx->num_reg_dump_buf = 0;
 
 	cam_tfe_hw_mgr_put_ctx(&tfe_hw_mgr->used_ctx_list, &tfe_ctx);
 
@@ -3059,6 +3060,7 @@ static int cam_tfe_mgr_release_hw(void *hw_mgr_priv,
 	ctx->init_done = false;
 	ctx->is_dual = false;
 	ctx->is_tpg  = false;
+	ctx->num_reg_dump_buf = 0;
 	ctx->res_list_tpg.res_type = CAM_ISP_RESOURCE_MAX;
 	atomic_set(&ctx->overflow_pending, 0);
 	for (i = 0; i < CAM_TFE_HW_NUM_MAX; i++) {
@@ -3771,6 +3773,7 @@ int cam_tfe_add_command_buffers(
 			break;
 		case CAM_ISP_TFE_PACKET_META_REG_DUMP_ON_FLUSH:
 		case CAM_ISP_TFE_PACKET_META_REG_DUMP_ON_ERROR:
+		case CAM_ISP_TFE_PACKET_META_REG_DUMP_PER_REQUEST:
 			if (split_id == CAM_ISP_HW_SPLIT_LEFT) {
 				if (prepare->num_reg_dump_buf >=
 					CAM_REG_DUMP_MAX_BUF_ENTRIES) {
@@ -3909,24 +3912,50 @@ static int cam_tfe_mgr_prepare_hw_update(void *hw_mgr_priv,
 			fill_fence = false;
 	}
 
-	ctx->num_reg_dump_buf = prepare->num_reg_dump_buf;
-	if ((ctx->num_reg_dump_buf) && (ctx->num_reg_dump_buf <
-		CAM_REG_DUMP_MAX_BUF_ENTRIES)) {
-		memcpy(ctx->reg_dump_buf_desc,
-			prepare->reg_dump_buf_desc,
-			sizeof(struct cam_cmd_buf_desc) *
-			prepare->num_reg_dump_buf);
-	}
+	CAM_DBG(CAM_ISP,
+		"num_reg_dump_buf=%d ope code:%d",
+		prepare->num_reg_dump_buf, prepare->packet->header.op_code);
 
 	/* reg update will be done later for the initial configure */
 	if (((prepare->packet->header.op_code) & 0xF) ==
 		CAM_ISP_PACKET_INIT_DEV) {
 		prepare_hw_data->packet_opcode_type =
 			CAM_ISP_TFE_PACKET_INIT_DEV;
+
+		if ((!prepare->num_reg_dump_buf) || (prepare->num_reg_dump_buf >
+			CAM_REG_DUMP_MAX_BUF_ENTRIES))
+			goto end;
+
+		if (!ctx->num_reg_dump_buf) {
+			ctx->num_reg_dump_buf =
+				prepare->num_reg_dump_buf;
+			memcpy(ctx->reg_dump_buf_desc,
+				prepare->reg_dump_buf_desc,
+				sizeof(struct cam_cmd_buf_desc) *
+				prepare->num_reg_dump_buf);
+		} else {
+			prepare_hw_data->num_reg_dump_buf =
+				prepare->num_reg_dump_buf;
+			memcpy(prepare_hw_data->reg_dump_buf_desc,
+				prepare->reg_dump_buf_desc,
+				sizeof(struct cam_cmd_buf_desc) *
+				prepare_hw_data->num_reg_dump_buf);
+		}
+
 		goto end;
-	} else
+	} else  {
 		prepare_hw_data->packet_opcode_type =
 		CAM_ISP_TFE_PACKET_CONFIG_DEV;
+		prepare_hw_data->num_reg_dump_buf = prepare->num_reg_dump_buf;
+		if ((prepare_hw_data->num_reg_dump_buf) &&
+			(prepare_hw_data->num_reg_dump_buf <
+			CAM_REG_DUMP_MAX_BUF_ENTRIES)) {
+			memcpy(prepare_hw_data->reg_dump_buf_desc,
+				prepare->reg_dump_buf_desc,
+				sizeof(struct cam_cmd_buf_desc) *
+				prepare_hw_data->num_reg_dump_buf);
+		}
+	}
 
 	/* add reg update commands */
 	for (i = 0; i < ctx->num_base; i++) {
@@ -4181,8 +4210,8 @@ static int cam_tfe_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 			CAM_ISP_TFE_PACKET_META_REG_DUMP_ON_FLUSH);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
-				"Reg dump on flush failed req id: %llu rc: %d",
-				ctx->applied_req_id, rc);
+				"Reg dump on flush failed req id: %llu num_reg_dump:0x%x rc: %d",
+				ctx->applied_req_id, ctx->num_reg_dump_buf, rc);
 			return rc;
 		}
 
@@ -4197,8 +4226,8 @@ static int cam_tfe_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 			CAM_ISP_TFE_PACKET_META_REG_DUMP_ON_ERROR);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
-				"Reg dump on error failed req id: %llu rc: %d",
-				ctx->applied_req_id, rc);
+				"Reg dump on error failed req id:%llu num_reg_dump:0x%x rc: %d",
+				ctx->applied_req_id, ctx->num_reg_dump_buf, rc);
 			return rc;
 		}
 		break;
@@ -5055,7 +5084,7 @@ static int cam_tfe_hw_mgr_debug_register(void)
 		goto err;
 	}
 
-	if (!debugfs_create_bool("enable_reg_dump",
+	if (!debugfs_create_u32("enable_reg_dump",
 		0644,
 		g_tfe_hw_mgr.debug_cfg.dentry,
 		&g_tfe_hw_mgr.debug_cfg.enable_reg_dump)) {
@@ -5071,7 +5100,7 @@ static int cam_tfe_hw_mgr_debug_register(void)
 		goto err;
 	}
 
-	if (!debugfs_create_bool("per_req_reg_dump",
+	if (!debugfs_create_u32("per_req_reg_dump",
 		0644,
 		g_tfe_hw_mgr.debug_cfg.dentry,
 		&g_tfe_hw_mgr.debug_cfg.per_req_reg_dump)) {
