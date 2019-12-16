@@ -119,7 +119,7 @@ static int cam_tfe_mgr_handle_reg_dump(struct cam_tfe_hw_mgr_ctx *ctx,
 	struct cam_cmd_buf_desc *reg_dump_buf_desc, uint32_t num_reg_dump_buf,
 	uint32_t meta_type)
 {
-	int rc, i;
+	int rc = -EINVAL, i;
 
 	if (!num_reg_dump_buf || !reg_dump_buf_desc) {
 		CAM_DBG(CAM_ISP,
