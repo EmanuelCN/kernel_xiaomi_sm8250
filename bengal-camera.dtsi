@@ -296,29 +296,29 @@
 			<&gcc GCC_CAMSS_RT_AXI_CLK>;
 		src-clock-name = "gcc_camss_axi_clk_src";
 		clock-rates =
-			<0        0        0         0         0 0 0>,
-			<0 80000000 80000000  19200000  19200000 0 0>,
-			<0 80000000 80000000 150000000 150000000 0 0>,
-			<0 80000000 80000000 200000000 200000000 0 0>,
-			<0 80000000 80000000 300000000 300000000 0 0>,
-			<0 80000000 80000000 300000000 300000000 0 0>,
-			<0 80000000 80000000 300000000 300000000 0 0>;
+			<0 0        0 0         0 0 0>,
+			<0 0 80000000 0  19200000 0 0>,
+			<0 0 80000000 0 150000000 0 0>,
+			<0 0 80000000 0 200000000 0 0>,
+			<0 0 80000000 0 300000000 0 0>,
+			<0 0 80000000 0 300000000 0 0>,
+			<0 0 80000000 0 300000000 0 0>;
 		clock-cntl-level = "suspend", "minsvs", "lowsvs", "svs",
 			"svs_l1", "nominal", "turbo";
 		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
 		control-camnoc-axi-clk;
 		camnoc-bus-width = <32>;
 		camnoc-axi-clk-bw-margin-perc = <20>;
-		qcom,msm-bus,name = "cam_ahb"; /*Need to verify*/
-		qcom,msm-bus,num-cases = <7>; /*Need to verify*/
-		qcom,msm-bus,num-paths = <1>; /*Need to verify*/
-		qcom,msm-bus,vectors-KBps = /*Need to verify*/
+		qcom,msm-bus,name = "cam_ahb";
+		qcom,msm-bus,num-cases = <7>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
 			<MSM_BUS_MASTER_AMPSS_M0
 			MSM_BUS_SLAVE_CAMERA_CFG 0 0>,
 			<MSM_BUS_MASTER_AMPSS_M0
-			MSM_BUS_SLAVE_CAMERA_CFG 0 76800>,
+			MSM_BUS_SLAVE_CAMERA_CFG 0 133333>,
 			<MSM_BUS_MASTER_AMPSS_M0
-			MSM_BUS_SLAVE_CAMERA_CFG 0 76800>,
+			MSM_BUS_SLAVE_CAMERA_CFG 0 133333>,
 			<MSM_BUS_MASTER_AMPSS_M0
 			MSM_BUS_SLAVE_CAMERA_CFG 0 150000>,
 			<MSM_BUS_MASTER_AMPSS_M0
@@ -603,20 +603,18 @@
 			"cphy_rx_clk_src",
 			"tfe_cphy_rx_clk",
 			"tfe_clk_src",
-			"tfe_clk",
-			"tfe_axi_clk";
+			"tfe_clk";
 		clocks =
 			<&gcc GCC_CAMSS_TFE_0_CSID_CLK_SRC>,
 			<&gcc GCC_CAMSS_TFE_0_CSID_CLK>,
 			<&gcc GCC_CAMSS_TFE_CPHY_RX_CLK_SRC>,
 			<&gcc GCC_CAMSS_TFE_0_CPHY_RX_CLK>,
 			<&gcc GCC_CAMSS_TFE_0_CLK_SRC>,
-			<&gcc GCC_CAMSS_TFE_0_CLK>,
-			<&gcc GCC_CAMSS_AXI_CLK>;
+			<&gcc GCC_CAMSS_TFE_0_CLK>;
 		clock-rates =
-			<240000000 240000000 0 240000000 256000000 256000000 150000000>,
-			<384000000 384000000 0 341333333 460800000 460800000 200000000>,
-			<426400000 426400000 0 384000000 576000000 576000000 300000000>;
+			<240000000 0 240000000 0 256000000 0>,
+			<384000000 0 341333333 0 460800000 0>,
+			<426400000 0 384000000 0 576000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_csid_clk_src";
 		clock-control-debugfs = "true";
@@ -636,16 +634,14 @@
 		camss-supply = <&gcc_camss_top_gdsc>;
 		clock-names =
 			"tfe_clk_src",
-			"tfe_clk",
-			"tfe_axi_clk";
+			"tfe_clk";
 		clocks =
 			<&gcc GCC_CAMSS_TFE_0_CLK_SRC>,
-			<&gcc GCC_CAMSS_TFE_0_CLK>,
-			<&gcc GCC_CAMSS_AXI_CLK>;
+			<&gcc GCC_CAMSS_TFE_0_CLK>;
 		clock-rates =
-			<256000000 256000000 150000000>,
-			<460800000 460800000 200000000>,
-			<576000000 576000000 300000000>;
+			<256000000 0>,
+			<460800000 0>,
+			<576000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_clk_src";
 		clock-control-debugfs = "true";
@@ -671,20 +667,18 @@
 			"cphy_rx_clk_src",
 			"tfe_cphy_rx_clk",
 			"tfe_clk_src",
-			"tfe_clk",
-			"tfe_axi_clk";
+			"tfe_clk";
 		clocks =
 			<&gcc GCC_CAMSS_TFE_1_CSID_CLK_SRC>,
 			<&gcc GCC_CAMSS_TFE_1_CSID_CLK>,
 			<&gcc GCC_CAMSS_TFE_CPHY_RX_CLK_SRC>,
 			<&gcc GCC_CAMSS_TFE_1_CPHY_RX_CLK>,
 			<&gcc GCC_CAMSS_TFE_1_CLK_SRC>,
-			<&gcc GCC_CAMSS_TFE_1_CLK>,
-			<&gcc GCC_CAMSS_AXI_CLK>;
+			<&gcc GCC_CAMSS_TFE_1_CLK>;
 		clock-rates =
-			<240000000 240000000 0 240000000 256000000 256000000 150000000>,
-			<384000000 384000000 0 341333333 460800000 460800000 200000000>,
-			<426400000 426400000 0 384000000 576000000 576000000 300000000>;
+			<240000000 0 240000000 0 256000000 0>,
+			<384000000 0 341333333 0 460800000 0>,
+			<426400000 0 384000000 0 576000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_csid_clk_src";
 		clock-control-debugfs = "true";
@@ -704,16 +698,14 @@
 		camss-supply = <&gcc_camss_top_gdsc>;
 		clock-names =
 			"tfe_clk_src",
-			"tfe_clk",
-			"tfe_axi_clk";
+			"tfe_clk";
 		clocks =
 			<&gcc GCC_CAMSS_TFE_1_CLK_SRC>,
-			<&gcc GCC_CAMSS_TFE_1_CLK>,
-			<&gcc GCC_CAMSS_AXI_CLK>;
+			<&gcc GCC_CAMSS_TFE_1_CLK>;
 		clock-rates =
-			<256000000 256000000 150000000>,
-			<460800000 460800000 200000000>,
-			<576000000 576000000 300000000>;
+			<256000000 0>,
+			<460800000 0>,
+			<576000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_clk_src";
 		clock-control-debugfs = "true";
@@ -739,20 +731,18 @@
 			"cphy_rx_clk_src",
 			"tfe_cphy_rx_clk",
 			"tfe_clk_src",
-			"tfe_clk",
-			"tfe_axi_clk";
+			"tfe_clk";
 		clocks =
 			<&gcc GCC_CAMSS_TFE_2_CSID_CLK_SRC>,
 			<&gcc GCC_CAMSS_TFE_2_CSID_CLK>,
 			<&gcc GCC_CAMSS_TFE_CPHY_RX_CLK_SRC>,
 			<&gcc GCC_CAMSS_TFE_2_CPHY_RX_CLK>,
 			<&gcc GCC_CAMSS_TFE_2_CLK_SRC>,
-			<&gcc GCC_CAMSS_TFE_2_CLK>,
-			<&gcc GCC_CAMSS_AXI_CLK>;
+			<&gcc GCC_CAMSS_TFE_2_CLK>;
 		clock-rates =
-			<240000000 240000000 0 240000000 256000000 256000000 150000000>,
-			<384000000 384000000 0 341333333 460800000 460800000 200000000>,
-			<426400000 426400000 0 384000000 576000000 576000000 300000000>;
+			<240000000 0 240000000 0 256000000 0>,
+			<384000000 0 341333333 0 460800000 0>,
+			<426400000 0 384000000 0 576000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_csid_clk_src";
 		clock-control-debugfs = "true";
@@ -772,16 +762,14 @@
 		camss-supply = <&gcc_camss_top_gdsc>;
 		clock-names =
 			"tfe_clk_src",
-			"tfe_clk",
-			"tfe_axi_clk";
+			"tfe_clk";
 		clocks =
 			<&gcc GCC_CAMSS_TFE_2_CLK_SRC>,
-			<&gcc GCC_CAMSS_TFE_2_CLK>,
-			<&gcc GCC_CAMSS_AXI_CLK>;
+			<&gcc GCC_CAMSS_TFE_2_CLK>;
 		clock-rates =
-			<256000000 256000000 150000000>,
-			<460800000 460800000 200000000>,
-			<576000000 576000000 300000000>;
+			<256000000 0>,
+			<460800000 0>,
+			<576000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_clk_src";
 		clock-control-debugfs = "true";
@@ -807,9 +795,9 @@
 			<&gcc GCC_CAMSS_TFE_0_CPHY_RX_CLK>,
 			<&gcc GCC_CAMSS_CPHY_0_CLK>;
 		clock-rates =
-			<240000000 240000000 0>,
-			<341333333 341333333 0>,
-			<384000000 384000000 0>;
+			<240000000 0 0>,
+			<341333333 0 0>,
+			<384000000 0 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "cphy_rx_clk_src";
 		clock-control-debugfs = "false";
@@ -834,9 +822,9 @@
 			<&gcc GCC_CAMSS_TFE_1_CPHY_RX_CLK>,
 			<&gcc GCC_CAMSS_CPHY_1_CLK>;
 		clock-rates =
-			<240000000 240000000 0>,
-			<341333333 341333333 0>,
-			<384000000 384000000 0>;
+			<240000000 0 0>,
+			<341333333 0 0>,
+			<384000000 0 0>;
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "cphy_rx_clk_src";
 		clock-control-debugfs = "false";
@@ -881,10 +869,10 @@
 			<&gcc GCC_CAMSS_OPE_CLK_SRC>,
 			<&gcc GCC_CAMSS_OPE_CLK>;
 		clock-rates =
-			<171428571 200000000 200000000>,
-			<171428571 266600000 266600000>,
-			<240000000 465000000 465000000>,
-			<240000000 580000000 580000000>;
+			<171428571 200000000 0>,
+			<171428571 266600000 0>,
+			<240000000 465000000 0>,
+			<240000000 580000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "nominal", "turbo";
 		src-clock-name = "ope_clk_src";
 		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
