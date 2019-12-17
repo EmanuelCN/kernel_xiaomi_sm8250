@@ -125,6 +125,20 @@ static int cam_ope_mgr_reset_hw(void)
 	return rc;
 }
 
+static void cam_ope_free_io_config(struct cam_ope_request *req)
+{
+	int i, j;
+
+	for (i = 0; i < OPE_MAX_BATCH_SIZE; i++) {
+		for (j = 0; j < OPE_MAX_IO_BUFS; j++) {
+			if (req->io_buf[i][j]) {
+				kzfree(req->io_buf[i][j]);
+				req->io_buf[i][j] = NULL;
+			}
+		}
+	}
+}
+
 static void cam_ope_device_timer_stop(struct cam_ope_hw_mgr *hw_mgr)
 {
 	if (hw_mgr->clk_info.watch_dog) {
@@ -1140,6 +1154,7 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 	ope_req->request_id = 0;
 	kzfree(ctx->req_list[cookie]->cdm_cmd);
 	ctx->req_list[cookie]->cdm_cmd = NULL;
+	cam_ope_free_io_config(ctx->req_list[cookie]);
 	kzfree(ctx->req_list[cookie]);
 	ctx->req_list[cookie] = NULL;
 	clear_bit(cookie, ctx->bitmap);
@@ -1273,7 +1288,7 @@ static int cam_ope_mgr_process_io_cfg(struct cam_ope_hw_mgr *hw_mgr,
 
 	for (i = 0; i < ope_request->num_batch; i++) {
 		for (l = 0; l < ope_request->num_io_bufs[i]; l++) {
-			io_buf = &ope_request->io_buf[i][l];
+			io_buf = ope_request->io_buf[i][l];
 			if (io_buf->direction == CAM_BUF_INPUT) {
 				if (io_buf->fence != -1) {
 					sync_in_obj[j++] = io_buf->fence;
@@ -1433,7 +1448,15 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 
 		for (j = 0; j < in_frame_set->num_io_bufs; j++) {
 			in_io_buf = &in_frame_set->io_buf[j];
-			io_buf = &ope_request->io_buf[i][j];
+			ope_request->io_buf[i][j] =
+				kzalloc(sizeof(struct ope_io_buf), GFP_KERNEL);
+			if (!ope_request->io_buf[i][j]) {
+				CAM_ERR(CAM_OPE,
+					"IO config allocation failure");
+				cam_ope_free_io_config(ope_request);
+				return -ENOMEM;
+			}
+			io_buf = ope_request->io_buf[i][j];
 			if (in_io_buf->num_planes > OPE_MAX_PLANES) {
 				CAM_ERR(CAM_OPE, "wrong number of planes: %u",
 					in_io_buf->num_planes);
@@ -2286,6 +2309,7 @@ static int cam_ope_mgr_release_ctx(struct cam_ope_hw_mgr *hw_mgr, int ctx_id)
 			kzfree(hw_mgr->ctx[ctx_id].req_list[i]->cdm_cmd);
 			hw_mgr->ctx[ctx_id].req_list[i]->cdm_cmd = NULL;
 		}
+		cam_ope_free_io_config(hw_mgr->ctx[ctx_id].req_list[i]);
 		kzfree(hw_mgr->ctx[ctx_id].req_list[i]);
 		hw_mgr->ctx[ctx_id].req_list[i] = NULL;
 		clear_bit(i, hw_mgr->ctx[ctx_id].bitmap);
@@ -2638,6 +2662,7 @@ static int cam_ope_mgr_handle_config_err(
 	ope_req->request_id = 0;
 	kzfree(ctx_data->req_list[req_idx]->cdm_cmd);
 	ctx_data->req_list[req_idx]->cdm_cmd = NULL;
+	cam_ope_free_io_config(ctx_data->req_list[req_idx]);
 	kzfree(ctx_data->req_list[req_idx]);
 	ctx_data->req_list[req_idx] = NULL;
 	clear_bit(req_idx, ctx_data->bitmap);
@@ -2793,6 +2818,7 @@ static int cam_ope_mgr_flush_req(struct cam_ope_ctx *ctx_data,
 		ctx_data->req_list[idx]->request_id = 0;
 		kzfree(ctx_data->req_list[idx]->cdm_cmd);
 		ctx_data->req_list[idx]->cdm_cmd = NULL;
+		cam_ope_free_io_config(ctx_data->req_list[idx]);
 		kzfree(ctx_data->req_list[idx]);
 		ctx_data->req_list[idx] = NULL;
 		clear_bit(idx, ctx_data->bitmap);
@@ -2825,6 +2851,7 @@ static int cam_ope_mgr_flush_all(struct cam_ope_ctx *ctx_data,
 		ctx_data->req_list[i]->request_id = 0;
 		kzfree(ctx_data->req_list[i]->cdm_cmd);
 		ctx_data->req_list[i]->cdm_cmd = NULL;
+		cam_ope_free_io_config(ctx_data->req_list[i]);
 		kzfree(ctx_data->req_list[i]);
 		ctx_data->req_list[i] = NULL;
 		clear_bit(i, ctx_data->bitmap);
