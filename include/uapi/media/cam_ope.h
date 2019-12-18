@@ -83,6 +83,7 @@
  * @x_init:          X_init
  * @stripe_location: Stripe location (OPE_STRIPE_XXX)
  * @width:           Width of a stripe
+ * @height:          Height of a stripe
  * @disable_bus:     Flag to disable BUS master
  * @reserved:        Reserved
  *
@@ -92,6 +93,7 @@ struct ope_stripe_info {
 	uint32_t x_init;
 	uint32_t stripe_location;
 	uint32_t width;
+	uint32_t height;
 	uint32_t disable_bus;
 	uint32_t reserved;
 };
