@@ -4191,6 +4191,7 @@ record_func_key(struct bpf_verifier_env *env, struct bpf_call_arg_meta *meta,
 	struct bpf_map *map = meta->map_ptr;
 	struct tnum range;
 	u64 val;
+	int err;
 
 	if (func_id != BPF_FUNC_tail_call)
 		return 0;
@@ -4206,6 +4207,10 @@ record_func_key(struct bpf_verifier_env *env, struct bpf_call_arg_meta *meta,
 		bpf_map_key_store(aux, BPF_MAP_KEY_POISON);
 		return 0;
 	}
+
+	err = mark_chain_precision(env, BPF_REG_3);
+	if (err)
+		return err;
 
 	val = reg->var_off.value;
 	if (bpf_map_key_unseen(aux))
@@ -9550,7 +9555,8 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 			insn->code = BPF_JMP | BPF_TAIL_CALL;
 
 			aux = &env->insn_aux_data[i + delta];
-			if (prog->jit_requested && !expect_blinding &&
+			if (env->allow_ptr_leaks && !expect_blinding &&
+			    prog->jit_requested &&
 			    !bpf_map_key_poisoned(aux) &&
 			    !bpf_map_ptr_poisoned(aux) &&
 			    !bpf_map_ptr_unpriv(aux)) {
