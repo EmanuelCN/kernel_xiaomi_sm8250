@@ -1657,14 +1657,6 @@ static int cam_tfe_bus_update_wm(void *priv, void *cmd_args,
 		CAM_DBG(CAM_ISP, "WM:%d image height and width 0x%x",
 			wm_data->index, reg_val_pair[j-1]);
 
-		val = io_cfg->planes[i].plane_stride;
-		CAM_DBG(CAM_ISP, "before stride 0x%x", val);
-		val = ALIGNUP(val, 16);
-		if (val != io_cfg->planes[i].plane_stride &&
-			val != wm_data->stride)
-			CAM_WARN(CAM_ISP, "Warning stride %u expected %u",
-				io_cfg->planes[i].plane_stride, val);
-
 		val = wm_data->offset;
 		CAM_TFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 			wm_data->hw_regs->image_cfg_1, val);

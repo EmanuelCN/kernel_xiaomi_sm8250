@@ -1275,6 +1275,18 @@ static int cam_tfe_csid_disable_pxl_path(
 			pxl_reg->csid_pxl_ctrl_addr);
 	}
 
+	if (path_data->sync_mode == CAM_ISP_HW_SYNC_SLAVE &&
+		stop_cmd == CAM_TFE_CSID_HALT_IMMEDIATELY) {
+		/* configure Halt for slave */
+		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
+			pxl_reg->csid_pxl_ctrl_addr);
+		val &= ~0xF;
+		val |= stop_cmd;
+		val |= (TFE_CSID_HALT_MODE_MASTER << 2);
+		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
+			pxl_reg->csid_pxl_ctrl_addr);
+	}
+
 	return rc;
 }
 

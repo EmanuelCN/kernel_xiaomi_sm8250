@@ -79,6 +79,7 @@ struct cam_tfe_hw_mgr_debug {
  * @is_dual                   indicate whether context is in dual TFE mode
  * @is_tpg                    indicate whether context use tpg
  * @master_hw_idx             master hardware index in dual tfe case
+ * @slave_hw_idx              slave hardware index in dual tfe case
  * @dual_tfe_irq_mismatch_cnt irq mismatch count value per core, used for
  *                              dual TFE
  */
@@ -122,6 +123,7 @@ struct cam_tfe_hw_mgr_ctx {
 	bool                            is_dual;
 	bool                            is_tpg;
 	uint32_t                        master_hw_idx;
+	uint32_t                        slave_hw_idx;
 	uint32_t                        dual_tfe_irq_mismatch_cnt;
 };
 
