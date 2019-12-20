@@ -128,6 +128,16 @@ First Level Node - CAM CPAS device
   Definition: List of strings corresponds clock-rates levels.
   Supported strings: minsvs, lowsvs, svs, svs_l1, nominal, turbo.
 
+- qcom,cam-cx-ipeak
+  Usage: required
+  Value type: <u32>
+  Definition: Camera Cx Ipeak ID.
+
+- qcom,cx-ipeak-gpu-limit;
+  Usage: required
+  Value type: <u32>
+  Definition: Camera Cx Ipeak GPU Limit.
+
 - control-camnoc-axi-clk
   Usage: optional
   Value type: <empty>
@@ -311,6 +321,8 @@ Example:
 		src-clock-name = "slow_ahb_clk_src";
 		clock-rates = <0 0 0 0 80000000 0>;
 		clock-cntl-level = "turbo";
+		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
+		qcom,cx-ipeak-gpu-limit = <650000000>;
 		control-camnoc-axi-clk;
 		camnoc-bus-width = <32>;
 		camnoc-axi-clk-bw-margin-perc = <10>;
