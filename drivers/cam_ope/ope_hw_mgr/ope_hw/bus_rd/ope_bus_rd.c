@@ -104,6 +104,10 @@ static int cam_ope_bus_is_rm_enabled(
 		in_port_to_rm =
 			&bus_rd->in_port_to_rm[io_buf->resource_type - 1];
 		combo_idx = cam_ope_bus_rd_combo_idx(io_buf->format);
+		if (combo_idx < 0) {
+			CAM_ERR(CAM_OPE, "Invalid combo_idx");
+			return -EINVAL;
+		}
 		for (k = 0; k < io_buf->num_planes; k++) {
 			if (rm_id ==
 				in_port_to_rm->rm_port_id[combo_idx][k])
@@ -324,6 +328,11 @@ static uint32_t *cam_ope_bus_rm_disable(struct ope_hw *ope_hw_info,
 		return NULL;
 	}
 
+	if (rm_idx >= MAX_RD_CLIENTS) {
+		CAM_ERR(CAM_OPE, "Invalid read client: %d", rm_idx);
+		return NULL;
+	}
+
 	ctx_data = prepare->ctx_data;
 	req_idx = prepare->req_idx;
 	cdm_ops = ctx_data->ope_cdm.cdm_ops;
@@ -403,9 +412,9 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 	struct cam_ope_bus_rd_reg *rd_reg;
 	struct cam_ope_bus_rd_reg_val *rd_reg_val;
 	struct ope_bus_rd_io_port_cdm_batch *io_port_cdm_batch;
-	struct ope_bus_rd_io_port_cdm_info *io_port_cdm;
+	struct ope_bus_rd_io_port_cdm_info *io_port_cdm = NULL;
 	struct cam_cdm_utils_ops *cdm_ops;
-	int32_t num_stripes;
+	int32_t num_stripes = 0;
 
 	if (ctx_id < 0 || !data) {
 		CAM_ERR(CAM_OPE, "Invalid data: %d %x", ctx_id, data);
@@ -469,12 +478,20 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 		for (j = 0; j < rd_reg_val->num_clients; j++) {
 			is_rm_enabled = cam_ope_bus_is_rm_enabled(
 				ope_request, i, j);
+			if (is_rm_enabled < 0) {
+				rc = -EINVAL;
+				goto end;
+			}
 			if (is_rm_enabled)
 				continue;
 
 			kmd_buf = cam_ope_bus_rm_disable(ope_hw_info,
 				ctx_id, prepare, i, j,
 				kmd_buf, num_stripes);
+			if (!kmd_buf) {
+				rc = -EINVAL;
+				goto end;
+			}
 		}
 	}
 

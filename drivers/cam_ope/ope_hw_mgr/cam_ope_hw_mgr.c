@@ -1305,12 +1305,14 @@ static int cam_ope_mgr_process_io_cfg(struct cam_ope_hw_mgr *hw_mgr,
 		}
 	}
 
-	if (prep_args->num_in_map_entries > 1)
+	if (prep_args->num_in_map_entries > 1 &&
+		prep_args->num_in_map_entries <= CAM_MAX_IN_RES)
 		prep_args->num_in_map_entries =
 			cam_common_util_remove_duplicate_arr(
 			sync_in_obj, prep_args->num_in_map_entries);
 
-	if (prep_args->num_in_map_entries > 1) {
+	if (prep_args->num_in_map_entries > 1 &&
+		prep_args->num_in_map_entries <= CAM_MAX_IN_RES) {
 		rc = cam_sync_merge(&sync_in_obj[0],
 			prep_args->num_in_map_entries, &merged_sync_in_obj);
 		if (rc) {
@@ -1332,7 +1334,8 @@ static int cam_ope_mgr_process_io_cfg(struct cam_ope_hw_mgr *hw_mgr,
 		ope_request->in_resource = 0;
 		CAM_DBG(CAM_OPE, "fence = %d", sync_in_obj[0]);
 	} else {
-		CAM_DBG(CAM_OPE, "No input fences");
+		CAM_DBG(CAM_OPE, "Invalid count of input fences, count: %d",
+			prep_args->num_in_map_entries);
 		prep_args->num_in_map_entries = 0;
 		ope_request->in_resource = 0;
 		rc = -EINVAL;
