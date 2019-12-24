@@ -98,7 +98,7 @@ static int cam_ope_bus_is_rm_enabled(
 	}
 
 	for (i = 0; i < ope_request->num_io_bufs[batch_idx]; i++) {
-		io_buf = &ope_request->io_buf[batch_idx][i];
+		io_buf = ope_request->io_buf[batch_idx][i];
 		if (io_buf->direction != CAM_BUF_INPUT)
 			continue;
 		in_port_to_rm =
@@ -171,7 +171,7 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 	rd_reg = ope_hw_info->bus_rd_reg;
 	rd_reg_val = ope_hw_info->bus_rd_reg_val;
 
-	io_buf = &ope_request->io_buf[batch_idx][io_idx];
+	io_buf = ope_request->io_buf[batch_idx][io_idx];
 
 	CAM_DBG(CAM_OPE, "batch:%d iobuf:%d direction:%d",
 		batch_idx, io_idx, io_buf->direction);
@@ -434,7 +434,7 @@ static int cam_ope_bus_rd_prepare(struct ope_hw *ope_hw_info,
 
 	for (i = 0; i < ope_request->num_batch; i++) {
 		for (j = 0; j < ope_request->num_io_bufs[i]; j++) {
-			io_buf = &ope_request->io_buf[i][j];
+			io_buf = ope_request->io_buf[i][j];
 			if (io_buf->direction != CAM_BUF_INPUT)
 				continue;
 

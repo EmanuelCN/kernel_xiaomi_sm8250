@@ -43,7 +43,7 @@ static int cam_ope_bus_en_port_idx(
 	}
 
 	for (i = 0; i < ope_request->num_io_bufs[batch_idx]; i++) {
-		io_buf = &ope_request->io_buf[batch_idx][i];
+		io_buf = ope_request->io_buf[batch_idx][i];
 		if (io_buf->direction != CAM_BUF_OUTPUT)
 			continue;
 		if (io_buf->resource_type == output_port_id)
@@ -217,7 +217,7 @@ static uint32_t *cam_ope_bus_wr_update(struct ope_hw *ope_hw_info,
 		kmd_buf, req_idx, ope_request->request_id,
 		prepare->kmd_buf_offset);
 
-	io_buf = &ope_request->io_buf[batch_idx][io_idx];
+	io_buf = ope_request->io_buf[batch_idx][io_idx];
 	CAM_DBG(CAM_OPE, "batch = %d io buf num = %d dir = %d",
 		batch_idx, io_idx, io_buf->direction);
 
@@ -483,7 +483,7 @@ static int cam_ope_bus_wr_prepare(struct ope_hw *ope_hw_info,
 
 	for (i = 0; i < ope_request->num_batch; i++) {
 		for (j = 0; j < ope_request->num_io_bufs[i]; j++) {
-			io_buf = &ope_request->io_buf[i][j];
+			io_buf = ope_request->io_buf[i][j];
 			CAM_DBG(CAM_OPE, "batch = %d io buf num = %d dir = %d",
 				i, j, io_buf->direction);
 			if (io_buf->direction != CAM_BUF_OUTPUT)

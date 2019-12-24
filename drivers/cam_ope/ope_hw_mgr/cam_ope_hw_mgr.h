@@ -398,7 +398,7 @@ struct cam_ope_request {
 	uint8_t num_stripe_cmd_bufs[OPE_MAX_BATCH_SIZE][OPE_MAX_STRIPES];
 	struct ope_kmd_buffer ope_kmd_buf;
 	struct ope_debug_buffer ope_debug_buf;
-	struct ope_io_buf io_buf[OPE_MAX_BATCH_SIZE][OPE_MAX_IO_BUFS];
+	struct ope_io_buf *io_buf[OPE_MAX_BATCH_SIZE][OPE_MAX_IO_BUFS];
 	struct cam_cdm_bl_request *cdm_cmd;
 	struct cam_ope_clk_bw_request clk_info;
 	struct cam_ope_clk_bw_req_internal_v2 clk_info_v2;
