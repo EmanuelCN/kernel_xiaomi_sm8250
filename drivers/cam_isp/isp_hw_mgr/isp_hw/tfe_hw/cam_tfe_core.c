@@ -1604,6 +1604,9 @@ static int cam_tfe_camif_resource_start(
 	if (!rsrc_data->camif_pd_enable)
 		val |= (1 << rsrc_data->reg_data->camif_pd_rdi2_src_sel_shift);
 
+	/* enables the Delay Line CLC in the pixel pipeline */
+	val |= BIT(8);
+
 	cam_io_w_mb(val, rsrc_data->mem_base +
 		rsrc_data->common_reg->core_cfg_0);
 
