@@ -1536,7 +1536,7 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 					stripe_info->width =
 						in_stripe_info->width;
 					stripe_info->height =
-						in_io_buf->height[k];
+						in_stripe_info->height;
 					stripe_info->stride =
 						in_io_buf->plane_stride[k];
 					stripe_info->x_init =
