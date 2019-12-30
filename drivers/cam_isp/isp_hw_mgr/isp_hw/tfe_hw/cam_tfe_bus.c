@@ -95,6 +95,10 @@ struct cam_tfe_bus_wm_resource_data {
 
 	uint32_t             en_cfg;
 	uint32_t             is_dual;
+
+	uint32_t             acquired_width;
+	uint32_t             acquired_height;
+	uint32_t             acquired_stride;
 };
 
 struct cam_tfe_bus_comp_grp_data {
@@ -491,6 +495,15 @@ static int cam_tfe_bus_acquire_wm(
 	rsrc_data->width = out_port_info->width;
 	rsrc_data->height = out_port_info->height;
 	rsrc_data->stride = out_port_info->stride;
+
+	/*
+	 * Store the acquire width, height separately. For frame based ports
+	 * width and height modified again
+	 */
+	rsrc_data->acquired_width = out_port_info->width;
+	rsrc_data->acquired_height = out_port_info->height;
+	rsrc_data->acquired_stride = out_port_info->stride;
+
 	rsrc_data->is_dual = is_dual;
 	/* Set WM offset value to default */
 	rsrc_data->offset  = 0;
@@ -1573,8 +1586,108 @@ static int cam_tfe_bus_bufdone_bottom_half(
 	return 0;
 }
 
+static void cam_tfe_bus_error_bottom_half(
+	struct cam_tfe_bus_priv            *bus_priv,
+	struct cam_tfe_irq_evt_payload     *evt_payload)
+{
+	struct cam_tfe_bus_wm_resource_data   *rsrc_data;
+	struct cam_tfe_bus_reg_offset_common  *common_reg;
+	uint32_t i, overflow_status, image_size_violation_status;
+	uint32_t ccif_violation_status;
+
+	common_reg = bus_priv->common_data.common_reg;
+
+	CAM_INFO(CAM_ISP, "BUS IRQ[0]:0x%x BUS IRQ[1]:0x%x",
+		evt_payload->bus_irq_val[0], evt_payload->bus_irq_val[1]);
+
+	overflow_status = cam_io_r_mb(bus_priv->common_data.mem_base +
+		bus_priv->common_data.common_reg->overflow_status);
+
+	image_size_violation_status  = cam_io_r_mb(
+		bus_priv->common_data.mem_base +
+		bus_priv->common_data.common_reg->image_size_violation_status);
+
+	ccif_violation_status = cam_io_r_mb(bus_priv->common_data.mem_base +
+		bus_priv->common_data.common_reg->ccif_violation_status);
+
+	CAM_INFO(CAM_ISP,
+		"ccif violation status:0x%x image size violation:0x%x overflow status:0x%x",
+		ccif_violation_status,
+		image_size_violation_status,
+		overflow_status);
+
+	/* Check the bus errors */
+	if (evt_payload->bus_irq_val[0] & BIT(common_reg->cons_violation_shift))
+		CAM_INFO(CAM_ISP, "CONS_VIOLATION");
+
+	if (evt_payload->bus_irq_val[0] & BIT(common_reg->violation_shift))
+		CAM_INFO(CAM_ISP, "VIOLATION");
+
+	if (evt_payload->bus_irq_val[0] &
+		BIT(common_reg->image_size_violation)) {
+		CAM_INFO(CAM_ISP, "IMAGE_SIZE_VIOLATION val :0x%x",
+			evt_payload->image_size_violation_status);
+
+		for (i = 0; i < CAM_TFE_BUS_MAX_CLIENTS; i++) {
+			if (!(evt_payload->image_size_violation_status >> i))
+				break;
+
+			if (evt_payload->image_size_violation_status & BIT(i)) {
+				rsrc_data = bus_priv->bus_client[i].res_priv;
+				CAM_INFO(CAM_ISP,
+					"WM:%d width 0x%x height:0x%x format:%d stride:0x%x offset:0x%x encfg:0x%x",
+					i,
+					rsrc_data->acquired_width,
+					rsrc_data->acquired_height,
+					rsrc_data->format,
+					rsrc_data->acquired_stride,
+					rsrc_data->offset,
+					rsrc_data->en_cfg);
+
+			CAM_INFO(CAM_ISP,
+				"WM:%d current width 0x%x height:0x%x stride:0x%x",
+				i,
+				rsrc_data->width,
+				rsrc_data->height,
+				rsrc_data->stride);
+
+			}
+		}
+	}
+
+	if (overflow_status) {
+		for (i = 0; i < CAM_TFE_BUS_MAX_CLIENTS; i++) {
+
+			if (!(evt_payload->overflow_status >> i))
+				break;
+
+			if (evt_payload->overflow_status & BIT(i)) {
+				rsrc_data = bus_priv->bus_client[i].res_priv;
+				CAM_INFO(CAM_ISP,
+					"WM:%d %s BUS OVERFLOW width0x%x height:0x%x format:%d stride:0x%x offset:0x%x encfg:%x",
+					i,
+					rsrc_data->hw_regs->client_name,
+					rsrc_data->acquired_width,
+					rsrc_data->acquired_height,
+					rsrc_data->format,
+					rsrc_data->acquired_stride,
+					rsrc_data->offset,
+					rsrc_data->en_cfg);
+
+				CAM_INFO(CAM_ISP,
+					"WM:%d current width:0x%x height:0x%x stride:0x%x",
+					i,
+					rsrc_data->width,
+					rsrc_data->height,
+					rsrc_data->stride);
+			}
+		}
+	}
+}
+
 static int cam_tfe_bus_bottom_half(void   *priv,
-	bool rup_process, struct cam_tfe_irq_evt_payload   *evt_payload)
+	bool rup_process, struct cam_tfe_irq_evt_payload   *evt_payload,
+	bool error_process)
 {
 	struct cam_tfe_bus_priv          *bus_priv;
 	uint32_t val;
@@ -1585,6 +1698,11 @@ static int cam_tfe_bus_bottom_half(void   *priv,
 	}
 	bus_priv = (struct cam_tfe_bus_priv   *) priv;
 
+	if (error_process) {
+		cam_tfe_bus_error_bottom_half(bus_priv, evt_payload);
+		goto end;
+	}
+
 	/* if bus errors are there, mask all bus errors */
 	if (evt_payload->bus_irq_val[0] & bus_priv->bus_irq_error_mask[0]) {
 		val = cam_io_r(bus_priv->common_data.mem_base +
@@ -1592,6 +1710,7 @@ static int cam_tfe_bus_bottom_half(void   *priv,
 		val &= ~bus_priv->bus_irq_error_mask[0];
 		cam_io_w(val, bus_priv->common_data.mem_base +
 			bus_priv->common_data.common_reg->irq_mask[0]);
+
 	}
 
 	if (rup_process) {
@@ -1604,6 +1723,7 @@ static int cam_tfe_bus_bottom_half(void   *priv,
 			cam_tfe_bus_bufdone_bottom_half(bus_priv, evt_payload);
 	}
 
+end:
 	return 0;
 
 }

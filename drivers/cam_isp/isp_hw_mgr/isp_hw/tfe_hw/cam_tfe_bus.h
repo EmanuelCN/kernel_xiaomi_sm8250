@@ -11,10 +11,11 @@
 #include "cam_isp_hw.h"
 #include "cam_tfe_hw_intf.h"
 
-#define CAM_TFE_BUS_MAX_CLIENTS         10
-#define CAM_TFE_BUS_MAX_SUB_GRPS         4
-#define CAM_TFE_BUS_MAX_PERF_CNT_REG     8
-#define CAM_TFE_BUS_MAX_IRQ_REGISTERS    2
+#define CAM_TFE_BUS_MAX_CLIENTS            10
+#define CAM_TFE_BUS_MAX_SUB_GRPS            4
+#define CAM_TFE_BUS_MAX_PERF_CNT_REG        8
+#define CAM_TFE_BUS_MAX_IRQ_REGISTERS       2
+#define CAM_TFE_BUS_CLIENT_NAME_MAX_LENGTH 32
 
 #define CAM_TFE_BUS_1_0             0x1000
 
@@ -29,7 +30,8 @@
 	((value + alignment - 1) / alignment * alignment)
 
 typedef int (*CAM_BUS_HANDLER_BOTTOM_HALF)(void      *bus_priv,
-	bool rup_process, struct cam_tfe_irq_evt_payload   *evt_payload);
+	bool rup_process, struct cam_tfe_irq_evt_payload   *evt_payload,
+	bool error_process);
 
 enum cam_tfe_bus_plane_type {
 	PLANE_Y,
@@ -106,6 +108,10 @@ struct cam_tfe_bus_reg_offset_common {
 	uint32_t irq_clear[CAM_TFE_BUS_IRQ_REGISTERS_MAX];
 	uint32_t irq_status[CAM_TFE_BUS_IRQ_REGISTERS_MAX];
 	uint32_t irq_cmd;
+	/* common register data */
+	uint32_t cons_violation_shift;
+	uint32_t violation_shift;
+	uint32_t image_size_violation;
 };
 
 /*
@@ -138,6 +144,8 @@ struct cam_tfe_bus_reg_offset_bus_client {
 	uint32_t debug_status_0;
 	uint32_t debug_status_1;
 	uint32_t comp_group;
+	/*bus data */
+	uint8_t  client_name[CAM_TFE_BUS_CLIENT_NAME_MAX_LENGTH];
 };
 
 /*
