@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -28,6 +28,29 @@
 #include "ope_bus_rd.h"
 
 static struct ope_bus_rd *bus_rd;
+
+enum cam_ope_bus_unpacker_format {
+	UNPACKER_FMT_PLAIN_128                   = 0x0,
+	UNPACKER_FMT_PLAIN_8                     = 0x1,
+	UNPACKER_FMT_PLAIN_16_10BPP              = 0x2,
+	UNPACKER_FMT_PLAIN_16_12BPP              = 0x3,
+	UNPACKER_FMT_PLAIN_16_14BPP              = 0x4,
+	UNPACKER_FMT_PLAIN_32_20BPP              = 0x5,
+	UNPACKER_FMT_ARGB_16_10BPP               = 0x6,
+	UNPACKER_FMT_ARGB_16_12BPP               = 0x7,
+	UNPACKER_FMT_ARGB_16_14BPP               = 0x8,
+	UNPACKER_FMT_PLAIN_32                    = 0x9,
+	UNPACKER_FMT_PLAIN_64                    = 0xA,
+	UNPACKER_FMT_TP_10                       = 0xB,
+	UNPACKER_FMT_MIPI_8                      = 0xC,
+	UNPACKER_FMT_MIPI_10                     = 0xD,
+	UNPACKER_FMT_MIPI_12                     = 0xE,
+	UNPACKER_FMT_MIPI_14                     = 0xF,
+	UNPACKER_FMT_PLAIN_16_16BPP              = 0x10,
+	UNPACKER_FMT_PLAIN_128_ODD_EVEN          = 0x11,
+	UNPACKER_FMT_PLAIN_8_ODD_EVEN            = 0x12,
+	UNPACKER_FMT_MAX                         = 0x13,
+};
 
 static int cam_ope_bus_rd_in_port_idx(uint32_t input_port_id)
 {
@@ -242,6 +265,14 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 			temp_reg[count++] = rd_reg->offset +
 				rd_reg_client->stride;
 			temp_reg[count++] = stripe_io->stride;
+
+			/*
+			 * In case of NV12, change the unpacker format of
+			 * chroma plane to odd even byte swapped format.
+			 */
+			if (k == 1 && stripe_io->format == CAM_FORMAT_NV12)
+				stripe_io->unpack_format =
+					UNPACKER_FMT_PLAIN_8_ODD_EVEN;
 
 			/* Unpack cfg : Mode and alignment */
 			temp_reg[count++] = rd_reg->offset +
