@@ -30,7 +30,7 @@
  *
  * Alignment fixed up by hardware.
  */
-ENTRY(__arch_clear_user)
+SYM_FUNC_START(__arch_clear_user)
 	uaccess_enable_not_uao x2, x3, x4
 	mov	x2, x1			// save the size for fixup return
 	subs	x1, x1, #8
@@ -53,7 +53,7 @@ uao_user_alternative 9f, strb, sttrb, wzr, x0, 0
 5:	mov	x0, #0
 	uaccess_disable_not_uao x2, x3
 	ret
-ENDPROC(__arch_clear_user)
+SYM_FUNC_END(__arch_clear_user)
 EXPORT_SYMBOL(__arch_clear_user)
 
 	.section .fixup,"ax"
