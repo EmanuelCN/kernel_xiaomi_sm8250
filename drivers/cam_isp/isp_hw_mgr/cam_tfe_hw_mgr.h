@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TFE_HW_MGR_H_
@@ -37,8 +37,8 @@ struct cam_tfe_hw_mgr_debug {
 	uint64_t       csid_debug;
 	uint32_t       enable_recovery;
 	uint32_t       camif_debug;
-	bool           enable_reg_dump;
-	bool           per_req_reg_dump;
+	uint32_t       enable_reg_dump;
+	uint32_t       per_req_reg_dump;
 };
 
 /**
