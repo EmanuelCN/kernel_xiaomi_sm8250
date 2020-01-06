@@ -68,11 +68,11 @@
 	stp \ptr, \regB, [\regC], \val
 	.endm
 
-ENTRY(__memcpy)
-WEAK(memcpy)
+SYM_FUNC_START_ALIAS(__memcpy)
+SYM_FUNC_START_PI(memcpy)
 #include "copy_template.S"
 	ret
-ENDPIPROC(memcpy)
+SYM_FUNC_END_PI(memcpy)
 EXPORT_SYMBOL(memcpy)
-ENDPROC(__memcpy)
+SYM_FUNC_END_ALIAS(__memcpy)
 EXPORT_SYMBOL(__memcpy)
