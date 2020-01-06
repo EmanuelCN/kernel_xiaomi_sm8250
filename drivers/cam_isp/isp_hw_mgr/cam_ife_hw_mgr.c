@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -5740,6 +5740,7 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 	struct cam_ife_hw_mgr_ctx *ctx = (struct cam_ife_hw_mgr_ctx *)
 		hw_cmd_args->ctxt_to_hw_map;
 	struct cam_isp_hw_cmd_args *isp_hw_cmd_args = NULL;
+	struct cam_packet          *packet;
 
 	if (!hw_mgr_priv || !cmd_args) {
 		CAM_ERR(CAM_ISP, "Invalid arguments");
@@ -5779,6 +5780,17 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 				isp_hw_cmd_args->u.ctx_type = CAM_ISP_CTX_RDI;
 			else
 				isp_hw_cmd_args->u.ctx_type = CAM_ISP_CTX_PIX;
+			break;
+		case CAM_ISP_HW_MGR_GET_PACKET_OPCODE:
+			packet = (struct cam_packet *)
+				isp_hw_cmd_args->cmd_data;
+			if (((packet->header.op_code + 1) & 0xF) ==
+				CAM_ISP_PACKET_INIT_DEV)
+				isp_hw_cmd_args->u.packet_op_code =
+				CAM_ISP_PACKET_INIT_DEV;
+			else
+				isp_hw_cmd_args->u.packet_op_code =
+				CAM_ISP_PACKET_UPDATE_DEV;
 			break;
 		default:
 			CAM_ERR(CAM_ISP, "Invalid HW mgr command:0x%x",
