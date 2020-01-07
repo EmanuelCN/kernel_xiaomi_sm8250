@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CPAS_SOC_H_
 #define _CAM_CPAS_SOC_H_
 
+#include <linux/msm_kgsl.h>
 #include "cam_soc_util.h"
 #include "cam_cpas_hw.h"
 
@@ -88,6 +89,8 @@ struct cam_cpas_tree_node {
  *      camnoc axi clock
  * @camnoc_axi_min_ib_bw: Min camnoc BW which varies based on target
  * @feature_mask: feature mask value for hw supported features
+ * @cx_ipeak_gpu_limit: Flag for Cx Ipeak GPU mitigation
+ * @gpu_pwr_limit: Handle for Cx Ipeak GPU Mitigation
  *
  */
 struct cam_cpas_private_soc {
@@ -105,6 +108,8 @@ struct cam_cpas_private_soc {
 	uint32_t camnoc_axi_clk_bw_margin;
 	uint64_t camnoc_axi_min_ib_bw;
 	uint32_t feature_mask;
+	uint32_t cx_ipeak_gpu_limit;
+	struct kgsl_pwr_limit *gpu_pwr_limit;
 };
 
 void cam_cpas_util_debug_parse_data(struct cam_cpas_private_soc *soc_private);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
  */
 
 #include <linux/device.h>
@@ -552,6 +552,9 @@ int cam_cpas_get_custom_dt_info(struct cam_hw_info *cpas_hw,
 		CAM_ERR(CAM_CPAS, "Node tree parsing failed rc: %d", rc);
 		goto cleanup_tree;
 	}
+
+	of_property_read_u32(of_node, "qcom,cx-ipeak-gpu-limit",
+		&soc_private->cx_ipeak_gpu_limit);
 
 	return 0;
 
