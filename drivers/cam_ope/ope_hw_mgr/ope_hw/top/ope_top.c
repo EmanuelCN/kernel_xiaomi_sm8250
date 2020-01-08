@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -44,7 +44,8 @@ static int cam_ope_top_reset(struct ope_hw *ope_hw_info,
 	top_reg = ope_hw_info->top_reg;
 	top_reg_val = ope_hw_info->top_reg_val;
 
-	init_completion(&ope_top_info.reset_complete);
+	mutex_lock(&ope_top_info.ope_hw_mutex);
+	reinit_completion(&ope_top_info.reset_complete);
 
 	/* enable interrupt mask */
 	cam_io_w_mb(top_reg_val->irq_mask,
@@ -70,6 +71,7 @@ static int cam_ope_top_reset(struct ope_hw *ope_hw_info,
 	cam_io_w_mb(top_reg_val->irq_mask,
 		ope_hw_info->top_reg->base + top_reg->irq_mask);
 
+	mutex_unlock(&ope_top_info.ope_hw_mutex);
 	return rc;
 }
 
