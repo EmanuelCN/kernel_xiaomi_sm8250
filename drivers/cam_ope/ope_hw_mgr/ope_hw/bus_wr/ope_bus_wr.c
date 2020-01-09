@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -688,11 +688,12 @@ static int cam_ope_bus_wr_isr(struct ope_hw *ope_hw_info,
 	int32_t ctx_id, void *data)
 {
 	int rc = 0;
-	uint32_t irq_status_0, irq_status_1;
+	uint32_t irq_status_0, irq_status_1, violation_status;
 	struct cam_ope_bus_wr_reg *bus_wr_reg;
 	struct cam_ope_bus_wr_reg_val *bus_wr_reg_val;
+	struct cam_ope_irq_data *irq_data = data;
 
-	if (!ope_hw_info) {
+	if (!ope_hw_info || !irq_data) {
 		CAM_ERR(CAM_OPE, "Invalid ope_hw_info");
 		return -EINVAL;
 	}
@@ -712,15 +713,26 @@ static int cam_ope_bus_wr_isr(struct ope_hw *ope_hw_info,
 		bus_wr_reg->base + bus_wr_reg->irq_cmd);
 
 	if (irq_status_0 & bus_wr_reg_val->cons_violation) {
+		irq_data->error = 1;
 		CAM_ERR(CAM_OPE, "ope bus wr cons_violation");
 	}
 
 	if (irq_status_0 & bus_wr_reg_val->violation) {
-		CAM_ERR(CAM_OPE, "ope bus wr  vioalation");
+		irq_data->error = 1;
+		violation_status = cam_io_r_mb(bus_wr_reg->base +
+			bus_wr_reg->violation_status);
+		CAM_ERR(CAM_OPE,
+			"ope bus wr violation, violation_status 0x%x",
+			violation_status);
 	}
 
 	if (irq_status_0 & bus_wr_reg_val->img_size_violation) {
-		CAM_ERR(CAM_OPE, "ope bus wr  img_size_violation");
+		irq_data->error = 1;
+		violation_status = cam_io_r_mb(bus_wr_reg->base +
+			bus_wr_reg->image_size_violation_status);
+		CAM_ERR(CAM_OPE,
+			"ope bus wr img_size_violation, violation_status 0x%x",
+			violation_status);
 	}
 
 	return rc;
@@ -769,7 +781,7 @@ int cam_ope_bus_wr_process(struct ope_hw *ope_hw_info,
 		CAM_DBG(CAM_OPE, "Unhandled cmds: %d", cmd_id);
 		break;
 	case OPE_HW_ISR:
-		rc = cam_ope_bus_wr_isr(ope_hw_info, 0, NULL);
+		rc = cam_ope_bus_wr_isr(ope_hw_info, 0, data);
 		break;
 	default:
 		CAM_ERR(CAM_OPE, "Unsupported cmd: %d", cmd_id);
