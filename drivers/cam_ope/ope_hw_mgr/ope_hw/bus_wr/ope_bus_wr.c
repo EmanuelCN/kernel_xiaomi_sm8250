@@ -151,25 +151,15 @@ static int cam_ope_bus_wr_subsample(
 static int cam_ope_bus_wr_release(struct ope_hw *ope_hw_info,
 	int32_t ctx_id, void *data)
 {
-	int rc = 0, i;
-	struct ope_acquire_dev_info *in_acquire;
-	struct ope_bus_wr_ctx *bus_wr_ctx;
+	int rc = 0;
 
-	if (ctx_id < 0) {
+	if (ctx_id < 0 || ctx_id >= OPE_CTX_MAX) {
 		CAM_ERR(CAM_OPE, "Invalid data: %d", ctx_id);
 		return -EINVAL;
 	}
 
-	in_acquire = wr_info->bus_wr_ctx[ctx_id].ope_acquire;
-	wr_info->bus_wr_ctx[ctx_id].ope_acquire = NULL;
-	bus_wr_ctx = &wr_info->bus_wr_ctx[ctx_id];
-	bus_wr_ctx->num_out_ports = 0;
-
-	for (i = 0; i < bus_wr_ctx->num_out_ports; i++) {
-		bus_wr_ctx->io_port_info.output_port_id[i] = 0;
-		bus_wr_ctx->io_port_info.output_format_type[i - 1] = 0;
-		bus_wr_ctx->io_port_info.pixel_pattern[i - 1] = 0;
-	}
+	kzfree(wr_info->bus_wr_ctx[ctx_id]);
+	wr_info->bus_wr_ctx[ctx_id] = NULL;
 
 	return rc;
 }
@@ -226,7 +216,7 @@ static uint32_t *cam_ope_bus_wr_update(struct ope_hw *ope_hw_info,
 	cdm_ops = ctx_data->ope_cdm.cdm_ops;
 
 	ope_request = ctx_data->req_list[req_idx];
-	bus_wr_ctx = &wr_info->bus_wr_ctx[ctx_id];
+	bus_wr_ctx = wr_info->bus_wr_ctx[ctx_id];
 	io_port_cdm_batch = &bus_wr_ctx->io_port_cdm_batch;
 	wr_reg = ope_hw_info->bus_wr_reg;
 	wr_reg_val = ope_hw_info->bus_wr_reg_val;
@@ -404,7 +394,7 @@ static uint32_t *cam_ope_bus_wm_disable(struct ope_hw *ope_hw_info,
 	req_idx = prepare->req_idx;
 	cdm_ops = ctx_data->ope_cdm.cdm_ops;
 
-	bus_wr_ctx = &wr_info->bus_wr_ctx[ctx_id];
+	bus_wr_ctx = wr_info->bus_wr_ctx[ctx_id];
 	io_port_cdm_batch = &bus_wr_ctx->io_port_cdm_batch;
 	wr_reg = ope_hw_info->bus_wr_reg;
 
@@ -494,7 +484,7 @@ static int cam_ope_bus_wr_prepare(struct ope_hw *ope_hw_info,
 	prepare = data;
 	ctx_data = prepare->ctx_data;
 	req_idx = prepare->req_idx;
-	bus_wr_ctx = &wr_info->bus_wr_ctx[ctx_id];
+	bus_wr_ctx = wr_info->bus_wr_ctx[ctx_id];
 
 	ope_request = ctx_data->req_list[req_idx];
 	kmd_buf = (uint32_t *)ope_request->ope_kmd_buf.cpu_addr +
@@ -505,7 +495,7 @@ static int cam_ope_bus_wr_prepare(struct ope_hw *ope_hw_info,
 		kmd_buf, req_idx, ope_request->request_id,
 		prepare->kmd_buf_offset);
 
-	io_port_cdm_batch = &wr_info->bus_wr_ctx[ctx_id].io_port_cdm_batch;
+	io_port_cdm_batch = &wr_info->bus_wr_ctx[ctx_id]->io_port_cdm_batch;
 	memset(io_port_cdm_batch, 0,
 		sizeof(struct ope_bus_wr_io_port_cdm_batch));
 
@@ -561,14 +551,21 @@ static int cam_ope_bus_wr_acquire(struct ope_hw *ope_hw_info,
 	int combo_idx;
 	int out_port_idx;
 
-	if (ctx_id < 0 || !data) {
+	if (ctx_id < 0 || !data || ctx_id >= OPE_CTX_MAX) {
 		CAM_ERR(CAM_OPE, "Invalid data: %d %x", ctx_id, data);
 		return -EINVAL;
 	}
 
-	wr_info->bus_wr_ctx[ctx_id].ope_acquire = data;
+	wr_info->bus_wr_ctx[ctx_id] = kzalloc(sizeof(struct ope_bus_wr_ctx),
+		GFP_KERNEL);
+	if (!wr_info->bus_wr_ctx[ctx_id]) {
+		CAM_ERR(CAM_OPE, "Out of memory");
+		return -ENOMEM;
+	}
+
+	wr_info->bus_wr_ctx[ctx_id]->ope_acquire = data;
 	in_acquire = data;
-	bus_wr_ctx = &wr_info->bus_wr_ctx[ctx_id];
+	bus_wr_ctx = wr_info->bus_wr_ctx[ctx_id];
 	bus_wr_ctx->num_out_ports = in_acquire->num_out_res;
 	bus_wr_ctx->security_flag = in_acquire->secure_mode;
 
