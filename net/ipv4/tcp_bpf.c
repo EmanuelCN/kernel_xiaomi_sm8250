@@ -311,10 +311,7 @@ more_data:
 		 */
 		delta = msg->sg.size;
 		psock->eval = sk_psock_msg_verdict(sk, psock, msg);
-		if (msg->sg.size < delta)
-			delta -= msg->sg.size;
-		else
-			delta = 0;
+		delta -= msg->sg.size;
 	}
 
 	if (msg->cork_bytes &&
