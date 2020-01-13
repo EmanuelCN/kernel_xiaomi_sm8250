@@ -2137,6 +2137,19 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 				goto ope_irq_set_failed;
 			}
 		}
+
+		hw_mgr->clk_info.base_clk = 600000000;
+		hw_mgr->clk_info.curr_clk = 600000000;
+		hw_mgr->clk_info.threshold = 5;
+		hw_mgr->clk_info.over_clked = 0;
+
+		for (i = 0; i < CAM_OPE_MAX_PER_PATH_VOTES; i++) {
+			hw_mgr->clk_info.axi_path[i].camnoc_bw = 0;
+			hw_mgr->clk_info.axi_path[i].mnoc_ab_bw = 0;
+			hw_mgr->clk_info.axi_path[i].mnoc_ib_bw = 0;
+			hw_mgr->clk_info.axi_path[i].ddr_ab_bw = 0;
+			hw_mgr->clk_info.axi_path[i].ddr_ib_bw = 0;
+		}
 	}
 
 	ope_dev_acquire.ctx_id = ctx_id;
@@ -2277,6 +2290,64 @@ end:
 	return rc;
 }
 
+static int cam_ope_mgr_remove_bw(struct cam_ope_hw_mgr *hw_mgr, int ctx_id)
+{
+	int i, path_index, rc = 0;
+	struct cam_ope_ctx *ctx_data = NULL;
+	struct cam_ope_clk_info *hw_mgr_clk_info;
+
+	ctx_data = &hw_mgr->ctx[ctx_id];
+	hw_mgr_clk_info = &hw_mgr->clk_info;
+
+	for (i = 0; i < ctx_data->clk_info.num_paths; i++) {
+		path_index =
+		ctx_data->clk_info.axi_path[i].path_data_type -
+		CAM_AXI_PATH_DATA_OPE_START_OFFSET;
+
+		if (path_index >= CAM_OPE_MAX_PER_PATH_VOTES) {
+			CAM_WARN(CAM_OPE,
+				"Invalid path %d, start offset=%d, max=%d",
+				ctx_data->clk_info.axi_path[i].path_data_type,
+				CAM_AXI_PATH_DATA_OPE_START_OFFSET,
+				CAM_OPE_MAX_PER_PATH_VOTES);
+			continue;
+		}
+
+		hw_mgr_clk_info->axi_path[path_index].camnoc_bw -=
+			ctx_data->clk_info.axi_path[i].camnoc_bw;
+		hw_mgr_clk_info->axi_path[path_index].mnoc_ab_bw -=
+			ctx_data->clk_info.axi_path[i].mnoc_ab_bw;
+		hw_mgr_clk_info->axi_path[path_index].mnoc_ib_bw -=
+			ctx_data->clk_info.axi_path[i].mnoc_ib_bw;
+		hw_mgr_clk_info->axi_path[path_index].ddr_ab_bw -=
+			ctx_data->clk_info.axi_path[i].ddr_ab_bw;
+		hw_mgr_clk_info->axi_path[path_index].ddr_ib_bw -=
+			ctx_data->clk_info.axi_path[i].ddr_ib_bw;
+	}
+
+	rc = cam_ope_update_cpas_vote(hw_mgr, ctx_data);
+
+	return rc;
+}
+
+static int cam_ope_mgr_ope_clk_remove(struct cam_ope_hw_mgr *hw_mgr, int ctx_id)
+{
+	struct cam_ope_ctx *ctx_data = NULL;
+	struct cam_ope_clk_info *hw_mgr_clk_info;
+
+	ctx_data = &hw_mgr->ctx[ctx_id];
+	hw_mgr_clk_info = &hw_mgr->clk_info;
+
+	if (hw_mgr_clk_info->base_clk >= ctx_data->clk_info.base_clk)
+		hw_mgr_clk_info->base_clk -= ctx_data->clk_info.base_clk;
+
+	/* reset clock info */
+	ctx_data->clk_info.curr_fc = 0;
+	ctx_data->clk_info.base_clk = 0;
+
+	return 0;
+}
+
 static int cam_ope_mgr_release_ctx(struct cam_ope_hw_mgr *hw_mgr, int ctx_id)
 {
 	int i = 0, rc = 0;
@@ -2334,6 +2405,15 @@ static int cam_ope_mgr_release_ctx(struct cam_ope_hw_mgr *hw_mgr, int ctx_id)
 	hw_mgr->ctx[ctx_id].ope_cdm.cdm_handle = 0;
 	hw_mgr->ctx[ctx_id].req_cnt = 0;
 	cam_ope_put_free_ctx(hw_mgr, ctx_id);
+
+	rc = cam_ope_mgr_remove_bw(hw_mgr, ctx_id);
+	if (rc)
+		CAM_ERR(CAM_OPE, "OPE remove bw failed: %d", rc);
+
+	rc = cam_ope_mgr_ope_clk_remove(hw_mgr, ctx_id);
+	if (rc)
+		CAM_ERR(CAM_OPE, "OPE clk update failed: %d", rc);
+
 	hw_mgr->ope_ctx_cnt--;
 	mutex_unlock(&hw_mgr->ctx[ctx_id].ctx_mutex);
 	CAM_DBG(CAM_OPE, "X: ctx_id = %d", ctx_id);
