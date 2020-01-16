@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef OPE_TOP_H
@@ -32,10 +32,12 @@ struct ope_top_ctx {
  * @ope_hw_info:    OPE hardware info
  * @top_ctx:        OPE top context
  * @reset_complete: Reset complete flag
+ * @ope_mutex:      OPE hardware mutex
  */
 struct ope_top {
 	struct ope_hw *ope_hw_info;
 	struct ope_top_ctx top_ctx[OPE_CTX_MAX];
 	struct completion reset_complete;
+	struct mutex      ope_hw_mutex;
 };
 #endif /* OPE_TOP_H */
