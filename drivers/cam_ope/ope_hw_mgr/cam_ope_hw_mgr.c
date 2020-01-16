@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/uaccess.h>
@@ -1112,13 +1112,25 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 		return;
 	}
 
-	CAM_DBG(CAM_FD, "CDM hdl=%x, udata=%pK, status=%d, cookie=%llu",
+	CAM_DBG(CAM_OPE, "CDM hdl=%x, udata=%pK, status=%d, cookie=%llu",
 		handle, userdata, status, cookie);
 
 	ctx = userdata;
-	ope_req = ctx->req_list[cookie];
 
 	mutex_lock(&ctx->ctx_mutex);
+
+	if (cookie >= CAM_CTX_REQ_MAX) {
+		CAM_ERR(CAM_OPE, "Invalid reqIdx = %llu", cookie);
+		goto end;
+	}
+
+	if (!test_bit(cookie, ctx->bitmap)) {
+		CAM_INFO(CAM_OPE, "Request not present reqIdx = %d", cookie);
+		goto end;
+	}
+
+	ope_req = ctx->req_list[cookie];
+
 	if (ctx->ctx_state != OPE_CTX_STATE_ACQUIRED) {
 		CAM_DBG(CAM_OPE, "ctx %u is in %d state",
 			ctx->ctx_id, ctx->ctx_state);
