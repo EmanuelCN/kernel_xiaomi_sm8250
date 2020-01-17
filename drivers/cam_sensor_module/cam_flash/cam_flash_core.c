@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -1774,6 +1774,12 @@ void cam_flash_shutdown(struct cam_flash_ctrl *fctrl)
 	if ((fctrl->flash_state == CAM_FLASH_STATE_CONFIG) ||
 		(fctrl->flash_state == CAM_FLASH_STATE_START)) {
 		fctrl->func_tbl.flush_req(fctrl, FLUSH_ALL, 0);
+		rc = cam_flash_off(fctrl);
+		if (rc) {
+			CAM_ERR(CAM_FLASH,
+					"LED OFF FAILED: %d",
+					rc);
+		}
 		rc = fctrl->func_tbl.power_ops(fctrl, false);
 		if (rc)
 			CAM_ERR(CAM_FLASH, "Power Down Failed rc: %d",
