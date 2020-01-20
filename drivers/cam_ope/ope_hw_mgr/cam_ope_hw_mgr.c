@@ -227,10 +227,65 @@ static bool cam_ope_is_pending_request(struct cam_ope_ctx *ctx_data)
 	return !bitmap_empty(ctx_data->bitmap, CAM_CTX_REQ_MAX);
 }
 
+static int cam_get_valid_ctx_id(void)
+{
+	struct cam_ope_hw_mgr *hw_mgr = ope_hw_mgr;
+	int i;
+
+	for (i = 0; i < OPE_CTX_MAX; i++) {
+		if (hw_mgr->ctx[i].ctx_state == OPE_CTX_STATE_ACQUIRED)
+			break;
+	}
+
+	if (i == OPE_CTX_MAX)
+		return -EINVAL;
+
+	return i;
+}
+
+static int32_t cam_ope_mgr_process_msg(void *priv, void *data)
+{
+	struct ope_msg_work_data *task_data;
+	struct cam_ope_hw_mgr *hw_mgr;
+	struct cam_ope_ctx *ctx;
+	uint32_t irq_status;
+	int32_t ctx_id;
+	int rc = 0, i;
+
+	if (!data || !priv) {
+		CAM_ERR(CAM_OPE, "Invalid data");
+		return -EINVAL;
+	}
+
+	task_data = data;
+	hw_mgr = priv;
+	irq_status = task_data->irq_status;
+	ctx_id = cam_get_valid_ctx_id();
+	if (ctx_id < 0) {
+		CAM_ERR(CAM_OPE, "No valid context to handle error");
+		return ctx_id;
+	}
+
+	ctx = &hw_mgr->ctx[ctx_id];
+
+	/* Indicate about this error to CDM and reset OPE*/
+	rc = cam_cdm_handle_error(ctx->ope_cdm.cdm_handle);
+
+	for (i = 0; i < hw_mgr->num_ope; i++) {
+		rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
+			hw_mgr->ope_dev_intf[i]->hw_priv, OPE_HW_RESET,
+			NULL, 0);
+		if (rc)
+			CAM_ERR(CAM_OPE, "OPE Dev acquire failed: %d", rc);
+	}
+
+	return rc;
+}
+
 static int32_t cam_ope_process_request_timer(void *priv, void *data)
 {
-	struct ope_clk_work_data *task_data = (struct ope_clk_work_data *)data;
-	struct cam_ope_ctx *ctx_data = (struct cam_ope_ctx *)task_data->data;
+	struct ope_clk_work_data *clk_data = (struct ope_clk_work_data *)data;
+	struct cam_ope_ctx *ctx_data = (struct cam_ope_ctx *)clk_data->data;
 	struct cam_ope_hw_mgr *hw_mgr = ope_hw_mgr;
 	uint32_t id;
 	struct cam_hw_intf *dev_intf = NULL;
@@ -241,6 +296,8 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 	int path_index;
 	struct timespec64 ts;
 	uint64_t ts_ns;
+	struct crm_workq_task *task;
+	struct ope_msg_work_data *task_data;
 
 	if (!ctx_data) {
 		CAM_ERR(CAM_OPE, "ctx_data is NULL, failed to update clk");
@@ -267,7 +324,18 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 
 	if (cam_ope_is_pending_request(ctx_data)) {
 		CAM_DBG(CAM_OPE, "pending requests means, issue is with HW");
-		cam_cdm_handle_error(ctx_data->ope_cdm.cdm_handle);
+		task = cam_req_mgr_workq_get_task(ope_hw_mgr->msg_work);
+		if (!task) {
+			CAM_ERR(CAM_OPE, "no empty task");
+			return 0;
+		}
+		task_data = (struct ope_msg_work_data *)task->payload;
+		task_data->data = hw_mgr;
+		task_data->irq_status = 1;
+		task_data->type = OPE_WORKQ_TASK_MSG_TYPE;
+		task->process_cb = cam_ope_mgr_process_msg;
+		cam_req_mgr_workq_enqueue_task(task, ope_hw_mgr,
+			CRM_TASK_PRIORITY_0);
 		cam_ope_req_timer_reset(ctx_data);
 		mutex_unlock(&ctx_data->ctx_mutex);
 		return 0;
@@ -548,19 +616,6 @@ static int cam_ope_device_timer_start(struct cam_ope_hw_mgr *hw_mgr)
 	}
 
 	return rc;
-}
-
-static int cam_get_valid_ctx_id(void)
-{
-	struct cam_ope_hw_mgr *hw_mgr = ope_hw_mgr;
-	int i;
-
-	for (i = 0; i < OPE_CTX_MAX; i++) {
-		if (hw_mgr->ctx[i].ctx_state == OPE_CTX_STATE_ACQUIRED)
-			break;
-	}
-
-	return i;
 }
 
 static int cam_ope_get_actual_clk_rate_idx(
@@ -1185,45 +1240,6 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 
 end:
 	mutex_unlock(&ctx->ctx_mutex);
-}
-
-static int32_t cam_ope_mgr_process_msg(void *priv, void *data)
-{
-	struct ope_msg_work_data *task_data;
-	struct cam_ope_hw_mgr *hw_mgr;
-	struct cam_ope_ctx *ctx;
-	uint32_t irq_status;
-	int32_t ctx_id;
-	int rc = 0, i;
-
-	if (!data || !priv) {
-		CAM_ERR(CAM_OPE, "Invalid data");
-		return -EINVAL;
-	}
-
-	task_data = data;
-	hw_mgr = priv;
-	irq_status = task_data->irq_status;
-	ctx_id = cam_get_valid_ctx_id();
-	if (ctx_id < 0) {
-		CAM_ERR(CAM_OPE, "No valid context to handle error");
-		return ctx_id;
-	}
-
-	ctx = &hw_mgr->ctx[ctx_id];
-
-	/* Indicate about this error to CDM and reset OPE*/
-	rc = cam_cdm_handle_error(ctx->ope_cdm.cdm_handle);
-
-	for (i = 0; i < hw_mgr->num_ope; i++) {
-		rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
-			hw_mgr->ope_dev_intf[i]->hw_priv, OPE_HW_RESET,
-			NULL, 0);
-		if (rc)
-			CAM_ERR(CAM_OPE, "OPE Dev acquire failed: %d", rc);
-	}
-
-	return rc;
 }
 
 int32_t cam_ope_hw_mgr_cb(uint32_t irq_status, void *data)
