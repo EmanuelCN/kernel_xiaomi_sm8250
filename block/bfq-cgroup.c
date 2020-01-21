@@ -592,6 +592,12 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	    && &bfq_entity_service_tree(entity)->idle !=
 	       entity->tree);
 
+	/*
+	 * get extra reference to prevent bfqq from being freed in
+	 * next possible deactivate
+	 */
+	bfqq->ref++;
+
 	if (bfq_bfqq_busy(bfqq))
 		bfq_deactivate_bfqq(bfqd, bfqq, false, false);
 	else if (entity->on_st) {
@@ -620,6 +626,8 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 	BFQ_BUG_ON(entity->on_st && !bfq_bfqq_busy(bfqq)
 	       && &bfq_entity_service_tree(entity)->idle !=
 	       entity->tree);
+	/* release extra ref taken above */
+	bfq_put_queue(bfqq);
 }
 
 /**
