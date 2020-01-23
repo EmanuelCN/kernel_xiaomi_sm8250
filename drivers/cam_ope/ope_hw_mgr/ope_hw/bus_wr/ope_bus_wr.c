@@ -158,7 +158,7 @@ static int cam_ope_bus_wr_release(struct ope_hw *ope_hw_info,
 		return -EINVAL;
 	}
 
-	kzfree(wr_info->bus_wr_ctx[ctx_id]);
+	vfree(wr_info->bus_wr_ctx[ctx_id]);
 	wr_info->bus_wr_ctx[ctx_id] = NULL;
 
 	return rc;
@@ -556,8 +556,7 @@ static int cam_ope_bus_wr_acquire(struct ope_hw *ope_hw_info,
 		return -EINVAL;
 	}
 
-	wr_info->bus_wr_ctx[ctx_id] = kzalloc(sizeof(struct ope_bus_wr_ctx),
-		GFP_KERNEL);
+	wr_info->bus_wr_ctx[ctx_id] = vzalloc(sizeof(struct ope_bus_wr_ctx));
 	if (!wr_info->bus_wr_ctx[ctx_id]) {
 		CAM_ERR(CAM_OPE, "Out of memory");
 		return -ENOMEM;

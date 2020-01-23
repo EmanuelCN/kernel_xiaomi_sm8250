@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020 The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -310,14 +310,11 @@ static int cam_ope_dev_process_acquire(struct ope_hw *ope_hw, void *cmd_args)
 	return 0;
 
 bus_wr_acquire_fail:
-	rc = cam_ope_bus_rd_process(ope_hw, ope_dev_acquire->ctx_id,
+	cam_ope_bus_rd_process(ope_hw, ope_dev_acquire->ctx_id,
 		OPE_HW_RELEASE, ope_dev_acquire->ope_acquire);
 bus_rd_acquire_fail:
-	rc = cam_ope_top_process(ope_hw, ope_dev_acquire->ctx_id,
+	cam_ope_top_process(ope_hw, ope_dev_acquire->ctx_id,
 		OPE_HW_RELEASE, ope_dev_acquire->ope_acquire);
-	if (rc)
-		goto top_acquire_fail;
-
 top_acquire_fail:
 	return rc;
 }
