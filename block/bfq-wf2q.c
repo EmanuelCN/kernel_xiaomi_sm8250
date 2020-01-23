@@ -741,9 +741,9 @@ static void bfq_forget_entity(struct bfq_service_tree *st,
 			      bool is_in_service)
 {
 	struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
-	BFQ_BUG_ON(!entity->on_st);
+	BFQ_BUG_ON(!entity->on_st_or_in_serv);
 
-	entity->on_st = false;
+	entity->on_st_or_in_serv = false;
 	st->wsum -= entity->weight;
 	if (bfqq && !is_in_service) {
 		bfq_log_bfqq(bfqq->bfqd, bfqq, "(before): %p %d",
@@ -1180,10 +1180,10 @@ static void __bfq_activate_entity(struct bfq_entity *entity,
 		 */
 		bfq_get_entity(entity);
 
-		BFQ_BUG_ON(entity->on_st && bfqq);
+		BFQ_BUG_ON(entity->on_st_or_in_serv && bfqq);
 
 #ifdef CONFIG_BFQ_GROUP_IOSCHED
-		if (entity->on_st && !bfqq) {
+		if (entity->on_st_or_in_serv && !bfqq) {
 			struct bfq_group *bfqg =
 				container_of(entity, struct bfq_group,
 					     entity);
@@ -1194,8 +1194,8 @@ static void __bfq_activate_entity(struct bfq_entity *entity,
 				     bfq_class_idx(entity), sd->in_service_entity);
 		}
 #endif
-		BFQ_BUG_ON(entity->on_st && !bfqq);
-		entity->on_st = true;
+		BFQ_BUG_ON(entity->on_st_or_in_serv && !bfqq);
+		entity->on_st_or_in_serv = true;
 	}
 
 #ifdef BFQ_GROUP_IOSCHED_ENABLED
@@ -1381,7 +1381,8 @@ bool __bfq_deactivate_entity(struct bfq_entity *entity, bool ins_into_idle_tree)
 	struct bfq_service_tree *st;
 	bool is_in_service;
 
-	if (!entity->on_st) { /* entity never activated, or already inactive */
+	if (!entity->on_st_or_in_serv) {
+		/* entity never activated, or already inactive */
 		BFQ_BUG_ON(sd && entity == sd->in_service_entity);
 		return false;
 	}
@@ -1985,7 +1986,7 @@ bool __bfq_bfqd_reset_in_service(struct bfq_data *bfqd)
 	 * service tree either, then release the service reference to
 	 * the queue it represents (taken with bfq_get_entity).
 	 */
-	if (!in_serv_entity->on_st) {
+	if (!in_serv_entity->on_st_or_in_serv) {
 		/*
 		 * If no process is referencing in_serv_bfqq any
 		 * longer, then the service reference may be the only
@@ -2016,7 +2017,7 @@ void bfq_activate_bfqq(struct bfq_data *bfqd, struct bfq_queue *bfqq)
 
 	BFQ_BUG_ON(bfqq == bfqd->in_service_queue);
 	BFQ_BUG_ON(entity->tree != &st->active && entity->tree != &st->idle &&
-	       entity->on_st);
+	       entity->on_st_or_in_serv);
 
 	bfq_activate_requeue_entity(entity, bfq_bfqq_non_blocking_wait_rq(bfqq),
 				    false, false);

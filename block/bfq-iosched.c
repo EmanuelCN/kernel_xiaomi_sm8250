@@ -1142,7 +1142,7 @@ static int bfqq_process_refs(struct bfq_queue *bfqq)
 	lockdep_assert_held(&bfqq->bfqd->lock);
 
 	io_refs = bfqq->allocated;
-	process_refs = bfqq->ref - io_refs - bfqq->entity.on_st -
+	process_refs = bfqq->ref - io_refs - bfqq->entity.on_st_or_in_serv -
 		(bfqq->weight_counter != NULL);
 	BFQ_BUG_ON(process_refs < 0);
 	return process_refs;
@@ -5514,7 +5514,7 @@ void bfq_put_queue(struct bfq_queue *bfqq)
 	BFQ_BUG_ON(bfqq->allocated != 0);
 	BFQ_BUG_ON(bfqq->entity.tree);
 	BFQ_BUG_ON(bfq_bfqq_busy(bfqq));
-	BFQ_BUG_ON(bfqq->entity.on_st);
+	BFQ_BUG_ON(bfqq->entity.on_st_or_in_serv);
 	BFQ_BUG_ON(bfqq->weight_counter != NULL);
 
 	if (!hlist_unhashed(&bfqq->burst_list_node)) {
