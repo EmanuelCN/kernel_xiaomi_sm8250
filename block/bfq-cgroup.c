@@ -350,6 +350,8 @@ void bfq_init_entity(struct bfq_entity *entity, struct bfq_group *bfqg)
 {
 	struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
 
+	BFQ_BUG_ON(!bfqq);
+
 	entity->weight = entity->new_weight;
 	entity->orig_weight = entity->new_weight;
 	if (bfqq) {
@@ -1251,6 +1253,8 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 void bfq_init_entity(struct bfq_entity *entity, struct bfq_group *bfqg)
 {
 	struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
+
+	BFQ_BUG_ON(!bfqq);
 
 	entity->weight = entity->new_weight;
 	entity->orig_weight = entity->new_weight;
