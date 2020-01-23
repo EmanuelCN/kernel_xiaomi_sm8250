@@ -262,8 +262,10 @@ static void bfqg_put(struct bfq_group *bfqg)
 	bfqg->ref--;
 
 	BFQ_BUG_ON(bfqg->ref < 0);
-	if (bfqg->ref == 0)
+	if (bfqg->ref == 0) {
+		BFQ_BUG_ON(bfqg->entity.on_st);
 		kfree(bfqg);
+	}
 }
 
 static void bfqg_and_blkg_get(struct bfq_group *bfqg)
