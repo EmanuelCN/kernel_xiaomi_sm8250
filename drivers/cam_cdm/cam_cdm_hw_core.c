@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -1139,7 +1139,8 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 				return IRQ_HANDLED;
 			}
 
-			payload[i]->irq_data = user_data >> (i * 0x8);
+			payload[i]->irq_data = (user_data >> (i * 0x8)) &
+				CAM_CDM_IRQ_STATUS_USR_DATA_MASK;
 
 			if (payload[i]->irq_data ==
 					CAM_CDM_DBG_GEN_IRQ_USR_DATA)

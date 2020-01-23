@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CDM_H_
@@ -100,6 +100,7 @@
 #define CAM_CDM_IRQ_STATUS_ERROR_INV_CMD_MASK 0x10000
 #define CAM_CDM_IRQ_STATUS_ERROR_OVER_FLOW_MASK 0x20000
 #define CAM_CDM_IRQ_STATUS_ERROR_AHB_BUS_MASK 0x40000
+#define CAM_CDM_IRQ_STATUS_USR_DATA_MASK 0xFF
 
 #define CAM_CDM_IRQ_STATUS_ERRORS \
 	(CAM_CDM_IRQ_STATUS_ERROR_INV_CMD_MASK | \
