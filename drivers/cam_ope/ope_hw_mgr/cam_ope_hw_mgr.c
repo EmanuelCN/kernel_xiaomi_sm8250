@@ -2254,11 +2254,10 @@ cdm_stream_on_failure:
 cdm_acquire_failed:
 	ope_dev_release.ctx_id = ctx_id;
 	for (i = 0; i < ope_hw_mgr->num_ope; i++) {
-		rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
+		if (hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 			hw_mgr->ope_dev_intf[i]->hw_priv, OPE_HW_RELEASE,
-			&ope_dev_release, sizeof(ope_dev_release));
-		if (rc)
-			CAM_ERR(CAM_OPE, "OPE Dev release failed: %d", rc);
+			&ope_dev_release, sizeof(ope_dev_release)))
+			CAM_ERR(CAM_OPE, "OPE Dev release failed");
 	}
 
 ope_dev_acquire_failed:
@@ -2267,23 +2266,24 @@ ope_dev_acquire_failed:
 		irq_cb.data = hw_mgr;
 		for (i = 0; i < ope_hw_mgr->num_ope; i++) {
 			init.hfi_en = ope_hw_mgr->hfi_en;
-			rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
+			if (hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 				hw_mgr->ope_dev_intf[i]->hw_priv,
 				OPE_HW_SET_IRQ_CB,
-				&irq_cb, sizeof(irq_cb));
-			CAM_ERR(CAM_OPE, "OPE IRQ de register failed");
+				&irq_cb, sizeof(irq_cb)))
+				CAM_ERR(CAM_OPE,
+					"OPE IRQ de register failed");
 		}
 	}
 ope_irq_set_failed:
 	if (!hw_mgr->ope_ctx_cnt) {
 		for (i = 0; i < ope_hw_mgr->num_ope; i++) {
-			rc = hw_mgr->ope_dev_intf[i]->hw_ops.deinit(
-				hw_mgr->ope_dev_intf[i]->hw_priv, NULL, 0);
-			if (rc)
-				CAM_ERR(CAM_OPE, "OPE deinit fail: %d", rc);
+			if (hw_mgr->ope_dev_intf[i]->hw_ops.deinit(
+				hw_mgr->ope_dev_intf[i]->hw_priv, NULL, 0))
+				CAM_ERR(CAM_OPE, "OPE deinit fail");
 		}
 	}
 end:
+	args->ctxt_to_hw_map = NULL;
 	cam_ope_put_free_ctx(hw_mgr, ctx_id);
 	mutex_unlock(&ctx->ctx_mutex);
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
