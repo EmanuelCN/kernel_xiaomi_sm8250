@@ -20,6 +20,7 @@ struct cam_req_mgr_core_dev_link_setup;
 struct cam_req_mgr_apply_request;
 struct cam_req_mgr_flush_request;
 struct cam_req_mgr_link_evt_data;
+struct cam_req_mgr_dump_info;
 
 #define SKIP_NEXT_FRAME 0x100
 
@@ -47,6 +48,7 @@ typedef int (*cam_req_mgr_notify_timer)(struct cam_req_mgr_timer_notify *);
  * @cam_req_mgr_apply_req   : CRM asks device to apply certain request id.
  * @cam_req_mgr_flush_req   : Flush or cancel request
  * cam_req_mgr_process_evt  : generic events
+ * @cam_req_mgr_dump_req    : dump request
  */
 typedef int (*cam_req_mgr_get_dev_info) (struct cam_req_mgr_device_info *);
 typedef int (*cam_req_mgr_link_setup)(
@@ -54,6 +56,7 @@ typedef int (*cam_req_mgr_link_setup)(
 typedef int (*cam_req_mgr_apply_req)(struct cam_req_mgr_apply_request *);
 typedef int (*cam_req_mgr_flush_req)(struct cam_req_mgr_flush_request *);
 typedef int (*cam_req_mgr_process_evt)(struct cam_req_mgr_link_evt_data *);
+typedef int (*cam_req_mgr_dump_req)(struct cam_req_mgr_dump_info *);
 
 /**
  * @brief          : cam_req_mgr_crm_cb - func table
@@ -77,6 +80,7 @@ struct cam_req_mgr_crm_cb {
  * @apply_req    : payload to apply request id on a device linked
  * @flush_req    : payload to flush request
  * @process_evt  : payload to generic event
+ * @dump_req     : payload to dump request
  */
 struct cam_req_mgr_kmd_ops {
 	cam_req_mgr_get_dev_info     get_dev_info;
@@ -84,6 +88,7 @@ struct cam_req_mgr_kmd_ops {
 	cam_req_mgr_apply_req        apply_req;
 	cam_req_mgr_flush_req        flush_req;
 	cam_req_mgr_process_evt      process_evt;
+	cam_req_mgr_dump_req         dump_req;
 };
 
 /**
@@ -348,5 +353,24 @@ struct cam_req_mgr_link_evt_data {
 struct cam_req_mgr_send_request {
 	int32_t    link_hdl;
 	struct cam_req_mgr_req_queue *in_q;
+};
+
+/**
+ * struct cam_req_mgr_dump_info
+ * @req_id      : request id to dump
+ * @offset      : offset of buffer
+ * @error_type  : error type
+ * @buf_handle  : buf handle
+ * @link_hdl    : link identifier
+ * @dev_hdl     : device handle for cross check
+ *
+ */
+struct cam_req_mgr_dump_info {
+	uint64_t    req_id;
+	size_t      offset;
+	uint32_t    error_type;
+	uint32_t    buf_handle;
+	int32_t     link_hdl;
+	int32_t     dev_hdl;
 };
 #endif
