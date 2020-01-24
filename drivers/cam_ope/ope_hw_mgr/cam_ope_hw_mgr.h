@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef CAM_OPE_HW_MGR_H
@@ -60,6 +60,8 @@
 #define CLK_HW_MAX                 0x1
 
 #define OPE_DEVICE_IDLE_TIMEOUT    400
+#define OPE_REQUEST_TIMEOUT        200
+
 
 
 /**
@@ -431,6 +433,7 @@ struct cam_ope_cdm {
  * @ctxt_event_cb:   Callback of a context
  * @req_list:        Request List
  * @ope_cdm:         OPE CDM info
+ * @last_req_time:   Timestamp of last request
  * @req_watch_dog:   Watchdog for requests
  * @req_watch_dog_reset_counter: Request reset counter
  * @clk_info:        OPE Ctx clock info
@@ -451,6 +454,7 @@ struct cam_ope_ctx {
 	cam_hw_event_cb_func ctxt_event_cb;
 	struct cam_ope_request *req_list[CAM_CTX_REQ_MAX];
 	struct cam_ope_cdm ope_cdm;
+	uint64_t last_req_time;
 	struct cam_req_mgr_timer *req_watch_dog;
 	uint32_t req_watch_dog_reset_counter;
 	struct cam_ctx_clk_info clk_info;

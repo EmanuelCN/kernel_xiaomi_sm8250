@@ -239,6 +239,8 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 	int i = 0;
 	int device_share_ratio = 1;
 	int path_index;
+	struct timespec64 ts;
+	uint64_t ts_ns;
 
 	if (!ctx_data) {
 		CAM_ERR(CAM_OPE, "ctx_data is NULL, failed to update clk");
@@ -250,6 +252,15 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 		(ctx_data->req_watch_dog_reset_counter == 0)) {
 		CAM_DBG(CAM_OPE, "state %d counter = %d", ctx_data->ctx_state,
 			ctx_data->req_watch_dog_reset_counter);
+		mutex_unlock(&ctx_data->ctx_mutex);
+		return 0;
+	}
+
+	get_monotonic_boottime64(&ts);
+	ts_ns = (uint64_t)((ts.tv_sec * 1000000000) +
+		ts.tv_nsec);
+	if (ts_ns - ctx_data->last_req_time <
+		OPE_REQUEST_TIMEOUT * 1000000) {
 		mutex_unlock(&ctx_data->ctx_mutex);
 		return 0;
 	}
@@ -386,7 +397,7 @@ static int cam_ope_start_req_timer(struct cam_ope_ctx *ctx_data)
 	int rc = 0;
 
 	rc = crm_timer_init(&ctx_data->req_watch_dog,
-		200, ctx_data, &cam_ope_req_timer_cb);
+		OPE_REQUEST_TIMEOUT, ctx_data, &cam_ope_req_timer_cb);
 	if (rc)
 		CAM_ERR(CAM_OPE, "Failed to start timer");
 
@@ -2617,6 +2628,7 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 	uintptr_t   ope_cmd_buf_addr;
 	uint32_t request_idx = 0;
 	struct cam_ope_request *ope_req;
+	struct timespec64 ts;
 
 	if ((!prepare_args) || (!hw_mgr) || (!prepare_args->packet)) {
 		CAM_ERR(CAM_OPE, "Invalid args: %x %x",
@@ -2667,6 +2679,9 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 		CAM_ERR(CAM_OPE, "Invalid ctx req slot = %d", request_idx);
 		return -EINVAL;
 	}
+	get_monotonic_boottime64(&ts);
+	ctx_data->last_req_time = (uint64_t)((ts.tv_sec * 1000000000) +
+		ts.tv_nsec);
 	cam_ope_req_timer_reset(ctx_data);
 	set_bit(request_idx, ctx_data->bitmap);
 	ctx_data->req_list[request_idx] =
