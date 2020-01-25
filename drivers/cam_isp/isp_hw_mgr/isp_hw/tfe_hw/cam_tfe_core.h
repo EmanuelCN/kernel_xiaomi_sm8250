@@ -25,6 +25,9 @@
 #define CAM_TFE_MAX_REG_DUMP_ENTRIES  20
 #define CAM_TFE_MAX_LUT_DUMP_ENTRIES  10
 
+#define CAM_TFE_MAX_CLC               30
+#define CAM_TFE_CLC_NAME_LENGTH_MAX   32
+
 enum cam_tfe_lut_word_size {
 	CAM_TFE_LUT_WORD_SIZE_32,
 	CAM_TFE_LUT_WORD_SIZE_64,
@@ -112,6 +115,7 @@ struct cam_tfe_camif_reg_data {
 	uint32_t     extern_reg_update_shift;
 	uint32_t     camif_pd_rdi2_src_sel_shift;
 	uint32_t     dual_tfe_sync_sel_shift;
+	uint32_t     delay_line_en_shift;
 
 	uint32_t     pixel_pattern_shift;
 	uint32_t     pixel_pattern_mask;
@@ -180,6 +184,11 @@ struct cam_tfe_rdi_reg_data {
 	uint32_t     enable_diagnostic_hw;
 };
 
+struct cam_tfe_clc_hw_status {
+	uint8_t     name[CAM_TFE_CLC_NAME_LENGTH_MAX];
+	uint32_t    hw_status_reg;
+};
+
 struct cam_tfe_rdi_hw_info {
 	struct cam_tfe_rdi_reg              *rdi_reg;
 	struct cam_tfe_rdi_reg_data         *reg_data;
@@ -194,32 +203,36 @@ struct cam_tfe_top_hw_info {
 };
 
 struct cam_tfe_hw_info {
-	uint32_t                 top_irq_mask[CAM_TFE_TOP_IRQ_REG_NUM];
-	uint32_t                 top_irq_clear[CAM_TFE_TOP_IRQ_REG_NUM];
-	uint32_t                 top_irq_status[CAM_TFE_TOP_IRQ_REG_NUM];
-	uint32_t                 top_irq_cmd;
-	uint32_t                 global_clear_bitmask;
+	uint32_t    top_irq_mask[CAM_TFE_TOP_IRQ_REG_NUM];
+	uint32_t    top_irq_clear[CAM_TFE_TOP_IRQ_REG_NUM];
+	uint32_t    top_irq_status[CAM_TFE_TOP_IRQ_REG_NUM];
+	uint32_t    top_irq_cmd;
+	uint32_t    global_clear_bitmask;
 
-	uint32_t                 bus_irq_mask[CAM_TFE_BUS_MAX_IRQ_REGISTERS];
-	uint32_t                 bus_irq_clear[CAM_TFE_BUS_MAX_IRQ_REGISTERS];
-	uint32_t                 bus_irq_status[CAM_TFE_BUS_MAX_IRQ_REGISTERS];
-	uint32_t                 bus_irq_cmd;
+	uint32_t    bus_irq_mask[CAM_TFE_BUS_MAX_IRQ_REGISTERS];
+	uint32_t    bus_irq_clear[CAM_TFE_BUS_MAX_IRQ_REGISTERS];
+	uint32_t    bus_irq_status[CAM_TFE_BUS_MAX_IRQ_REGISTERS];
+	uint32_t    bus_irq_cmd;
 
-	uint32_t                 bus_violation_reg;
-	uint32_t                 bus_overflow_reg;
-	uint32_t                 bus_image_size_vilation_reg;
-	uint32_t                 bus_overflow_clear_cmd;
-	uint32_t                 debug_status_top;
+	uint32_t    bus_violation_reg;
+	uint32_t    bus_overflow_reg;
+	uint32_t    bus_image_size_vilation_reg;
+	uint32_t    bus_overflow_clear_cmd;
+	uint32_t    debug_status_top;
 
-	uint32_t                 reset_irq_mask[CAM_TFE_TOP_IRQ_REG_NUM];
-	uint32_t                 error_irq_mask[CAM_TFE_TOP_IRQ_REG_NUM];
-	uint32_t                 bus_reg_irq_mask[CAM_TFE_TOP_IRQ_REG_NUM];
+	uint32_t    reset_irq_mask[CAM_TFE_TOP_IRQ_REG_NUM];
+	uint32_t    error_irq_mask[CAM_TFE_TOP_IRQ_REG_NUM];
+	uint32_t    bus_reg_irq_mask[CAM_TFE_BUS_MAX_IRQ_REGISTERS];
+	uint32_t    bus_error_irq_mask[CAM_TFE_BUS_MAX_IRQ_REGISTERS];
 
-	uint32_t                 top_version;
-	void                    *top_hw_info;
+	uint32_t    num_clc;
+	struct cam_tfe_clc_hw_status  *clc_hw_status_info;
 
-	uint32_t                 bus_version;
-	void                    *bus_hw_info;
+	uint32_t    top_version;
+	void       *top_hw_info;
+
+	uint32_t    bus_version;
+	void       *bus_hw_info;
 };
 
 struct cam_tfe_hw_core_info {

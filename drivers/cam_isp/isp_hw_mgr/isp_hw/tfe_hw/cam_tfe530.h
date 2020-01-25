@@ -66,6 +66,7 @@ static struct cam_tfe_camif_reg_data tfe530_camif_reg_data = {
 	.extern_reg_update_shift      = 0x0,
 	.camif_pd_rdi2_src_sel_shift  = 0x2,
 	.dual_tfe_sync_sel_shift      = 18,
+	.delay_line_en_shift          = 8,
 	.pixel_pattern_shift          = 24,
 	.pixel_pattern_mask           = 0x7000000,
 	.module_enable_shift          = 0,
@@ -200,6 +201,65 @@ static struct cam_tfe_rdi_reg_data tfe530_rdi2_reg_data = {
 		0x00000000,
 	},
 	.enable_diagnostic_hw        = 0x1,
+};
+
+static struct cam_tfe_clc_hw_status  tfe530_clc_hw_info[CAM_TFE_MAX_CLC] = {
+	{
+		.name = "CLC_CAMIF",
+		.hw_status_reg = 0x1204,
+	},
+	{
+		.name = "CLC_RDI0_CAMIF",
+		.hw_status_reg = 0x1404,
+	},
+	{
+		.name = "CLC_RDI1_CAMIF",
+		.hw_status_reg = 0x1604,
+	},
+	{
+		.name = "CLC_RDI2_CAMIF",
+		.hw_status_reg = 0x1804,
+	},
+	{
+		.name = "CLC_CHANNEL_GAIN",
+		.hw_status_reg = 0x2604,
+	},
+	{
+		.name = "CLC_LENS_ROLL_OFF",
+		.hw_status_reg = 0x2804,
+	},
+	{
+		.name = "CLC_WB_BDS",
+		.hw_status_reg = 0x2A04,
+	},
+	{
+		.name = "CLC_STATS_BHIST",
+		.hw_status_reg = 0x2C04,
+	},
+	{
+		.name = "CLC_STATS_TINTLESS_BG",
+		.hw_status_reg = 0x2E04,
+	},
+	{
+		.name = "CLC_STATS_BAF",
+		.hw_status_reg = 0x3004,
+	},
+	{
+		.name = "CLC_STATS_AWB_BG",
+		.hw_status_reg = 0x3204,
+	},
+	{
+		.name = "CLC_STATS_AEC_BG",
+		.hw_status_reg = 0x3404,
+	},
+	{
+		.name = "CLC_STATS_RAW_OUT",
+		.hw_status_reg = 0x3604,
+	},
+	{
+		.name = "CLC_STATS_CROP_POST_BDS",
+		.hw_status_reg = 0x3804,
+	},
 };
 
 static struct  cam_tfe_top_hw_info tfe530_top_hw_info = {
@@ -385,6 +445,9 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			0x00001A2C,
 		},
 		.irq_cmd = 0x00001A30,
+		.cons_violation_shift = 28,
+		.violation_shift  = 30,
+		.image_size_violation = 31,
 	},
 	.num_client = CAM_TFE_BUS_MAX_CLIENTS,
 	.bus_client_reg = {
@@ -414,6 +477,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x00001C7C,
 			.debug_status_1        = 0x00001C80,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_0,
+			.client_name           = "BAYER",
 		},
 		/* BUS Client 1 IDEAL RAW*/
 		{
@@ -441,6 +505,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x00001D7C,
 			.debug_status_1        = 0x00001D80,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_1,
+			.client_name           = "IDEAL_RAW",
 		},
 		/* BUS Client 2 Stats BE Tintless */
 		{
@@ -468,6 +533,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x00001E7C,
 			.debug_status_1        = 0x00001E80,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_2,
+			.client_name           = "STATS BE TINTLESS",
 		},
 		/* BUS Client 3 Stats Bhist */
 		{
@@ -495,6 +561,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x00001F7C,
 			.debug_status_1        = 0x00001F80,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_2,
+			.client_name           = "STATS BHIST",
 		},
 		/* BUS Client 4 Stats AWB BG */
 		{
@@ -522,6 +589,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x0000207C,
 			.debug_status_1        = 0x00002080,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_3,
+			.client_name           = "STATS AWB BG",
 		},
 		/* BUS Client 5 Stats AEC BG */
 		{
@@ -549,6 +617,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x0000217C,
 			.debug_status_1        = 0x00002180,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_3,
+			.client_name           = "STATS AEC BG",
 		},
 		/* BUS Client 6 Stats BAF */
 		{
@@ -576,6 +645,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x0000227C,
 			.debug_status_1        = 0x00002280,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_4,
+			.client_name           = "STATS BAF",
 		},
 		/* BUS Client 7 RDI0 */
 		{
@@ -603,6 +673,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x0000237C,
 			.debug_status_1        = 0x00002380,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_5,
+			.client_name           = "RDI0",
 		},
 		/* BUS Client 8 RDI1 */
 		{
@@ -630,6 +701,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x0000247C,
 			.debug_status_1        = 0x00002480,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_6,
+			.client_name           = "RDI1",
 		},
 		/* BUS Client 9 PDAF/RDI2*/
 		{
@@ -657,6 +729,7 @@ static struct cam_tfe_bus_hw_info  tfe530_bus_hw_info = {
 			.debug_status_0        = 0x0000257C,
 			.debug_status_1        = 0x00002580,
 			.comp_group            = CAM_TFE_BUS_COMP_GRP_7,
+			.client_name           = "RDI2/PADF",
 		},
 	},
 	.num_out  = CAM_TFE_BUS_TFE_OUT_MAX,
@@ -800,9 +873,14 @@ struct cam_tfe_hw_info cam_tfe530 = {
 	.bus_reg_irq_mask = {
 		0x00000002,
 		0x00000000,
+	},
+	.bus_error_irq_mask = {
+		0xC0000000,
 		0x00000000,
 	},
 
+	.num_clc = 14,
+	.clc_hw_status_info            = tfe530_clc_hw_info,
 	.bus_version                   = CAM_TFE_BUS_1_0,
 	.bus_hw_info                   = &tfe530_bus_hw_info,
 
