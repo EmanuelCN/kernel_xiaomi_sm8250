@@ -385,6 +385,7 @@ struct ope_io_buf {
  * @cdm_cmd:             CDM command for OPE CDM
  * @clk_info:            Clock Info V1
  * @clk_info_v2:         Clock Info V2
+ * @hang_data:           Debug data for HW error
  */
 struct cam_ope_request {
 	uint64_t request_id;
@@ -404,6 +405,7 @@ struct cam_ope_request {
 	struct cam_cdm_bl_request *cdm_cmd;
 	struct cam_ope_clk_bw_request clk_info;
 	struct cam_ope_clk_bw_req_internal_v2 clk_info_v2;
+	struct cam_hw_mgr_dump_pf_data hang_data;
 };
 
 /**
@@ -524,4 +526,68 @@ struct cam_ope_hw_mgr {
 	struct cam_ope_clk_info clk_info;
 };
 
+/**
+ * struct cam_ope_buf_entry
+ *
+ * @fd:                FD of cmd buffer
+ * @memhdl:           Memhandle of cmd buffer
+ * @iova:              IOVA address of cmd buffer
+ * @offset:            Offset of cmd buffer
+ * @len:               Length of cmd buffer
+ * @size:              Size of cmd buffer
+ */
+struct cam_ope_buf_entry {
+	uint32_t          fd;
+	uint64_t          memhdl;
+	uint64_t          iova;
+	uint64_t          offset;
+	uint64_t          len;
+	uint64_t          size;
+};
+
+/**
+ * struct cam_ope_bl_entry
+ *
+ * @base:              Base IOVA address of BL
+ * @len:               Length of BL
+ * @arbitration:       Arbitration bit
+ */
+struct cam_ope_bl_entry {
+	uint32_t         base;
+	uint32_t         len;
+	uint32_t         arbitration;
+};
+
+/**
+ * struct cam_ope_output_info
+ *
+ * @iova:              IOVA address of output buffer
+ * @offset:            Offset of buffer
+ * @len:               Length of buffer
+ */
+struct cam_ope_output_info {
+	uint64_t    iova;
+	uint64_t    offset;
+	uint64_t    len;
+};
+
+/**
+ * struct cam_ope_hang_dump
+ *
+ * @num_bls:           count of BLs for request
+ * @num_bufs:          Count of buffer related to request
+ * @num_outputs:       Count of output beffers
+ * @entries:           Buffers info
+ * @bl_entries:        BLs info
+ * @outputs:           Output info
+ */
+struct cam_ope_hang_dump {
+	uint32_t num_bls;
+	uint32_t num_bufs;
+	uint64_t num_outputs;
+	struct cam_ope_buf_entry entries[OPE_MAX_BATCH_SIZE * OPE_MAX_CMD_BUFS];
+	struct cam_ope_bl_entry bl_entries[OPE_MAX_CDM_BLS];
+	struct cam_ope_output_info outputs
+		[OPE_MAX_BATCH_SIZE * OPE_OUT_RES_MAX];
+};
 #endif /* CAM_OPE_HW_MGR_H */
