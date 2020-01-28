@@ -123,6 +123,7 @@ static int cam_ope_top_init(struct ope_hw *ope_hw_info,
 
 	top_reg->base = dev_init->core_info->ope_hw_info->ope_top_base;
 
+	mutex_init(&ope_top_info.ope_hw_mutex);
 	/* OPE SW RESET */
 	init_completion(&ope_top_info.reset_complete);
 
