@@ -54,7 +54,8 @@ static int cam_tfe_mgr_regspace_data_cb(uint32_t reg_base_type,
 
 	*soc_info_ptr = NULL;
 	list_for_each_entry(hw_mgr_res, &ctx->res_list_tfe_in, list) {
-		if (hw_mgr_res->res_id != CAM_ISP_HW_TFE_IN_CAMIF)
+		if ((hw_mgr_res->res_id != CAM_ISP_HW_TFE_IN_CAMIF) &&
+			!ctx->is_rdi_only_context)
 			continue;
 
 		switch (reg_base_type) {
