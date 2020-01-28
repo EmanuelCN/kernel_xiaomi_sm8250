@@ -1248,6 +1248,7 @@ int cam_hw_cdm_reset_hw(struct cam_hw_info *cdm_hw, uint32_t handle)
 	struct cam_cdm *cdm_core = NULL;
 	long time_left;
 	int i, rc = -EIO;
+	int reset_val = 1;
 
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 
@@ -1258,6 +1259,8 @@ int cam_hw_cdm_reset_hw(struct cam_hw_info *cdm_hw, uint32_t handle)
 		mutex_lock(&cdm_core->bl_fifo[i].fifo_lock);
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
+		reset_val = reset_val |
+			(1 << (i + CAM_CDM_BL_FIFO_FLUSH_SHIFT));
 		if (cam_cdm_write_hw_reg(cdm_hw,
 				cdm_core->offsets->irq_reg[i]->irq_mask,
 				0x70003)) {
@@ -1267,7 +1270,7 @@ int cam_hw_cdm_reset_hw(struct cam_hw_info *cdm_hw, uint32_t handle)
 	}
 
 	if (cam_cdm_write_hw_reg(cdm_hw,
-			cdm_core->offsets->cmn_reg->rst_cmd, 0x9)) {
+			cdm_core->offsets->cmn_reg->rst_cmd, reset_val)) {
 		CAM_ERR(CAM_CDM, "Failed to Write CDM HW reset");
 		goto end;
 	}
@@ -1312,6 +1315,7 @@ int cam_hw_cdm_handle_error_info(
 	long time_left;
 	int i, rc = -EIO, reset_hw_hdl = 0x0;
 	uint32_t current_bl_data = 0, current_fifo = 0, current_tag = 0;
+	int reset_val = 1;
 
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 
@@ -1343,6 +1347,8 @@ int cam_hw_cdm_handle_error_info(
 	cam_hw_cdm_dump_core_debug_registers(cdm_hw);
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
+		reset_val = reset_val |
+			(1 << (i + CAM_CDM_BL_FIFO_FLUSH_SHIFT));
 		if (cam_cdm_write_hw_reg(cdm_hw,
 				cdm_core->offsets->irq_reg[i]->irq_mask,
 				0x70003)) {
@@ -1352,7 +1358,7 @@ int cam_hw_cdm_handle_error_info(
 	}
 
 	if (cam_cdm_write_hw_reg(cdm_hw,
-			cdm_core->offsets->cmn_reg->rst_cmd, 0x9)) {
+			cdm_core->offsets->cmn_reg->rst_cmd, reset_val)) {
 		CAM_ERR(CAM_CDM, "Failed to Write CDM HW reset");
 		goto end;
 	}
