@@ -156,7 +156,8 @@ int cam_ope_init_hw(void *device_priv,
 
 	if (!device_priv) {
 		CAM_ERR(CAM_OPE, "Invalid cam_dev_info");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto end;
 	}
 
 	soc_info = &ope_dev->soc_info;
@@ -164,7 +165,8 @@ int cam_ope_init_hw(void *device_priv,
 	if ((!soc_info) || (!core_info)) {
 		CAM_ERR(CAM_OPE, "soc_info = %pK core_info = %pK",
 			soc_info, core_info);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto end;
 	}
 	ope_hw = core_info->ope_hw_info->ope_hw;
 
@@ -191,28 +193,35 @@ int cam_ope_init_hw(void *device_priv,
 		&cpas_vote.ahb_vote, &cpas_vote.axi_vote);
 	if (rc) {
 		CAM_ERR(CAM_OPE, "cpass start failed: %d", rc);
-		return rc;
+		goto end;
 	}
 	core_info->cpas_start = true;
 
 	rc = cam_ope_enable_soc_resources(soc_info);
-	if (rc) {
-		CAM_ERR(CAM_OPE, "soc enable is failed : %d", rc);
-		if (cam_cpas_stop(core_info->cpas_handle))
-			CAM_ERR(CAM_OPE, "cpas stop is failed");
-		else
-			core_info->cpas_start = false;
-	} else {
+	if (rc)
+		goto enable_soc_resource_failed;
+	else
 		core_info->clk_enable = true;
-	}
 
 	init = init_hw_args;
 
 	core_info->ope_hw_info->hfi_en = init->hfi_en;
 	init->core_info = core_info;
-
 	rc = cam_ope_process_init(ope_hw, init_hw_args, init->hfi_en);
+	if (rc)
+		goto process_init_failed;
+	else
+		goto end;
 
+process_init_failed:
+	if (cam_ope_disable_soc_resources(soc_info, core_info->clk_enable))
+		CAM_ERR(CAM_OPE, "disable soc resource failed");
+enable_soc_resource_failed:
+	if (cam_cpas_stop(core_info->cpas_handle))
+		CAM_ERR(CAM_OPE, "cpas stop is failed");
+	else
+		core_info->cpas_start = false;
+end:
 	return rc;
 }
 
