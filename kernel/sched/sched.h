@@ -3260,3 +3260,16 @@ struct sched_avg_stats {
 extern void sched_get_nr_running_avg(struct sched_avg_stats *stats);
 
 extern u64 avg_vruntime(struct cfs_rq *cfs_rq);
+
+#ifdef CONFIG_SMP
+static inline bool is_per_cpu_kthread(struct task_struct *p)
+{
+	if (!(p->flags & PF_KTHREAD))
+		return false;
+
+	if (p->nr_cpus_allowed != 1)
+		return false;
+
+	return true;
+}
+#endif
