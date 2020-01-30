@@ -625,7 +625,9 @@ static void bfq_get_entity(struct bfq_entity *entity)
 		bfqq->ref++;
 		bfq_log_bfqq(bfqq->bfqd, bfqq, "%p %d",
 			     bfqq, bfqq->ref);
-	}
+	} else
+		bfqg_and_blkg_get(container_of(entity, struct bfq_group,
+					       entity));
 }
 
 /**
@@ -745,11 +747,16 @@ static void bfq_forget_entity(struct bfq_service_tree *st,
 
 	entity->on_st_or_in_serv = false;
 	st->wsum -= entity->weight;
-	if (bfqq && !is_in_service) {
+	if (is_in_service)
+		return;
+
+	if (bfqq) {
 		bfq_log_bfqq(bfqq->bfqd, bfqq, "(before): %p %d",
 			     bfqq, bfqq->ref);
 		bfq_put_queue(bfqq);
-	}
+	} else
+		bfqg_and_blkg_put(container_of(entity, struct bfq_group,
+					       entity));
 }
 
 /**
