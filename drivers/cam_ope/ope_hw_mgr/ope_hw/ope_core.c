@@ -455,119 +455,6 @@ static int dump_stripe_cmd(struct ope_frame_process *frm_proc,
 	return 0;
 }
 
-static uint32_t *ope_create_frame_cmd_prefetch_dis(
-	struct cam_ope_hw_mgr *hw_mgr,
-	struct cam_ope_ctx *ctx_data, uint32_t req_idx,
-	uint32_t *kmd_buf, uint32_t buffered, int batch_idx,
-	struct cam_ope_dev_prepare_req *ope_dev_prepare_req)
-{
-	int rc = 0, i, j;
-	uint32_t temp[3];
-	struct cam_ope_request *ope_request;
-	struct cdm_dmi_cmd *dmi_cmd;
-	struct ope_bus_wr_io_port_cdm_info *wr_cdm_info;
-	struct ope_bus_rd_io_port_cdm_info *rd_cdm_info;
-	struct ope_frame_process *frm_proc;
-	dma_addr_t iova_addr;
-	uintptr_t cpu_addr;
-	size_t buf_len;
-	uint32_t print_idx;
-	uint32_t *print_ptr;
-	int num_dmi = 0;
-	struct cam_cdm_utils_ops *cdm_ops;
-
-	frm_proc = ope_dev_prepare_req->frame_process;
-	ope_request = ctx_data->req_list[req_idx];
-	cdm_ops = ctx_data->ope_cdm.cdm_ops;
-	wr_cdm_info =
-		&ope_dev_prepare_req->wr_cdm_batch->io_port_cdm[0];
-	rd_cdm_info =
-		&ope_dev_prepare_req->rd_cdm_batch->io_port_cdm[0];
-
-	if (batch_idx >= OPE_MAX_BATCH_SIZE) {
-		CAM_ERR(CAM_OPE, "Invalid input: %d", batch_idx);
-		return NULL;
-	}
-
-	i = batch_idx;
-
-	for (j = 0; j < frm_proc->num_cmd_bufs[i]; j++) {
-		if (frm_proc->cmd_buf[i][j].cmd_buf_scope !=
-			OPE_CMD_BUF_SCOPE_FRAME)
-			continue;
-
-		if (frm_proc->cmd_buf[i][j].cmd_buf_usage ==
-			OPE_CMD_BUF_KMD ||
-			frm_proc->cmd_buf[i][j].cmd_buf_usage ==
-			OPE_CMD_BUF_DEBUG)
-			continue;
-
-		if (frm_proc->cmd_buf[i][j].prefetch_disable &&
-			frm_proc->cmd_buf[i][j].cmd_buf_buffered !=
-			buffered)
-			continue;
-
-		if (!frm_proc->cmd_buf[i][j].mem_handle)
-			continue;
-
-		rc = cam_mem_get_io_buf(
-			frm_proc->cmd_buf[i][j].mem_handle,
-			hw_mgr->iommu_cdm_hdl, &iova_addr, &buf_len);
-		if (rc) {
-			CAM_ERR(CAM_OPE, "get cmd buf failed %x",
-				hw_mgr->iommu_hdl);
-			return NULL;
-		}
-		iova_addr = iova_addr + frm_proc->cmd_buf[i][j].offset;
-
-		rc = cam_mem_get_cpu_buf(
-			frm_proc->cmd_buf[i][j].mem_handle,
-			&cpu_addr, &buf_len);
-		if (rc || !cpu_addr) {
-			CAM_ERR(CAM_OPE, "get cmd buf failed %x",
-				hw_mgr->iommu_hdl);
-			return NULL;
-		}
-
-		cpu_addr = cpu_addr + frm_proc->cmd_buf[i][j].offset;
-		if (frm_proc->cmd_buf[i][j].type ==
-			OPE_CMD_BUF_TYPE_DIRECT) {
-			kmd_buf = cdm_ops->cdm_write_indirect(kmd_buf,
-				iova_addr,
-				frm_proc->cmd_buf[i][j].length);
-			print_ptr = (uint32_t *)cpu_addr;
-			dump_frame_direct(print_idx, print_ptr,
-				frm_proc, i, j);
-		} else {
-			num_dmi = frm_proc->cmd_buf[i][j].length /
-				sizeof(struct cdm_dmi_cmd);
-			CAM_DBG(CAM_OPE, "Frame DB : In direct: E");
-			print_ptr = (uint32_t *)cpu_addr;
-			for (print_idx = 0;
-				print_idx < num_dmi; print_idx++) {
-				memcpy(temp, (const void *)print_ptr,
-					sizeof(struct cdm_dmi_cmd));
-				dmi_cmd = (struct cdm_dmi_cmd *)temp;
-				kmd_buf = cdm_ops->cdm_write_dmi(
-					kmd_buf,
-					0, dmi_cmd->DMIAddr,
-					dmi_cmd->DMISel, dmi_cmd->addr,
-					dmi_cmd->length);
-				dump_dmi_cmd(print_idx,
-					print_ptr, dmi_cmd, temp);
-				print_ptr +=
-					sizeof(struct cdm_dmi_cmd) /
-					sizeof(uint32_t);
-			}
-			CAM_DBG(CAM_OPE, "Frame DB : In direct: X");
-		}
-		dump_frame_cmd(frm_proc, i, j,
-			iova_addr, kmd_buf, buf_len);
-	}
-	return kmd_buf;
-
-}
-
 static uint32_t *ope_create_frame_cmd_batch(struct cam_ope_hw_mgr *hw_mgr,
 	struct cam_ope_ctx *ctx_data, uint32_t req_idx,
 	uint32_t *kmd_buf, uint32_t buffered, int batch_idx,
@@ -1373,15 +1260,6 @@ static int cam_ope_dev_create_kmd_buf_batch(struct cam_ope_hw_mgr *hw_mgr,
 
 		/* After second batch DB programming add prefecth dis */
 		if (i) {
-			/* program db buffered prefecth disable cmds */
-			kmd_buf = ope_create_frame_cmd_prefetch_dis(hw_mgr,
-				ctx_data, req_idx,
-				kmd_buf, OPE_CMD_BUF_DOUBLE_BUFFERED, i,
-				ope_dev_prepare_req);
-			if (!kmd_buf) {
-				rc = -EINVAL;
-				goto end;
-			}
 			kmd_buf =
 				cdm_ops->cdm_write_wait_prefetch_disable(
 				kmd_buf, 0x0,
