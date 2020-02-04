@@ -150,6 +150,18 @@ struct cam_isp_context_state_monitor {
 };
 
 /**
+ * struct cam_isp_context_req_id_info - ISP context request id
+ *                     information for bufdone.
+ *
+ *@last_bufdone_req_id:   Last bufdone request id
+ *
+ */
+
+struct cam_isp_context_req_id_info {
+	int64_t                          last_bufdone_req_id;
+};
+/**
+ *
  * struct cam_isp_context   -  ISP context object
  *
  * @base:                      Common context object pointer
@@ -171,6 +183,7 @@ struct cam_isp_context_state_monitor {
  *                             will invoke CRM cb at those event.
  * @last_applied_req_id:       Last applied request id
  * @state_monitor_head:        Write index to the state monitoring array
+ * @req_info                   Request id information about last buf done
  * @cam_isp_ctx_state_monitor: State monitoring array
  * @rdi_only_context:          Get context type information.
  *                             true, if context is rdi only context
@@ -204,6 +217,7 @@ struct cam_isp_context {
 	atomic64_t                            state_monitor_head;
 	struct cam_isp_context_state_monitor  cam_isp_ctx_state_monitor[
 		CAM_ISP_CTX_STATE_MONITOR_MAX_ENTRIES];
+	struct cam_isp_context_req_id_info    req_info;
 	bool                                  rdi_only_context;
 	bool                                  hw_acquired;
 	bool                                  init_received;
