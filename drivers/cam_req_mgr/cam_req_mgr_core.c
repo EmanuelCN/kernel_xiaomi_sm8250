@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -3665,7 +3665,7 @@ int cam_req_mgr_link_control(struct cam_req_mgr_link_control *control)
 		if (control->ops == CAM_REQ_MGR_LINK_ACTIVATE) {
 			/* Start SOF watchdog timer */
 			rc = crm_timer_init(&link->watchdog,
-				CAM_REQ_MGR_WATCHDOG_TIMEOUT, link,
+				CAM_REQ_MGR_WATCHDOG_TIMEOUT_DEFAULT, link,
 				&__cam_req_mgr_sof_freeze);
 			if (rc < 0) {
 				CAM_ERR(CAM_CRM,
