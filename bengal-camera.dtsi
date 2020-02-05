@@ -576,7 +576,7 @@
 		clock-cntl-level = "lowsvs", "svs", "svs_l1", "turbo";
 		cdm-client-names = "ope";
 		config-fifo;
-		fifo-depths = <64 64 64 64>;
+		fifo-depths = <120 8 8 120>;
 		status = "ok";
 	};
 
