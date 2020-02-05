@@ -3923,11 +3923,33 @@ done:
 	trace_sched_util_est_task(p, &p->se.avg);
 }
 
+/*
+ * Check whether cpu is in the fastest set of cpu's that p should run on.
+ * If p is boosted, prefer that p runs on a faster cpu; otherwise, allow p
+ * to run on any cpu.
+ */
+static inline bool cpu_is_in_target_set(struct task_struct *p, int cpu)
+{
+	struct root_domain *rd = cpu_rq(cpu)->rd;
+	int first_cpu, next_usable_cpu;
+
+	if (schedtune_task_boost(p)) {
+		first_cpu = rd->mid_cap_orig_cpu != -1 ? rd->mid_cap_orig_cpu :
+			    rd->max_cap_orig_cpu;
+
+	} else {
+		first_cpu = rd->min_cap_orig_cpu;
+	}
+
+	next_usable_cpu = cpumask_next(first_cpu - 1, &p->cpus_allowed);
+	return cpu >= next_usable_cpu || next_usable_cpu >= nr_cpu_ids;
+}
+
 static inline bool
 bias_to_this_cpu(struct task_struct *p, int cpu, int start_cpu)
 {
 	bool base_test = cpumask_test_cpu(cpu, &p->cpus_allowed) &&
-			cpu_active(cpu);
+			cpu_active(cpu) && cpu_is_in_target_set(p, cpu);
 	bool start_cap_test = (capacity_orig_of(cpu) >=
 					capacity_orig_of(start_cpu));
 
