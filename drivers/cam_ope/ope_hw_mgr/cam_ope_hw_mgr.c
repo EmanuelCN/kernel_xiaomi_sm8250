@@ -271,6 +271,14 @@ static int32_t cam_ope_mgr_process_msg(void *priv, void *data)
 	/* Indicate about this error to CDM and reset OPE*/
 	rc = cam_cdm_handle_error(ctx->ope_cdm.cdm_handle);
 
+	mutex_lock(&ctx->ctx_mutex);
+	if (ctx->ctx_state != OPE_CTX_STATE_ACQUIRED) {
+		CAM_DBG(CAM_OPE, "ctx id: %d not in right state: %d",
+			ctx_id, ctx->ctx_state);
+		mutex_unlock(&ctx->ctx_mutex);
+		return -EINVAL;
+	}
+
 	for (i = 0; i < hw_mgr->num_ope; i++) {
 		rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 			hw_mgr->ope_dev_intf[i]->hw_priv, OPE_HW_RESET,
@@ -279,6 +287,7 @@ static int32_t cam_ope_mgr_process_msg(void *priv, void *data)
 			CAM_ERR(CAM_OPE, "OPE Dev acquire failed: %d", rc);
 	}
 
+	mutex_unlock(&ctx->ctx_mutex);
 	return rc;
 }
 
