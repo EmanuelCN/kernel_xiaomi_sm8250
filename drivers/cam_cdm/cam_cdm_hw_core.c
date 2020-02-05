@@ -631,10 +631,13 @@ int cam_hw_cdm_submit_gen_irq(
 	int rc;
 	bool bit_wr_enable = false;
 
-	if (core->bl_fifo[fifo_idx].bl_tag > 63) {
+	if (core->bl_fifo[fifo_idx].bl_tag >
+		(core->bl_fifo[fifo_idx].bl_depth - 1)) {
 		CAM_ERR(CAM_CDM,
-			"bl_tag invalid =%d",
-			core->bl_fifo[fifo_idx].bl_tag);
+			"Invalid bl_tag=%d bl_depth=%d fifo_idx=%d",
+			core->bl_fifo[fifo_idx].bl_tag,
+			core->bl_fifo[fifo_idx].bl_depth,
+			fifo_idx);
 		rc = -EINVAL;
 		goto end;
 	}
