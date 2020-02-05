@@ -767,12 +767,16 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			bl_fifo->bl_depth);
 	}
 
-	if (test_bit(CAM_CDM_ERROR_HW_STATUS, &core->cdm_status) ||
-			test_bit(CAM_CDM_RESET_HW_STATUS, &core->cdm_status))
-		return -EAGAIN;
 
 	mutex_lock(&core->bl_fifo[fifo_idx].fifo_lock);
 	mutex_lock(&client->lock);
+
+	if (test_bit(CAM_CDM_ERROR_HW_STATUS, &core->cdm_status) ||
+			test_bit(CAM_CDM_RESET_HW_STATUS, &core->cdm_status)) {
+		mutex_unlock(&client->lock);
+		mutex_unlock(&core->bl_fifo[fifo_idx].fifo_lock);
+		return -EAGAIN;
+	}
 
 	rc = cam_hw_cdm_bl_fifo_pending_bl_rb_in_fifo(cdm_hw,
 		fifo_idx, &pending_bl);
@@ -1319,12 +1323,13 @@ int cam_hw_cdm_handle_error_info(
 
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 
-	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
-	set_bit(CAM_CDM_FLUSH_HW_STATUS, &cdm_core->cdm_status);
 	reinit_completion(&cdm_core->reset_complete);
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
 		mutex_lock(&cdm_core->bl_fifo[i].fifo_lock);
+
+	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
+	set_bit(CAM_CDM_FLUSH_HW_STATUS, &cdm_core->cdm_status);
 
 	rc = cam_cdm_read_hw_reg(cdm_hw,
 			cdm_core->offsets->cmn_reg->current_bl_len,
