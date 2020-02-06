@@ -7085,8 +7085,7 @@ static inline bool asym_fits_capacity(int task_util, int cpu)
 /*
  * Try and locate an idle core/thread in the LLC cache domain.
  */
-static inline int __select_idle_sibling(struct task_struct *p, int prev,
-					int target)
+static int select_idle_sibling(struct task_struct *p, int prev, int target)
 {
 	struct sched_domain *sd;
 	unsigned long task_util;
@@ -7166,82 +7165,6 @@ static inline int __select_idle_sibling(struct task_struct *p, int prev,
 		return i;
 
 	return target;
-}
-
-static inline int select_idle_sibling_cstate_aware(struct task_struct *p,
-						   int prev, int target)
-{
-	struct sched_domain *sd;
-	struct sched_group *sg;
-	int best_idle_cpu = -1;
-	int best_idle_cstate = -1;
-	int best_idle_capacity = INT_MAX;
-	int i;
-
-	/*
-	 * Iterate the domains and find an elegible idle cpu.
-	 */
-	sd = rcu_dereference(per_cpu(sd_llc, target));
-	for_each_lower_domain(sd) {
-		sg = sd->groups;
-		do {
-			if (!cpumask_intersects(sched_group_span(sg),
-						&p->cpus_allowed))
-				goto next;
-
-			for_each_cpu_and(i, &p->cpus_allowed,
-					  sched_group_span(sg)) {
-				int idle_idx;
-				unsigned long new_usage;
-				unsigned long capacity_orig;
-
-				if (!idle_cpu(i))
-					goto next;
-
-				/* figure out if the task can fit here at all */
-				new_usage = uclamp_task(p);
-				capacity_orig = capacity_orig_of(i);
-
-				if (new_usage > capacity_orig)
-					goto next;
-
-				/* if the task fits without changing OPP and we
-				 * intended to use this CPU, just proceed
-				 */
-				if (i == target &&
-				    new_usage <= capacity_curr_of(target)) {
-					return target;
-				}
-
-				/* otherwise select CPU with shallowest idle
-				 * state to reduce wakeup latency.
-				 */
-				idle_idx = idle_get_state_idx(cpu_rq(i));
-
-				if (idle_idx < best_idle_cstate &&
-				    capacity_orig <= best_idle_capacity) {
-					best_idle_cpu = i;
-					best_idle_cstate = idle_idx;
-					best_idle_capacity = capacity_orig;
-				}
-			}
-next:
-			sg = sg->next;
-		} while (sg != sd->groups);
-	}
-
-	if (best_idle_cpu >= 0)
-		target = best_idle_cpu;
-
-	return target;
-}
-
-static int select_idle_sibling(struct task_struct *p, int prev, int target)
-{
-	if (!sysctl_sched_cstate_aware)
-		return __select_idle_sibling(p, prev, target);
-
-	return select_idle_sibling_cstate_aware(p, prev, target);
 }
 
 /*
