@@ -141,7 +141,9 @@ static int cam_tfe_mgr_handle_reg_dump(struct cam_tfe_hw_mgr_ctx *ctx,
 			rc = cam_soc_util_reg_dump_to_cmd_buf(ctx,
 				&reg_dump_buf_desc[i],
 				ctx->applied_req_id,
-				cam_tfe_mgr_regspace_data_cb);
+				cam_tfe_mgr_regspace_data_cb,
+				NULL,
+				false);
 			if (rc) {
 				CAM_ERR(CAM_ISP,
 					"Reg dump failed at idx: %d, rc: %d req_id: %llu meta type: %u",
