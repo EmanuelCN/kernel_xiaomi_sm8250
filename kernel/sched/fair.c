@@ -7499,33 +7499,6 @@ out:
 }
 
 /*
- * Disable WAKE_AFFINE in the case where task @p doesn't fit in the
- * capacity of either the waking CPU @cpu or the previous CPU @prev_cpu.
- *
- * In that case WAKE_AFFINE doesn't make sense and we'll let
- * BALANCE_WAKE sort things out.
- */
-static int wake_cap(struct task_struct *p, int cpu, int prev_cpu)
-{
-	long min_cap, max_cap;
-
-	if (!static_branch_unlikely(&sched_asym_cpucapacity))
-		return 0;
-
-	min_cap = min(capacity_orig_of(prev_cpu), capacity_orig_of(cpu));
-	max_cap = cpu_rq(cpu)->rd->max_cpu_capacity.val;
-
-	/* Minimum capacity is close to max, no need to abort wake_affine */
-	if (max_cap - min_cap < max_cap >> 3)
-		return 0;
-
-	/* Bring task utilization in sync with prev_cpu */
-	sync_entity_load_avg(&p->se);
-
-	return !task_fits_max(p, cpu);
-}
-
-/*
  * Predicts what cpu_util(@cpu) would return if @p was migrated (and enqueued)
  * to @dst_cpu.
  */
@@ -8047,11 +8020,10 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
 
 	if (sd_flag & SD_BALANCE_WAKE) {
-		int _wake_cap = wake_cap(p, cpu, prev_cpu);
 		int _cpus_allowed = cpumask_test_cpu(cpu, &p->cpus_allowed);
 
 		if (sysctl_sched_sync_hint_enable && sync && _cpus_allowed &&
-		    !_wake_cap && cpu_rq(cpu)->nr_running == 1 &&
+		    cpu_rq(cpu)->nr_running == 1 &&
 		    cpu_is_in_target_set(p, cpu)) {
 			return cpu;
 		}
@@ -8076,8 +8048,7 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 			new_cpu = prev_cpu;
 		}
 
-		want_affine = !wake_wide(p, sibling_count_hint) && !_wake_cap &&
-			      _cpus_allowed;
+		want_affine = !wake_wide(p, sibling_count_hint) && _cpus_allowed;
 	}
 
 sd_loop:
