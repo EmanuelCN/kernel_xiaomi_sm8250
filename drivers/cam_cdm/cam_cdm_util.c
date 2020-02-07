@@ -168,6 +168,15 @@ struct cdm_wait_comp_event_cmd {
 	unsigned int mask2;
 } __attribute__((__packed__));
 
+struct cdm_clear_comp_event_cmd {
+	unsigned int reserved   : 8;
+	unsigned int id         : 8;
+	unsigned int id_reserved: 8;
+	unsigned int cmd        : 8;
+	unsigned int mask1;
+	unsigned int mask2;
+} __attribute__((__packed__));
+
 struct cdm_prefetch_disable_event_cmd {
 	unsigned int reserved   : 8;
 	unsigned int id         : 8;
@@ -221,6 +230,11 @@ uint32_t cdm_required_size_changebase(void)
 uint32_t cdm_required_size_comp_wait(void)
 {
 	return cdm_get_cmd_header_size(CAM_CDM_COMP_WAIT);
+}
+
+uint32_t cdm_required_size_clear_comp_event(void)
+{
+	return cdm_get_cmd_header_size(CAM_CDM_CLEAR_COMP_WAIT);
 }
 
 uint32_t cdm_required_size_prefetch_disable(void)
@@ -382,6 +396,21 @@ uint32_t *cdm_write_wait_comp_event(
 	return pCmdBuffer;
 }
 
+uint32_t *cdm_write_clear_comp_event(
+	uint32_t *pCmdBuffer, uint32_t mask1, uint32_t mask2)
+{
+	struct cdm_clear_comp_event_cmd *pHeader =
+		(struct cdm_clear_comp_event_cmd *)pCmdBuffer;
+
+	pHeader->cmd = CAM_CDM_CLEAR_COMP_WAIT;
+	pHeader->mask1 = mask1;
+	pHeader->mask2 = mask2;
+
+	pCmdBuffer += cdm_get_cmd_header_size(CAM_CDM_CLEAR_COMP_WAIT);
+
+	return pCmdBuffer;
+}
+
 uint32_t *cdm_write_wait_prefetch_disable(
 	uint32_t                   *pCmdBuffer,
 	uint32_t                    id,
@@ -412,6 +441,7 @@ struct cam_cdm_utils_ops CDM170_ops = {
 	cdm_required_size_wait_event,
 	cdm_required_size_changebase,
 	cdm_required_size_comp_wait,
+	cdm_required_size_clear_comp_event,
 	cdm_required_size_prefetch_disable,
 	cdm_offsetof_dmi_addr,
 	cdm_offsetof_indirect_addr,
@@ -423,6 +453,7 @@ struct cam_cdm_utils_ops CDM170_ops = {
 	cdm_write_wait_event,
 	cdm_write_changebase,
 	cdm_write_wait_comp_event,
+	cdm_write_clear_comp_event,
 	cdm_write_wait_prefetch_disable,
 };
 

@@ -1282,6 +1282,9 @@ static int cam_ope_dev_create_kmd_buf_nrt(struct cam_ope_hw_mgr *hw_mgr,
 
 	cdm_ops = ctx_data->ope_cdm.cdm_ops;
 
+	kmd_buf = cdm_ops->cdm_write_clear_comp_event(kmd_buf,
+				OPE_WAIT_COMP_IDLE|OPE_WAIT_COMP_RUP, 0x0);
+
 	/* Frame 0 DB */
 	kmd_buf = ope_create_frame_cmd(hw_mgr,
 		ctx_data, req_idx,
@@ -1364,6 +1367,8 @@ static int cam_ope_dev_create_kmd_buf_batch(struct cam_ope_hw_mgr *hw_mgr,
 		(kmd_buf_offset / sizeof(len));
 	cdm_kmd_start_addr = kmd_buf;
 	cdm_ops = ctx_data->ope_cdm.cdm_ops;
+	kmd_buf = cdm_ops->cdm_write_clear_comp_event(kmd_buf,
+				OPE_WAIT_COMP_IDLE|OPE_WAIT_COMP_RUP, 0x0);
 
 	for (i = 0; i < frm_proc->batch_size; i++) {
 		wr_cdm_info =
@@ -1500,6 +1505,8 @@ static int cam_ope_dev_create_kmd_buf(struct cam_ope_hw_mgr *hw_mgr,
 	CAM_DBG(CAM_OPE, "kmd_buf:%x req_idx:%d req_id:%lld offset:%d",
 		kmd_buf, req_idx, ope_request->request_id, kmd_buf_offset);
 
+	kmd_buf = cdm_ops->cdm_write_clear_comp_event(kmd_buf,
+				OPE_WAIT_COMP_IDLE|OPE_WAIT_COMP_RUP, 0x0);
 	/* Frame 0 DB */
 	kmd_buf = ope_create_frame_cmd(hw_mgr,
 		ctx_data, req_idx,
