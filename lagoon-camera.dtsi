@@ -533,7 +533,7 @@
 		reg-names = "csid";
 		reg = <0xacb3000 0x1000>;
 		reg-cam-base = <0xb3000>;
-		interrupt-names = "csid";
+		interrupt-names = "csid0";
 		interrupts = <GIC_SPI 464 IRQ_TYPE_EDGE_RISING>;
 		regulator-names = "camss", "ife0";
 		camss-supply = <&cam_cc_titan_top_gdsc>;
@@ -570,7 +570,7 @@
 		reg-names = "ife";
 		reg = <0xacaf000 0x4000>;
 		reg-cam-base = <0xaf000>;
-		interrupt-names = "ife";
+		interrupt-names = "ife0";
 		interrupts = <GIC_SPI 465 IRQ_TYPE_EDGE_RISING>;
 		regulator-names = "camss", "ife0";
 		camss-supply = <&cam_cc_titan_top_gdsc>;
@@ -602,7 +602,7 @@
 		reg-names = "csid";
 		reg = <0xacba000 0x1000>;
 		reg-cam-base = <0xba000>;
-		interrupt-names = "csid";
+		interrupt-names = "csid1";
 		interrupts = <GIC_SPI 466 IRQ_TYPE_EDGE_RISING>;
 		regulator-names = "camss", "ife1";
 		camss-supply = <&cam_cc_titan_top_gdsc>;
@@ -639,7 +639,7 @@
 		reg-names = "ife";
 		reg = <0xacb6000 0x4000>;
 		reg-cam-base = <0xb6000>;
-		interrupt-names = "ife";
+		interrupt-names = "ife1";
 		interrupts = <GIC_SPI 467 IRQ_TYPE_EDGE_RISING>;
 		regulator-names = "camss", "ife1";
 		camss-supply = <&cam_cc_titan_top_gdsc>;
@@ -668,7 +668,7 @@
 	cam_csid2: qcom,csid2@acc1000 {
 		cell-index = <2>;
 		compatible = "qcom,csid170_200";
-		reg-names = "csid";
+		reg-names = "csid2";
 		reg = <0xacc1000 0x1000>;
 		reg-cam-base = <0xc1000>;
 		interrupt-names = "csid";
@@ -705,7 +705,7 @@
 	cam_vfe2: qcom,vfe2@acbd000 {
 		cell-index = <2>;
 		compatible = "qcom,vfe170_150";
-		reg-names = "ife";
+		reg-names = "ife2";
 		reg = <0xacbd000 0x4000>;
 		reg-cam-base = <0xbd000>;
 		interrupt-names = "ife";
