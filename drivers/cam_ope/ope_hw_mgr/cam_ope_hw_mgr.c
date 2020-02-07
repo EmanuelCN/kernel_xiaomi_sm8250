@@ -2442,10 +2442,6 @@ static int cam_ope_mgr_release_ctx(struct cam_ope_hw_mgr *hw_mgr, int ctx_id)
 	hw_mgr->ctx[ctx_id].req_cnt = 0;
 	cam_ope_put_free_ctx(hw_mgr, ctx_id);
 
-	rc = cam_ope_mgr_remove_bw(hw_mgr, ctx_id);
-	if (rc)
-		CAM_ERR(CAM_OPE, "OPE remove bw failed: %d", rc);
-
 	rc = cam_ope_mgr_ope_clk_remove(hw_mgr, ctx_id);
 	if (rc)
 		CAM_ERR(CAM_OPE, "OPE clk update failed: %d", rc);
@@ -2516,6 +2512,21 @@ static int cam_ope_mgr_release_hw(void *hw_priv, void *hw_release_args)
 				CAM_ERR(CAM_OPE, "deinit failed: %d", rc);
 		}
 		cam_ope_device_timer_stop(hw_mgr);
+	}
+
+	rc = cam_ope_mgr_remove_bw(hw_mgr, ctx_id);
+	if (rc)
+		CAM_ERR(CAM_OPE, "OPE remove bw failed: %d", rc);
+
+	if (!hw_mgr->ope_ctx_cnt) {
+		for (i = 0; i < ope_hw_mgr->num_ope; i++) {
+			dev_intf = hw_mgr->ope_dev_intf[i];
+			rc = dev_intf->hw_ops.stop(
+				hw_mgr->ope_dev_intf[i]->hw_priv,
+				NULL, 0);
+			if (rc)
+				CAM_ERR(CAM_OPE, "stop failed: %d", rc);
+		}
 	}
 
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);

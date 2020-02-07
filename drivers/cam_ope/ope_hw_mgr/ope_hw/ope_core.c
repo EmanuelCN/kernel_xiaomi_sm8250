@@ -96,7 +96,29 @@ int cam_ope_start(void *hw_priv, void *start_args, uint32_t arg_size)
 
 int cam_ope_stop(void *hw_priv, void *start_args, uint32_t arg_size)
 {
-	return 0;
+	struct cam_hw_info *ope_dev = hw_priv;
+	struct cam_ope_device_core_info *core_info = NULL;
+	int rc = 0;
+
+	if (!hw_priv) {
+		CAM_ERR(CAM_OPE, "Invalid cam_dev_info");
+		return -EINVAL;
+	}
+
+	core_info = (struct cam_ope_device_core_info *)ope_dev->core_info;
+	if (!core_info) {
+		CAM_ERR(CAM_OPE, "core_info = %pK", core_info);
+		return -EINVAL;
+	}
+
+	if (core_info->cpas_start) {
+		if (cam_cpas_stop(core_info->cpas_handle))
+			CAM_ERR(CAM_OPE, "cpas stop is failed");
+		else
+			core_info->cpas_start = false;
+	}
+
+	return rc;
 }
 
 int cam_ope_flush(void *hw_priv, void *flush_args, uint32_t arg_size)
@@ -250,13 +272,6 @@ int cam_ope_deinit_hw(void *device_priv,
 	if (rc)
 		CAM_ERR(CAM_OPE, "soc disable is failed : %d", rc);
 	core_info->clk_enable = false;
-
-	if (core_info->cpas_start) {
-		if (cam_cpas_stop(core_info->cpas_handle))
-			CAM_ERR(CAM_OPE, "cpas stop is failed");
-		else
-			core_info->cpas_start = false;
-	}
 
 	return rc;
 }
