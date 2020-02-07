@@ -2707,7 +2707,7 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 	get_monotonic_boottime64(&ts);
 	ctx_data->last_req_time = (uint64_t)((ts.tv_sec * 1000000000) +
 		ts.tv_nsec);
-	cam_ope_req_timer_reset(ctx_data);
+	cam_ope_req_timer_modify(ctx_data, OPE_REQUEST_TIMEOUT);
 	set_bit(request_idx, ctx_data->bitmap);
 	ctx_data->req_list[request_idx] =
 		kzalloc(sizeof(struct cam_ope_request), GFP_KERNEL);
