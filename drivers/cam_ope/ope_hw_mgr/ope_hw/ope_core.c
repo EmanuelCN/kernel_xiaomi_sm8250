@@ -171,7 +171,7 @@ int cam_ope_init_hw(void *device_priv,
 	struct cam_hw_info *ope_dev = device_priv;
 	struct cam_hw_soc_info *soc_info = NULL;
 	struct cam_ope_device_core_info *core_info = NULL;
-	struct cam_ope_cpas_vote cpas_vote;
+	struct cam_ope_cpas_vote *cpas_vote;
 	int rc = 0;
 	struct cam_ope_dev_init *init;
 	struct ope_hw *ope_hw;
@@ -192,30 +192,36 @@ int cam_ope_init_hw(void *device_priv,
 	}
 	ope_hw = core_info->ope_hw_info->ope_hw;
 
+	cpas_vote = kzalloc(sizeof(struct cam_ope_cpas_vote), GFP_KERNEL);
+	if (!cpas_vote) {
+		CAM_ERR(CAM_ISP, "Out of memory");
+		rc = -ENOMEM;
+		goto end;
+	}
 
-	cpas_vote.ahb_vote.type = CAM_VOTE_ABSOLUTE;
-	cpas_vote.ahb_vote.vote.level = CAM_SVS_VOTE;
-	cpas_vote.axi_vote.num_paths = 1;
-	cpas_vote.axi_vote.axi_path[0].path_data_type =
+	cpas_vote->ahb_vote.type = CAM_VOTE_ABSOLUTE;
+	cpas_vote->ahb_vote.vote.level = CAM_SVS_VOTE;
+	cpas_vote->axi_vote.num_paths = 1;
+	cpas_vote->axi_vote.axi_path[0].path_data_type =
 		CAM_AXI_PATH_DATA_ALL;
-	cpas_vote.axi_vote.axi_path[0].transac_type =
+	cpas_vote->axi_vote.axi_path[0].transac_type =
 		CAM_AXI_TRANSACTION_WRITE;
-	cpas_vote.axi_vote.axi_path[0].camnoc_bw =
+	cpas_vote->axi_vote.axi_path[0].camnoc_bw =
 		CAM_CPAS_DEFAULT_AXI_BW;
-	cpas_vote.axi_vote.axi_path[0].mnoc_ab_bw =
+	cpas_vote->axi_vote.axi_path[0].mnoc_ab_bw =
 		CAM_CPAS_DEFAULT_AXI_BW;
-	cpas_vote.axi_vote.axi_path[0].mnoc_ib_bw =
+	cpas_vote->axi_vote.axi_path[0].mnoc_ib_bw =
 		CAM_CPAS_DEFAULT_AXI_BW;
-	cpas_vote.axi_vote.axi_path[0].ddr_ab_bw =
+	cpas_vote->axi_vote.axi_path[0].ddr_ab_bw =
 		CAM_CPAS_DEFAULT_AXI_BW;
-	cpas_vote.axi_vote.axi_path[0].ddr_ib_bw =
+	cpas_vote->axi_vote.axi_path[0].ddr_ib_bw =
 		CAM_CPAS_DEFAULT_AXI_BW;
 
 	rc = cam_cpas_start(core_info->cpas_handle,
-		&cpas_vote.ahb_vote, &cpas_vote.axi_vote);
+		&cpas_vote->ahb_vote, &cpas_vote->axi_vote);
 	if (rc) {
 		CAM_ERR(CAM_OPE, "cpass start failed: %d", rc);
-		goto end;
+		goto free_cpas_vote;
 	}
 	core_info->cpas_start = true;
 
@@ -233,7 +239,7 @@ int cam_ope_init_hw(void *device_priv,
 	if (rc)
 		goto process_init_failed;
 	else
-		goto end;
+		goto free_cpas_vote;
 
 process_init_failed:
 	if (cam_ope_disable_soc_resources(soc_info, core_info->clk_enable))
@@ -243,6 +249,9 @@ enable_soc_resource_failed:
 		CAM_ERR(CAM_OPE, "cpas stop is failed");
 	else
 		core_info->cpas_start = false;
+free_cpas_vote:
+	kzfree(cpas_vote);
+	cpas_vote = NULL;
 end:
 	return rc;
 }
