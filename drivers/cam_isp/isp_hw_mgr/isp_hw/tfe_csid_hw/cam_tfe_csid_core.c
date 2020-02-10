@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -830,6 +830,7 @@ static int cam_tfe_csid_enable_hw(struct cam_tfe_csid_hw  *csid_hw)
 	const struct cam_tfe_csid_reg_offset      *csid_reg;
 	struct cam_hw_soc_info              *soc_info;
 	uint32_t i, val, clk_lvl;
+	unsigned long                           flags;
 
 	csid_reg = csid_hw->csid_info->csid_reg;
 	soc_info = &csid_hw->hw_info->soc_info;
@@ -901,6 +902,10 @@ static int cam_tfe_csid_enable_hw(struct cam_tfe_csid_hw  *csid_hw)
 	rc = cam_tfe_csid_enable_csi2(csid_hw);
 	if (rc)
 		goto disable_soc;
+
+	spin_lock_irqsave(&csid_hw->spin_lock, flags);
+	csid_hw->device_enabled = 1;
+	spin_unlock_irqrestore(&csid_hw->spin_lock, flags);
 
 	return rc;
 
@@ -1876,7 +1881,6 @@ static int cam_tfe_csid_init_hw(void *hw_priv,
 	struct cam_hw_info                     *csid_hw_info;
 	struct cam_isp_resource_node           *res;
 	const struct cam_tfe_csid_reg_offset   *csid_reg;
-	unsigned long                           flags;
 
 	if (!hw_priv || !init_args ||
 		(arg_size != sizeof(struct cam_isp_resource_node))) {
@@ -1936,9 +1940,6 @@ static int cam_tfe_csid_init_hw(void *hw_priv,
 	if (rc)
 		cam_tfe_csid_disable_hw(csid_hw);
 
-	spin_lock_irqsave(&csid_hw->spin_lock, flags);
-	csid_hw->device_enabled = 1;
-	spin_unlock_irqrestore(&csid_hw->spin_lock, flags);
 end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
 	return rc;
@@ -2464,16 +2465,6 @@ irqreturn_t cam_tfe_csid_irq(int irq_num, void *data)
 		fatal_err_detected = true;
 		csid_hw->error_irq_count = 0;
 	}
-
-	CAM_INFO(CAM_ISP,
-		"CSID %d irq status 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x",
-		csid_hw->hw_intf->hw_idx,
-		irq_status[TFE_CSID_IRQ_REG_TOP],
-		irq_status[TFE_CSID_IRQ_REG_RX],
-		irq_status[TFE_CSID_IRQ_REG_IPP],
-		irq_status[TFE_CSID_IRQ_REG_RDI0],
-		irq_status[TFE_CSID_IRQ_REG_RDI1],
-		irq_status[TFE_CSID_IRQ_REG_RDI2]);
 
 	if (fatal_err_detected) {
 		/* Reset the Rx CFG registers */
