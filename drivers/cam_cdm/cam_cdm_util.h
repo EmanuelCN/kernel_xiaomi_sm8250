@@ -63,6 +63,10 @@ enum cam_cdm_command {
  *                                in dwords.
  *      @return Size in dwords
  *
+ * @cdm_required_size_clear_comp_event: Calculates the size of clear-comp-event
+ *                                      command in dwords.
+ *      @return Size in dwords
+ *
  * @cdm_required_size_changebase: Calculates the size of a change-base command
  *                                in dwords.
  *      @return Size in dwords
@@ -121,6 +125,12 @@ enum cam_cdm_command {
  *      @pCmdBuffer: Pointer to command buffer
  *      @mask1: This value decides which comp events to wait (0 - 31).
  *      @mask2: This value decides which comp events to wait (32 - 65).
+ *
+ * @cdm_write_clear_comp_event: Writes a clear comp event cmd into the
+ *                             command buffer.
+ *      @pCmdBuffer: Pointer to command buffer
+ *      @mask1: This value decides which comp events to clear (0 - 31).
+ *      @mask2: This value decides which comp events to clear (32 - 65).
  */
 struct cam_cdm_utils_ops {
 uint32_t (*cdm_get_cmd_header_size)(unsigned int command);
@@ -132,6 +142,7 @@ uint32_t (*cdm_required_size_genirq)(void);
 uint32_t (*cdm_required_size_wait_event)(void);
 uint32_t (*cdm_required_size_changebase)(void);
 uint32_t (*cdm_required_size_comp_wait)(void);
+uint32_t (*cdm_required_size_clear_comp_event)(void);
 uint32_t (*cdm_required_size_prefetch_disable)(void);
 uint32_t (*cdm_offsetof_dmi_addr)(void);
 uint32_t (*cdm_offsetof_indirect_addr)(void);
@@ -171,6 +182,10 @@ uint32_t *(*cdm_write_changebase)(
 	uint32_t *pCmdBuffer,
 	uint32_t  base);
 uint32_t *(*cdm_write_wait_comp_event)(
+	uint32_t *pCmdBuffer,
+	uint32_t  mask1,
+	uint32_t  mask2);
+uint32_t *(*cdm_write_clear_comp_event)(
 	uint32_t *pCmdBuffer,
 	uint32_t  mask1,
 	uint32_t  mask2);
