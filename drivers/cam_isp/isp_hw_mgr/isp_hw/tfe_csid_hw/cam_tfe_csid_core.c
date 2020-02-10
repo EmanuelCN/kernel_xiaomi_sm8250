@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/iopoll.h>
@@ -2744,7 +2744,15 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 			csid_reg->cmn_reg->top_tfe2_fuse_reg);
 		if (val) {
 			CAM_INFO(CAM_ISP, "TFE 2 is not supported by hardware");
-			rc = -EINVAL;
+
+			rc = cam_tfe_csid_disable_soc_resources(
+				&tfe_csid_hw->hw_info->soc_info);
+			if (rc)
+				CAM_ERR(CAM_ISP,
+					"CSID:%d Disable CSID SOC failed",
+					tfe_csid_hw->hw_intf->hw_idx);
+			else
+				rc = -EINVAL;
 			goto err;
 		}
 	}
