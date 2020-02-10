@@ -1490,6 +1490,234 @@ static int cam_tfe_top_get_reg_dump(
 	return 0;
 }
 
+static int cam_tfe_hw_dump(
+	struct cam_tfe_hw_core_info *core_info,
+	void                        *cmd_args,
+	uint32_t                     arg_size)
+{
+	int                                i, j;
+	uint8_t                           *dst;
+	uint32_t                           reg_start_offset;
+	uint32_t                           reg_dump_size = 0;
+	uint32_t                           lut_dump_size = 0;
+	uint32_t                           num_lut_dump_entries = 0;
+	uint32_t                           num_reg;
+	uint32_t                           lut_word_size, lut_size;
+	uint32_t                           lut_bank_sel, lut_dmi_reg;
+	uint32_t                           val;
+	void __iomem                      *reg_base;
+	void __iomem                      *mem_base;
+	uint32_t                          *addr, *start;
+	uint64_t                          *clk_waddr, *clk_wstart;
+	size_t                             remain_len;
+	uint32_t                           min_len;
+	struct cam_hw_info                *tfe_hw_info;
+	struct cam_hw_soc_info            *soc_info;
+	struct cam_tfe_top_priv           *top_priv;
+	struct cam_tfe_soc_private        *soc_private;
+	struct cam_tfe_reg_dump_data      *reg_dump_data;
+	struct cam_isp_hw_dump_header     *hdr;
+	struct cam_isp_hw_dump_args       *dump_args =
+		(struct cam_isp_hw_dump_args *)cmd_args;
+
+	if (!dump_args || !core_info) {
+		CAM_ERR(CAM_ISP, "Invalid args");
+		return -EINVAL;
+	}
+
+	if (!dump_args->cpu_addr || !dump_args->buf_len) {
+		CAM_ERR(CAM_ISP,
+			"Invalid params %pK %zu",
+			(void *)dump_args->cpu_addr,
+			dump_args->buf_len);
+		return -EINVAL;
+	}
+
+	if (dump_args->buf_len <= dump_args->offset) {
+		CAM_WARN(CAM_ISP,
+			"Dump offset overshoot offset %zu buf_len %zu",
+			dump_args->offset, dump_args->buf_len);
+		return -ENOSPC;
+	}
+
+	top_priv = (struct cam_tfe_top_priv  *)core_info->top_priv;
+	tfe_hw_info =
+		(struct cam_hw_info *)(top_priv->common_data.hw_intf->hw_priv);
+	reg_dump_data = top_priv->common_data.reg_dump_data;
+	soc_info = top_priv->common_data.soc_info;
+	soc_private = top_priv->common_data.soc_info->soc_private;
+	mem_base = soc_info->reg_map[TFE_CORE_BASE_IDX].mem_base;
+
+	if (dump_args->is_dump_all) {
+
+		/*Dump registers size*/
+		for (i = 0; i < reg_dump_data->num_reg_dump_entries; i++)
+			reg_dump_size +=
+				(reg_dump_data->reg_entry[i].end_offset -
+				reg_dump_data->reg_entry[i].start_offset);
+
+		/*
+		 * We dump the offset as well, so the total size dumped becomes
+		 * multiplied by 2
+		 */
+		reg_dump_size *= 2;
+
+		/* LUT dump size */
+		for (i = 0; i < reg_dump_data->num_lut_dump_entries; i++)
+			lut_dump_size +=
+				((reg_dump_data->lut_entry[i].lut_addr_size) *
+				(reg_dump_data->lut_entry[i].lut_word_size/8));
+
+		num_lut_dump_entries = reg_dump_data->num_lut_dump_entries;
+	}
+
+	/*Minimum len comprises of:
+	 * lut_dump_size + reg_dump_size + sizeof dump_header +
+	 * (num_lut_dump_entries--> represents number of banks) +
+	 *  (misc number of words) * sizeof(uint32_t)
+	 */
+	min_len = lut_dump_size + reg_dump_size +
+		sizeof(struct cam_isp_hw_dump_header) +
+		(num_lut_dump_entries * sizeof(uint32_t)) +
+		(sizeof(uint32_t) * CAM_TFE_CORE_DUMP_MISC_NUM_WORDS);
+
+	remain_len = dump_args->buf_len - dump_args->offset;
+	if (remain_len < min_len) {
+		CAM_WARN(CAM_ISP, "Dump buffer exhaust remain %zu, min %u",
+			remain_len, min_len);
+		return -ENOSPC;
+	}
+
+	mutex_lock(&tfe_hw_info->hw_mutex);
+	if (tfe_hw_info->hw_state != CAM_HW_STATE_POWER_UP) {
+		CAM_ERR(CAM_ISP, "TFE:%d HW not powered up",
+			core_info->core_index);
+		mutex_unlock(&tfe_hw_info->hw_mutex);
+		return -EPERM;
+	}
+
+	if (!dump_args->is_dump_all)
+		goto dump_bw;
+
+	dst = (uint8_t *)dump_args->cpu_addr + dump_args->offset;
+	hdr = (struct cam_isp_hw_dump_header *)dst;
+	hdr->word_size = sizeof(uint32_t);
+	scnprintf(hdr->tag, CAM_ISP_HW_DUMP_TAG_MAX_LEN, "TFE_REG:");
+	addr = (uint32_t *)(dst + sizeof(struct cam_isp_hw_dump_header));
+	start = addr;
+	*addr++ = soc_info->index;
+	for (i = 0; i < reg_dump_data->num_reg_dump_entries; i++) {
+		num_reg  = (reg_dump_data->reg_entry[i].end_offset -
+			reg_dump_data->reg_entry[i].start_offset)/4;
+		reg_start_offset = reg_dump_data->reg_entry[i].start_offset;
+		reg_base = mem_base + reg_start_offset;
+		for (j = 0; j < num_reg; j++) {
+			addr[0] =
+				soc_info->mem_block[TFE_CORE_BASE_IDX]->start +
+				reg_start_offset + (j*4);
+			addr[1] = cam_io_r(reg_base + (j*4));
+			addr += 2;
+		}
+	}
+
+	/*Dump bus top registers*/
+	num_reg  = (reg_dump_data->bus_write_top_end_addr -
+			reg_dump_data->bus_start_addr)/4;
+	reg_base = mem_base + reg_dump_data->bus_start_addr;
+	reg_start_offset = soc_info->mem_block[TFE_CORE_BASE_IDX]->start +
+		reg_dump_data->bus_start_addr;
+	for (i = 0; i < num_reg; i++) {
+		addr[0] = reg_start_offset + (i*4);
+		addr[1] = cam_io_r(reg_base + (i*4));
+		addr += 2;
+	}
+
+	/* Dump bus clients */
+	reg_base = mem_base + reg_dump_data->bus_client_start_addr;
+	reg_start_offset = soc_info->mem_block[TFE_CORE_BASE_IDX]->start +
+		reg_dump_data->bus_client_start_addr;
+	for (j = 0; j < reg_dump_data->num_bus_clients; j++) {
+
+		for (i = 0; i <= 0x3c; i += 4) {
+			addr[0] = reg_start_offset + i;
+			addr[1] = cam_io_r(reg_base + i);
+			addr += 2;
+		}
+		for (i = 0x60; i <= 0x80; i += 4) {
+			addr[0] = reg_start_offset + (i*4);
+			addr[1] = cam_io_r(reg_base + (i*4));
+			addr += 2;
+		}
+		reg_base += reg_dump_data->bus_client_offset;
+		reg_start_offset += reg_dump_data->bus_client_offset;
+	}
+
+	hdr->size = hdr->word_size * (addr - start);
+	dump_args->offset +=  hdr->size +
+		sizeof(struct cam_isp_hw_dump_header);
+
+	/* Dump LUT entries */
+	for (i = 0; i < reg_dump_data->num_lut_dump_entries; i++) {
+
+		lut_bank_sel = reg_dump_data->lut_entry[i].lut_bank_sel;
+		lut_size = reg_dump_data->lut_entry[i].lut_addr_size;
+		lut_word_size = reg_dump_data->lut_entry[i].lut_word_size;
+		lut_dmi_reg = reg_dump_data->lut_entry[i].dmi_reg_offset;
+		dst = (char *)dump_args->cpu_addr + dump_args->offset;
+		hdr = (struct cam_isp_hw_dump_header *)dst;
+		scnprintf(hdr->tag, CAM_ISP_HW_DUMP_TAG_MAX_LEN, "LUT_REG:");
+		hdr->word_size = lut_word_size/8;
+		addr = (uint32_t *)(dst +
+			sizeof(struct cam_isp_hw_dump_header));
+		start = addr;
+		*addr++ = lut_bank_sel;
+		cam_io_w_mb(lut_bank_sel, mem_base + lut_dmi_reg + 4);
+		cam_io_w_mb(0, mem_base + 0xC28);
+		for (j = 0; j < lut_size; j++) {
+			*addr = cam_io_r_mb(mem_base + 0xc30);
+			addr++;
+		}
+		hdr->size = hdr->word_size * (addr - start);
+		dump_args->offset +=  hdr->size +
+			sizeof(struct cam_isp_hw_dump_header);
+	}
+	cam_io_w_mb(0, mem_base + 0xC24);
+	cam_io_w_mb(0, mem_base + 0xC28);
+
+dump_bw:
+	dst = (char *)dump_args->cpu_addr + dump_args->offset;
+	hdr = (struct cam_isp_hw_dump_header *)dst;
+	scnprintf(hdr->tag, CAM_ISP_HW_DUMP_TAG_MAX_LEN, "TFE_CLK_RATE_BW:");
+	clk_waddr = (uint64_t *)(dst +
+		sizeof(struct cam_isp_hw_dump_header));
+	clk_wstart = clk_waddr;
+	hdr->word_size = sizeof(uint64_t);
+	*clk_waddr++ = top_priv->hw_clk_rate;
+	*clk_waddr++ = top_priv->total_bw_applied;
+
+	hdr->size = hdr->word_size * (clk_waddr - clk_wstart);
+	dump_args->offset +=  hdr->size +
+		sizeof(struct cam_isp_hw_dump_header);
+
+	dst = (char *)dump_args->cpu_addr + dump_args->offset;
+	hdr = (struct cam_isp_hw_dump_header *)dst;
+	scnprintf(hdr->tag, CAM_ISP_HW_DUMP_TAG_MAX_LEN, "TFE_NIU_MAXWR:");
+	addr = (uint32_t *)(dst +
+		sizeof(struct cam_isp_hw_dump_header));
+	start = addr;
+	hdr->word_size = sizeof(uint32_t);
+	cam_cpas_reg_read(soc_private->cpas_handle,
+		CAM_CPAS_REG_CAMNOC, 0x20, true, &val);
+	*addr++ = val;
+	hdr->size = hdr->word_size * (addr - start);
+	dump_args->offset +=  hdr->size +
+		sizeof(struct cam_isp_hw_dump_header);
+	mutex_unlock(&tfe_hw_info->hw_mutex);
+
+	CAM_DBG(CAM_ISP, "offset %zu", dump_args->offset);
+	return 0;
+}
+
 static int cam_tfe_camif_irq_reg_dump(
 	struct cam_tfe_hw_core_info    *core_info,
 	void *cmd_args, uint32_t arg_size)
@@ -2569,6 +2797,10 @@ int cam_tfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 		break;
 	case CAM_ISP_HW_CMD_QUERY_REGSPACE_DATA:
 		*((struct cam_hw_soc_info **)cmd_args) = soc_info;
+		break;
+	case CAM_ISP_HW_CMD_DUMP_HW:
+		rc = cam_tfe_hw_dump(core_info,
+			cmd_args, arg_size);
 		break;
 	case CAM_ISP_HW_CMD_GET_BUF_UPDATE:
 	case CAM_ISP_HW_CMD_GET_HFR_UPDATE:

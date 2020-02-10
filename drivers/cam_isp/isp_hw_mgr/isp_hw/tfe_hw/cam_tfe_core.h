@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 
@@ -27,6 +27,14 @@
 
 #define CAM_TFE_MAX_CLC               30
 #define CAM_TFE_CLC_NAME_LENGTH_MAX   32
+
+/*we take each word as uint32_t, for dumping uint64_t count as 2 words
+ * soc index
+ * clk_rate--> uint64_t--> count as 2 words
+ * BW--> uint64_t --> count as 2 words
+ * MAX_NIU
+ */
+#define CAM_TFE_CORE_DUMP_MISC_NUM_WORDS 4
 
 enum cam_tfe_lut_word_size {
 	CAM_TFE_LUT_WORD_SIZE_32,

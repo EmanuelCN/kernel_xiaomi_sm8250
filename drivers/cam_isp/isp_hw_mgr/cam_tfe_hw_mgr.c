@@ -118,7 +118,9 @@ static int cam_tfe_mgr_regspace_data_cb(uint32_t reg_base_type,
 
 static int cam_tfe_mgr_handle_reg_dump(struct cam_tfe_hw_mgr_ctx *ctx,
 	struct cam_cmd_buf_desc *reg_dump_buf_desc, uint32_t num_reg_dump_buf,
-	uint32_t meta_type)
+	uint32_t meta_type,
+	void *soc_dump_args,
+	bool user_triggered_dump)
 {
 	int rc = -EINVAL, i;
 
@@ -142,8 +144,8 @@ static int cam_tfe_mgr_handle_reg_dump(struct cam_tfe_hw_mgr_ctx *ctx,
 				&reg_dump_buf_desc[i],
 				ctx->applied_req_id,
 				cam_tfe_mgr_regspace_data_cb,
-				NULL,
-				false);
+				soc_dump_args,
+				user_triggered_dump);
 			if (rc) {
 				CAM_ERR(CAM_ISP,
 					"Reg dump failed at idx: %d, rc: %d req_id: %llu meta type: %u",
@@ -153,7 +155,7 @@ static int cam_tfe_mgr_handle_reg_dump(struct cam_tfe_hw_mgr_ctx *ctx,
 		}
 	}
 
-	return 0;
+	return rc;
 }
 
 static int cam_tfe_mgr_get_hw_caps(void *hw_mgr_priv,
@@ -1719,7 +1721,8 @@ void cam_tfe_cam_cdm_callback(uint32_t handle, void *userdata,
 			cam_tfe_mgr_handle_reg_dump(ctx,
 				hw_update_data->reg_dump_buf_desc,
 				hw_update_data->num_reg_dump_buf,
-				CAM_ISP_TFE_PACKET_META_REG_DUMP_PER_REQUEST);
+				CAM_ISP_TFE_PACKET_META_REG_DUMP_PER_REQUEST,
+				NULL, false);
 		CAM_DBG(CAM_ISP,
 			"Called by CDM hdl=%x, udata=%pK, status=%d, cookie=%llu ctx_index=%d",
 			 handle, userdata, status, cookie, ctx->ctx_index);
@@ -2979,6 +2982,159 @@ static int cam_tfe_mgr_write(void *hw_mgr_priv, void *write_args)
 	return -EPERM;
 }
 
+static int cam_tfe_mgr_user_dump_hw(
+		struct cam_tfe_hw_mgr_ctx *tfe_ctx,
+		struct cam_hw_dump_args *dump_args)
+{
+	int rc = 0;
+	struct cam_hw_soc_dump_args soc_dump_args;
+
+	if (!tfe_ctx || !dump_args) {
+		CAM_ERR(CAM_ISP, "Invalid parameters %pK %pK",
+			tfe_ctx, dump_args);
+		return -EINVAL;
+	}
+	soc_dump_args.buf_handle = dump_args->buf_handle;
+	soc_dump_args.request_id = dump_args->request_id;
+	soc_dump_args.offset = dump_args->offset;
+
+	rc = cam_tfe_mgr_handle_reg_dump(tfe_ctx,
+		tfe_ctx->reg_dump_buf_desc,
+		tfe_ctx->num_reg_dump_buf,
+		CAM_ISP_PACKET_META_REG_DUMP_ON_ERROR,
+		&soc_dump_args,
+		true);
+	if (rc) {
+		CAM_DBG(CAM_ISP,
+			"Dump failed req: %lld handle %u offset %u rc %d",
+			dump_args->request_id,
+			dump_args->buf_handle,
+			dump_args->offset,
+			rc);
+		return rc;
+	}
+	dump_args->offset = soc_dump_args.offset;
+	return rc;
+}
+
+static int cam_tfe_mgr_dump(void *hw_mgr_priv, void *args)
+{
+
+	struct cam_isp_hw_dump_args isp_hw_dump_args;
+	struct cam_hw_dump_args *dump_args = (struct cam_hw_dump_args *)args;
+	struct cam_isp_hw_mgr_res            *hw_mgr_res;
+	struct cam_hw_intf                   *hw_intf;
+	struct cam_tfe_hw_mgr_ctx *tfe_ctx = (struct cam_tfe_hw_mgr_ctx *)
+						dump_args->ctxt_to_hw_map;
+	int i;
+	int rc = 0;
+
+	/* for some targets, information about the TFE registers to be dumped
+	 * is already submitted with the hw manager. In this case, we
+	 * can dump just the related registers and skip going to core files.
+	 * If dump to this buffer falis due to any reason, fallback to dump
+	 * to the LDAR buffer
+	 */
+	isp_hw_dump_args.is_dump_all = true;
+	if (tfe_ctx->num_reg_dump_buf) {
+		rc = cam_tfe_mgr_user_dump_hw(tfe_ctx, dump_args);
+		if (!rc)
+			isp_hw_dump_args.is_dump_all = false;
+	}
+
+	rc  = cam_mem_get_cpu_buf(dump_args->buf_handle,
+		&isp_hw_dump_args.cpu_addr,
+		&isp_hw_dump_args.buf_len);
+
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Invalid handle %u rc %d",
+			dump_args->buf_handle, rc);
+		return rc;
+	}
+
+	isp_hw_dump_args.offset = dump_args->offset;
+	isp_hw_dump_args.req_id = dump_args->request_id;
+
+	list_for_each_entry(hw_mgr_res, &tfe_ctx->res_list_tfe_csid, list) {
+		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+			if (!hw_mgr_res->hw_res[i])
+				continue;
+			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
+			switch (hw_mgr_res->hw_res[i]->res_id) {
+			case CAM_TFE_CSID_PATH_RES_RDI_0:
+			case CAM_TFE_CSID_PATH_RES_RDI_1:
+			case CAM_TFE_CSID_PATH_RES_RDI_2:
+				if (tfe_ctx->is_rdi_only_context &&
+					hw_intf->hw_ops.process_cmd) {
+					rc = hw_intf->hw_ops.process_cmd(
+						hw_intf->hw_priv,
+						CAM_ISP_HW_CMD_DUMP_HW,
+						&isp_hw_dump_args,
+						sizeof(struct
+						    cam_isp_hw_dump_args));
+				}
+				break;
+
+			case CAM_TFE_CSID_PATH_RES_IPP:
+				if (hw_intf->hw_ops.process_cmd) {
+					rc = hw_intf->hw_ops.process_cmd(
+						hw_intf->hw_priv,
+						CAM_ISP_HW_CMD_DUMP_HW,
+						&isp_hw_dump_args,
+						sizeof(struct
+						    cam_isp_hw_dump_args));
+				}
+				break;
+			default:
+				CAM_DBG(CAM_ISP, "not a valid res %d",
+				hw_mgr_res->res_id);
+				break;
+			}
+		}
+	}
+
+	list_for_each_entry(hw_mgr_res, &tfe_ctx->res_list_tfe_in, list) {
+		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
+			if (!hw_mgr_res->hw_res[i])
+				continue;
+			hw_intf = hw_mgr_res->hw_res[i]->hw_intf;
+			switch (hw_mgr_res->hw_res[i]->res_id) {
+			case CAM_ISP_HW_TFE_IN_RDI0:
+			case CAM_ISP_HW_TFE_IN_RDI1:
+			case CAM_ISP_HW_TFE_IN_RDI2:
+				if (tfe_ctx->is_rdi_only_context &&
+					hw_intf->hw_ops.process_cmd) {
+					rc = hw_intf->hw_ops.process_cmd(
+						hw_intf->hw_priv,
+						CAM_ISP_HW_CMD_DUMP_HW,
+						&isp_hw_dump_args,
+						sizeof(struct
+						    cam_isp_hw_dump_args));
+				}
+				break;
+
+			case CAM_ISP_HW_TFE_IN_CAMIF:
+				if (hw_intf->hw_ops.process_cmd) {
+					rc = hw_intf->hw_ops.process_cmd(
+						hw_intf->hw_priv,
+						CAM_ISP_HW_CMD_DUMP_HW,
+						&isp_hw_dump_args,
+						sizeof(struct
+						    cam_isp_hw_dump_args));
+				}
+				break;
+			default:
+				CAM_DBG(CAM_ISP, "not a valid res %d",
+				hw_mgr_res->res_id);
+				break;
+			}
+		}
+	}
+	dump_args->offset = isp_hw_dump_args.offset;
+	CAM_DBG(CAM_ISP, "offset %u", dump_args->offset);
+	return rc;
+}
+
 static int cam_tfe_mgr_reset(void *hw_mgr_priv, void *hw_reset_args)
 {
 	struct cam_tfe_hw_mgr            *hw_mgr = hw_mgr_priv;
@@ -4226,7 +4382,8 @@ static int cam_tfe_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 
 		rc = cam_tfe_mgr_handle_reg_dump(ctx, ctx->reg_dump_buf_desc,
 			ctx->num_reg_dump_buf,
-			CAM_ISP_TFE_PACKET_META_REG_DUMP_ON_FLUSH);
+			CAM_ISP_TFE_PACKET_META_REG_DUMP_ON_FLUSH,
+			NULL, false);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
 				"Reg dump on flush failed req id: %llu num_reg_dump:0x%x rc: %d",
@@ -4242,7 +4399,8 @@ static int cam_tfe_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 		ctx->last_dump_err_req_id = ctx->applied_req_id;
 		rc = cam_tfe_mgr_handle_reg_dump(ctx, ctx->reg_dump_buf_desc,
 			ctx->num_reg_dump_buf,
-			CAM_ISP_TFE_PACKET_META_REG_DUMP_ON_ERROR);
+			CAM_ISP_TFE_PACKET_META_REG_DUMP_ON_ERROR,
+			NULL, false);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
 				"Reg dump on error failed req id:%llu num_reg_dump:0x%x rc: %d",
@@ -5309,6 +5467,7 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	hw_mgr_intf->hw_config = cam_tfe_mgr_config_hw;
 	hw_mgr_intf->hw_cmd = cam_tfe_mgr_cmd;
 	hw_mgr_intf->hw_reset = cam_tfe_mgr_reset;
+	hw_mgr_intf->hw_dump = cam_tfe_mgr_dump;
 
 	if (iommu_hdl)
 		*iommu_hdl = g_tfe_hw_mgr.mgr_common.img_iommu_hdl;
