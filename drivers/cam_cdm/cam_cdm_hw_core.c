@@ -22,6 +22,7 @@
 #include "cam_cdm_hw_reg_1_1.h"
 #include "cam_cdm_hw_reg_1_2.h"
 #include "cam_cdm_hw_reg_2_0.h"
+#include "cam_trace.h"
 
 #define CAM_CDM_BL_FIFO_WAIT_TIMEOUT 2000
 #define CAM_CDM_DBG_GEN_IRQ_USR_DATA 0xff
@@ -691,6 +692,8 @@ int cam_hw_cdm_submit_gen_irq(
 		rc = -EIO;
 	}
 
+	trace_cam_log_event("CDM_START", "CDM_START_IRQ", req->data->cookie, 0);
+
 end:
 	return rc;
 }
@@ -1161,6 +1164,10 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 
 		INIT_WORK((struct work_struct *)&payload[i]->work,
 			cam_hw_cdm_work);
+
+		trace_cam_log_event("CDM_DONE", "CDM_DONE_IRQ",
+			payload[i]->irq_status,
+			cdm_hw->soc_info.index);
 
 		if (cam_cdm_write_hw_reg(cdm_hw,
 				cdm_core->offsets->irq_reg[i]->irq_clear,

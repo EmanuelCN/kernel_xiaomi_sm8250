@@ -696,14 +696,25 @@ static void __cam_isp_ctx_handle_buf_done_fail_log(
 		"Resource Handles that fail to generate buf_done in prev frame");
 	for (i = 0; i < req_isp->num_fence_map_out; i++) {
 		if (req_isp->fence_map_out[i].sync_id != -1) {
-			if (isp_device_type == CAM_IFE_DEVICE_TYPE)
+			if (isp_device_type == CAM_IFE_DEVICE_TYPE) {
 				handle_type =
 				__cam_isp_resource_handle_id_to_type(
 				req_isp->fence_map_out[i].resource_handle);
-			else
+
+				trace_cam_log_event("Buf_done Congestion",
+				__cam_isp_resource_handle_id_to_type(
+				req_isp->fence_map_out[i].resource_handle),
+				request_id, req_isp->fence_map_out[i].sync_id);
+			} else {
 				handle_type =
 				__cam_isp_tfe_resource_handle_id_to_type(
 				req_isp->fence_map_out[i].resource_handle);
+
+				trace_cam_log_event("Buf_done Congestion",
+				__cam_isp_tfe_resource_handle_id_to_type(
+				req_isp->fence_map_out[i].resource_handle),
+				request_id, req_isp->fence_map_out[i].sync_id);
+			}
 
 			CAM_WARN(CAM_ISP,
 			"Resource_Handle: [%s][0x%x] Sync_ID: [0x%x]",
@@ -768,6 +779,9 @@ static int __cam_isp_ctx_handle_buf_done_for_request(
 			CAM_WARN(CAM_ISP,
 				"Duplicate BUF_DONE for req %lld : i=%d, j=%d, res=%s",
 				req->request_id, i, j, handle_type);
+
+			trace_cam_log_event("Duplicate BufDone",
+				handle_type, req->request_id, ctx->ctx_id);
 
 			if (done_next_req) {
 				done_next_req->resource_handle
@@ -1287,6 +1301,8 @@ static int __cam_isp_ctx_epoch_in_applied(struct cam_isp_context *ctx_isp,
 		CAM_WARN(CAM_ISP,
 			"Notify CRM about Bubble req %lld frame %lld, ctx %u",
 			req->request_id, ctx_isp->frame_id, ctx->ctx_id);
+		trace_cam_log_event("Bubble", "Rcvd epoch in applied state",
+			req->request_id, ctx->ctx_id);
 		ctx->ctx_crm_intf->notify_err(&notify);
 		atomic_set(&ctx_isp->process_bubble, 1);
 	} else {
