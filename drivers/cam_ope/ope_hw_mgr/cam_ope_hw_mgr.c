@@ -1190,14 +1190,14 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 	CAM_DBG(CAM_OPE, "CDM hdl=%x, udata=%pK, status=%d, cookie=%llu",
 		handle, userdata, status, cookie);
 
+	if (cookie >= CAM_CTX_REQ_MAX) {
+		CAM_ERR(CAM_OPE, "Invalid reqIdx = %llu", cookie);
+		return;
+	}
+
 	ctx = userdata;
 
 	mutex_lock(&ctx->ctx_mutex);
-
-	if (cookie >= CAM_CTX_REQ_MAX) {
-		CAM_ERR(CAM_OPE, "Invalid reqIdx = %llu", cookie);
-		goto end;
-	}
 
 	if (!test_bit(cookie, ctx->bitmap)) {
 		CAM_INFO(CAM_OPE, "Request not present reqIdx = %d", cookie);
