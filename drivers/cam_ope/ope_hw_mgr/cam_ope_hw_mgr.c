@@ -2117,10 +2117,10 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 	struct cam_hw_acquire_args *args = hw_acquire_args;
 	struct cam_ope_dev_acquire ope_dev_acquire;
 	struct cam_ope_dev_release ope_dev_release;
-	struct cam_cdm_acquire_data cdm_acquire;
+	struct cam_cdm_acquire_data *cdm_acquire;
 	struct cam_ope_dev_init init;
 	struct cam_ope_dev_clk_update clk_update;
-	struct cam_ope_dev_bw_update bw_update;
+	struct cam_ope_dev_bw_update *bw_update;
 	struct cam_ope_set_irq_cb irq_cb;
 
 	if ((!hw_priv) || (!hw_acquire_args)) {
@@ -2201,34 +2201,38 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 		}
 	}
 
-	memset(&cdm_acquire, 0, sizeof(cdm_acquire));
-	strlcpy(cdm_acquire.identifier, "ope", sizeof("ope"));
+	cdm_acquire = kzalloc(sizeof(struct cam_cdm_acquire_data), GFP_KERNEL);
+	if (!cdm_acquire) {
+		CAM_ERR(CAM_ISP, "Out of memory");
+		goto ope_dev_acquire_failed;
+	}
+	strlcpy(cdm_acquire->identifier, "ope", sizeof("ope"));
 	if (ctx->ope_acquire.dev_type == OPE_DEV_TYPE_OPE_RT)
-		cdm_acquire.priority = CAM_CDM_BL_FIFO_3;
+		cdm_acquire->priority = CAM_CDM_BL_FIFO_3;
 	else if (ctx->ope_acquire.dev_type ==
 		OPE_DEV_TYPE_OPE_NRT)
-		cdm_acquire.priority = CAM_CDM_BL_FIFO_0;
+		cdm_acquire->priority = CAM_CDM_BL_FIFO_0;
 	else
-		goto ope_dev_acquire_failed;
+		goto free_cdm_acquire;
 
-	cdm_acquire.cell_index = 0;
-	cdm_acquire.handle = 0;
-	cdm_acquire.userdata = ctx;
-	cdm_acquire.cam_cdm_callback = cam_ope_ctx_cdm_callback;
-	cdm_acquire.id = CAM_CDM_VIRTUAL;
-	cdm_acquire.base_array_cnt = 1;
-	cdm_acquire.base_array[0] = hw_mgr->cdm_reg_map[OPE_DEV_OPE][0];
+	cdm_acquire->cell_index = 0;
+	cdm_acquire->handle = 0;
+	cdm_acquire->userdata = ctx;
+	cdm_acquire->cam_cdm_callback = cam_ope_ctx_cdm_callback;
+	cdm_acquire->id = CAM_CDM_VIRTUAL;
+	cdm_acquire->base_array_cnt = 1;
+	cdm_acquire->base_array[0] = hw_mgr->cdm_reg_map[OPE_DEV_OPE][0];
 
-	rc = cam_cdm_acquire(&cdm_acquire);
+	rc = cam_cdm_acquire(cdm_acquire);
 	if (rc) {
 		CAM_ERR(CAM_OPE, "cdm_acquire is failed: %d", rc);
 		goto cdm_acquire_failed;
 	}
 
-	ctx->ope_cdm.cdm_ops = cdm_acquire.ops;
-	ctx->ope_cdm.cdm_handle = cdm_acquire.handle;
+	ctx->ope_cdm.cdm_ops = cdm_acquire->ops;
+	ctx->ope_cdm.cdm_handle = cdm_acquire->handle;
 
-	rc = cam_cdm_stream_on(cdm_acquire.handle);
+	rc = cam_cdm_stream_on(cdm_acquire->handle);
 	if (rc) {
 		CAM_ERR(CAM_OPE, "cdm stream on failure: %d", rc);
 		goto cdm_stream_on_failure;
@@ -2245,25 +2249,30 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 		}
 	}
 
-	bw_update.ahb_vote_valid = false;
+	bw_update = kzalloc(sizeof(struct cam_ope_dev_bw_update), GFP_KERNEL);
+	if (!bw_update) {
+		CAM_ERR(CAM_ISP, "Out of memory");
+		goto ope_clk_update_failed;
+	}
+	bw_update->ahb_vote_valid = false;
 	for (i = 0; i < ope_hw_mgr->num_ope; i++) {
-		bw_update.axi_vote.num_paths = 1;
-		bw_update.axi_vote_valid = true;
-		bw_update.axi_vote.axi_path[0].camnoc_bw = 600000000;
-		bw_update.axi_vote.axi_path[0].mnoc_ab_bw = 600000000;
-		bw_update.axi_vote.axi_path[0].mnoc_ib_bw = 600000000;
-		bw_update.axi_vote.axi_path[0].ddr_ab_bw = 600000000;
-		bw_update.axi_vote.axi_path[0].ddr_ib_bw = 600000000;
-		bw_update.axi_vote.axi_path[0].transac_type =
+		bw_update->axi_vote.num_paths = 1;
+		bw_update->axi_vote_valid = true;
+		bw_update->axi_vote.axi_path[0].camnoc_bw = 600000000;
+		bw_update->axi_vote.axi_path[0].mnoc_ab_bw = 600000000;
+		bw_update->axi_vote.axi_path[0].mnoc_ib_bw = 600000000;
+		bw_update->axi_vote.axi_path[0].ddr_ab_bw = 600000000;
+		bw_update->axi_vote.axi_path[0].ddr_ib_bw = 600000000;
+		bw_update->axi_vote.axi_path[0].transac_type =
 			CAM_AXI_TRANSACTION_WRITE;
-		bw_update.axi_vote.axi_path[0].path_data_type =
+		bw_update->axi_vote.axi_path[0].path_data_type =
 			CAM_AXI_PATH_DATA_ALL;
 		rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 			hw_mgr->ope_dev_intf[i]->hw_priv, OPE_HW_BW_UPDATE,
-			&bw_update, sizeof(bw_update));
+			bw_update, sizeof(*bw_update));
 		if (rc) {
 			CAM_ERR(CAM_OPE, "OPE Dev clk update failed: %d", rc);
-			goto ope_bw_update_failed;
+			goto free_bw_update;
 		}
 	}
 
@@ -2281,10 +2290,12 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 
 	return rc;
 
+free_bw_update:
+	kzfree(bw_update);
+	bw_update = NULL;
 ope_clk_update_failed:
-ope_bw_update_failed:
 cdm_stream_on_failure:
-	cam_cdm_release(cdm_acquire.handle);
+	cam_cdm_release(cdm_acquire->handle);
 	ctx->ope_cdm.cdm_ops = NULL;
 	ctx->ope_cdm.cdm_handle = 0;
 cdm_acquire_failed:
@@ -2296,6 +2307,9 @@ cdm_acquire_failed:
 			CAM_ERR(CAM_OPE, "OPE Dev release failed");
 	}
 
+free_cdm_acquire:
+	kzfree(cdm_acquire);
+	cdm_acquire = NULL;
 ope_dev_acquire_failed:
 	if (!hw_mgr->ope_ctx_cnt) {
 		irq_cb.ope_hw_mgr_cb = NULL;
