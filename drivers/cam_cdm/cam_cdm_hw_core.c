@@ -1089,7 +1089,10 @@ static void cam_hw_cdm_iommu_fault_handler(struct iommu_domain *domain,
 		mutex_lock(&cdm_hw->hw_mutex);
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_lock(&core->bl_fifo[i].fifo_lock);
-		cam_hw_cdm_dump_core_debug_registers(cdm_hw);
+		if (cdm_hw->hw_state == CAM_HW_STATE_POWER_UP)
+			cam_hw_cdm_dump_core_debug_registers(cdm_hw);
+		else
+			CAM_INFO(CAM_CDM, "CDM hw is power in off state");
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_unlock(&core->bl_fifo[i].fifo_lock);
 		mutex_unlock(&cdm_hw->hw_mutex);
