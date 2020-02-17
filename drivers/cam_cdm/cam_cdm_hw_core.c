@@ -1587,13 +1587,55 @@ int cam_hw_cdm_deinit(void *hw_priv,
 	struct cam_hw_info *cdm_hw = hw_priv;
 	struct cam_hw_soc_info *soc_info = NULL;
 	struct cam_cdm *cdm_core = NULL;
-	int rc = 0;
+	struct cam_cdm_bl_cb_request_entry *node, *tnode;
+	int rc = 0, i;
+	uint32_t reset_val = 1;
+	long time_left;
 
 	if (!hw_priv)
 		return -EINVAL;
 
 	soc_info = &cdm_hw->soc_info;
-	cdm_core = cdm_hw->core_info;
+	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
+
+	/*clear bl request */
+	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
+		list_for_each_entry_safe(node, tnode,
+			&cdm_core->bl_fifo[i].bl_request_list, entry) {
+			list_del_init(&node->entry);
+			kfree(node);
+		}
+	}
+
+	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
+	reinit_completion(&cdm_core->reset_complete);
+
+	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
+		reset_val = reset_val |
+			(1 << (i + CAM_CDM_BL_FIFO_FLUSH_SHIFT));
+		if (cam_cdm_write_hw_reg(cdm_hw,
+				cdm_core->offsets->irq_reg[i]->irq_mask,
+				0x70003)) {
+			CAM_ERR(CAM_CDM, "Failed to Write CDM HW IRQ mask");
+		}
+	}
+
+	if (cam_cdm_write_hw_reg(cdm_hw,
+			cdm_core->offsets->cmn_reg->rst_cmd, reset_val)) {
+		CAM_ERR(CAM_CDM, "Failed to Write CDM HW reset");
+	}
+
+	CAM_DBG(CAM_CDM, "Waiting for CDM HW reset done");
+	time_left = wait_for_completion_timeout(&cdm_core->reset_complete,
+		msecs_to_jiffies(CAM_CDM_HW_RESET_TIMEOUT));
+
+	if (time_left <= 0) {
+		rc = -ETIMEDOUT;
+		CAM_ERR(CAM_CDM, "CDM HW reset Wait failed rc=%d", rc);
+	}
+
+	clear_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
+
 	rc = cam_soc_util_disable_platform_resource(soc_info, true, true);
 	if (rc) {
 		CAM_ERR(CAM_CDM, "disable platform failed");
