@@ -439,6 +439,7 @@ struct cam_ope_cdm {
  * @clk_info:        OPE Ctx clock info
  * @clk_watch_dog:   Clock watchdog
  * @clk_watch_dog_reset_counter: Reset counter
+ * @last_flush_req: last flush req for this ctx
  */
 struct cam_ope_ctx {
 	void *context_priv;
@@ -460,6 +461,7 @@ struct cam_ope_ctx {
 	struct cam_ctx_clk_info clk_info;
 	struct cam_req_mgr_timer *clk_watch_dog;
 	uint32_t clk_watch_dog_reset_counter;
+	uint64_t last_flush_req;
 };
 
 /**

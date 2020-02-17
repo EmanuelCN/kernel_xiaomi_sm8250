@@ -97,6 +97,17 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 
 	CAM_DBG(CAM_OPE, "cam_cdm_submit_bls: handle = %u",
 		ctx_data->ope_cdm.cdm_handle);
+
+	if (task_data->req_id <= ctx_data->last_flush_req) {
+		CAM_WARN(CAM_OPE,
+			"request %lld has been flushed, reject packet",
+			task_data->req_id, ctx_data->last_flush_req);
+		return -EINVAL;
+	}
+
+	if (task_data->req_id > ctx_data->last_flush_req)
+		ctx_data->last_flush_req = 0;
+
 	rc = cam_cdm_submit_bls(ctx_data->ope_cdm.cdm_handle, cdm_cmd);
 
 	if (!rc)
@@ -2454,6 +2465,7 @@ static int cam_ope_mgr_release_ctx(struct cam_ope_hw_mgr *hw_mgr, int ctx_id)
 	cam_ope_req_timer_stop(&hw_mgr->ctx[ctx_id]);
 	hw_mgr->ctx[ctx_id].ope_cdm.cdm_handle = 0;
 	hw_mgr->ctx[ctx_id].req_cnt = 0;
+	hw_mgr->ctx[ctx_id].last_flush_req = 0;
 	cam_ope_put_free_ctx(hw_mgr, ctx_id);
 
 	rc = cam_ope_mgr_ope_clk_remove(hw_mgr, ctx_id);
@@ -2842,8 +2854,9 @@ static int cam_ope_mgr_enqueue_config(struct cam_ope_hw_mgr *hw_mgr,
 	struct cam_ope_request *ope_req = NULL;
 
 	ope_req = config_args->priv;
-	request_id = ope_req->request_id;
+	request_id = config_args->request_id;
 	hw_update_entries = config_args->hw_update_entries;
+
 	CAM_DBG(CAM_OPE, "req_id = %lld %pK", request_id, config_args->priv);
 
 	task = cam_req_mgr_workq_get_task(ope_hw_mgr->cmd_work);
@@ -2901,6 +2914,12 @@ static int cam_ope_mgr_config_hw(void *hw_priv, void *hw_config_args)
 	cdm_cmd->cookie = ope_req->req_idx;
 
 	cam_ope_mgr_ope_clk_update(hw_mgr, ctx_data, ope_req->req_idx);
+
+	if (ope_req->request_id <= ctx_data->last_flush_req)
+		CAM_WARN(CAM_OPE,
+			"Anomaly submitting flushed req %llu [last_flush %llu] in ctx %u",
+			ope_req->request_id, ctx_data->last_flush_req,
+			ctx_data->ctx_id);
 
 	rc = cam_ope_mgr_enqueue_config(hw_mgr, ctx_data, config_args);
 	if (rc)
@@ -2995,6 +3014,7 @@ static int cam_ope_mgr_flush_all(struct cam_ope_ctx *ctx_data,
 
 	rc = cam_cdm_flush_hw(ctx_data->ope_cdm.cdm_handle);
 
+	mutex_lock(&hw_mgr->hw_mgr_mutex);
 	mutex_lock(&ctx_data->ctx_mutex);
 	for (i = 0; i < hw_mgr->num_ope; i++) {
 		rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
@@ -3017,6 +3037,7 @@ static int cam_ope_mgr_flush_all(struct cam_ope_ctx *ctx_data,
 		clear_bit(i, ctx_data->bitmap);
 	}
 	mutex_unlock(&ctx_data->ctx_mutex);
+	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 
 	return rc;
 }
@@ -3044,8 +3065,10 @@ static int cam_ope_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 		return -EINVAL;
 	}
 
-	CAM_DBG(CAM_REQ, "ctx_id %d Flush type %d",
-			ctx_data->ctx_id, flush_args->flush_type);
+	ctx_data->last_flush_req = flush_args->last_flush_req;
+	CAM_DBG(CAM_REQ, "ctx_id %d Flush type %d last_flush_req %u",
+			ctx_data->ctx_id, flush_args->flush_type,
+			ctx_data->last_flush_req);
 
 	switch (flush_args->flush_type) {
 	case CAM_FLUSH_TYPE_ALL:
