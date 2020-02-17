@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TFE_CSID_HW_H_
@@ -65,6 +65,7 @@
 #define TFE_CSID_DEBUG_ENABLE_CPHY_PKT_CAPTURE        BIT(6)
 #define TFE_CSID_DEBUG_ENABLE_HBI_VBI_INFO            BIT(7)
 #define TFE_CSID_DEBUG_DISABLE_EARLY_EOF              BIT(8)
+#define TFE_CSID_DEBUG_ENABLE_RST_IRQ_LOG             BIT(9)
 
 /* enum cam_csid_path_halt_mode select the path halt mode control */
 enum cam_tfe_csid_path_halt_mode {
