@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -974,7 +974,7 @@ static int cam_tfe_top_set_axi_bw_vote(
 	struct cam_tfe_top_priv *top_priv,
 	bool start_stop)
 {
-	struct cam_axi_vote agg_vote = {0};
+	struct cam_axi_vote *agg_vote = NULL;
 	struct cam_axi_vote *to_be_applied_axi_vote = NULL;
 	struct cam_hw_soc_info   *soc_info = top_priv->common_data.soc_info;
 	struct cam_tfe_soc_private *soc_private = soc_info->soc_private;
@@ -990,6 +990,12 @@ static int cam_tfe_top_set_axi_bw_vote(
 		return -EINVAL;
 	}
 
+	agg_vote = kzalloc(sizeof(struct cam_axi_vote), GFP_KERNEL);
+	if (!agg_vote) {
+		CAM_ERR(CAM_ISP, "Out of memory");
+		return -ENOMEM;
+	}
+
 	for (i = 0; i < CAM_TFE_TOP_IN_PORT_MAX; i++) {
 		if (top_priv->axi_vote_control[i] ==
 			CAM_TFE_BW_CONTROL_INCLUDE) {
@@ -1001,10 +1007,11 @@ static int cam_tfe_top_set_axi_bw_vote(
 					num_paths +
 					top_priv->req_axi_vote[i].num_paths,
 					CAM_CPAS_MAX_PATHS_PER_CLIENT);
-				return -EINVAL;
+				rc = -EINVAL;
+				goto free_mem;
 			}
 
-			memcpy(&agg_vote.axi_path[num_paths],
+			memcpy(&agg_vote->axi_path[num_paths],
 				&top_priv->req_axi_vote[i].axi_path[0],
 				top_priv->req_axi_vote[i].num_paths *
 				sizeof(
@@ -1013,31 +1020,31 @@ static int cam_tfe_top_set_axi_bw_vote(
 		}
 	}
 
-	agg_vote.num_paths = num_paths;
+	agg_vote->num_paths = num_paths;
 
-	for (i = 0; i < agg_vote.num_paths; i++) {
+	for (i = 0; i < agg_vote->num_paths; i++) {
 		CAM_DBG(CAM_PERF,
 			"tfe[%d] : New BW Vote : counter[%d] [%s][%s] [%llu %llu %llu]",
 			top_priv->common_data.hw_intf->hw_idx,
 			top_priv->last_counter,
 			cam_cpas_axi_util_path_type_to_string(
-			agg_vote.axi_path[i].path_data_type),
+			agg_vote->axi_path[i].path_data_type),
 			cam_cpas_axi_util_trans_type_to_string(
-			agg_vote.axi_path[i].transac_type),
-			agg_vote.axi_path[i].camnoc_bw,
-			agg_vote.axi_path[i].mnoc_ab_bw,
-			agg_vote.axi_path[i].mnoc_ib_bw);
+			agg_vote->axi_path[i].transac_type),
+			agg_vote->axi_path[i].camnoc_bw,
+			agg_vote->axi_path[i].mnoc_ab_bw,
+			agg_vote->axi_path[i].mnoc_ib_bw);
 
-		total_bw_new_vote += agg_vote.axi_path[i].camnoc_bw;
+		total_bw_new_vote += agg_vote->axi_path[i].camnoc_bw;
 	}
 
-	memcpy(&top_priv->last_vote[top_priv->last_counter], &agg_vote,
+	memcpy(&top_priv->last_vote[top_priv->last_counter], agg_vote,
 		sizeof(struct cam_axi_vote));
 	top_priv->last_counter = (top_priv->last_counter + 1) %
 		(CAM_TFE_TOP_IN_PORT_MAX *
 		CAM_TFE_DELAY_BW_REDUCTION_NUM_FRAMES);
 
-	if ((agg_vote.num_paths != top_priv->applied_axi_vote.num_paths) ||
+	if ((agg_vote->num_paths != top_priv->applied_axi_vote.num_paths) ||
 		(total_bw_new_vote != top_priv->total_bw_applied))
 		bw_unchanged = false;
 
@@ -1049,18 +1056,19 @@ static int cam_tfe_top_set_axi_bw_vote(
 
 	if (bw_unchanged) {
 		CAM_DBG(CAM_ISP, "BW config unchanged");
-		return 0;
+		rc = 0;
+		goto free_mem;
 	}
 
 	if (start_stop) {
 		/* need to vote current request immediately */
-		to_be_applied_axi_vote = &agg_vote;
+		to_be_applied_axi_vote = agg_vote;
 		/* Reset everything, we can start afresh */
 		memset(top_priv->last_vote, 0x0, sizeof(struct cam_axi_vote) *
 			(CAM_TFE_TOP_IN_PORT_MAX *
 			CAM_TFE_DELAY_BW_REDUCTION_NUM_FRAMES));
 		top_priv->last_counter = 0;
-		top_priv->last_vote[top_priv->last_counter] = agg_vote;
+		top_priv->last_vote[top_priv->last_counter] = *agg_vote;
 		top_priv->last_counter = (top_priv->last_counter + 1) %
 			(CAM_TFE_TOP_IN_PORT_MAX *
 			CAM_TFE_DELAY_BW_REDUCTION_NUM_FRAMES);
@@ -1074,7 +1082,8 @@ static int cam_tfe_top_set_axi_bw_vote(
 			&total_bw_new_vote);
 		if (!to_be_applied_axi_vote) {
 			CAM_ERR(CAM_ISP, "to_be_applied_axi_vote is NULL");
-			return -EINVAL;
+			rc = -EINVAL;
+			goto free_mem;
 		}
 	}
 
@@ -1115,6 +1124,9 @@ static int cam_tfe_top_set_axi_bw_vote(
 		}
 	}
 
+free_mem:
+	kzfree(agg_vote);
+	agg_vote = NULL;
 	return rc;
 }
 
