@@ -85,6 +85,7 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 	struct ope_cmd_work_data *task_data = NULL;
 	struct cam_ope_ctx *ctx_data;
 	struct cam_cdm_bl_request *cdm_cmd;
+	struct cam_ope_hw_mgr *hw_mgr = ope_hw_mgr;
 
 	if (!data || !priv) {
 		CAM_ERR(CAM_OPE, "Invalid params%pK %pK", data, priv);
@@ -98,10 +99,12 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 	CAM_DBG(CAM_OPE, "cam_cdm_submit_bls: handle = %u",
 		ctx_data->ope_cdm.cdm_handle);
 
+	mutex_lock(&hw_mgr->hw_mgr_mutex);
 	if (task_data->req_id <= ctx_data->last_flush_req) {
 		CAM_WARN(CAM_OPE,
 			"request %lld has been flushed, reject packet",
 			task_data->req_id, ctx_data->last_flush_req);
+		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		return -EINVAL;
 	}
 
@@ -114,6 +117,8 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 		ctx_data->req_cnt++;
 	else
 		CAM_ERR(CAM_OPE, "submit failed for %lld", cdm_cmd->cookie);
+
+	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 
 	return rc;
 }
@@ -3043,7 +3048,6 @@ static int cam_ope_mgr_flush_all(struct cam_ope_ctx *ctx_data,
 
 	rc = cam_cdm_flush_hw(ctx_data->ope_cdm.cdm_handle);
 
-	mutex_lock(&hw_mgr->hw_mgr_mutex);
 	mutex_lock(&ctx_data->ctx_mutex);
 	for (i = 0; i < hw_mgr->num_ope; i++) {
 		rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
@@ -3066,7 +3070,6 @@ static int cam_ope_mgr_flush_all(struct cam_ope_ctx *ctx_data,
 		clear_bit(i, ctx_data->bitmap);
 	}
 	mutex_unlock(&ctx_data->ctx_mutex);
-	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 
 	return rc;
 }
@@ -3075,6 +3078,7 @@ static int cam_ope_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 {
 	struct cam_hw_flush_args *flush_args = hw_flush_args;
 	struct cam_ope_ctx *ctx_data;
+	struct cam_ope_hw_mgr *hw_mgr = ope_hw_mgr;
 
 	if ((!hw_priv) || (!hw_flush_args)) {
 		CAM_ERR(CAM_OPE, "Input params are Null");
@@ -3094,14 +3098,17 @@ static int cam_ope_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 		return -EINVAL;
 	}
 
-	ctx_data->last_flush_req = flush_args->last_flush_req;
-	CAM_DBG(CAM_REQ, "ctx_id %d Flush type %d last_flush_req %u",
-			ctx_data->ctx_id, flush_args->flush_type,
-			ctx_data->last_flush_req);
-
 	switch (flush_args->flush_type) {
 	case CAM_FLUSH_TYPE_ALL:
+		mutex_lock(&hw_mgr->hw_mgr_mutex);
+		ctx_data->last_flush_req = flush_args->last_flush_req;
+
+		CAM_DBG(CAM_REQ, "ctx_id %d Flush type %d last_flush_req %u",
+				ctx_data->ctx_id, flush_args->flush_type,
+				ctx_data->last_flush_req);
+
 		cam_ope_mgr_flush_all(ctx_data, flush_args);
+		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		break;
 	case CAM_FLUSH_TYPE_REQ:
 		mutex_lock(&ctx_data->ctx_mutex);
