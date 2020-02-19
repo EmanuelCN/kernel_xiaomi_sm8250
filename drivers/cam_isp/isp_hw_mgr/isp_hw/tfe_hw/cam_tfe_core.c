@@ -2212,8 +2212,9 @@ int cam_tfe_reset(void *hw_priv, void *reset_core_args, uint32_t arg_size)
 
 	CAM_DBG(CAM_ISP, "TFE:%d waiting for tfe reset complete",
 		core_info->core_index);
-	/* Wait for Completion or Timeout of 500ms */
-	rc = wait_for_completion_timeout(&core_info->reset_complete, 500);
+	/* Wait for Completion or Timeout of 100ms */
+	rc = wait_for_completion_timeout(&core_info->reset_complete,
+		msecs_to_jiffies(100));
 	if (rc <= 0) {
 		CAM_ERR(CAM_ISP, "TFE:%d Error Reset Timeout",
 			core_info->core_index);
