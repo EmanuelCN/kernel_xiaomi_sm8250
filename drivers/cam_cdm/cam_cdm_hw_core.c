@@ -1344,6 +1344,9 @@ int cam_hw_cdm_handle_error_info(
 	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
 	set_bit(CAM_CDM_FLUSH_HW_STATUS, &cdm_core->cdm_status);
 
+	/* First pause CDM, If it fails still proceed to dump debug info */
+	cam_hw_cdm_enable_core(cdm_hw, false);
+
 	rc = cam_cdm_read_hw_reg(cdm_hw,
 			cdm_core->offsets->cmn_reg->current_bl_len,
 			&current_bl_data);
@@ -1454,9 +1457,6 @@ int cam_hw_cdm_handle_error(
 	int rc = 0;
 
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
-
-	/* First pause CDM, If it fails still proceed to dump debug info */
-	cam_hw_cdm_enable_core(cdm_hw, false);
 
 	rc = cam_hw_cdm_handle_error_info(cdm_hw, handle);
 
