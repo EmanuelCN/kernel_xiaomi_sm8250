@@ -1269,11 +1269,11 @@ int cam_hw_cdm_reset_hw(struct cam_hw_info *cdm_hw, uint32_t handle)
 
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 
-	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
-	reinit_completion(&cdm_core->reset_complete);
-
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
 		mutex_lock(&cdm_core->bl_fifo[i].fifo_lock);
+
+	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
+	reinit_completion(&cdm_core->reset_complete);
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
 		reset_val = reset_val |
@@ -1336,11 +1336,10 @@ int cam_hw_cdm_handle_error_info(
 
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 
-	reinit_completion(&cdm_core->reset_complete);
-
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
 		mutex_lock(&cdm_core->bl_fifo[i].fifo_lock);
 
+	reinit_completion(&cdm_core->reset_complete);
 	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
 	set_bit(CAM_CDM_FLUSH_HW_STATUS, &cdm_core->cdm_status);
 
