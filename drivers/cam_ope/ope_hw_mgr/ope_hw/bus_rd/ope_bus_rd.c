@@ -820,7 +820,7 @@ static int cam_ope_bus_rd_isr(struct ope_hw *ope_hw_info,
 
 	if (irq_status & bus_rd_reg_val->rst_done) {
 		complete(&bus_rd->reset_complete);
-		CAM_ERR(CAM_OPE, "ope bus rd reset done");
+		CAM_DBG(CAM_OPE, "ope bus rd reset done");
 	}
 
 	if ((irq_status & bus_rd_reg_val->violation) ==
