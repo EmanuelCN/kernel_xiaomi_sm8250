@@ -679,7 +679,7 @@ static void cam_tfe_hw_mgr_dump_all_ctx(void)
 		list_for_each_entry(hw_mgr_res, &ctx->res_list_tfe_csid,
 			list) {
 			for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-				if (hw_mgr_res->hw_res[i])
+				if (!hw_mgr_res->hw_res[i])
 					continue;
 
 				CAM_INFO_RATE_LIMIT(CAM_ISP,
@@ -694,7 +694,7 @@ static void cam_tfe_hw_mgr_dump_all_ctx(void)
 		list_for_each_entry(hw_mgr_res, &ctx->res_list_tfe_in,
 			list) {
 			for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
-				if (hw_mgr_res->hw_res[i])
+				if (!hw_mgr_res->hw_res[i])
 					continue;
 
 				CAM_INFO_RATE_LIMIT(CAM_ISP,
@@ -1233,7 +1233,7 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_csid_pxl(
 
 		if (i == CAM_TFE_CSID_HW_NUM_MAX || !csid_acquire.node_res) {
 			CAM_ERR(CAM_ISP,
-				"Can not acquire tfe csid path resource %d",
+				"Can not acquire left tfe csid path resource %d",
 				path_res_id);
 			goto put_res;
 		}
@@ -1657,7 +1657,8 @@ static int cam_tfe_mgr_acquire_hw_for_ctx(
 			in_port);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
-				"Acquire TFE CSID IPP resource Failed");
+				"Acquire TFE CSID IPP resource Failed dual:%d",
+				in_port->usage_type);
 			goto err;
 		}
 	}
@@ -1667,7 +1668,8 @@ static int cam_tfe_mgr_acquire_hw_for_ctx(
 		rc = cam_tfe_hw_mgr_acquire_res_tfe_csid_rdi(tfe_ctx, in_port);
 		if (rc) {
 			CAM_ERR(CAM_ISP,
-				"Acquire TFE CSID RDI resource Failed");
+				"Acquire TFE CSID RDI resource Failed dual:%d",
+				in_port->usage_type);
 			goto err;
 		}
 	}
@@ -1675,14 +1677,15 @@ static int cam_tfe_mgr_acquire_hw_for_ctx(
 	rc = cam_tfe_hw_mgr_acquire_res_tfe_in(tfe_ctx, in_port, pdaf_enable);
 	if (rc) {
 		CAM_ERR(CAM_ISP,
-		"Acquire TFE IN resource Failed");
+		"Acquire TFE IN resource Failed dual:%d", in_port->usage_type);
 		goto err;
 	}
 
 	CAM_DBG(CAM_ISP, "Acquiring TFE OUT resource...");
 	rc = cam_tfe_hw_mgr_acquire_res_tfe_out(tfe_ctx, in_port);
 	if (rc) {
-		CAM_ERR(CAM_ISP, "Acquire TFE OUT resource Failed");
+		CAM_ERR(CAM_ISP, "Acquire TFE OUT resource Failed dual:%d",
+			in_port->usage_type);
 		goto err;
 	}
 
