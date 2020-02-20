@@ -128,26 +128,21 @@ static int cam_hw_cdm_enable_bl_done_irq(struct cam_hw_info *cdm_hw,
 	return rc;
 }
 
-static int cam_hw_cdm_enable_core(struct cam_hw_info *cdm_hw, bool enable)
+static int cam_hw_cdm_pause_core(struct cam_hw_info *cdm_hw, bool pause)
 {
 	int rc = 0;
 	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
+	uint32_t val = 0x1;
 
-	if (enable == true) {
-		if (cam_cdm_write_hw_reg(cdm_hw,
-				core->offsets->cmn_reg->core_en,
-				0x01)) {
-			CAM_ERR(CAM_CDM, "Failed to Write CDM HW core enable");
-			rc = -EIO;
-		}
-	} else {
-		if (cam_cdm_write_hw_reg(cdm_hw,
-				core->offsets->cmn_reg->core_en,
-				0x02)) {
-			CAM_ERR(CAM_CDM, "Failed to Write CDM HW core disable");
-			rc = -EIO;
-		}
+	if (pause)
+		val |= 0x2;
+
+	if (cam_cdm_write_hw_reg(cdm_hw,
+			core->offsets->cmn_reg->core_en, val)) {
+		CAM_ERR(CAM_CDM, "Failed to Write CDM HW core_en");
+		rc = -EIO;
 	}
+
 	return rc;
 }
 
@@ -309,7 +304,7 @@ void cam_hw_cdm_dump_core_debug_registers(
 	CAM_ERR(CAM_CDM, "CDM HW core status=%x", dump_reg);
 
 	/* First pause CDM, If it fails still proceed to dump debug info */
-	cam_hw_cdm_enable_core(cdm_hw, false);
+	cam_hw_cdm_pause_core(cdm_hw, true);
 
 	cam_cdm_read_hw_reg(cdm_hw,
 		core->offsets->cmn_reg->debug_status,
@@ -378,8 +373,8 @@ void cam_hw_cdm_dump_core_debug_registers(
 		core->offsets->cmn_reg->current_used_ahb_base, &dump_reg);
 	CAM_INFO(CAM_CDM, "CDM HW current AHB base=%x", dump_reg);
 
-	/* Enable CDM back */
-	cam_hw_cdm_enable_core(cdm_hw, true);
+	/* Resume CDM back */
+	cam_hw_cdm_pause_core(cdm_hw, false);
 }
 
 enum cam_cdm_arbitration cam_cdm_get_arbitration_type(
@@ -1344,7 +1339,7 @@ int cam_hw_cdm_handle_error_info(
 	set_bit(CAM_CDM_FLUSH_HW_STATUS, &cdm_core->cdm_status);
 
 	/* First pause CDM, If it fails still proceed to dump debug info */
-	cam_hw_cdm_enable_core(cdm_hw, false);
+	cam_hw_cdm_pause_core(cdm_hw, true);
 
 	rc = cam_cdm_read_hw_reg(cdm_hw,
 			cdm_core->offsets->cmn_reg->current_bl_len,
