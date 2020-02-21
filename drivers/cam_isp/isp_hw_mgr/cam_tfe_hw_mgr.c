@@ -3017,6 +3017,7 @@ static int cam_tfe_mgr_reset(void *hw_mgr_priv, void *hw_reset_args)
 		}
 	}
 
+	atomic_set(&ctx->overflow_pending, 0);
 end:
 	return rc;
 }
