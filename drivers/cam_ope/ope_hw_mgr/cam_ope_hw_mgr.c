@@ -337,7 +337,7 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 	ts_ns = (uint64_t)((ts.tv_sec * 1000000000) +
 		ts.tv_nsec);
 	if (ts_ns - ctx_data->last_req_time <
-		OPE_REQUEST_TIMEOUT * 1000000) {
+		((OPE_REQUEST_TIMEOUT - OPE_REQUEST_TIMEOUT / 10) * 1000000)) {
 		mutex_unlock(&ctx_data->ctx_mutex);
 		return 0;
 	}
