@@ -468,6 +468,7 @@ struct cam_cdm_bl_fifo {
 	struct mutex fifo_lock;
 	uint8_t bl_tag;
 	uint32_t bl_depth;
+	uint8_t last_bl_tag_done;
 };
 
 /**
