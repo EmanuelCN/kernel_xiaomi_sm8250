@@ -70,9 +70,27 @@ static int cam_ope_top_reset(struct ope_hw *ope_hw_info,
 	/* enable interrupt mask */
 	cam_io_w_mb(top_reg_val->irq_mask,
 		ope_hw_info->top_reg->base + top_reg->irq_mask);
+	cam_io_w_mb(top_reg_val->debug_cfg_val,
+		top_reg->base + top_reg->debug_cfg);
 
 	mutex_unlock(&ope_top_info.ope_hw_mutex);
 	return rc;
+}
+
+static int cam_ope_top_dump_debug_reg(struct ope_hw *ope_hw_info)
+{
+	uint32_t i, val;
+	struct cam_ope_top_reg *top_reg;
+	struct cam_ope_top_reg_val *top_reg_val;
+
+	top_reg = ope_hw_info->top_reg;
+	top_reg_val = ope_hw_info->top_reg_val;
+	for (i = 0; i < top_reg->num_debug_registers; i++) {
+		val = cam_io_r_mb(top_reg->base +
+			top_reg->debug_regs[i].offset);
+		CAM_INFO(CAM_OPE, "Debug_status_%d val: 0x%x", i, val);
+	}
+	return 0;
 }
 
 static int cam_ope_top_release(struct ope_hw *ope_hw_info,
@@ -141,6 +159,8 @@ static int cam_ope_top_init(struct ope_hw *ope_hw_info,
 	/* enable interrupt mask */
 	cam_io_w_mb(top_reg_val->irq_mask,
 		ope_hw_info->top_reg->base + top_reg->irq_mask);
+	cam_io_w_mb(top_reg_val->debug_cfg_val,
+		top_reg->base + top_reg->debug_cfg);
 
 	if (!rc || rc < 0) {
 		CAM_ERR(CAM_OPE, "reset error result = %d", rc);
@@ -249,6 +269,8 @@ int cam_ope_top_process(struct ope_hw *ope_hw_info,
 	case OPE_HW_RESET:
 		rc = cam_ope_top_reset(ope_hw_info, 0, 0);
 		break;
+	case OPE_HW_DUMP_DEBUG:
+		rc - cam_ope_top_dump_debug_reg(ope_hw_info);
 	default:
 		break;
 	}
