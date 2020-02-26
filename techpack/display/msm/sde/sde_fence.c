@@ -257,8 +257,6 @@ struct sde_fence_context *sde_fence_init(const char *name, uint32_t drm_id)
 	}
 
 	strlcpy(ctx->name, name, ARRAY_SIZE(ctx->name));
-	kmem_fence_pool = KMEM_CACHE(sde_fence, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
-
 	ctx->drm_id = drm_id;
 	kref_init(&ctx->kref);
 	ctx->context = dma_fence_context_alloc(1);
@@ -278,8 +276,6 @@ void sde_fence_deinit(struct sde_fence_context *ctx)
 	}
 
 	kref_put(&ctx->kref, sde_fence_destroy);
-
-	kmem_cache_destroy(kmem_fence_pool);
 }
 
 void sde_fence_prepare(struct sde_fence_context *ctx)
@@ -485,3 +481,11 @@ void sde_debugfs_timeline_dump(struct sde_fence_context *ctx,
 	}
 	spin_unlock(&ctx->list_lock);
 }
+
+static int __init sde_kmem_pool_init(void)
+{
+	kmem_fence_pool = KMEM_CACHE(sde_fence, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
+	return 0;
+}
+
+module_init(sde_kmem_pool_init);
