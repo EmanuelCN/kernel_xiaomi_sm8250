@@ -2355,6 +2355,10 @@ ope_irq_set_failed:
 			if (hw_mgr->ope_dev_intf[i]->hw_ops.deinit(
 				hw_mgr->ope_dev_intf[i]->hw_priv, NULL, 0))
 				CAM_ERR(CAM_OPE, "OPE deinit fail");
+			if (hw_mgr->ope_dev_intf[i]->hw_ops.stop(
+				hw_mgr->ope_dev_intf[i]->hw_priv,
+				NULL, 0))
+				CAM_ERR(CAM_OPE, "OPE stop fail");
 		}
 	}
 end:
