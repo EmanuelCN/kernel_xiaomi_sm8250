@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_TFE_H__
@@ -82,6 +82,11 @@
 #define CAM_ISP_TFE_USAGE_LEFT_PX     1
 #define CAM_ISP_TFE_USAGE_RIGHT_PX    2
 #define CAM_ISP_TFE_USAGE_RDI         3
+
+/* Bus write master modes */
+#define CAM_ISP_TFE_WM_FRAME_BASED_MODE    0
+#define CAM_ISP_TFE_WM_LINE_BASED_MODE     1
+#define CAM_ISP_TFE_WM_INDEX_BASED_MODE    2
 
 /* Query devices */
 /**
