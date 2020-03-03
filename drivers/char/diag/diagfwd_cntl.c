@@ -1430,7 +1430,7 @@ int diag_send_peripheral_buffering_mode(struct diag_buffering_mode_t *params)
 	}
 
 	if (!driver->buffering_flag[params->peripheral]) {
-		pr_err("diag: In %s, buffering flag not set for %d\n", __func__,
+		pr_debug("diag: In %s, buffering flag not set for %d\n", __func__,
 		       params->peripheral);
 		return -EINVAL;
 	}
