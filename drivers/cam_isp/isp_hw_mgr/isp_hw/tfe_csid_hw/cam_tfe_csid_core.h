@@ -12,6 +12,12 @@
 
 #define CAM_TFE_CSID_CID_MAX                          4
 
+/* Each word is taken as uint32_t, for dumping uint64_t count as 2 words
+ * 1. soc_index
+ * 2. clk_rate --> uint64_t -> 2 words
+ */
+#define CAM_TFE_CSID_DUMP_MISC_NUM_WORDS              3
+
 #define TFE_CSID_CSI2_RX_INFO_PHY_DL0_EOT_CAPTURED    BIT(0)
 #define TFE_CSID_CSI2_RX_INFO_PHY_DL1_EOT_CAPTURED    BIT(1)
 #define TFE_CSID_CSI2_RX_INFO_PHY_DL2_EOT_CAPTURED    BIT(2)

@@ -267,6 +267,7 @@ struct cam_isp_hw_dual_isp_update_args {
  * @ buf_len:        buf len
  * @ offset:         offset of buffer
  * @ ctxt_to_hw_map: ctx to hw map
+ * @ is_dump_all:    flag to indicate if all information or just bw/clk rate
  */
 struct cam_isp_hw_dump_args {
 	uint64_t                req_id;
@@ -274,6 +275,7 @@ struct cam_isp_hw_dump_args {
 	size_t                  buf_len;
 	size_t                  offset;
 	void                   *ctxt_to_hw_map;
+	bool                    is_dump_all;
 };
 
 /**
