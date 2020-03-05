@@ -240,6 +240,7 @@ struct ope_debug_buffer {
  * @cpu_addr:         CPU address
  * @iova_addr:        IOVA address
  * @iova_cdm_addr:    CDM IOVA address
+ * @offset:           Offset of buffer
  * @len:              Buffer length
  * @size:             Buffer Size
  */
@@ -248,6 +249,7 @@ struct ope_kmd_buffer {
 	uintptr_t cpu_addr;
 	dma_addr_t iova_addr;
 	dma_addr_t iova_cdm_addr;
+	uint32_t offset;
 	size_t len;
 	uint32_t size;
 };
