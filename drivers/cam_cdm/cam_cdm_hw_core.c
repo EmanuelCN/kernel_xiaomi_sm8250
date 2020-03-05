@@ -303,8 +303,7 @@ void cam_hw_cdm_dump_core_debug_registers(
 	cam_cdm_read_hw_reg(cdm_hw, core->offsets->cmn_reg->core_en, &dump_reg);
 	CAM_ERR(CAM_CDM, "CDM HW core status=%x", dump_reg);
 
-	/* First pause CDM, If it fails still proceed to dump debug info */
-	cam_hw_cdm_pause_core(cdm_hw, true);
+	usleep_range(1000, 1010);
 
 	cam_cdm_read_hw_reg(cdm_hw,
 		core->offsets->cmn_reg->debug_status,
@@ -373,8 +372,6 @@ void cam_hw_cdm_dump_core_debug_registers(
 		core->offsets->cmn_reg->current_used_ahb_base, &dump_reg);
 	CAM_INFO(CAM_CDM, "CDM HW current AHB base=%x", dump_reg);
 
-	/* Resume CDM back */
-	cam_hw_cdm_pause_core(cdm_hw, false);
 }
 
 enum cam_cdm_arbitration cam_cdm_get_arbitration_type(
@@ -1060,7 +1057,14 @@ static void cam_hw_cdm_work(struct work_struct *work)
 			for (i = 0; i < core->offsets->reg_data->num_bl_fifo;
 					i++)
 				mutex_lock(&core->bl_fifo[i].fifo_lock);
+			/*
+			 * First pause CDM, If it fails still proceed
+			 * to dump debug info
+			 */
+			cam_hw_cdm_pause_core(cdm_hw, true);
 			cam_hw_cdm_dump_core_debug_registers(cdm_hw);
+			/* Resume CDM back */
+			cam_hw_cdm_pause_core(cdm_hw, false);
 			for (i = 0; i < core->offsets->reg_data->num_bl_fifo;
 					i++)
 				mutex_unlock(&core->bl_fifo[i].fifo_lock);
@@ -1092,8 +1096,16 @@ static void cam_hw_cdm_iommu_fault_handler(struct iommu_domain *domain,
 		mutex_lock(&cdm_hw->hw_mutex);
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_lock(&core->bl_fifo[i].fifo_lock);
-		if (cdm_hw->hw_state == CAM_HW_STATE_POWER_UP)
+		if (cdm_hw->hw_state == CAM_HW_STATE_POWER_UP) {
+			/*
+			 * First pause CDM, If it fails still proceed
+			 * to dump debug info
+			 */
+			cam_hw_cdm_pause_core(cdm_hw, true);
 			cam_hw_cdm_dump_core_debug_registers(cdm_hw);
+			/* Resume CDM back */
+			cam_hw_cdm_pause_core(cdm_hw, false);
+		}
 		else
 			CAM_INFO(CAM_CDM, "CDM hw is power in off state");
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
@@ -1276,6 +1288,10 @@ int cam_hw_cdm_reset_hw(struct cam_hw_info *cdm_hw, uint32_t handle)
 
 	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
 	reinit_completion(&cdm_core->reset_complete);
+
+	/* First pause CDM, If it fails still proceed to reset CDM HW */
+	cam_hw_cdm_pause_core(cdm_hw, true);
+	usleep_range(1000, 1010);
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
 		reset_val = reset_val |
@@ -1613,6 +1629,10 @@ int cam_hw_cdm_deinit(void *hw_priv,
 
 	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
 	reinit_completion(&cdm_core->reset_complete);
+
+	/* First pause CDM, If it fails still proceed to reset CDM HW */
+	cam_hw_cdm_pause_core(cdm_hw, true);
+	usleep_range(1000, 1010);
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
 		reset_val = reset_val |
