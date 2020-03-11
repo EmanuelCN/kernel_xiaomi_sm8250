@@ -1163,4 +1163,6 @@ int __sched autoremove_wake_function(struct wait_queue_entry *wq_entry,
 		(wait)->flags = 0;						\
 	} while (0)
 
+bool try_invoke_on_locked_down_task(struct task_struct *p, bool (*func)(struct task_struct *t, void *arg), void *arg);
+
 #endif /* _LINUX_WAIT_H */
