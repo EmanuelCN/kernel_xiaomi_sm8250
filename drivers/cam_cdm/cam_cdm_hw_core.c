@@ -1135,7 +1135,6 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 	struct cam_hw_info *cdm_hw = data;
 	struct cam_cdm *cdm_core = cdm_hw->core_info;
 	struct cam_cdm_work_payload *payload[CAM_CDM_BL_FIFO_MAX] = {0};
-	uint32_t rst_done_cnt = 0;
 	uint32_t user_data = 0;
 	uint32_t irq_status[CAM_CDM_BL_FIFO_MAX] = {0};
 	bool work_status;
@@ -1169,7 +1168,7 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 			continue;
 
 		if (irq_status[i] & CAM_CDM_IRQ_STATUS_RST_DONE_MASK) {
-			rst_done_cnt++;
+			cdm_core->rst_done_cnt++;
 			continue;
 		}
 
@@ -1211,15 +1210,17 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 			payload[i] = NULL;
 		}
 	}
-	if (rst_done_cnt == cdm_core->offsets->reg_data->num_bl_fifo_irq) {
+	if (cdm_core->rst_done_cnt ==
+		cdm_core->offsets->reg_data->num_bl_fifo_irq) {
 		CAM_DBG(CAM_CDM, "CDM HW reset done IRQ");
 		complete(&cdm_core->reset_complete);
 	}
-	if (rst_done_cnt &&
-		rst_done_cnt != cdm_core->offsets->reg_data->num_bl_fifo_irq)
-		CAM_ERR(CAM_CDM,
+	if (cdm_core->rst_done_cnt &&
+		cdm_core->rst_done_cnt !=
+			cdm_core->offsets->reg_data->num_bl_fifo_irq)
+		CAM_INFO(CAM_CDM,
 			"Reset IRQ received for %d fifos instead of %d",
-			rst_done_cnt,
+			cdm_core->rst_done_cnt,
 			cdm_core->offsets->reg_data->num_bl_fifo_irq);
 	return IRQ_HANDLED;
 }
@@ -1296,6 +1297,7 @@ int cam_hw_cdm_reset_hw(struct cam_hw_info *cdm_hw, uint32_t handle)
 		mutex_lock(&cdm_core->bl_fifo[i].fifo_lock);
 
 	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
+	cdm_core->rst_done_cnt = 0;
 	reinit_completion(&cdm_core->reset_complete);
 
 	/* First pause CDM, If it fails still proceed to reset CDM HW */
@@ -1366,6 +1368,7 @@ int cam_hw_cdm_handle_error_info(
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
 		mutex_lock(&cdm_core->bl_fifo[i].fifo_lock);
 
+	cdm_core->rst_done_cnt = 0;
 	reinit_completion(&cdm_core->reset_complete);
 	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
 	set_bit(CAM_CDM_FLUSH_HW_STATUS, &cdm_core->cdm_status);
@@ -1639,6 +1642,7 @@ int cam_hw_cdm_deinit(void *hw_priv,
 	}
 
 	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
+	cdm_core->rst_done_cnt = 0;
 	reinit_completion(&cdm_core->reset_complete);
 
 	/* First pause CDM, If it fails still proceed to reset CDM HW */
@@ -1748,6 +1752,7 @@ int cam_hw_cdm_probe(struct platform_device *pdev)
 		goto release_private_mem;
 	}
 
+	cdm_core->rst_done_cnt = 0;
 	init_completion(&cdm_core->reset_complete);
 	cdm_hw_intf->hw_priv = cdm_hw;
 	cdm_hw_intf->hw_ops.get_hw_caps = cam_cdm_get_caps;
