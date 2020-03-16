@@ -322,6 +322,7 @@ static int create_device(void)
 
 	/* vbswap devices sort of resembles non-rotational disks */
 	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, vbswap_disk->queue);
+	queue_flag_clear_unlocked(QUEUE_FLAG_ADD_RANDOM, vbswap_disk->queue);
 
 out:
 	return ret;
