@@ -102,7 +102,7 @@ static int vbswap_bvec_rw(struct bio_vec *bvec,
 		return vbswap_bvec_write(bvec, index, bio);
 }
 
-static void __vbswap_make_request(struct bio *bio, int rw)
+static noinline void __vbswap_make_request(struct bio *bio, int rw)
 {
 	int offset, ret;
 	u32 index, is_swap_header_page;
