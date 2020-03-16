@@ -62,10 +62,14 @@ static int vbswap_bvec_read(struct bio_vec *bvec,
 	page = bvec->bv_page;
 
 	user_mem = kmap_atomic(page);
-	if (index == 0) {
+	if (index == 0 && swap_header_page) {
 		swap_header_page_mem = kmap_atomic(swap_header_page);
 		memcpy(user_mem + bvec->bv_offset, swap_header_page_mem, bvec->bv_len);
 		kunmap_atomic(swap_header_page_mem);
+
+		// It'll be read one-time only
+		__free_page(swap_header_page);
+		swap_header_page = NULL;
 	} else {
 		// Do not allow memory dumps
 		memset(user_mem + bvec->bv_offset, 0, bvec->bv_len);
@@ -90,6 +94,8 @@ static int vbswap_bvec_write(struct bio_vec *bvec,
 	page = bvec->bv_page;
 
 	user_mem = kmap_atomic(page);
+	if (swap_header_page == NULL)
+		swap_header_page = alloc_page(GFP_KERNEL | GFP_NOIO);
 	swap_header_page_mem = kmap_atomic(swap_header_page);
 	memcpy(swap_header_page_mem, user_mem, PAGE_SIZE);
 	kunmap_atomic(swap_header_page_mem);
@@ -317,21 +323,8 @@ static int create_device(void)
 	/* vbswap devices sort of resembles non-rotational disks */
 	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, vbswap_disk->queue);
 
-	swap_header_page = alloc_page(__GFP_HIGHMEM);
-
-	if (!swap_header_page) {
-		pr_err("%s %d: Error creating swap_header_page\n",
-		       __func__, __LINE__);
-		ret = -ENOMEM;
-		goto remove_vbswap_group;
-	}
-
 out:
 	return ret;
-
-remove_vbswap_group:
-	sysfs_remove_group(&disk_to_dev(vbswap_disk)->kobj,
-			   &vbswap_disk_attr_group);
 
 out_free_queue:
 	blk_cleanup_queue(vbswap_disk->queue);
