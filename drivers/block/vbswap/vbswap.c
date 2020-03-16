@@ -184,14 +184,10 @@ static inline int vbswap_valid_io_request(struct bio *bio)
 static blk_qc_t vbswap_make_request(struct request_queue *queue,
 				    struct bio *bio)
 {
-	struct vbswap *vbswap;
-
 	if (likely(bio->bi_iter.bi_sector >> SECTORS_PER_PAGE_SHIFT)) {
 		bio_io_error(bio);
 		return BLK_QC_T_NONE;
 	}
-
-	vbswap = queue->queuedata;
 
 	if (!vbswap_valid_io_request(bio)) {
 		pr_err("%s %d: invalid io request. "
