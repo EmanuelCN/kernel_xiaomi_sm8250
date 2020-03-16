@@ -36,9 +36,6 @@ static int vbswap_major;
 static struct vbswap *vbswap_device;
 static struct page *swap_header_page;
 
-/* total not-mapped-slot free number */
-static atomic_t vbswap_not_mapped_slot_free_num;
-
 static void vbswap_init_disksize(u64 disksize)
 {
 	if (vbswap_device->init_success) {
@@ -253,14 +250,7 @@ static blk_qc_t vbswap_make_request(struct request_queue *queue,
 	return BLK_QC_T_NONE;
 }
 
-static void vbswap_slot_free_notify(struct block_device *bdev,
-				    unsigned long index)
-{
-	atomic_inc(&vbswap_not_mapped_slot_free_num);
-}
-
-static const struct block_device_operations vbswap_devops = {
-	.swap_slot_free_notify = vbswap_slot_free_notify,
+static const struct block_device_operations vbswap_fops = {
 	.owner = THIS_MODULE
 };
 
@@ -285,19 +275,10 @@ static ssize_t disksize_store(struct device *dev,
 	return len;
 }
 
-static ssize_t vbswap_swap_info_show(struct device *dev,
-				     struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", vbswap_not_mapped_slot_free_num.counter);
-}
-
 static DEVICE_ATTR(disksize, S_IRUGO | S_IWUSR, disksize_show, disksize_store);
-static DEVICE_ATTR(vbswap_swap_info, S_IRUGO | S_IWUSR,
-		   vbswap_swap_info_show, NULL);
 
 static struct attribute *vbswap_disk_attrs[] = {
 	&dev_attr_disksize.attr,
-	&dev_attr_vbswap_swap_info.attr,
 	NULL,
 };
 
@@ -334,7 +315,7 @@ static int create_device(struct vbswap *vbswap)
 
 	vbswap->disk->major = vbswap_major;
 	vbswap->disk->first_minor = 0;
-	vbswap->disk->fops = &vbswap_devops;
+	vbswap->disk->fops = &vbswap_fops;
 	vbswap->disk->queue = vbswap->queue;
 	vbswap->disk->private_data = vbswap;
 	snprintf(vbswap->disk->disk_name, 16, "vbswap%d", 0);
