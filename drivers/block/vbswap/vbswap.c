@@ -23,8 +23,6 @@
 	(VBSWAP_LOGICAL_BLOCK_SHIFT - SECTOR_SHIFT))
 
 struct vbswap {
-	struct rw_semaphore lock;
-		/* protect buffers against concurrent read and writes */
 	struct request_queue *queue;
 	struct gendisk *disk;
 	u64 disksize;	/* bytes */
@@ -108,7 +106,6 @@ static int vbswap_bvec_rw(struct vbswap *vbswap, struct bio_vec bvec,
 {
 	int ret;
 
-	down_read(&vbswap->lock);
 	if (rw == READ) {
 		pr_debug("%s %d: (rw,index) = (%d, %d)\n",
 			 __func__, __LINE__, rw, index);
@@ -118,7 +115,6 @@ static int vbswap_bvec_rw(struct vbswap *vbswap, struct bio_vec bvec,
 			 __func__, __LINE__, rw, index);
 		ret = vbswap_bvec_write(vbswap, bvec, index, bio);
 	}
-	up_read(&vbswap->lock);
 
 	return ret;
 }
@@ -289,8 +285,6 @@ static struct attribute_group vbswap_disk_attr_group = {
 static int create_device(struct vbswap *vbswap)
 {
 	int ret;
-
-	init_rwsem(&vbswap->lock);
 
 	vbswap->queue = blk_alloc_queue(GFP_KERNEL);
 	if (!vbswap->queue) {
