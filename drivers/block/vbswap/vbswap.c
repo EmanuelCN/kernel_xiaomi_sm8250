@@ -31,28 +31,6 @@ static u64 vbswap_disksize;
 static struct page *swap_header_page;
 static bool vbswap_initialized;
 
-static void vbswap_init_disksize(u64 disksize)
-{
-	if (vbswap_initialized) {
-		pr_err("%s %d: disksize is already initialized (disksize = %llu)\n",
-				__func__, __LINE__, vbswap_disksize);
-		return;
-	}
-
-	vbswap_disksize = PAGE_ALIGN(disksize);
-	if (!vbswap_disksize) {
-		pr_err("%s %d: disksize is invalid (disksize = %llu)\n",
-		       __func__, __LINE__, vbswap_disksize);
-		vbswap_disksize = 0;
-		vbswap_initialized = 0;
-		return;
-	}
-	set_capacity(vbswap_disk,
-		     vbswap_disksize >> SECTOR_SHIFT);
-
-	vbswap_initialized = 1;
-}
-
 static int vbswap_bvec_read(struct bio_vec *bvec,
 			    u32 index, struct bio *bio)
 {
@@ -253,7 +231,25 @@ static ssize_t disksize_store(struct device *dev,
 	if (ret)
 		return ret;
 
-	vbswap_init_disksize(disksize);
+	if (vbswap_initialized) {
+		pr_err("already initialized (disksize = %llu)\n", vbswap_disksize);
+		return -EBUSY;
+	}
+
+	vbswap_disksize = PAGE_ALIGN(disksize);
+	if (!vbswap_disksize) {
+		pr_err("disksize is invalid (disksize = %llu)\n", vbswap_disksize);
+
+		vbswap_disksize = 0;
+		vbswap_initialized = 0;
+
+		return -EINVAL;
+	}
+
+	set_capacity(vbswap_disk, vbswap_disksize >> SECTOR_SHIFT);
+
+	vbswap_initialized = 1;
+
 	return len;
 }
 
