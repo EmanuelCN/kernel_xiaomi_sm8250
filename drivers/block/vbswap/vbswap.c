@@ -101,19 +101,10 @@ static int vbswap_bvec_write(struct bio_vec *bvec,
 static int vbswap_bvec_rw(struct bio_vec *bvec,
 			  u32 index, struct bio *bio, int rw)
 {
-	int ret;
-
-	if (rw == READ) {
-		pr_debug("%s %d: (rw,index) = (%d, %d)\n",
-			 __func__, __LINE__, rw, index);
-		ret = vbswap_bvec_read(bvec, index, bio);
-	} else {
-		pr_debug("%s %d: (rw,index) = (%d, %d)\n",
-			 __func__, __LINE__, rw, index);
-		ret = vbswap_bvec_write(bvec, index, bio);
-	}
-
-	return ret;
+	if (rw == READ)
+		return vbswap_bvec_read(bvec, index, bio);
+	else
+		return vbswap_bvec_write(bvec, index, bio);
 }
 
 static void __vbswap_make_request(struct bio *bio, int rw)
