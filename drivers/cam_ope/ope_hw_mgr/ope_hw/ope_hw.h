@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef CAM_OPE_HW_H
@@ -49,6 +49,8 @@
 #define OPE_WAIT_COMP_IDLE    0x4
 #define OPE_WAIT_COMP_GEN_IRQ 0x8
 
+#define OPE_MAX_DEBUG_REGISTER 30
+
 struct cam_ope_common {
 	uint32_t mode[CAM_FORMAT_MAX];
 };
@@ -68,6 +70,9 @@ struct cam_ope_top_reg {
 	uint32_t irq_cmd;
 	uint32_t violation_status;
 	uint32_t throttle_cnt_cfg;
+	uint32_t debug_cfg;
+	uint32_t num_debug_registers;
+	struct cam_ope_debug_register *debug_regs;
 };
 
 struct cam_ope_top_reg_val {
@@ -103,6 +108,7 @@ struct cam_ope_top_reg_val {
 	uint32_t fe_done;
 	uint32_t ope_violation;
 	uint32_t idle;
+	uint32_t debug_cfg_val;
 };
 
 struct cam_ope_qos_reg {
@@ -373,6 +379,10 @@ struct cam_ope_bus_wr_reg_val {
 
 	uint32_t num_clients;
 	struct cam_ope_bus_wr_client_reg_val wr_clients[MAX_WR_CLIENTS];
+};
+
+struct cam_ope_debug_register {
+	uint32_t offset;
 };
 
 struct ope_hw {

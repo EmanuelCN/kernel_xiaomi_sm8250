@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef CAM_OPE_HW_100_H
@@ -42,6 +42,36 @@ enum cam_ope_bus_rd_unpacker_format {
 	BUS_RD_VER1_PACKER_FMT_MAX                         = 0x13,
 };
 
+static struct cam_ope_debug_register ope_debug_regs[OPE_MAX_DEBUG_REGISTER] = {
+	{
+		.offset = 0xA0,
+	},
+	{
+		.offset = 0xA4
+	},
+	{
+		.offset = 0xA8,
+	},
+	{
+		.offset = 0xAC,
+	},
+	{
+		.offset = 0xB0,
+	},
+	{
+		.offset = 0xB4,
+	},
+	{
+		.offset = 0xB8,
+	},
+	{
+		.offset = 0xBC,
+	},
+	{
+		.offset = 0xD0,
+	},
+};
+
 static struct cam_ope_top_reg ope_top_reg = {
 	.offset              = 0x400,
 	.hw_version          = 0x0,
@@ -56,6 +86,9 @@ static struct cam_ope_top_reg ope_top_reg = {
 	.irq_cmd             = 0x24,
 	.violation_status    = 0x28,
 	.throttle_cnt_cfg    = 0x2C,
+	.debug_cfg           = 0xDC,
+	.num_debug_registers = 9,
+	.debug_regs          = ope_debug_regs,
 };
 
 static struct cam_ope_top_reg_val ope_top_reg_val = {
@@ -75,6 +108,7 @@ static struct cam_ope_top_reg_val ope_top_reg_val = {
 	.fe_done       = 0x4,
 	.ope_violation = 0x8,
 	.idle          = 0x10,
+	.debug_cfg_val = 0x1,
 };
 
 

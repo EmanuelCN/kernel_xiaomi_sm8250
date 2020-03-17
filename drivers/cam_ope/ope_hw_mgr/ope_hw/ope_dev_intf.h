@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef CAM_OPE_DEV_INTF_H
@@ -28,6 +28,7 @@
 #define OPE_HW_SET_IRQ_CB  0xE
 #define OPE_HW_CLK_DISABLE 0xF
 #define OPE_HW_CLK_ENABLE  0x10
+#define OPE_HW_DUMP_DEBUG  0x11
 
 /**
  * struct cam_ope_dev_probe

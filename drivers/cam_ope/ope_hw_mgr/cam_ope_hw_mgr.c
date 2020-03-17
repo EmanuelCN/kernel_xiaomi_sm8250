@@ -616,6 +616,10 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 
 	if (cam_ope_is_pending_request(ctx_data)) {
 		CAM_DBG(CAM_OPE, "pending requests means, issue is with HW");
+		hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
+				hw_mgr->ope_dev_intf[i]->hw_priv,
+				OPE_HW_DUMP_DEBUG,
+				NULL, 0);
 		task = cam_req_mgr_workq_get_task(ope_hw_mgr->msg_work);
 		if (!task) {
 			CAM_ERR(CAM_OPE, "no empty task");

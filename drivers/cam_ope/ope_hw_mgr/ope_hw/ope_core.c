@@ -285,6 +285,16 @@ int cam_ope_deinit_hw(void *device_priv,
 	return rc;
 }
 
+static int cam_ope_dev_process_dump_debug_reg(struct ope_hw *ope_hw)
+{
+	int rc = 0;
+
+	rc = cam_ope_top_process(ope_hw, -1,
+		OPE_HW_DUMP_DEBUG, NULL);
+
+	return rc;
+}
+
 static int cam_ope_dev_process_reset(struct ope_hw *ope_hw, void *cmd_args)
 {
 	int rc = 0;
@@ -1529,6 +1539,15 @@ static int cam_ope_process_probe(struct ope_hw *ope_hw,
 	return -EINVAL;
 }
 
+static int cam_ope_process_dump_debug_reg(struct ope_hw *ope_hw,
+	bool hfi_en)
+{
+	if (!hfi_en)
+		return cam_ope_dev_process_dump_debug_reg(ope_hw);
+
+	return -EINVAL;
+}
+
 static int cam_ope_process_reset(struct ope_hw *ope_hw,
 	void *cmd_args, bool hfi_en)
 {
@@ -1669,6 +1688,9 @@ int cam_ope_process_cmd(void *device_priv, uint32_t cmd_type,
 		core_info->irq_cb.data = irq_cb->data;
 		spin_unlock_irqrestore(&ope_dev->hw_lock, flags);
 		}
+		break;
+	case OPE_HW_DUMP_DEBUG:
+		rc = cam_ope_process_dump_debug_reg(ope_hw, hfi_en);
 		break;
 	default:
 		break;
