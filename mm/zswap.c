@@ -234,7 +234,7 @@ static struct zswap_entry *zswap_entry_cache_alloc(gfp_t gfp)
 {
 	struct zswap_entry *entry;
 	entry = kmem_cache_alloc(zswap_entry_cache, gfp);
-	if (!entry)
+	if (unlikely(!entry))
 		return NULL;
 	entry->refcount = 1;
 	return entry;
@@ -792,7 +792,7 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 
 	/* allocate entry */
 	entry = zswap_entry_cache_alloc(GFP_KERNEL);
-	if (!entry) {
+	if (unlikely(!entry)) {
 		zswap_reject_kmemcache_fail++;
 		ret = -ENOMEM;
 		goto reject;
