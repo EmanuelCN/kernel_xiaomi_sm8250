@@ -31,6 +31,7 @@ struct cam_cpas_vdd_ahb_mapping {
  * @cell_idx: Index to identify node from device tree and its parent
  * @level_idx: Index to identify at what level the node is present
  * @axi_port_idx: Index to identify which axi port to vote the consolidated bw
+ * @camnoc_axi_port_idx: Index to find which axi port to vote consolidated bw
  * @path_data_type: Traffic type info from device tree (ife-vid, ife-disp etc)
  * @path_trans_type: Transaction type info from device tree (rd, wr)
  * @merge_type: Traffic merge type (calculation info) from device tree
@@ -54,6 +55,7 @@ struct cam_cpas_tree_node {
 	uint32_t cell_idx;
 	uint32_t level_idx;
 	int axi_port_idx;
+	int camnoc_axi_port_idx;
 	const char *node_name;
 	uint32_t path_data_type;
 	uint32_t path_trans_type;
