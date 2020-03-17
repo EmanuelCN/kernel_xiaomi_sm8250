@@ -225,12 +225,14 @@ struct cdm_dmi_cmd {
  * @iova_addr:        IOVA address
  * @len:              Buffer length
  * @size:             Buffer Size
+ * @offset:	      buffer offset
  */
 struct ope_debug_buffer {
 	uintptr_t cpu_addr;
 	dma_addr_t iova_addr;
 	size_t len;
 	uint32_t size;
+	uint32_t offset;
 };
 
 /**

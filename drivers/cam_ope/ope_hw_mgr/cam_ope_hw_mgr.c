@@ -556,8 +556,14 @@ static void cam_ope_dump_req_data(struct cam_ope_request *ope_req)
 		(struct cam_packet *)ope_req->hang_data.packet;
 
 	if (!ope_req->ope_debug_buf.cpu_addr ||
-		ope_req->ope_debug_buf.len < sizeof(struct cam_ope_hang_dump)) {
-		CAM_ERR(CAM_OPE, "OPE debug buf is invalid");
+		ope_req->ope_debug_buf.len < sizeof(struct cam_ope_hang_dump) ||
+		(ope_req->ope_debug_buf.offset + ope_req->ope_debug_buf.len)
+			> ope_req->ope_debug_buf.size) {
+		CAM_ERR(CAM_OPE, "Invalid debug buf, size %d %d len %d off %d",
+				sizeof(struct cam_ope_hang_dump),
+				ope_req->ope_debug_buf.size,
+				ope_req->ope_debug_buf.len,
+				ope_req->ope_debug_buf.offset);
 		return;
 	}
 	dump = (struct cam_ope_hang_dump *)ope_req->ope_debug_buf.cpu_addr;
@@ -1512,7 +1518,8 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 			 ope_req->request_id, ctx->ctx_id);
 		CAM_ERR(CAM_OPE, "Rst of CDM and OPE for error reqid = %lld",
 			ope_req->request_id);
-		cam_ope_dump_req_data(ope_req);
+		if (status != CAM_CDM_CB_STATUS_HW_FLUSH)
+			cam_ope_dump_req_data(ope_req);
 		rc = cam_ope_mgr_reset_hw();
 		flag = true;
 	}
@@ -2009,9 +2016,11 @@ static int cam_ope_mgr_process_cmd_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 					ope_request->ope_debug_buf.iova_addr =
 						iova_addr;
 					ope_request->ope_debug_buf.len =
-						len;
+						cmd_buf->length;
 					ope_request->ope_debug_buf.size =
-						cmd_buf->size;
+						len;
+					ope_request->ope_debug_buf.offset =
+						cmd_buf->offset;
 					CAM_DBG(CAM_OPE, "dbg buf = %x",
 					ope_request->ope_debug_buf.cpu_addr);
 					break;
