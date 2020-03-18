@@ -28,9 +28,10 @@ static void *xattr_alloc(struct f2fs_sb_info *sbi, int size, bool *is_inline)
 	if (likely(size == sbi->inline_xattr_slab_size)) {
 		*is_inline = true;
 		return kmem_cache_zalloc(sbi->inline_xattr_slab, GFP_NOFS);
+	} else {
+		*is_inline = false;
+		return f2fs_kzalloc(sbi, size, GFP_NOFS);
 	}
-	*is_inline = false;
-	return f2fs_kzalloc(sbi, size, GFP_NOFS);
 }
 
 static void xattr_free(struct f2fs_sb_info *sbi, void *xattr_addr,
