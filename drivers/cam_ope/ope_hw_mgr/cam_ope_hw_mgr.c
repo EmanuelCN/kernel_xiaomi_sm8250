@@ -2028,6 +2028,8 @@ static int cam_ope_mgr_process_cmd_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 					ope_request->ope_kmd_buf.iova_cdm_addr =
 						iova_cdm_addr;
 					ope_request->ope_kmd_buf.len = len;
+					ope_request->ope_kmd_buf.offset =
+						cmd_buf->offset;
 					ope_request->ope_kmd_buf.size =
 						cmd_buf->size;
 					is_kmd_buf_valid = true;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -262,6 +262,47 @@ void cam_cdm_notify_clients(struct cam_hw_info *cdm_hw,
 	}
 }
 
+static int cam_cdm_stream_handle_init(void *hw_priv, bool init)
+{
+	struct cam_hw_info *cdm_hw = hw_priv;
+	struct cam_cdm *core = NULL;
+	int rc = -EPERM;
+
+	core = (struct cam_cdm *)cdm_hw->core_info;
+
+	if (init) {
+		rc = cam_hw_cdm_init(hw_priv, NULL, 0);
+		if (rc) {
+			CAM_ERR(CAM_CDM, "CDM HW init failed");
+			return rc;
+		}
+
+		if (core->arbitration !=
+			CAM_CDM_ARBITRATION_PRIORITY_BASED) {
+			rc = cam_hw_cdm_alloc_genirq_mem(
+				hw_priv);
+			if (rc) {
+				CAM_ERR(CAM_CDM,
+					"Genirqalloc failed");
+				cam_hw_cdm_deinit(hw_priv,
+					NULL, 0);
+			}
+		}
+	} else {
+		rc = cam_hw_cdm_deinit(hw_priv, NULL, 0);
+		if (rc)
+			CAM_ERR(CAM_CDM, "Deinit failed in streamoff");
+
+		if (core->arbitration !=
+			CAM_CDM_ARBITRATION_PRIORITY_BASED) {
+			if (cam_hw_cdm_release_genirq_mem(hw_priv))
+				CAM_ERR(CAM_CDM, "Genirq release fail");
+		}
+	}
+
+	return rc;
+}
+
 int cam_cdm_stream_ops_internal(void *hw_priv,
 	void *start_args, bool operation)
 {
@@ -337,19 +378,7 @@ int cam_cdm_stream_ops_internal(void *hw_priv,
 				rc = 0;
 			} else {
 				CAM_DBG(CAM_CDM, "CDM HW init first time");
-				rc = cam_hw_cdm_init(hw_priv, NULL, 0);
-				if (rc == 0) {
-					rc = cam_hw_cdm_alloc_genirq_mem(
-						hw_priv);
-					if (rc != 0) {
-						CAM_ERR(CAM_CDM,
-							"Genirqalloc failed");
-						cam_hw_cdm_deinit(hw_priv,
-							NULL, 0);
-					}
-				} else {
-					CAM_ERR(CAM_CDM, "CDM HW init failed");
-				}
+				rc = cam_cdm_stream_handle_init(hw_priv, true);
 			}
 			if (rc == 0) {
 				cdm_hw->open_count++;
@@ -378,17 +407,10 @@ int cam_cdm_stream_ops_internal(void *hw_priv,
 					rc = 0;
 				} else {
 					CAM_DBG(CAM_CDM, "CDM HW Deinit now");
-					rc = cam_hw_cdm_deinit(
-						hw_priv, NULL, 0);
-					if (cam_hw_cdm_release_genirq_mem(
-						hw_priv))
-						CAM_ERR(CAM_CDM,
-							"Genirq release fail");
+					rc = cam_cdm_stream_handle_init(hw_priv,
+						false);
 				}
-				if (rc) {
-					CAM_ERR(CAM_CDM,
-						"Deinit failed in streamoff");
-				} else {
+				if (rc == 0) {
 					client->stream_on = false;
 					rc = cam_cpas_stop(core->cpas_handle);
 					if (rc)

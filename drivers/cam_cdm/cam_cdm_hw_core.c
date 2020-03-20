@@ -738,6 +738,78 @@ end:
 	return rc;
 }
 
+static int cam_hw_cdm_arb_submit_bl(struct cam_hw_info *cdm_hw,
+	struct cam_cdm_hw_intf_cmd_submit_bl *req, int i,
+	uint32_t fifo_idx, dma_addr_t hw_vaddr_ptr)
+{
+	struct cam_cdm_bl_request *cdm_cmd = req->data;
+	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
+	uintptr_t cpu_addr;
+	struct cam_cdm_bl_cb_request_entry *node;
+	int rc = 0;
+	size_t len = 0;
+
+	node = kzalloc(sizeof(
+		struct cam_cdm_bl_cb_request_entry),
+		GFP_KERNEL);
+	if (!node)
+		return -ENOMEM;
+
+	node->request_type = CAM_HW_CDM_BL_CB_CLIENT;
+	node->client_hdl = req->handle;
+	node->cookie = req->data->cookie;
+	node->bl_tag = core->bl_fifo[fifo_idx].bl_tag -
+		1;
+	node->userdata = req->data->userdata;
+	list_add_tail(&node->entry,
+		&core->bl_fifo[fifo_idx]
+		.bl_request_list);
+	cdm_cmd->cmd[i].arbitrate = 1;
+	rc = cam_mem_get_cpu_buf(
+		cdm_cmd->cmd[i].bl_addr.mem_handle,
+		&cpu_addr, &len);
+	if (rc || !cpu_addr) {
+		CAM_ERR(CAM_OPE, "get cmd buffailed %x",
+			cdm_cmd->cmd[i].bl_addr
+			.mem_handle);
+		return rc;
+	}
+	core->ops->cdm_write_genirq(
+		((uint32_t *)cpu_addr +
+		cdm_cmd->cmd[i].offset / 4 +
+		cdm_cmd->cmd[i].len / 4),
+		core->bl_fifo[fifo_idx].bl_tag - 1,
+		1, fifo_idx);
+	rc = cam_hw_cdm_bl_write(cdm_hw,
+		(uint32_t)hw_vaddr_ptr +
+		cdm_cmd->cmd[i].offset,
+		cdm_cmd->cmd[i].len + 7,
+		core->bl_fifo[fifo_idx].bl_tag - 1,
+		1, fifo_idx);
+	if (rc) {
+		CAM_ERR(CAM_CDM,
+			"CDM hw bl write failed tag=%d",
+			core->bl_fifo[fifo_idx].bl_tag -
+			1);
+			list_del_init(&node->entry);
+			kfree(node);
+			return -EIO;
+	}
+	rc = cam_hw_cdm_commit_bl_write(cdm_hw,
+		fifo_idx);
+	if (rc) {
+		CAM_ERR(CAM_CDM,
+			"CDM hw commit failed tag=%d",
+			core->bl_fifo[fifo_idx].bl_tag -
+			1);
+			list_del_init(&node->entry);
+			kfree(node);
+			return -EIO;
+	}
+
+	return 0;
+}
+
 int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 	struct cam_cdm_hw_intf_cmd_submit_bl *req,
 	struct cam_cdm_client *client)
@@ -867,18 +939,28 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			if (core->bl_fifo[fifo_idx].bl_tag >=
 				(bl_fifo->bl_depth - 1))
 				core->bl_fifo[fifo_idx].bl_tag = 0;
-			rc = cam_hw_cdm_bl_write(cdm_hw,
-				((uint32_t)hw_vaddr_ptr +
-					cdm_cmd->cmd[i].offset),
-				(cdm_cmd->cmd[i].len - 1),
-				core->bl_fifo[fifo_idx].bl_tag,
-				cdm_cmd->cmd[i].arbitrate,
-				fifo_idx);
-			if (rc) {
-				CAM_ERR(CAM_CDM, "Hw bl write failed %d:%d",
-					i, req->data->cmd_arrary_count);
-				rc = -EIO;
-				break;
+			if (core->arbitration ==
+				CAM_CDM_ARBITRATION_PRIORITY_BASED &&
+				(req->data->flag == true) &&
+				(i == (req->data->cmd_arrary_count -
+				1))) {
+				CAM_DBG(CAM_CDM,
+					"GenIRQ in same bl, will sumbit later");
+			} else {
+				rc = cam_hw_cdm_bl_write(cdm_hw,
+					((uint32_t)hw_vaddr_ptr +
+						cdm_cmd->cmd[i].offset),
+					(cdm_cmd->cmd[i].len - 1),
+					core->bl_fifo[fifo_idx].bl_tag,
+					cdm_cmd->cmd[i].arbitrate,
+					fifo_idx);
+				if (rc) {
+					CAM_ERR(CAM_CDM,
+						"Hw bl write failed %d:%d",
+						i, req->data->cmd_arrary_count);
+					rc = -EIO;
+					break;
+				}
 			}
 		} else {
 			CAM_ERR(CAM_CDM,
@@ -893,20 +975,31 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 
 		if (!rc) {
 			CAM_DBG(CAM_CDM,
-				"write BL success for cnt=%d with tag=%d total_cnt=%d",
+				"write BL done cnt=%d with tag=%d total_cnt=%d",
 				i, core->bl_fifo[fifo_idx].bl_tag,
 				req->data->cmd_arrary_count);
 
-			CAM_DBG(CAM_CDM, "Now commit the BL");
-			if (cam_hw_cdm_commit_bl_write(cdm_hw, fifo_idx)) {
-				CAM_ERR(CAM_CDM,
-					"Cannot commit the BL %d tag=%d",
+			if (core->arbitration ==
+				CAM_CDM_ARBITRATION_PRIORITY_BASED &&
+				(req->data->flag == true) &&
+				(i == (req->data->cmd_arrary_count -
+				1))) {
+				CAM_DBG(CAM_CDM,
+					"GenIRQ in same blcommit later");
+			} else {
+				CAM_DBG(CAM_CDM, "Now commit the BL");
+				if (cam_hw_cdm_commit_bl_write(cdm_hw,
+					fifo_idx)) {
+					CAM_ERR(CAM_CDM,
+						"commit failed BL %d tag=%d",
+						i, core->bl_fifo[fifo_idx]
+						.bl_tag);
+					rc = -EIO;
+					break;
+				}
+				CAM_DBG(CAM_CDM, "commit success BL %d tag=%d",
 					i, core->bl_fifo[fifo_idx].bl_tag);
-				rc = -EIO;
-				break;
 			}
-			CAM_DBG(CAM_CDM, "BL commit success BL %d tag=%d", i,
-					core->bl_fifo[fifo_idx].bl_tag);
 			core->bl_fifo[fifo_idx].bl_tag++;
 
 			if (cdm_cmd->cmd[i].enable_debug_gen_irq) {
@@ -923,11 +1016,21 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			if ((req->data->flag == true) &&
 				(i == (req->data->cmd_arrary_count -
 				1))) {
-				rc = cam_hw_cdm_submit_gen_irq(
-					cdm_hw, req, fifo_idx,
-					cdm_cmd->gen_irq_arb);
-				if (rc == 0)
-					core->bl_fifo[fifo_idx].bl_tag++;
+				if (core->arbitration !=
+					CAM_CDM_ARBITRATION_PRIORITY_BASED) {
+					rc = cam_hw_cdm_submit_gen_irq(
+						cdm_hw, req, fifo_idx,
+						cdm_cmd->gen_irq_arb);
+					if (rc == 0)
+						core->bl_fifo[fifo_idx]
+						.bl_tag++;
+					break;
+				}
+
+				rc = cam_hw_cdm_arb_submit_bl(cdm_hw, req, i,
+					fifo_idx, hw_vaddr_ptr);
+				if (rc)
+					break;
 			}
 		}
 	}
@@ -972,6 +1075,7 @@ static void cam_hw_cdm_reset_cleanup(
 			node = NULL;
 		}
 		core->bl_fifo[i].bl_tag = 0;
+		core->bl_fifo[i].last_bl_tag_done = -1;
 	}
 }
 
@@ -1589,7 +1693,7 @@ int cam_hw_cdm_init(void *hw_priv,
 		reinit_completion(&cdm_core->bl_fifo[i].bl_complete);
 	}
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
-		cdm_core->bl_fifo[i].last_bl_tag_done = 0;
+		cdm_core->bl_fifo[i].last_bl_tag_done = -1;
 
 	rc = cam_hw_cdm_reset_hw(cdm_hw, reset_hw_hdl);
 
