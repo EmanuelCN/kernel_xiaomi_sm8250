@@ -671,7 +671,8 @@ static int cam_tfe_irq_bottom_half(void *handler_priv,
 			(top_priv->in_rsrc[i].res_id <=
 			CAM_ISP_HW_TFE_IN_RDI2) &&
 			(top_priv->in_rsrc[i].res_state ==
-			CAM_ISP_RESOURCE_STATE_STREAMING)) {
+			CAM_ISP_RESOURCE_STATE_STREAMING) &&
+			top_priv->in_rsrc[i].rdi_only_ctx) {
 			rdi_priv = (struct cam_tfe_rdi_data *)
 				top_priv->in_rsrc[i].res_priv;
 			event_cb = rdi_priv->event_cb;
