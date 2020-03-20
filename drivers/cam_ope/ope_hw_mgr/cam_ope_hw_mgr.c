@@ -96,8 +96,10 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 	task_data = (struct ope_cmd_work_data *)data;
 	cdm_cmd = task_data->data;
 
-	CAM_DBG(CAM_OPE, "cam_cdm_submit_bls: handle = %u",
-		ctx_data->ope_cdm.cdm_handle);
+	CAM_DBG(CAM_OPE,
+		"cam_cdm_submit_bls: handle 0x%x, ctx_id %d req %d cookie %d",
+		ctx_data->ope_cdm.cdm_handle, ctx_data->ctx_id,
+		task_data->req_id, cdm_cmd->cookie);
 
 	mutex_lock(&hw_mgr->hw_mgr_mutex);
 	if (task_data->req_id <= ctx_data->last_flush_req) {
@@ -605,17 +607,34 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 		return 0;
 	}
 
-	get_monotonic_boottime64(&ts);
-	ts_ns = (uint64_t)((ts.tv_sec * 1000000000) +
-		ts.tv_nsec);
-	if (ts_ns - ctx_data->last_req_time <
-		((OPE_REQUEST_TIMEOUT - OPE_REQUEST_TIMEOUT / 10) * 1000000)) {
-		mutex_unlock(&ctx_data->ctx_mutex);
-		return 0;
-	}
-
 	if (cam_ope_is_pending_request(ctx_data)) {
-		CAM_DBG(CAM_OPE, "pending requests means, issue is with HW");
+
+		get_monotonic_boottime64(&ts);
+		ts_ns = (uint64_t)((ts.tv_sec * 1000000000) +
+			ts.tv_nsec);
+
+		if (ts_ns - ctx_data->last_req_time <
+			((OPE_REQUEST_TIMEOUT -
+				OPE_REQUEST_TIMEOUT / 10) * 1000000)) {
+			cam_ope_req_timer_reset(ctx_data);
+			mutex_unlock(&ctx_data->ctx_mutex);
+			return 0;
+		}
+
+		if (ts_ns - ope_hw_mgr->last_callback_time <
+			((OPE_REQUEST_TIMEOUT -
+				OPE_REQUEST_TIMEOUT / 10) * 1000000)) {
+			CAM_WARN(CAM_OPE,
+				"ope ctx: %d stuck due to other contexts",
+				ctx_data->ctx_id);
+			cam_ope_req_timer_reset(ctx_data);
+			mutex_unlock(&ctx_data->ctx_mutex);
+			return 0;
+		}
+
+		CAM_ERR(CAM_OPE,
+			"pending requests means, issue is with HW for ctx %d",
+			ctx_data->ctx_id);
 		hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 				hw_mgr->ope_dev_intf[i]->hw_priv,
 				OPE_HW_DUMP_DEBUG,
@@ -1467,6 +1486,7 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 	struct cam_ope_ctx *ctx;
 	struct cam_ope_request *ope_req;
 	struct cam_hw_done_event_data buf_data;
+	struct timespec64 ts;
 	bool flag = false;
 
 	if (!userdata) {
@@ -1495,6 +1515,9 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 		handle, userdata, status, cookie);
 	CAM_DBG(CAM_REQ, "req_id= %llu ctx_id= %d",
 		ope_req->request_id, ctx->ctx_id);
+	get_monotonic_boottime64(&ts);
+	ope_hw_mgr->last_callback_time = (uint64_t)((ts.tv_sec * 1000000000) +
+		ts.tv_nsec);
 
 	if (ctx->ctx_state != OPE_CTX_STATE_ACQUIRED) {
 		CAM_ERR(CAM_OPE, "ctx %u is in %d state",

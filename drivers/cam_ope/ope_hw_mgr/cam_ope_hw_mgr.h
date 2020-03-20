@@ -516,6 +516,7 @@ struct cam_ope_hw_mgr {
 	struct cam_ope_ctx  ctx[OPE_CTX_MAX];
 	struct cam_hw_intf  **devices[OPE_DEV_MAX];
 	struct ope_query_cap_cmd ope_caps;
+	uint64_t last_callback_time;
 
 	struct cam_req_mgr_core_workq *cmd_work;
 	struct cam_req_mgr_core_workq *msg_work;
