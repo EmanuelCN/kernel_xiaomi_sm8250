@@ -581,6 +581,11 @@ static uint32_t *ope_create_frame_cmd_batch(struct cam_ope_hw_mgr *hw_mgr,
 				memcpy(temp, (const void *)print_ptr,
 					sizeof(struct cdm_dmi_cmd));
 				dmi_cmd = (struct cdm_dmi_cmd *)temp;
+				if (!dmi_cmd->addr) {
+					CAM_ERR(CAM_OPE, "Null dmi cmd addr");
+					return NULL;
+				}
+
 				kmd_buf = cdm_ops->cdm_write_dmi(
 					kmd_buf,
 					0, dmi_cmd->DMIAddr,
@@ -731,6 +736,12 @@ static uint32_t *ope_create_frame_cmd(struct cam_ope_hw_mgr *hw_mgr,
 					memcpy(temp, (const void *)print_ptr,
 						sizeof(struct cdm_dmi_cmd));
 					dmi_cmd = (struct cdm_dmi_cmd *)temp;
+					if (!dmi_cmd->addr) {
+						CAM_ERR(CAM_OPE,
+							"Null dmi cmd addr");
+						return NULL;
+					}
+
 					kmd_buf = cdm_ops->cdm_write_dmi(
 						kmd_buf,
 						0, dmi_cmd->DMIAddr,
@@ -837,6 +848,11 @@ static uint32_t *ope_create_stripe_cmd(struct cam_ope_hw_mgr *hw_mgr,
 				memcpy(temp, (const void *)print_ptr,
 					sizeof(struct cdm_dmi_cmd));
 				dmi_cmd = (struct cdm_dmi_cmd *)temp;
+				if (!dmi_cmd->addr) {
+					CAM_ERR(CAM_OPE, "Null dmi cmd addr");
+					return NULL;
+				}
+
 				kmd_buf = cdm_ops->cdm_write_dmi(kmd_buf,
 					0, dmi_cmd->DMIAddr, dmi_cmd->DMISel,
 					dmi_cmd->addr, dmi_cmd->length);
@@ -1511,10 +1527,12 @@ static int cam_ope_dev_process_prepare(struct ope_hw *ope_hw, void *cmd_args)
 	if (rc)
 		goto end;
 
-	cam_ope_dev_create_kmd_buf(ope_dev_prepare_req->hw_mgr,
-		ope_dev_prepare_req->prepare_args,
-		ope_dev_prepare_req->ctx_data, ope_dev_prepare_req->req_idx,
-		ope_dev_prepare_req->kmd_buf_offset, ope_dev_prepare_req);
+	rc = cam_ope_dev_create_kmd_buf(ope_dev_prepare_req->hw_mgr,
+			ope_dev_prepare_req->prepare_args,
+			ope_dev_prepare_req->ctx_data,
+			ope_dev_prepare_req->req_idx,
+			ope_dev_prepare_req->kmd_buf_offset,
+			ope_dev_prepare_req);
 
 end:
 	return rc;
