@@ -1831,6 +1831,12 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 				CAM_DBG(CAM_OPE, "m_hdl: %d len: %d",
 					in_io_buf->mem_handle[k],
 					in_io_buf->length[k]);
+
+				if (!in_io_buf->num_stripes[k]) {
+					CAM_ERR(CAM_OPE, "Null num_stripes");
+					return -EINVAL;
+				}
+
 				for (l = 0; l < in_io_buf->num_stripes[k];
 					l++) {
 					in_stripe_info =
