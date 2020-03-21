@@ -552,7 +552,9 @@ static void print_lock_name(struct lock_class *class)
 
 	printk(KERN_CONT " (");
 	__print_lock_name(class);
-	printk(KERN_CONT "){%s}", usage);
+	printk(KERN_CONT "){%s}-{%hd:%hd}", usage,
+			class->wait_type_outer ?: class->wait_type_inner,
+			class->wait_type_inner);
 }
 
 static void print_lockdep_cache(struct lockdep_map *lock)
@@ -825,6 +827,8 @@ register_lock_class(struct lockdep_map *lock, unsigned int subclass, int force)
 	INIT_LIST_HEAD(&class->locks_before);
 	INIT_LIST_HEAD(&class->locks_after);
 	class->name_version = count_matching_names(class);
+	class->wait_type_inner = lock->wait_type_inner;
+	class->wait_type_outer = lock->wait_type_outer;
 	/*
 	 * We use RCU's safe list-add method to make
 	 * parallel walking of the hash-list safe:
@@ -3190,11 +3194,119 @@ static int mark_lock(struct task_struct *curr, struct held_lock *this,
 	return ret;
 }
 
+static int
+print_lock_invalid_wait_context(struct task_struct *curr,
+				struct held_lock *hlock)
+{
+	if (!debug_locks_off())
+		return 0;
+	if (debug_locks_silent)
+		return 0;
+
+	pr_warn("\n");
+	pr_warn("=============================\n");
+	pr_warn("[ BUG: Invalid wait context ]\n");
+	print_kernel_ident();
+	pr_warn("-----------------------------\n");
+
+	pr_warn("%s/%d is trying to lock:\n", curr->comm, task_pid_nr(curr));
+	print_lock(hlock);
+
+	pr_warn("other info that might help us debug this:\n");
+	lockdep_print_held_locks(curr);
+
+	pr_warn("stack backtrace:\n");
+	dump_stack();
+
+	return 0;
+}
+
+/*
+ * Verify the wait_type context.
+ *
+ * This check validates we takes locks in the right wait-type order; that is it
+ * ensures that we do not take mutexes inside spinlocks and do not attempt to
+ * acquire spinlocks inside raw_spinlocks and the sort.
+ *
+ * The entire thing is slightly more complex because of RCU, RCU is a lock that
+ * can be taken from (pretty much) any context but also has constraints.
+ * However when taken in a stricter environment the RCU lock does not loosen
+ * the constraints.
+ *
+ * Therefore we must look for the strictest environment in the lock stack and
+ * compare that to the lock we're trying to acquire.
+ */
+static int check_wait_context(struct task_struct *curr, struct held_lock *next)
+{
+	short next_inner = hlock_class(next)->wait_type_inner;
+	short next_outer = hlock_class(next)->wait_type_outer;
+	short curr_inner;
+	int depth;
+
+	if (!curr->lockdep_depth || !next_inner || next->trylock)
+		return 0;
+
+	if (!next_outer)
+		next_outer = next_inner;
+
+	/*
+	 * Find start of current irq_context..
+	 */
+	for (depth = curr->lockdep_depth - 1; depth >= 0; depth--) {
+		struct held_lock *prev = curr->held_locks + depth;
+		if (prev->irq_context != next->irq_context)
+			break;
+	}
+	depth++;
+
+	/*
+	 * Set appropriate wait type for the context; for IRQs we have to take
+	 * into account force_irqthread as that is implied by PREEMPT_RT.
+	 */
+	if (curr->hardirq_context) {
+		/*
+		 * Check if force_irqthreads will run us threaded.
+		 */
+		if (curr->hardirq_threaded)
+			curr_inner = LD_WAIT_CONFIG;
+		else
+			curr_inner = LD_WAIT_SPIN;
+	} else if (curr->softirq_context) {
+		/*
+		 * Softirqs are always threaded.
+		 */
+		curr_inner = LD_WAIT_CONFIG;
+	} else {
+		curr_inner = LD_WAIT_MAX;
+	}
+
+	for (; depth < curr->lockdep_depth; depth++) {
+		struct held_lock *prev = curr->held_locks + depth;
+		short prev_inner = hlock_class(prev)->wait_type_inner;
+
+		if (prev_inner) {
+			/*
+			 * We can have a bigger inner than a previous one
+			 * when outer is smaller than inner, as with RCU.
+			 *
+			 * Also due to trylocks.
+			 */
+			curr_inner = min(curr_inner, prev_inner);
+		}
+	}
+
+	if (next_outer > curr_inner)
+		return print_lock_invalid_wait_context(curr, next);
+
+	return 0;
+}
+
 /*
  * Initialize a lock instance's lock-class mapping info:
  */
-static void __lockdep_init_map(struct lockdep_map *lock, const char *name,
-		      struct lock_class_key *key, int subclass)
+static void __lockdep_init_map_waits(struct lockdep_map *lock, const char *name,
+					struct lock_class_key *key, int subclass,
+					short inner, short outer)
 {
 	int i;
 
@@ -3214,6 +3326,9 @@ static void __lockdep_init_map(struct lockdep_map *lock, const char *name,
 	}
 
 	lock->name = name;
+
+	lock->wait_type_outer = outer;
+	lock->wait_type_inner = inner;
 
 	/*
 	 * No key, no joy, we need to hash something.
@@ -3255,12 +3370,12 @@ static void __lockdep_init_map(struct lockdep_map *lock, const char *name,
 	}
 }
 
-void lockdep_init_map(struct lockdep_map *lock, const char *name,
+void lockdep_init_map_waits(struct lockdep_map *lock, const char *name,
 		      struct lock_class_key *key, int subclass)
 {
-	__lockdep_init_map(lock, name, key, subclass);
+	__lockdep_init_map_waits(lock, name, key, subclass);
 }
-EXPORT_SYMBOL_GPL(lockdep_init_map);
+EXPORT_SYMBOL_GPL(lockdep_init_map_waits);
 
 struct lock_class_key __lockdep_no_validate__;
 EXPORT_SYMBOL_GPL(__lockdep_no_validate__);
@@ -3649,7 +3764,9 @@ __lock_set_class(struct lockdep_map *lock, const char *name,
 	if (!hlock)
 		return print_unlock_imbalance_bug(curr, lock, ip);
 
-	lockdep_init_map(lock, name, key, 0);
+	lockdep_init_map_waits(lock, name, key, 0,
+			       lock->wait_type_inner,
+			       lock->wait_type_outer);
 	class = register_lock_class(lock, subclass, 0);
 	if (!class)
 		return 0;
