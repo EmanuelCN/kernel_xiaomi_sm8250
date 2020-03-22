@@ -373,6 +373,7 @@ enum cam_cdm_hw_process_intf_cmd {
 	CAM_CDM_HW_INTF_CMD_RESET_HW,
 	CAM_CDM_HW_INTF_CMD_FLUSH_HW,
 	CAM_CDM_HW_INTF_CMD_HANDLE_ERROR,
+	CAM_CDM_HW_INTF_CMD_HANG_DETECT,
 	CAM_CDM_HW_INTF_CMD_INVALID,
 };
 
@@ -469,6 +470,7 @@ struct cam_cdm_bl_fifo {
 	uint8_t bl_tag;
 	uint32_t bl_depth;
 	uint8_t last_bl_tag_done;
+	uint32_t work_record;
 };
 
 /**

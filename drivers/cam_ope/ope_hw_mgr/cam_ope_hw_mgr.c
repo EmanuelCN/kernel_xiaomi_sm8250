@@ -576,6 +576,28 @@ static void cam_ope_dump_req_data(struct cam_ope_request *ope_req)
 	cam_ope_dump_bls(ope_req, dump);
 }
 
+static bool cam_ope_check_req_delay(struct cam_ope_ctx *ctx_data,
+	uint64_t req_time)
+{
+	struct timespec64 ts;
+	uint64_t ts_ns;
+
+	get_monotonic_boottime64(&ts);
+	ts_ns = (uint64_t)((ts.tv_sec * 1000000000) +
+		ts.tv_nsec);
+
+	if (ts_ns - req_time <
+		((OPE_REQUEST_TIMEOUT -
+			OPE_REQUEST_TIMEOUT / 10) * 1000000)) {
+		CAM_INFO(CAM_OPE, "ctx: %d, ts_ns : %llu",
+		ctx_data->ctx_id, ts_ns);
+		cam_ope_req_timer_reset(ctx_data);
+		return true;
+	}
+
+	return false;
+}
+
 static int32_t cam_ope_process_request_timer(void *priv, void *data)
 {
 	struct ope_clk_work_data *clk_data = (struct ope_clk_work_data *)data;
@@ -588,8 +610,6 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 	int i = 0;
 	int device_share_ratio = 1;
 	int path_index;
-	struct timespec64 ts;
-	uint64_t ts_ns;
 	struct crm_workq_task *task;
 	struct ope_msg_work_data *task_data;
 
@@ -609,25 +629,33 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 
 	if (cam_ope_is_pending_request(ctx_data)) {
 
-		get_monotonic_boottime64(&ts);
-		ts_ns = (uint64_t)((ts.tv_sec * 1000000000) +
-			ts.tv_nsec);
+		if (cam_ope_check_req_delay(ctx_data,
+			ctx_data->last_req_time)) {
+			mutex_unlock(&ctx_data->ctx_mutex);
+			return 0;
+		}
 
-		if (ts_ns - ctx_data->last_req_time <
-			((OPE_REQUEST_TIMEOUT -
-				OPE_REQUEST_TIMEOUT / 10) * 1000000)) {
+		if (cam_ope_check_req_delay(ctx_data,
+			ope_hw_mgr->last_callback_time)) {
+			CAM_WARN(CAM_OPE,
+				"ope ctx: %d stuck due to other contexts",
+				ctx_data->ctx_id);
+			mutex_unlock(&ctx_data->ctx_mutex);
+			return 0;
+		}
+
+		if (!cam_cdm_detect_hang_error(ctx_data->ope_cdm.cdm_handle)) {
 			cam_ope_req_timer_reset(ctx_data);
 			mutex_unlock(&ctx_data->ctx_mutex);
 			return 0;
 		}
 
-		if (ts_ns - ope_hw_mgr->last_callback_time <
-			((OPE_REQUEST_TIMEOUT -
-				OPE_REQUEST_TIMEOUT / 10) * 1000000)) {
+		/* Try checking ctx struck again */
+		if (cam_ope_check_req_delay(ctx_data,
+			ope_hw_mgr->last_callback_time)) {
 			CAM_WARN(CAM_OPE,
 				"ope ctx: %d stuck due to other contexts",
 				ctx_data->ctx_id);
-			cam_ope_req_timer_reset(ctx_data);
 			mutex_unlock(&ctx_data->ctx_mutex);
 			return 0;
 		}
@@ -635,6 +663,9 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 		CAM_ERR(CAM_OPE,
 			"pending requests means, issue is with HW for ctx %d",
 			ctx_data->ctx_id);
+		CAM_ERR(CAM_OPE, "ctx: %d, lrt: %llu, lct: %llu",
+			ctx_data->ctx_id, ctx_data->last_req_time,
+			ope_hw_mgr->last_callback_time);
 		hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 				hw_mgr->ope_dev_intf[i]->hw_priv,
 				OPE_HW_DUMP_DEBUG,
@@ -1510,14 +1541,16 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 
 	ope_req = ctx->req_list[cookie];
 
-	CAM_DBG(CAM_REQ,
-		"hdl=%x, udata=%pK, status=%d, cookie=%d",
-		handle, userdata, status, cookie);
-	CAM_DBG(CAM_REQ, "req_id= %llu ctx_id= %d",
-		ope_req->request_id, ctx->ctx_id);
 	get_monotonic_boottime64(&ts);
 	ope_hw_mgr->last_callback_time = (uint64_t)((ts.tv_sec * 1000000000) +
 		ts.tv_nsec);
+
+	CAM_DBG(CAM_REQ,
+		"hdl=%x, udata=%pK, status=%d, cookie=%d",
+		handle, userdata, status, cookie);
+	CAM_DBG(CAM_REQ, "req_id= %llu ctx_id= %d lcb=%llu",
+		ope_req->request_id, ctx->ctx_id,
+		ope_hw_mgr->last_callback_time);
 
 	if (ctx->ctx_state != OPE_CTX_STATE_ACQUIRED) {
 		CAM_ERR(CAM_OPE, "ctx %u is in %d state",
@@ -3067,6 +3100,9 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 	get_monotonic_boottime64(&ts);
 	ctx_data->last_req_time = (uint64_t)((ts.tv_sec * 1000000000) +
 		ts.tv_nsec);
+	CAM_DBG(CAM_REQ, "req_id= %llu ctx_id= %d lrt=%llu",
+		packet->header.request_id, ctx_data->ctx_id,
+		ctx_data->last_req_time);
 	cam_ope_req_timer_modify(ctx_data, OPE_REQUEST_TIMEOUT);
 	set_bit(request_idx, ctx_data->bitmap);
 	ctx_data->req_list[request_idx] =
