@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -23,6 +23,7 @@
 #include "cpastop_v175_130.h"
 #include "cpastop_v480_100.h"
 #include "cpastop_v540_100.h"
+#include "cpastop_v520_100.h"
 
 struct cam_camnoc_info *camnoc_info;
 
@@ -127,6 +128,10 @@ static int cam_cpastop_get_hw_info(struct cam_hw_info *cpas_hw,
 		(hw_caps->camera_version.minor == 4) &&
 		(hw_caps->camera_version.incr == 0)) {
 		soc_info->hw_version = CAM_CPAS_TITAN_540_V100;
+	} else if ((hw_caps->camera_version.major == 5) &&
+		(hw_caps->camera_version.minor == 2) &&
+		(hw_caps->camera_version.incr == 0)) {
+		soc_info->hw_version = CAM_CPAS_TITAN_520_V100;
 	}
 
 	CAM_DBG(CAM_CPAS, "CPAS HW VERSION %x", soc_info->hw_version);
@@ -633,6 +638,9 @@ static int cam_cpastop_init_hw_version(struct cam_hw_info *cpas_hw,
 		break;
 	case CAM_CPAS_TITAN_540_V100:
 		camnoc_info = &cam540_cpas100_camnoc_info;
+		break;
+	case CAM_CPAS_TITAN_520_V100:
+		camnoc_info = &cam520_cpas100_camnoc_info;
 		break;
 	default:
 		CAM_ERR(CAM_CPAS, "Camera Version not supported %d.%d.%d",
