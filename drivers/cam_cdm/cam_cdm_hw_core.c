@@ -1245,7 +1245,12 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 	int i;
 
 	CAM_DBG(CAM_CDM, "Got irq");
-
+	spin_lock(&cdm_hw->hw_lock);
+	if (cdm_hw->hw_state == CAM_HW_STATE_POWER_DOWN) {
+		CAM_DBG(CAM_CDM, "CDM is in power down state");
+		spin_unlock(&cdm_hw->hw_lock);
+		return IRQ_HANDLED;
+	}
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo_irq; i++) {
 		if (cam_cdm_read_hw_reg(cdm_hw,
 				cdm_core->offsets->irq_reg[i]->irq_status,
@@ -1266,6 +1271,7 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 			cdm_core->offsets->cmn_reg->usr_data,
 			&user_data))
 		CAM_ERR(CAM_CDM, "Failed to read CDM HW IRQ data");
+	spin_unlock(&cdm_hw->hw_lock);
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo_irq; i++) {
 		if (!irq_status[i])
@@ -1669,6 +1675,7 @@ int cam_hw_cdm_init(void *hw_priv,
 	struct cam_hw_soc_info *soc_info = NULL;
 	struct cam_cdm *cdm_core = NULL;
 	int rc, i, reset_hw_hdl = 0x0;
+	unsigned long flags;
 
 	if (!hw_priv)
 		return -EINVAL;
@@ -1682,6 +1689,9 @@ int cam_hw_cdm_init(void *hw_priv,
 		CAM_ERR(CAM_CDM, "Enable platform failed");
 		goto end;
 	}
+	spin_lock_irqsave(&cdm_hw->hw_lock, flags);
+	cdm_hw->hw_state = CAM_HW_STATE_POWER_UP;
+	spin_unlock_irqrestore(&cdm_hw->hw_lock, flags);
 
 	CAM_DBG(CAM_CDM, "Enable soc done");
 
@@ -1702,7 +1712,6 @@ int cam_hw_cdm_init(void *hw_priv,
 		goto disable_return;
 	} else {
 		CAM_DBG(CAM_CDM, "CDM Init success");
-		cdm_hw->hw_state = CAM_HW_STATE_POWER_UP;
 		for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
 			cam_cdm_write_hw_reg(cdm_hw,
 					cdm_core->offsets->irq_reg[i]->irq_mask,
@@ -1713,6 +1722,9 @@ int cam_hw_cdm_init(void *hw_priv,
 
 disable_return:
 	rc = -EIO;
+	spin_lock_irqsave(&cdm_hw->hw_lock, flags);
+	cdm_hw->hw_state = CAM_HW_STATE_POWER_DOWN;
+	spin_unlock_irqrestore(&cdm_hw->hw_lock, flags);
 	cam_soc_util_disable_platform_resource(soc_info, true, true);
 end:
 	return rc;
@@ -1728,12 +1740,16 @@ int cam_hw_cdm_deinit(void *hw_priv,
 	int rc = 0, i;
 	uint32_t reset_val = 1;
 	long time_left;
+	unsigned long                             flags;
 
 	if (!hw_priv)
 		return -EINVAL;
 
 	soc_info = &cdm_hw->soc_info;
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
+
+	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
+		mutex_lock(&cdm_core->bl_fifo[i].fifo_lock);
 
 	/*clear bl request */
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
@@ -1778,13 +1794,17 @@ int cam_hw_cdm_deinit(void *hw_priv,
 	}
 
 	clear_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
+	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
+		mutex_unlock(&cdm_core->bl_fifo[i].fifo_lock);
 
+	spin_lock_irqsave(&cdm_hw->hw_lock, flags);
+	cdm_hw->hw_state = CAM_HW_STATE_POWER_DOWN;
+	spin_unlock_irqrestore(&cdm_hw->hw_lock, flags);
 	rc = cam_soc_util_disable_platform_resource(soc_info, true, true);
 	if (rc) {
 		CAM_ERR(CAM_CDM, "disable platform failed");
 	} else {
 		CAM_DBG(CAM_CDM, "CDM Deinit success");
-		cdm_hw->hw_state = CAM_HW_STATE_POWER_DOWN;
 	}
 
 	return rc;
