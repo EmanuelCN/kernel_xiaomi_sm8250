@@ -3611,7 +3611,8 @@ static int cam_isp_tfe_packet_generic_blob_handler(void *user_data,
 			return -EINVAL;
 		}
 
-		if (bw_config->num_paths > CAM_ISP_MAX_PER_PATH_VOTES) {
+		if ((bw_config->num_paths > CAM_ISP_MAX_PER_PATH_VOTES) ||
+			!bw_config->num_paths) {
 			CAM_ERR(CAM_ISP, "Invalid num paths %d",
 				bw_config->num_paths);
 			return -EINVAL;
