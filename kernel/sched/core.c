@@ -195,6 +195,13 @@ void update_rq_clock(struct rq *rq)
 	update_rq_clock_task(rq, delta);
 }
 
+static inline void
+rq_csd_init(struct rq *rq, call_single_data_t *csd, smp_call_func_t func)
+{
+	csd->flags = 0;
+	csd->func = func;
+	csd->info = rq;
+}
 
 #ifdef CONFIG_SCHED_HRTICK
 /*
@@ -293,6 +300,7 @@ void hrtick_start(struct rq *rq, u64 delay)
 	hrtimer_start(&rq->hrtick_timer, ns_to_ktime(delay),
 		      HRTIMER_MODE_REL_PINNED);
 }
+
 #endif /* CONFIG_SMP */
 
 static void hrtick_rq_init(struct rq *rq)
@@ -300,11 +308,8 @@ static void hrtick_rq_init(struct rq *rq)
 #ifdef CONFIG_SMP
 	rq->hrtick_csd_pending = 0;
 
-	rq->hrtick_csd.flags = 0;
-	rq->hrtick_csd.func = __hrtick_start;
-	rq->hrtick_csd.info = rq;
+	rq_csd_init(rq, &rq->hrtick_csd, __hrtick_start);
 #endif
-
 	hrtimer_init(&rq->hrtick_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	rq->hrtick_timer.function = hrtick;
 }
@@ -589,6 +594,16 @@ static inline bool got_nohz_idle_kick(void)
 	 */
 	atomic_andnot(NOHZ_KICK_MASK, nohz_flags(cpu));
 	return false;
+}
+
+static void nohz_csd_func(void *info)
+{
+	struct rq *rq = info;
+
+	if (got_nohz_idle_kick()) {
+		rq->idle_balance = 1;
+		raise_softirq_irqoff(SCHED_SOFTIRQ);
+	}
 }
 
 #else /* CONFIG_NO_HZ_COMMON */
@@ -2638,6 +2653,11 @@ void sched_ttwu_pending(void)
 }
 #endif
 
+static void wake_csd_func(void *info)
+{
+	sched_ttwu_pending();
+}
+
 void scheduler_ipi(void)
 {
 	/*
@@ -2646,39 +2666,6 @@ void scheduler_ipi(void)
 	 * this IPI.
 	 */
 	preempt_fold_need_resched();
-
-#if SCHED_FEAT_TTWU_QUEUE
-	if (llist_empty(&this_rq()->wake_list) && !got_nohz_idle_kick())
-		return;
-#else
-	if (!got_nohz_idle_kick())
-		return;
-#endif
-
-	/*
-	 * Not all reschedule IPI handlers call irq_enter/irq_exit, since
-	 * traditionally all their work was done from the interrupt return
-	 * path. Now that we actually do some work, we need to make sure
-	 * we do call them.
-	 *
-	 * Some archs already do call them, luckily irq_enter/exit nest
-	 * properly.
-	 *
-	 * Arguably we should visit all archs and update all handlers,
-	 * however a fair share of IPIs are still resched only so this would
-	 * somewhat pessimize the simple resched case.
-	 */
-	irq_enter();
-	sched_ttwu_pending();
-
-	/*
-	 * Check if someone kicked us for doing the nohz idle load balance.
-	 */
-	if (unlikely(got_nohz_idle_kick())) {
-		this_rq()->idle_balance = 1;
-		raise_softirq_irqoff(SCHED_SOFTIRQ);
-	}
-	irq_exit();
 }
 
 #if SCHED_FEAT_TTWU_QUEUE
@@ -2694,9 +2681,9 @@ static void __ttwu_queue_wakelist(struct task_struct *p, int cpu, int wake_flags
 
 	p->sched_remote_wakeup = !!(wake_flags & WF_MIGRATED);
 
-	if (llist_add(&p->wake_entry, &cpu_rq(cpu)->wake_list)) {
+	if (llist_add(&p->wake_entry, &rq->wake_list)) {
 		if (!set_nr_if_polling(rq->idle))
-			smp_send_reschedule(cpu);
+			smp_call_function_single_async(cpu, &rq->wake_csd);
 		else
 			trace_sched_wake_idle_without_ipi(cpu);
 	}
@@ -7428,6 +7415,8 @@ void __init sched_init(void)
 		rq->push_task = NULL;
 #endif
 
+		rq_csd_init(rq, &rq->wake_csd, wake_csd_func);
+
 		INIT_LIST_HEAD(&rq->cfs_tasks);
 
 		rq_attach_root(rq, &def_root_domain);
@@ -7435,6 +7424,8 @@ void __init sched_init(void)
 		rq->last_load_update_tick = jiffies;
 		rq->last_blocked_load_update_tick = jiffies;
 		atomic_set(&rq->nohz_flags, 0);
+
+		rq_csd_init(rq, &rq->nohz_csd, nohz_csd_func);
 #endif
 #endif /* CONFIG_SMP */
 		hrtick_rq_init(rq);
