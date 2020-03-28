@@ -3302,6 +3302,7 @@ static int cam_ope_mgr_config_hw(void *hw_priv, void *hw_config_args)
 	cdm_cmd->cookie = ope_req->req_idx;
 
 	cam_ope_mgr_ope_clk_update(hw_mgr, ctx_data, ope_req->req_idx);
+	ctx_data->req_list[ope_req->req_idx]->submit_timestamp = ktime_get();
 
 	if (ope_req->request_id <= ctx_data->last_flush_req)
 		CAM_WARN(CAM_OPE,
@@ -3427,6 +3428,76 @@ static int cam_ope_mgr_flush_all(struct cam_ope_ctx *ctx_data,
 	mutex_unlock(&ctx_data->ctx_mutex);
 
 	return rc;
+}
+
+static int cam_ope_mgr_hw_dump(void *hw_priv, void *hw_dump_args)
+{
+	struct cam_ope_ctx *ctx_data;
+	struct cam_ope_hw_mgr *hw_mgr = hw_priv;
+	struct cam_hw_dump_args  *dump_args;
+	int idx;
+	ktime_t cur_time;
+	struct timespec64 cur_ts, req_ts;
+	uint64_t diff;
+
+	if ((!hw_priv) || (!hw_dump_args)) {
+		CAM_ERR(CAM_OPE, "Invalid params %pK %pK",
+			hw_priv, hw_dump_args);
+		return -EINVAL;
+	}
+
+	dump_args = (struct cam_hw_dump_args *)hw_dump_args;
+	ctx_data = dump_args->ctxt_to_hw_map;
+
+	if (!ctx_data) {
+		CAM_ERR(CAM_OPE, "Invalid context");
+		return -EINVAL;
+	}
+
+	mutex_lock(&hw_mgr->hw_mgr_mutex);
+
+	CAM_INFO(CAM_OPE, "Req %lld", dump_args->request_id);
+	for (idx = 0; idx < CAM_CTX_REQ_MAX; idx++) {
+		if (!ctx_data->req_list[idx])
+			continue;
+
+		if (ctx_data->req_list[idx]->request_id ==
+			dump_args->request_id)
+			break;
+	}
+
+	/* no matching request found */
+	if (idx == CAM_CTX_REQ_MAX) {
+		mutex_unlock(&hw_mgr->hw_mgr_mutex);
+		return 0;
+	}
+
+	cur_time = ktime_get();
+	diff = ktime_us_delta(ctx_data->req_list[idx]->submit_timestamp,
+			cur_time);
+	cur_ts = ktime_to_timespec64(cur_time);
+	req_ts = ktime_to_timespec64(ctx_data->req_list[idx]->submit_timestamp);
+
+	if (diff < (OPE_REQUEST_TIMEOUT * 1000)) {
+		CAM_INFO(CAM_OPE, "No Error req %llu %ld:%06ld %ld:%06ld",
+			dump_args->request_id,
+			req_ts.tv_sec,
+			req_ts.tv_nsec/NSEC_PER_USEC,
+			cur_ts.tv_sec,
+			cur_ts.tv_nsec/NSEC_PER_USEC);
+		mutex_unlock(&hw_mgr->hw_mgr_mutex);
+		return 0;
+	}
+
+	CAM_ERR(CAM_OPE, "Error req %llu %ld:%06ld %ld:%06ld",
+		dump_args->request_id,
+		req_ts.tv_sec,
+		req_ts.tv_nsec/NSEC_PER_USEC,
+		cur_ts.tv_sec,
+		cur_ts.tv_nsec/NSEC_PER_USEC);
+
+	mutex_unlock(&hw_mgr->hw_mgr_mutex);
+	return 0;
 }
 
 static int cam_ope_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
@@ -3703,6 +3774,7 @@ int cam_ope_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 	hw_mgr_intf->hw_open = cam_ope_mgr_hw_open_u;
 	hw_mgr_intf->hw_close = cam_ope_mgr_hw_close_u;
 	hw_mgr_intf->hw_flush = cam_ope_mgr_hw_flush;
+	hw_mgr_intf->hw_dump = cam_ope_mgr_hw_dump;
 
 	ope_hw_mgr->secure_mode = false;
 	mutex_init(&ope_hw_mgr->hw_mgr_mutex);
