@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CDM_CORE_COMMON_H_
@@ -50,6 +50,7 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 int cam_hw_cdm_reset_hw(struct cam_hw_info *cdm_hw, uint32_t handle);
 int cam_hw_cdm_flush_hw(struct cam_hw_info *cdm_hw, uint32_t handle);
 int cam_hw_cdm_handle_error(struct cam_hw_info *cdm_hw, uint32_t handle);
+int cam_hw_cdm_hang_detect(struct cam_hw_info *cdm_hw, uint32_t handle);
 struct cam_cdm_bl_cb_request_entry *cam_cdm_find_request_by_bl_tag(
 	uint32_t tag, struct list_head *bl_list);
 void cam_cdm_notify_clients(struct cam_hw_info *cdm_hw,
