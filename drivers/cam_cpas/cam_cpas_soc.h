@@ -12,7 +12,7 @@
 
 #define CAM_REGULATOR_LEVEL_MAX 16
 #define CAM_CPAS_MAX_TREE_NODES 50
-
+#define CAM_CPAS_MAX_FUSE_FEATURE 10
 /**
  * struct cam_cpas_vdd_ahb_mapping : Voltage to ahb level mapping
  *
@@ -73,6 +73,21 @@ struct cam_cpas_tree_node {
 };
 
 /**
+ * struct cam_cpas_feature_info : Fuse feature information
+ *
+ * @feature      : feature
+ * @enable       : feature is enabled or disabled
+ * @hw_id        : hw id for this feature, it will be zero
+ *                 if not applicable
+ *
+ */
+struct cam_cpas_feature_info {
+	uint32_t feature;
+	uint32_t enable;
+	uint32_t hw_id;
+};
+
+/**
  * struct cam_cpas_private_soc : CPAS private DT info
  *
  * @arch_compat: ARCH compatible string
@@ -90,7 +105,8 @@ struct cam_cpas_tree_node {
  * @camnoc_axi_clk_bw_margin : BW Margin in percentage to add while calculating
  *      camnoc axi clock
  * @camnoc_axi_min_ib_bw: Min camnoc BW which varies based on target
- * @feature_mask: feature mask value for hw supported features
+ * @num_feature_entries: number of feature entries
+ * @feature_info: fuse based feature info for hw supported features
  * @cx_ipeak_gpu_limit: Flag for Cx Ipeak GPU mitigation
  * @gpu_pwr_limit: Handle for Cx Ipeak GPU Mitigation
  *
@@ -109,7 +125,8 @@ struct cam_cpas_private_soc {
 	uint32_t camnoc_bus_width;
 	uint32_t camnoc_axi_clk_bw_margin;
 	uint64_t camnoc_axi_min_ib_bw;
-	uint32_t feature_mask;
+	uint32_t num_feature_entries;
+	struct cam_cpas_feature_info  feature_info[CAM_CPAS_MAX_FUSE_FEATURE];
 	uint32_t cx_ipeak_gpu_limit;
 	struct kgsl_pwr_limit *gpu_pwr_limit;
 };
