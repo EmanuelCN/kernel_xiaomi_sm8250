@@ -19,6 +19,7 @@
 #include "cam_cdm_util.h"
 #include "cam_isp_context.h"
 #include "cam_common_util.h"
+#include "cam_req_mgr_debug.h"
 
 static const char isp_dev_name[] = "cam-isp";
 
@@ -1373,6 +1374,12 @@ static int __cam_isp_ctx_epoch_in_applied(struct cam_isp_context *ctx_isp,
 	CAM_DBG(CAM_ISP, "next Substate[%s]",
 		__cam_isp_ctx_substate_val_to_type(
 		ctx_isp->substate_activated));
+
+	cam_req_mgr_debug_delay_detect();
+	trace_cam_delay_detect("ISP",
+		"bubble epoch_in_applied", req->request_id,
+		ctx->ctx_id, ctx->link_hdl, ctx->session_hdl,
+		CAM_DEFAULT_VALUE);
 end:
 	if (request_id == 0) {
 		req = list_last_entry(&ctx->active_req_list,
@@ -1567,6 +1574,13 @@ static int __cam_isp_ctx_epoch_in_bubble_applied(
 	CAM_DBG(CAM_ISP, "next Substate[%s]",
 		__cam_isp_ctx_substate_val_to_type(
 		ctx_isp->substate_activated));
+
+	cam_req_mgr_debug_delay_detect();
+	trace_cam_delay_detect("ISP",
+		"bubble epoch_in_bubble_applied",
+		req->request_id, ctx->ctx_id,
+		ctx->link_hdl, ctx->session_hdl,
+		CAM_DEFAULT_VALUE);
 end:
 	req = list_last_entry(&ctx->active_req_list, struct cam_ctx_request,
 		list);

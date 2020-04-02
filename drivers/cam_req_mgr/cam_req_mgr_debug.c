@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_req_mgr_debug.h"
@@ -8,6 +8,7 @@
 #define MAX_SESS_INFO_LINE_BUFF_LEN 256
 
 static char sess_info_buffer[MAX_SESS_INFO_LINE_BUFF_LEN];
+static int cam_debug_mgr_delay_detect;
 
 static int cam_req_mgr_debug_set_bubble_recovery(void *data, u64 val)
 {
@@ -128,5 +129,14 @@ int cam_req_mgr_debug_register(struct cam_req_mgr_core_device *core_dev)
 		debugfs_root, core_dev, &bubble_recovery))
 		return -ENOMEM;
 
+	if (!debugfs_create_u32("delay_detect_count", 0644,
+		debugfs_root, &cam_debug_mgr_delay_detect))
+		return -ENOMEM;
+
 	return 0;
+}
+
+void cam_req_mgr_debug_delay_detect(void)
+{
+	cam_debug_mgr_delay_detect += 1;
 }

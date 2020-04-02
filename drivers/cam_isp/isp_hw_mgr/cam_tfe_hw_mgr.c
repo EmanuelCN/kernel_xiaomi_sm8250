@@ -23,6 +23,8 @@
 #include "cam_cpas_api.h"
 #include "cam_mem_mgr_api.h"
 #include "cam_common_util.h"
+#include "cam_req_mgr_debug.h"
+#include "cam_trace.h"
 
 #define CAM_TFE_HW_ENTRIES_MAX  20
 #define CAM_TFE_HW_CONFIG_TIMEOUT 60
@@ -2448,6 +2450,12 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 					"CDM workqueue delay detected, wait for some more time req_id=%llu rc=%d ctx_index %d",
 					cfg->request_id, rc,
 					ctx->ctx_index);
+				cam_req_mgr_debug_delay_detect();
+				trace_cam_delay_detect("CDM",
+					"CDM workqueue delay detected",
+					cfg->request_id, ctx->ctx_index,
+					CAM_DEFAULT_VALUE,
+					CAM_DEFAULT_VALUE, rc);
 				continue;
 			}
 
@@ -2455,6 +2463,14 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 				"config done completion timeout for req_id=%llu rc=%d ctx_index %d",
 				cfg->request_id, rc,
 				ctx->ctx_index);
+
+			cam_req_mgr_debug_delay_detect();
+			trace_cam_delay_detect("ISP",
+				"config done completion timeout",
+				cfg->request_id, ctx->ctx_index,
+				CAM_DEFAULT_VALUE, CAM_DEFAULT_VALUE,
+				rc);
+
 			if (rc == 0)
 				rc = -ETIMEDOUT;
 
@@ -4956,8 +4972,13 @@ static int cam_tfe_hw_mgr_check_irq_for_dual_tfe(
 			tfe_hw_mgr_ctx->dual_tfe_irq_mismatch_cnt++;
 		}
 
-		if (tfe_hw_mgr_ctx->dual_tfe_irq_mismatch_cnt == 1)
+		if (tfe_hw_mgr_ctx->dual_tfe_irq_mismatch_cnt == 1) {
 			cam_tfe_mgr_ctx_irq_dump(tfe_hw_mgr_ctx);
+			trace_cam_delay_detect("ISP", "dual tfe irq mismatch",
+				CAM_DEFAULT_VALUE, tfe_hw_mgr_ctx->ctx_index,
+				CAM_DEFAULT_VALUE, CAM_DEFAULT_VALUE,
+				rc);
+		}
 		rc = 0;
 	}
 

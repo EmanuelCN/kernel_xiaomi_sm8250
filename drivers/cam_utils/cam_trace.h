@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #if !defined(_CAM_TRACE_H) || defined(TRACE_HEADER_MULTI_READ)
@@ -18,6 +18,8 @@
 #include "cam_req_mgr_core.h"
 #include "cam_req_mgr_interface.h"
 #include "cam_context.h"
+
+#define CAM_DEFAULT_VALUE 0xFF
 
 TRACE_EVENT(cam_context_state,
 	TP_PROTO(const char *name, struct cam_context *ctx),
@@ -247,6 +249,39 @@ TRACE_EVENT(cam_req_mgr_add_req,
 			__get_str(name), __entry->dev_id, __entry->req_id,
 			__entry->slot_id, __entry->delay, __entry->readymap,
 			__entry->devicemap, __entry->link, __entry->session
+	)
+);
+
+TRACE_EVENT(cam_delay_detect,
+	TP_PROTO(const char *entity,
+		const char *text, uint64_t req_id,
+		uint32_t ctx_id, int32_t link_hdl,
+		int32_t session_hdl, int rc),
+	TP_ARGS(entity, text, req_id, ctx_id,
+		link_hdl, session_hdl, rc),
+	TP_STRUCT__entry(
+		__string(entity, entity)
+		__string(text, text)
+		__field(uint64_t, req_id)
+		__field(uint64_t, ctx_id)
+		__field(int32_t, link_hdl)
+		__field(int32_t, session_hdl)
+		__field(int32_t, rc)
+	),
+	TP_fast_assign(
+		__assign_str(entity, entity);
+		__assign_str(text, text);
+		__entry->req_id      = req_id;
+		__entry->ctx_id      = ctx_id;
+		__entry->link_hdl    = link_hdl;
+		__entry->session_hdl = session_hdl;
+		__entry->rc          = rc;
+	),
+	TP_printk(
+		"%s: %s request=%lld ctx_id=%d link_hdl=0x%x session_hdl=0x%x rc=%d",
+			__get_str(entity), __get_str(text), __entry->req_id,
+			__entry->ctx_id, __entry->link_hdl,
+			__entry->session_hdl, __entry->rc
 	)
 );
 
