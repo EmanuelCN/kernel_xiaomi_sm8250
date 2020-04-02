@@ -1422,7 +1422,7 @@ EXPORT_SYMBOL_GPL(__lock_page_killable);
 int __sched __lock_page_or_retry(struct page *page, struct mm_struct *mm,
 			 unsigned int flags)
 {
-	if (flags & FAULT_FLAG_ALLOW_RETRY) {
+	if (fault_flag_allow_retry_first(flags)) {
 		/*
 		 * CAUTION! In this case, mmap_sem is not released
 		 * even though return 0.
@@ -2526,10 +2526,10 @@ static struct file *maybe_unlock_mmap_for_io(struct vm_fault *vmf,
 	/*
 	 * FAULT_FLAG_RETRY_NOWAIT means we don't want to wait on page locks or
 	 * anything, so we only pin the file and drop the mmap_sem if only
-	 * FAULT_FLAG_ALLOW_RETRY is set.
+	 * FAULT_FLAG_ALLOW_RETRY is set, while this is the first attempt.
 	 */
-	if ((flags & (FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_RETRY_NOWAIT)) ==
-	    FAULT_FLAG_ALLOW_RETRY) {
+	if (fault_flag_allow_retry_first(flags) &&
+	    !(flags & FAULT_FLAG_RETRY_NOWAIT)) {
 		fpin = get_file(vmf->vma->vm_file);
 		up_read(&vmf->vma->vm_mm->mmap_sem);
 	}
