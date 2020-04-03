@@ -26,6 +26,7 @@
 
 #define CAM_TFE_HW_ENTRIES_MAX  20
 #define CAM_TFE_HW_CONFIG_TIMEOUT 60
+#define CAM_TFE_HW_CONFIG_WAIT_MAX_TRY  3
 
 #define TZ_SVC_SMMU_PROGRAM 0x15
 #define TZ_SAFE_SYSCALL_ID  0x3
@@ -2387,65 +2388,90 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 		"Enter ctx id:%d num_hw_upd_entries %d request id: %llu",
 		ctx->ctx_index, cfg->num_hw_update_entries, cfg->request_id);
 
-	if (cfg->num_hw_update_entries > 0) {
-		cdm_cmd = ctx->cdm_cmd;
-		cdm_cmd->cmd_arrary_count = cfg->num_hw_update_entries;
-		cdm_cmd->type = CAM_CDM_BL_CMD_TYPE_MEM_HANDLE;
-		cdm_cmd->flag = true;
-		cdm_cmd->userdata = hw_update_data;
-		cdm_cmd->cookie = cfg->request_id;
-		cdm_cmd->gen_irq_arb = false;
+	if (cfg->num_hw_update_entries <= 0) {
+		CAM_ERR(CAM_ISP,
+			"Enter ctx id:%d no valid hw entries:%d request id: %llu",
+			ctx->ctx_index, cfg->num_hw_update_entries,
+			cfg->request_id);
+		goto end;
+	}
 
-		for (i = 0 ; i < cfg->num_hw_update_entries; i++) {
-			cmd = (cfg->hw_update_entries + i);
-			if (cfg->reapply && cmd->flags == CAM_ISP_IQ_BL) {
-				skip++;
+	cdm_cmd = ctx->cdm_cmd;
+	cdm_cmd->cmd_arrary_count = cfg->num_hw_update_entries;
+	cdm_cmd->type = CAM_CDM_BL_CMD_TYPE_MEM_HANDLE;
+	cdm_cmd->flag = true;
+	cdm_cmd->userdata = hw_update_data;
+	cdm_cmd->cookie = cfg->request_id;
+	cdm_cmd->gen_irq_arb = false;
+
+	for (i = 0 ; i < cfg->num_hw_update_entries; i++) {
+		cmd = (cfg->hw_update_entries + i);
+		if (cfg->reapply && cmd->flags == CAM_ISP_IQ_BL) {
+			skip++;
+			continue;
+		}
+
+		if (cmd->flags == CAM_ISP_UNUSED_BL ||
+			cmd->flags >= CAM_ISP_BL_MAX)
+			CAM_ERR(CAM_ISP, "Unexpected BL type %d",
+				cmd->flags);
+
+		cdm_cmd->cmd[i - skip].bl_addr.mem_handle = cmd->handle;
+		cdm_cmd->cmd[i - skip].offset = cmd->offset;
+		cdm_cmd->cmd[i - skip].len = cmd->len;
+		cdm_cmd->cmd[i - skip].arbitrate = false;
+	}
+	cdm_cmd->cmd_arrary_count = cfg->num_hw_update_entries - skip;
+
+	reinit_completion(&ctx->config_done_complete);
+	ctx->applied_req_id = cfg->request_id;
+
+	CAM_DBG(CAM_ISP, "Submit to CDM");
+	atomic_set(&ctx->cdm_done, 0);
+	rc = cam_cdm_submit_bls(ctx->cdm_handle, cdm_cmd);
+	if (rc) {
+		CAM_ERR(CAM_ISP, "Failed to apply the configs");
+		return rc;
+	}
+
+	if (!cfg->init_packet)
+		goto end;
+
+	for (i = 0; i < CAM_TFE_HW_CONFIG_WAIT_MAX_TRY; i++) {
+		rc = wait_for_completion_timeout(
+			&ctx->config_done_complete,
+			msecs_to_jiffies(
+			CAM_TFE_HW_CONFIG_TIMEOUT));
+		if (rc <= 0) {
+			if (!cam_cdm_detect_hang_error(ctx->cdm_handle)) {
+				CAM_ERR(CAM_ISP,
+					"CDM workqueue delay detected, wait for some more time req_id=%llu rc=%d ctx_index %d",
+					cfg->request_id, rc,
+					ctx->ctx_index);
 				continue;
 			}
 
-			if (cmd->flags == CAM_ISP_UNUSED_BL ||
-				cmd->flags >= CAM_ISP_BL_MAX)
-				CAM_ERR(CAM_ISP, "Unexpected BL type %d",
-					cmd->flags);
+			CAM_ERR(CAM_ISP,
+				"config done completion timeout for req_id=%llu rc=%d ctx_index %d",
+				cfg->request_id, rc,
+				ctx->ctx_index);
+			if (rc == 0)
+				rc = -ETIMEDOUT;
 
-			cdm_cmd->cmd[i - skip].bl_addr.mem_handle = cmd->handle;
-			cdm_cmd->cmd[i - skip].offset = cmd->offset;
-			cdm_cmd->cmd[i - skip].len = cmd->len;
-			cdm_cmd->cmd[i - skip].arbitrate = false;
+			goto end;
+		} else {
+			rc = 0;
+			CAM_DBG(CAM_ISP,
+				"config done Success for req_id=%llu ctx_index %d",
+				cfg->request_id, ctx->ctx_index);
+			break;
 		}
-		cdm_cmd->cmd_arrary_count = cfg->num_hw_update_entries - skip;
-
-		reinit_completion(&ctx->config_done_complete);
-		ctx->applied_req_id = cfg->request_id;
-
-		CAM_DBG(CAM_ISP, "Submit to CDM");
-		atomic_set(&ctx->cdm_done, 0);
-		rc = cam_cdm_submit_bls(ctx->cdm_handle, cdm_cmd);
-		if (rc) {
-			CAM_ERR(CAM_ISP, "Failed to apply the configs");
-			return rc;
-		}
-
-		if (cfg->init_packet) {
-			rc = wait_for_completion_timeout(
-				&ctx->config_done_complete,
-				msecs_to_jiffies(CAM_TFE_HW_CONFIG_TIMEOUT));
-			if (rc <= 0) {
-				CAM_ERR(CAM_ISP,
-					"config done completion timeout for req_id=%llu rc=%d ctx_index %d",
-					cfg->request_id, rc, ctx->ctx_index);
-				if (rc == 0)
-					rc = -ETIMEDOUT;
-			} else {
-				rc = 0;
-				CAM_DBG(CAM_ISP,
-					"config done Success for req_id=%llu ctx_index %d",
-					cfg->request_id, ctx->ctx_index);
-			}
-		}
-	} else {
-		CAM_ERR(CAM_ISP, "No commands to config");
 	}
+
+	if ((i == CAM_TFE_HW_CONFIG_WAIT_MAX_TRY) && (rc == 0))
+		rc = -ETIMEDOUT;
+
+end:
 	CAM_DBG(CAM_ISP, "Exit: Config Done: %llu",  cfg->request_id);
 
 	return rc;
