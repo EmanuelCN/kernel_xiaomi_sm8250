@@ -505,8 +505,6 @@ static int init_rootdomain(struct root_domain *rd)
 	rd->max_cap_orig_cpu = rd->min_cap_orig_cpu = -1;
 	rd->mid_cap_orig_cpu = -1;
 #endif
-	init_max_cpu_capacity(&rd->max_cpu_capacity);
-
 	return 0;
 
 free_cpudl:
@@ -1925,6 +1923,7 @@ build_sched_domains(const struct cpumask *cpu_map, struct sched_domain_attr *att
 	enum s_alloc alloc_state = sa_none;
 	struct sched_domain *sd;
 	struct s_data d;
+	struct rq *rq = NULL;
 	int i, ret = -ENOMEM;
 	struct sched_domain_topology_level *tl_asym;
 	bool has_asym = false;
@@ -1994,7 +1993,13 @@ build_sched_domains(const struct cpumask *cpu_map, struct sched_domain_attr *att
 		int max_cpu = READ_ONCE(d.rd->max_cap_orig_cpu);
 		int min_cpu = READ_ONCE(d.rd->min_cap_orig_cpu);
 #endif
+                rq = cpu_rq(i);
 		sd = *per_cpu_ptr(d.sd, i);
+
+                /* Use READ_ONCE()/WRITE_ONCE() to avoid load/store tearing: */
+                if (rq->cpu_capacity_orig > READ_ONCE(d.rd->max_cpu_capacity))
+                        WRITE_ONCE(d.rd->max_cpu_capacity, rq->cpu_capacity_orig);
+
 #ifdef CONFIG_SCHED_WALT
 		if ((max_cpu < 0) || (arch_scale_cpu_capacity(i) >
 				arch_scale_cpu_capacity(max_cpu)))
@@ -2036,6 +2041,11 @@ build_sched_domains(const struct cpumask *cpu_map, struct sched_domain_attr *att
 
 	if (has_asym)
 		static_branch_enable_cpuslocked(&sched_asym_cpucapacity);
+
+	if (rq && sched_debug_enabled) {
+		pr_info("root domain span: %*pbl (max cpu_capacity = %lu)\n",
+			cpumask_pr_args(cpu_map), rq->rd->max_cpu_capacity);
+	}
 
 	ret = 0;
 error:
