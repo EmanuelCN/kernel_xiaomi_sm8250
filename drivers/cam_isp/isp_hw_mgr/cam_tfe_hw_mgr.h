@@ -13,6 +13,7 @@
 #include "cam_tfe_csid_hw_intf.h"
 #include "cam_top_tpg_hw_intf.h"
 #include "cam_tasklet_util.h"
+#include "cam_cdm_intf_api.h"
 
 
 
@@ -61,6 +62,7 @@ struct cam_tfe_hw_mgr_debug {
  * @cdm_ops                   cdm util operation pointer for building
  *                            cdm commands
  * @cdm_cmd                   cdm base and length request pointer
+ * @last_submit_bl_cmd        last submiited CDM BL command data
  * @config_done_complete      indicator for configuration complete
  * @sof_cnt                   sof count value per core, used for dual TFE
  * @epoch_cnt                 epoch count value per core, used for dual TFE
@@ -82,6 +84,7 @@ struct cam_tfe_hw_mgr_debug {
  * @slave_hw_idx              slave hardware index in dual tfe case
  * @dual_tfe_irq_mismatch_cnt irq mismatch count value per core, used for
  *                              dual TFE
+ * packet                     CSL packet from user mode driver
  */
 struct cam_tfe_hw_mgr_ctx {
 	struct list_head                list;
@@ -105,6 +108,7 @@ struct cam_tfe_hw_mgr_ctx {
 	uint32_t                        cdm_handle;
 	struct cam_cdm_utils_ops       *cdm_ops;
 	struct cam_cdm_bl_request      *cdm_cmd;
+	struct cam_cdm_bl_info          last_submit_bl_cmd;
 	struct completion               config_done_complete;
 
 	uint32_t                        sof_cnt[CAM_TFE_HW_NUM_MAX];
@@ -125,6 +129,7 @@ struct cam_tfe_hw_mgr_ctx {
 	uint32_t                        master_hw_idx;
 	uint32_t                        slave_hw_idx;
 	uint32_t                        dual_tfe_irq_mismatch_cnt;
+	struct cam_packet              *packet;
 };
 
 /**

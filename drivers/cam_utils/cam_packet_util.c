@@ -171,6 +171,9 @@ void cam_packet_dump_patch_info(struct cam_packet *packet,
 			((uint32_t *) &packet->payload +
 			packet->patch_offset/4);
 
+	CAM_INFO(CAM_UTIL, "Total num of patches : %d",
+		packet->num_patches);
+
 	for (i = 0; i < packet->num_patches; i++) {
 		hdl = cam_mem_is_secure_buf(patch_desc[i].src_buf_hdl) ?
 			sec_mmu_hdl : iommu_hdl;
