@@ -9684,12 +9684,6 @@ static unsigned long scale_rt_capacity(int cpu)
 	return scale_irq_capacity(free, irq, max);
 }
 
-void init_max_cpu_capacity(struct max_cpu_capacity *mcc) {
-	raw_spin_lock_init(&mcc->lock);
-	mcc->val = 0;
-	mcc->cpu = -1;
-}
-
 static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 {
 	unsigned long capacity_orig = arch_scale_cpu_capacity(cpu);
@@ -9842,7 +9836,7 @@ check_cpu_capacity(struct rq *rq, struct sched_domain *sd)
 static inline int check_misfit_status(struct rq *rq, struct sched_domain *sd)
 {
 	return rq->misfit_task_load &&
-		(rq->cpu_capacity_orig < rq->rd->max_cpu_capacity.val ||
+		(rq->cpu_capacity_orig < rq->rd->max_cpu_capacity ||
 		 check_cpu_capacity(rq, sd));
 }
 
