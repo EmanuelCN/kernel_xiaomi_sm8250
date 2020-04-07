@@ -2144,6 +2144,7 @@ submit_and_realloc:
 			bio = NULL;
 			goto out;
 		}
+		mm_event_start(&bio->bi_alloc_ts);
 	}
 
 	/*
@@ -2300,6 +2301,8 @@ submit_and_realloc:
 				*bio_ret = NULL;
 				return ret;
 			}
+			if (!for_write)
+				mm_event_start(&bio->bi_alloc_ts);
 		}
 
 		if (bio_add_page(bio, page, blocksize, 0) < blocksize)
