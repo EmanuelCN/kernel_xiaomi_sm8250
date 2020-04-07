@@ -1463,7 +1463,7 @@ do_migrate_range(unsigned long start_pfn, unsigned long end_pfn)
 			move_pages--;
 			if (!__PageMovable(page))
 				inc_node_page_state(page, NR_ISOLATED_ANON +
-						    page_is_file_cache(page));
+						    page_is_file_lru(page));
 
 		} else {
 #ifdef CONFIG_DEBUG_VM

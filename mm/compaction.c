@@ -986,7 +986,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
 		/* Successfully isolated */
 		del_page_from_lru_list(page, lruvec, page_lru(page));
 		inc_node_page_state(page,
-				NR_ISOLATED_ANON + page_is_file_cache(page));
+				NR_ISOLATED_ANON + page_is_file_lru(page));
 
 isolate_success:
 		list_add(&page->lru, &cc->migratepages);
