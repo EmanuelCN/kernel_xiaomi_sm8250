@@ -77,6 +77,7 @@ struct cam_tfe_bus_common_data {
 
 struct cam_tfe_bus_wm_resource_data {
 	uint32_t             index;
+	uint32_t             out_id;
 	struct cam_tfe_bus_common_data            *common_data;
 	struct cam_tfe_bus_reg_offset_bus_client  *hw_regs;
 
@@ -628,6 +629,7 @@ static int cam_tfe_bus_acquire_wm(
 	rsrc_data->height = out_port_info->height;
 	rsrc_data->stride = out_port_info->stride;
 	rsrc_data->mode = out_port_info->wm_mode;
+	rsrc_data->out_id = tfe_out_res_id;
 
 	/*
 	 * Store the acquire width, height separately. For frame based ports
@@ -641,14 +643,16 @@ static int cam_tfe_bus_acquire_wm(
 	/* Set WM offset value to default */
 	rsrc_data->offset  = 0;
 
-	if (rsrc_data->index > 6) {
+	if ((rsrc_data->index > 6) &&
+		(tfe_out_res_id != CAM_TFE_BUS_TFE_OUT_PDAF)) {
 		/* WM 7-9 refers to RDI 0/ RDI 1/RDI 2 */
 		rc = cam_tfe_bus_acquire_rdi_wm(rsrc_data);
 		if (rc)
 			return rc;
 
-	} else if (rsrc_data->index == 0 || rsrc_data->index == 1) {
-	/*  WM 0 FULL_OUT */
+	} else if (rsrc_data->index == 0 || rsrc_data->index == 1 ||
+		(tfe_out_res_id == CAM_TFE_BUS_TFE_OUT_PDAF)) {
+	/*  WM 0 FULL_OUT WM 1 IDEAL RAW WM9 for pdaf */
 		switch (rsrc_data->format) {
 		case CAM_FORMAT_MIPI_RAW_8:
 			rsrc_data->pack_fmt = 0x1;
@@ -744,9 +748,14 @@ static int cam_tfe_bus_start_wm(struct cam_isp_resource_node *wm_res)
 
 	/* Configure stride for RDIs on full TFE and TFE lite  */
 	if ((rsrc_data->index > 6) &&
-		(rsrc_data->mode != CAM_ISP_TFE_WM_LINE_BASED_MODE))
+		((rsrc_data->mode != CAM_ISP_TFE_WM_LINE_BASED_MODE) &&
+		(rsrc_data->out_id != CAM_TFE_BUS_TFE_OUT_PDAF))) {
 		cam_io_w_mb(rsrc_data->stride, (common_data->mem_base +
 			rsrc_data->hw_regs->image_cfg_2));
+		CAM_DBG(CAM_ISP, "WM:%d configure stride reg :0x%x",
+			rsrc_data->index,
+			rsrc_data->stride);
+	}
 
 	/* Enable WM */
 	cam_io_w_mb(rsrc_data->en_cfg, common_data->mem_base +
@@ -1885,7 +1894,8 @@ static int cam_tfe_bus_update_wm(void *priv, void *cmd_args,
 			wm_data->index, reg_val_pair[j-1]);
 
 		if ((wm_data->index < 7) || ((wm_data->index >= 7) &&
-			(wm_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE))) {
+			(wm_data->mode == CAM_ISP_TFE_WM_LINE_BASED_MODE)) ||
+			(wm_data->out_id == CAM_TFE_BUS_TFE_OUT_PDAF)) {
 			CAM_TFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 				wm_data->hw_regs->image_cfg_2,
 				io_cfg->planes[i].plane_stride);
