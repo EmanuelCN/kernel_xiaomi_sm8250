@@ -536,13 +536,21 @@ static int cam_ope_dump_bls(struct cam_ope_request *ope_req,
 	struct cam_ope_hang_dump *dump)
 {
 	struct cam_cdm_bl_request *cdm_cmd;
-	int i;
+	size_t size;
+	int i, rc;
+	dma_addr_t iova_addr;
 
 	cdm_cmd = ope_req->cdm_cmd;
 	for (i = 0; i < cdm_cmd->cmd_arrary_count; i++) {
+		rc = cam_mem_get_io_buf(cdm_cmd->cmd[i].bl_addr.mem_handle,
+				ope_hw_mgr->iommu_hdl, &iova_addr, &size);
+		if (rc) {
+			CAM_ERR(CAM_OPE, "get io buf fail 0x%x",
+				cdm_cmd->cmd[i].bl_addr.mem_handle);
+			return rc;
+		}
 		dump->bl_entries[dump->num_bls].base =
-			(uint32_t)cdm_cmd->cmd[i].bl_addr.hw_iova +
-			cdm_cmd->cmd[i].offset;
+			(uint32_t)iova_addr + cdm_cmd->cmd[i].offset;
 		dump->bl_entries[dump->num_bls].len = cdm_cmd->cmd[i].len;
 		dump->bl_entries[dump->num_bls].arbitration =
 			cdm_cmd->cmd[i].arbitrate;
