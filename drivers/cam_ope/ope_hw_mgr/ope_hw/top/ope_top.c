@@ -207,9 +207,12 @@ static int cam_ope_top_isr(struct ope_hw *ope_hw_info,
 	int rc = 0;
 	uint32_t irq_status;
 	uint32_t violation_status;
+	uint32_t pp_hw_status = 0;
 	struct cam_ope_top_reg *top_reg;
 	struct cam_ope_top_reg_val *top_reg_val;
+	struct cam_ope_pp_reg *pp_reg;
 	struct cam_ope_irq_data *irq_data = data;
+	int i;
 
 	if (!ope_hw_info) {
 		CAM_ERR(CAM_OPE, "Invalid ope_hw_info");
@@ -218,6 +221,7 @@ static int cam_ope_top_isr(struct ope_hw *ope_hw_info,
 
 	top_reg = ope_hw_info->top_reg;
 	top_reg_val = ope_hw_info->top_reg_val;
+	pp_reg = ope_hw_info->pp_reg;
 
 	/* Read and Clear Top Interrupt status */
 	irq_status = cam_io_r_mb(top_reg->base + top_reg->irq_status);
@@ -237,6 +241,20 @@ static int cam_ope_top_isr(struct ope_hw *ope_hw_info,
 			top_reg->violation_status);
 		irq_data->error = 1;
 		CAM_ERR(CAM_OPE, "ope violation: %x", violation_status);
+
+		for (i = 0; i < pp_reg->num_clients ; i++) {
+			pp_hw_status = 0;
+			pp_hw_status =
+				cam_io_r_mb(pp_reg->base +
+					pp_reg->pp_clients[i]
+						.hw_status);
+
+			if (pp_hw_status)
+				CAM_ERR(CAM_OPE,
+					"ope pp hw_status offset 0x%x val 0x%x",
+					pp_reg->pp_clients[i].hw_status,
+					pp_hw_status);
+		}
 	}
 
 	return rc;

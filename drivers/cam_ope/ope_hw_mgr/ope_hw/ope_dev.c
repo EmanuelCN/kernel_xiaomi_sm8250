@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -78,6 +78,7 @@ static int cam_ope_init_hw_version(struct cam_hw_soc_info *soc_info,
 	ope_hw_100.top_reg->base = core_info->ope_hw_info->ope_top_base;
 	ope_hw_100.bus_rd_reg->base = core_info->ope_hw_info->ope_bus_rd_base;
 	ope_hw_100.bus_wr_reg->base = core_info->ope_hw_info->ope_bus_wr_base;
+	ope_hw_100.pp_reg->base = core_info->ope_hw_info->ope_pp_base;
 
 	return rc;
 }

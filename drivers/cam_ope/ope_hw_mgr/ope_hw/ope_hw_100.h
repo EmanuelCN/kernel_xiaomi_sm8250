@@ -554,6 +554,101 @@ static struct cam_ope_bus_wr_reg_val ope_bus_wr_reg_val = {
 		},
 	},
 };
+
+static struct cam_ope_pp_reg ope_pp_reg = {
+	.offset = 0x800,
+	.num_clients = MAX_PP_CLIENTS,
+	.pp_clients = {
+		{
+			.hw_status = 0x4,
+		},
+		{
+			.hw_status = 0x204,
+		},
+		{
+			.hw_status = 0x404,
+		},
+		{
+			.hw_status = 0x604,
+		},
+		{
+			.hw_status = 0x804,
+		},
+		{
+			.hw_status = 0xA04,
+		},
+		{
+			.hw_status = 0xC04,
+		},
+		{
+			.hw_status = 0xE04,
+		},
+		{
+			.hw_status = 0x1004,
+		},
+		{
+			.hw_status = 0x1204,
+		},
+		{
+			.hw_status = 0x1404,
+		},
+		{
+			.hw_status = 0x1604,
+		},
+		{
+			.hw_status = 0x1804,
+		},
+		{
+			.hw_status = 0x1A04,
+		},
+		{
+			.hw_status = 0x1C04,
+		},
+		{
+			.hw_status = 0x1E04,
+		},
+		{
+			.hw_status = 0x2204,
+		},
+		{
+			.hw_status = 0x2604,
+		},
+		{
+			.hw_status = 0x2804,
+		},
+		{
+			.hw_status = 0x2A04,
+		},
+		{
+			.hw_status = 0x2C04,
+		},
+		{
+			.hw_status = 0x2E04,
+		},
+		{
+			.hw_status = 0x3004,
+		},
+		{
+			.hw_status = 0x3204,
+		},
+		{
+			.hw_status = 0x3404,
+		},
+		{
+			.hw_status = 0x3604,
+		},
+		{
+			.hw_status = 0x3804,
+		},
+		{
+			.hw_status = 0x3A04,
+		},
+		{
+			.hw_status = 0x3C04,
+		},
+	},
+};
+
 static struct ope_hw ope_hw_100 = {
 	.top_reg     = &ope_top_reg,
 	.top_reg_val = &ope_top_reg_val,
@@ -561,6 +656,7 @@ static struct ope_hw ope_hw_100 = {
 	.bus_rd_reg_val  = &ope_bus_rd_reg_val,
 	.bus_wr_reg  = &ope_bus_wr_reg,
 	.bus_wr_reg_val  = &ope_bus_wr_reg_val,
+	.pp_reg  = &ope_pp_reg,
 };
 
 #endif /* CAM_OPE_HW_100_H */
