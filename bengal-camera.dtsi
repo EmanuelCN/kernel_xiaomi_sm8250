@@ -8,7 +8,7 @@
 
 	cam_csiphy0: qcom,csiphy0 {
 		cell-index = <0>;
-		compatible = "qcom,csiphy-v2.0", "qcom,csiphy";
+		compatible = "qcom,csiphy-v2.0.1", "qcom,csiphy";
 		reg = <0x05C52000 0x1000>;
 		reg-names = "csiphy";
 		reg-cam-base = <0x52000>;
@@ -39,7 +39,7 @@
 
 	cam_csiphy1: qcom,csiphy1 {
 		cell-index = <1>;
-		compatible = "qcom,csiphy-v2.0", "qcom,csiphy";
+		compatible = "qcom,csiphy-v2.0.1", "qcom,csiphy";
 		reg = <0x05C53000 0x1000>;
 		reg-names = "csiphy";
 		reg-cam-base = <0x53000>;
@@ -70,7 +70,7 @@
 
 	cam_csiphy2: qcom,csiphy2 {
 		cell-index = <2>;
-		compatible = "qcom,csiphy-v2.0", "qcom,csiphy";
+		compatible = "qcom,csiphy-v2.0.1", "qcom,csiphy";
 		reg = <0x05C54000 0x1000>;
 		reg-names = "csiphy";
 		reg-cam-base = <0x54000>;
