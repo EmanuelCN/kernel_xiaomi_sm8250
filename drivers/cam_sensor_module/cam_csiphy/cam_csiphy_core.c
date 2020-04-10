@@ -23,6 +23,9 @@
 #define LANE_MASK_2PH 0x1F
 #define LANE_MASK_3PH 0x7
 
+#define SEC_LANE_CP_REG_LEN 32
+#define MAX_PHY_MSK_PER_REG 4
+
 static int csiphy_dump;
 module_param(csiphy_dump, int, 0644);
 
@@ -112,7 +115,7 @@ int32_t cam_csiphy_update_secure_info(
 	struct cam_csiphy_info  *cam_cmd_csiphy_info,
 	struct cam_config_dev_cmd *cfg_dev)
 {
-	uint32_t clock_lane, adj_lane_mask, temp;
+	uint32_t clock_lane, adj_lane_mask, temp, phy_mask_len;
 	int32_t offset;
 
 	if (csiphy_dev->acquire_count >=
@@ -146,12 +149,37 @@ int32_t cam_csiphy_update_secure_info(
 
 	csiphy_dev->csiphy_info.secure_mode[offset] = 1;
 
-	csiphy_dev->csiphy_cpas_cp_reg_mask[offset] =
-		adj_lane_mask << (csiphy_dev->soc_info.index *
-		(CAM_CSIPHY_MAX_DPHY_LANES + CAM_CSIPHY_MAX_CPHY_LANES) +
-		(!cam_cmd_csiphy_info->csiphy_3phase) *
-		(CAM_CSIPHY_MAX_CPHY_LANES));
+	if (csiphy_dev->hw_version == CSIPHY_VERSION_V201) {
+		phy_mask_len = CAM_CSIPHY_MAX_DPHY_LANES +
+			CAM_CSIPHY_MAX_CPHY_LANES + 1;
+	} else if (csiphy_dev->hw_version == CSIPHY_VERSION_V121) {
+		phy_mask_len =
+			(csiphy_dev->soc_info.index < MAX_PHY_MSK_PER_REG) ?
+			CAM_CSIPHY_MAX_DPHY_LANES + CAM_CSIPHY_MAX_CPHY_LANES :
+			CAM_CSIPHY_MAX_DPHY_LANES +
+			CAM_CSIPHY_MAX_CPHY_LANES + 1;
+	} else {
+		phy_mask_len = CAM_CSIPHY_MAX_DPHY_LANES +
+			CAM_CSIPHY_MAX_CPHY_LANES;
+	}
 
+	if (csiphy_dev->soc_info.index < MAX_PHY_MSK_PER_REG) {
+		csiphy_dev->csiphy_cpas_cp_reg_mask[offset] =
+			((uint64_t)adj_lane_mask) <<
+			(csiphy_dev->soc_info.index * phy_mask_len +
+			(!cam_cmd_csiphy_info->csiphy_3phase) *
+			(CAM_CSIPHY_MAX_CPHY_LANES));
+	} else {
+		csiphy_dev->csiphy_cpas_cp_reg_mask[offset] =
+			((uint64_t)adj_lane_mask) <<
+			((csiphy_dev->soc_info.index - MAX_PHY_MSK_PER_REG) *
+			phy_mask_len + SEC_LANE_CP_REG_LEN +
+			(!cam_cmd_csiphy_info->csiphy_3phase) *
+			(CAM_CSIPHY_MAX_CPHY_LANES));
+	}
+	CAM_DBG(CAM_CSIPHY, "csi phy idx:%d, cp_reg_mask:0x%lx",
+		csiphy_dev->soc_info.index,
+		csiphy_dev->csiphy_cpas_cp_reg_mask[offset]);
 	return 0;
 }
 
@@ -247,6 +275,24 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	if (cam_cmd_csiphy_info->secure_mode == 1)
 		cam_csiphy_update_secure_info(csiphy_dev,
 			cam_cmd_csiphy_info, cfg_dev);
+
+	CAM_DBG(CAM_CSIPHY,
+		"phy version_%d, lane count:%d, mask:0x%x",
+		csiphy_dev->hw_version,
+		csiphy_dev->csiphy_info.lane_cnt,
+		csiphy_dev->csiphy_info.lane_mask
+	);
+	CAM_DBG(CAM_CSIPHY,
+		"3phase:%d, combo mode:%d, secure mode:%d",
+		csiphy_dev->csiphy_info.csiphy_3phase,
+		csiphy_dev->csiphy_info.combo_mode,
+		cam_cmd_csiphy_info->secure_mode
+	);
+	CAM_DBG(CAM_CSIPHY,
+		"phy idx:%d, settle time:%d, datarate:%d",
+		csiphy_dev->soc_info.index,
+		csiphy_dev->csiphy_info.settle_time,
+		csiphy_dev->csiphy_info.data_rate);
 
 	return rc;
 }
