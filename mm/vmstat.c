@@ -1296,7 +1296,11 @@ const char * const vmstat_text[] = {
 	"swap_ra",
 	"swap_ra_hit",
 #endif
-#endif /* CONFIG_VM_EVENTS_COUNTERS */
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	"speculative_pgfault_anon",
+	"speculative_pgfault_file",
+#endif
+#endif /* CONFIG_VM_EVENT_COUNTERS */
 };
 #endif /* CONFIG_PROC_FS || CONFIG_SYSFS || CONFIG_NUMA */
 
@@ -1574,9 +1578,9 @@ static void zoneinfo_show_print(struct seq_file *m, pg_data_t *pgdat,
 		   "\n        present  %lu"
 		   "\n        managed  %lu",
 		   zone_page_state(zone, NR_FREE_PAGES),
-		   min_wmark_pages(zone),
-		   low_wmark_pages(zone),
-		   high_wmark_pages(zone),
+		   min_wmark_pages(zone) - zone->watermark_boost,
+		   low_wmark_pages(zone) - zone->watermark_boost,
+		   high_wmark_pages(zone) - zone->watermark_boost,
 		   zone->spanned_pages,
 		   zone->present_pages,
 		   zone->managed_pages);

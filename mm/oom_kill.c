@@ -51,10 +51,13 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/oom.h>
 
-int sysctl_panic_on_oom;
+#define ULMK_MAGIC "lmkd"
+
+int sysctl_panic_on_oom =
+IS_ENABLED(CONFIG_DEBUG_PANIC_ON_OOM) ? 2 : 0;
 int sysctl_oom_kill_allocating_task;
 int sysctl_oom_dump_tasks = 1;
-int sysctl_reap_mem_on_sigkill;
+int sysctl_reap_mem_on_sigkill = 1;
 
 /*
  * Serializes oom killer invocations (out_of_memory()) from all contexts to
@@ -67,6 +70,28 @@ int sysctl_reap_mem_on_sigkill;
 DEFINE_MUTEX(oom_lock);
 /* Serializes oom_score_adj and oom_score_adj_min updates */
 DEFINE_MUTEX(oom_adj_mutex);
+
+/*
+ * If ULMK has killed a process recently,
+ * we are making progress.
+ */
+
+#ifdef CONFIG_HAVE_USERSPACE_LOW_MEMORY_KILLER
+static atomic64_t ulmk_kill_jiffies = ATOMIC64_INIT(INITIAL_JIFFIES);
+
+
+bool should_ulmk_retry(void)
+{
+	unsigned long j = atomic64_read(&ulmk_kill_jiffies);
+
+	return time_before(jiffies, j + 2 * HZ);
+}
+
+void ulmk_update_last_kill(void)
+{
+	atomic64_set(&ulmk_kill_jiffies, jiffies);
+}
+#endif
 
 #ifdef CONFIG_NUMA
 /**
@@ -1170,6 +1195,10 @@ void pagefault_out_of_memory(void)
 	static DEFINE_RATELIMIT_STATE(pfoom_rs, DEFAULT_RATELIMIT_INTERVAL,
 				      DEFAULT_RATELIMIT_BURST);
 
+	if (IS_ENABLED(CONFIG_HAVE_LOW_MEMORY_KILLER) ||
+	    IS_ENABLED(CONFIG_HAVE_USERSPACE_LOW_MEMORY_KILLER))
+		return;
+
 	if (mem_cgroup_oom_synchronize(true))
 		return;
 
@@ -1178,30 +1207,6 @@ void pagefault_out_of_memory(void)
 
 	if (__ratelimit(&pfoom_rs))
 		pr_warn("Huh VM_FAULT_OOM leaked out to the #PF handler. Retrying PF\n");
-}
-
-/* Call this function with task_lock being held as we're accessing ->mm */
-void dump_killed_info(struct task_struct *selected)
-{
-	int selected_tasksize = get_mm_rss(selected->mm);
-
-	pr_info_ratelimited("Killing '%s' (%d), adj %hd,\n"
-			"   to free %ldkB on behalf of '%s' (%d)\n"
-			"   Free CMA is %ldkB\n"
-			"   Total reserve is %ldkB\n"
-			"   Total free pages is %ldkB\n"
-			"   Total file cache is %ldkB\n",
-			selected->comm, selected->pid,
-			selected->signal->oom_score_adj,
-			selected_tasksize * (long)(PAGE_SIZE / 1024),
-			current->comm, current->pid,
-			global_zone_page_state(NR_FREE_CMA_PAGES) *
-				(long)(PAGE_SIZE / 1024),
-			totalreserve_pages * (long)(PAGE_SIZE / 1024),
-			global_zone_page_state(NR_FREE_PAGES) *
-				(long)(PAGE_SIZE / 1024),
-			global_node_page_state(NR_FILE_PAGES) *
-				(long)(PAGE_SIZE / 1024));
 }
 
 void add_to_oom_reaper(struct task_struct *p)
@@ -1222,14 +1227,12 @@ void add_to_oom_reaper(struct task_struct *p)
 		wake_oom_reaper(p);
 	}
 
-	dump_killed_info(p);
 	task_unlock(p);
 
-	if (__ratelimit(&reaper_rs) && p->signal->oom_score_adj == 0) {
+	if (!strcmp(current->comm, ULMK_MAGIC) && __ratelimit(&reaper_rs)
+			&& p->signal->oom_score_adj == 0) {
 		show_mem(SHOW_MEM_FILTER_NODES, NULL);
 		show_mem_call_notifiers();
-		if (sysctl_oom_dump_tasks)
-			dump_tasks(NULL, NULL);
 	}
 
 	put_task_struct(p);
