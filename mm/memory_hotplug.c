@@ -635,6 +635,7 @@ static void  __free_pages_memory(unsigned long start,
 			> bootloader_memory_limit)
 			order--;
 
+		kernel_map_pages(page, 1 << order, 1);
 		__free_pages_hotplug(page, order);
 		onlined_pages += (1UL << order);
 	}
@@ -1442,7 +1443,9 @@ do_migrate_range(unsigned long start_pfn, unsigned long end_pfn)
 			if (WARN_ON(PageLRU(page)))
 				isolate_lru_page(page);
 			if (page_mapped(page))
-				try_to_unmap(page, TTU_IGNORE_MLOCK | TTU_IGNORE_ACCESS);
+				try_to_unmap(page,
+					TTU_IGNORE_MLOCK | TTU_IGNORE_ACCESS,
+					NULL);
 			continue;
 		}
 
