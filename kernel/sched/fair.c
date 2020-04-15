@@ -8148,9 +8148,6 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 sd_loop:
 	rcu_read_lock();
 	for_each_domain(cpu, tmp) {
-		if (!(tmp->flags & SD_LOAD_BALANCE))
-			continue;
-
 		/*
 		 * If both 'cpu' and 'prev_cpu' are part of this domain,
 		 * cpu is a valid SD_WAKE_AFFINE target.
@@ -11343,9 +11340,8 @@ static int active_load_balance_cpu_stop(void *data)
 	/* Search for an sd spanning us and the target CPU. */
 	rcu_read_lock();
 	for_each_domain(target_cpu, sd) {
-		if ((sd->flags & SD_LOAD_BALANCE) &&
-		    cpumask_test_cpu(busiest_cpu, sched_domain_span(sd)))
-				break;
+		if (cpumask_test_cpu(busiest_cpu, sched_domain_span(sd)))
+			break;
 	}
 
 	if (likely(sd)) {
@@ -11477,10 +11473,6 @@ static void rebalance_domains(struct rq *rq, enum cpu_idle_type idle)
 
 		if (!sd_overutilized(sd) && !prefer_spread_on_idle(cpu))
 			continue;
-
-		if (!(sd->flags & SD_LOAD_BALANCE))
-			continue;
-
 		/*
 		 * Stop the load balance at this level. There is another
 		 * CPU in our sched group which is doing load balancing more
@@ -12169,9 +12161,6 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 	for_each_domain(this_cpu, sd) {
 		int continue_balancing = 1;
 		u64 domain_cost;
-
-		if (!(sd->flags & SD_LOAD_BALANCE))
-			continue;
 
 #ifdef CONFIG_SCHED_WALT
 		if (prefer_spread && !force_lb &&
