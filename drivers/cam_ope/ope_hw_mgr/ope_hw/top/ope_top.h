@@ -33,11 +33,13 @@ struct ope_top_ctx {
  * @top_ctx:        OPE top context
  * @reset_complete: Reset complete flag
  * @ope_mutex:      OPE hardware mutex
+ * @hw_lock:        OPE hardware spinlock
  */
 struct ope_top {
 	struct ope_hw *ope_hw_info;
 	struct ope_top_ctx top_ctx[OPE_CTX_MAX];
 	struct completion reset_complete;
 	struct mutex      ope_hw_mutex;
+	spinlock_t        hw_lock;
 };
 #endif /* OPE_TOP_H */
