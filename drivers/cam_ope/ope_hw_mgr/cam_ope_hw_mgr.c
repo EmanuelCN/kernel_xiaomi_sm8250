@@ -1020,8 +1020,11 @@ static int cam_ope_get_lower_clk_rate(struct cam_ope_hw_mgr *hw_mgr,
 
 	i = cam_ope_get_actual_clk_rate_idx(ctx_data, base_clk);
 
-	if (i > 0)
-		return ctx_data->clk_info.clk_rate[i - 1];
+	while (i > 0) {
+		if (ctx_data->clk_info.clk_rate[i - 1])
+			return ctx_data->clk_info.clk_rate[i - 1];
+		i--;
+	}
 
 	CAM_DBG(CAM_OPE, "Already clk at lower level");
 
@@ -1035,8 +1038,11 @@ static int cam_ope_get_next_clk_rate(struct cam_ope_hw_mgr *hw_mgr,
 
 	i = cam_ope_get_actual_clk_rate_idx(ctx_data, base_clk);
 
-	if (i < CAM_MAX_VOTE - 1)
-		return ctx_data->clk_info.clk_rate[i + 1];
+	while (i < CAM_MAX_VOTE - 1) {
+		if (ctx_data->clk_info.clk_rate[i + 1])
+			return ctx_data->clk_info.clk_rate[i + 1];
+		i++;
+	}
 
 	CAM_DBG(CAM_OPE, "Already clk at higher level");
 
