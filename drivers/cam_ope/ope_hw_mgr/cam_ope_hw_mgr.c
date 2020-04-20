@@ -1791,15 +1791,14 @@ static void cam_ope_mgr_print_stripe_info(uint32_t batch,
 {
 	CAM_DBG(CAM_OPE, "b:%d io:%d p:%d s:%d: E",
 		batch, io_buf, plane, stripe);
-	CAM_DBG(CAM_OPE, "width: %d s_w: %u s_h: %u s_s: %u",
-		stripe_info->width, stripe_info->width,
-		stripe_info->height, stripe_info->stride);
+	CAM_DBG(CAM_OPE, "width: %d s_h: %u s_s: %u",
+		stripe_info->width, stripe_info->height,
+		stripe_info->stride);
 	CAM_DBG(CAM_OPE, "s_xinit = %u iova = %x s_loc = %u",
-		 stripe_info->s_location, stripe_info->x_init,
-		 iova_addr);
-	CAM_DBG(CAM_OPE, "s_off = %u s_format = %u s_len = %u",
+		stripe_info->x_init, iova_addr, stripe_info->s_location);
+	CAM_DBG(CAM_OPE, "s_off = %u s_format = %u s_len = %u d_bus %d",
 		stripe_info->offset, stripe_info->format,
-		stripe_info->len);
+		stripe_info->len, stripe_info->disable_bus);
 	CAM_DBG(CAM_OPE, "s_align = %u s_pack = %u s_unpack = %u",
 		stripe_info->alignment, stripe_info->pack_format,
 		stripe_info->unpack_format);
@@ -1839,35 +1838,15 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 		in_frame_set = &in_frame_process->frame_set[i];
 		for (j = 0; j < in_frame_set->num_io_bufs; j++) {
 			in_io_buf = &in_frame_set->io_buf[j];
-			CAM_DBG(CAM_OPE, "i:%d j:%d dir: %x rsc: %u plane: %d",
-				i, j, in_io_buf->direction,
-				in_io_buf->resource_type,
-				in_io_buf->num_planes);
 			for (k = 0; k < in_io_buf->num_planes; k++) {
-				CAM_DBG(CAM_OPE, "i:%d j:%d k:%d numstripe: %d",
-					i, j, k, in_io_buf->num_stripes[k]);
-				CAM_DBG(CAM_OPE, "m_hdl: %d len: %d",
-					in_io_buf->mem_handle[k],
-					in_io_buf->length[k]);
-
 				if (!in_io_buf->num_stripes[k]) {
 					CAM_ERR(CAM_OPE, "Null num_stripes");
 					return -EINVAL;
 				}
-
 				for (l = 0; l < in_io_buf->num_stripes[k];
 					l++) {
 					in_stripe_info =
 						&in_io_buf->stripe_info[k][l];
-					CAM_DBG(CAM_OPE, "i:%d j:%d k:%d l:%d",
-						i, j, k, l);
-					CAM_DBG(CAM_OPE, "%d s_loc:%d w:%d",
-						in_stripe_info->x_init,
-						in_stripe_info->stripe_location,
-						in_stripe_info->width);
-					CAM_DBG(CAM_OPE,  "s_off: %d d_bus: %d",
-						in_stripe_info->offset,
-						in_stripe_info->disable_bus);
 				}
 			}
 		}
@@ -1925,9 +1904,6 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 				unpack_format = 0;
 			}
 
-			CAM_DBG(CAM_OPE, "i:%d j:%d dir:%d rsc type:%d fmt:%d",
-				i, j, io_buf->direction, io_buf->resource_type,
-				io_buf->format);
 			for (k = 0; k < in_io_buf->num_planes; k++) {
 				io_buf->num_stripes[k] =
 					in_io_buf->num_stripes[k];
@@ -1954,6 +1930,11 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 					return -EINVAL;
 				}
 				iova_addr += in_io_buf->plane_offset[k];
+				CAM_DBG(CAM_OPE,
+					"E rsc %d stripes %d dir %d plane %d",
+					in_io_buf->resource_type,
+					in_io_buf->direction,
+					in_io_buf->num_stripes[k], k);
 				for (l = 0; l < in_io_buf->num_stripes[k];
 					l++) {
 					in_stripe_info =
@@ -1984,6 +1965,11 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 					cam_ope_mgr_print_stripe_info(i, j,
 						k, l, stripe_info, iova_addr);
 				}
+				CAM_DBG(CAM_OPE,
+					"X rsc %d stripes %d dir %d plane %d",
+					in_io_buf->resource_type,
+					in_io_buf->direction,
+					in_io_buf->num_stripes[k], k);
 			}
 		}
 	}
@@ -3755,6 +3741,31 @@ cmd_work_failed:
 	return rc;
 }
 
+static int cam_ope_create_debug_fs(void)
+{
+	ope_hw_mgr->dentry = debugfs_create_dir("camera_ope",
+		NULL);
+
+	if (!ope_hw_mgr->dentry) {
+		CAM_ERR(CAM_OPE, "failed to create dentry");
+		return -ENOMEM;
+	}
+
+	if (!debugfs_create_bool("frame_dump_enable",
+		0644,
+		ope_hw_mgr->dentry,
+		&ope_hw_mgr->frame_dump_enable)) {
+		CAM_ERR(CAM_OPE,
+			"failed to create dump_enable_debug");
+		goto err;
+	}
+
+	return 0;
+err:
+	debugfs_remove_recursive(ope_hw_mgr->dentry);
+	return -ENOMEM;
+}
+
 
 int cam_ope_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 	int *iommu_hdl)
@@ -3859,6 +3870,8 @@ int cam_ope_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 	rc = cam_ope_mgr_create_wq();
 	if (rc)
 		goto ope_wq_create_failed;
+
+	cam_ope_create_debug_fs();
 
 	if (iommu_hdl)
 		*iommu_hdl = ope_hw_mgr->iommu_hdl;

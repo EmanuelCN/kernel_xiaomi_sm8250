@@ -190,16 +190,18 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 	cdm_ops = ctx_data->ope_cdm.cdm_ops;
 
 	ope_request = ctx_data->req_list[req_idx];
-	CAM_DBG(CAM_OPE, "req_idx = %d req_id = %lld KMDbuf %x offset %d",
-		req_idx, ope_request->request_id,
-		kmd_buf, prepare->kmd_buf_offset);
+
 	bus_rd_ctx = &bus_rd->bus_rd_ctx[ctx_id];
 	io_port_info = &bus_rd_ctx->io_port_info;
 	rd_reg = ope_hw_info->bus_rd_reg;
 	rd_reg_val = ope_hw_info->bus_rd_reg_val;
-
 	io_buf = ope_request->io_buf[batch_idx][io_idx];
 
+	CAM_DBG(CAM_OPE,
+		"req_idx = %d req_id = %lld KMDbuf 0x%x offset %d rsc %d",
+		req_idx, ope_request->request_id,
+		kmd_buf, prepare->kmd_buf_offset,
+		io_buf->resource_type);
 	CAM_DBG(CAM_OPE, "batch:%d iobuf:%d direction:%d",
 		batch_idx, io_idx, io_buf->direction);
 	io_port_cdm =
@@ -307,20 +309,15 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 				sizeof(temp));
 			CAM_DBG(CAM_OPE, "b:%d io:%d p:%d s:%d",
 				batch_idx, io_idx, k, l);
-			for (m = 0; m < count; m++)
-				CAM_DBG(CAM_OPE, "%d:temp:%x",
-					m, temp_reg[m]);
+			for (m = 0; m < count; m += 2)
+				CAM_DBG(CAM_OPE, "%d: off: 0x%x val: 0x%x",
+					m, temp_reg[m], temp_reg[m+1]);
 			CAM_DBG(CAM_OPE, "kmd_buf:%x offset:%d",
-			kmd_buf, prepare->kmd_buf_offset);
-			CAM_DBG(CAM_OPE, "%x count: %d size:%d",
-				 temp_reg, count, header_size);
-			CAM_DBG(CAM_OPE, "RD cmdbufs:%d off:%d",
-			io_port_cdm->num_s_cmd_bufs[l],
-			io_port_cdm->s_cdm_info[l][idx].offset);
-			CAM_DBG(CAM_OPE, "len:%d",
-			io_port_cdm->s_cdm_info[l][idx].len);
-			CAM_DBG(CAM_OPE, "b:%d io:%d p:%d s:%d",
-				batch_idx, io_idx, k, l);
+				kmd_buf, prepare->kmd_buf_offset);
+			CAM_DBG(CAM_OPE, "RD cmdbufs:%d off:%d len %d",
+				io_port_cdm->num_s_cmd_bufs[l],
+				io_port_cdm->s_cdm_info[l][idx].offset,
+				io_port_cdm->s_cdm_info[l][idx].len);
 			count = 0;
 		}
 	}
@@ -372,8 +369,9 @@ static uint32_t *cam_ope_bus_rm_disable(struct ope_hw *ope_hw_info,
 	io_port_cdm_batch = &bus_rd_ctx->io_port_cdm_batch;
 	rd_reg = ope_hw_info->bus_rd_reg;
 
-	CAM_DBG(CAM_OPE, "kmd_buf = %x req_idx = %d offset = %d",
-		kmd_buf, req_idx, prepare->kmd_buf_offset);
+	CAM_DBG(CAM_OPE,
+		"kmd_buf = 0x%x req_idx = %d offset = %d rd_idx %d b %d",
+		kmd_buf, req_idx, prepare->kmd_buf_offset, rm_idx, batch_idx);
 
 	io_port_cdm =
 		&bus_rd_ctx->io_port_cdm_batch.io_port_cdm[batch_idx];
@@ -402,20 +400,11 @@ static uint32_t *cam_ope_bus_rm_disable(struct ope_hw *ope_hw_info,
 		prepare->kmd_buf_offset += ((count + header_size) *
 			sizeof(temp));
 
-		CAM_DBG(CAM_OPE, "b:%d s:%d",
-			batch_idx, l);
-		CAM_DBG(CAM_OPE, "kmdbuf:%x, offset:%d",
-			kmd_buf, prepare->kmd_buf_offset);
-		CAM_DBG(CAM_OPE, "count:%d temp_reg:%x",
-			count, temp_reg, header_size);
-		CAM_DBG(CAM_OPE, "header_size:%d", header_size);
-			CAM_DBG(CAM_OPE, "RD cmd bufs = %d",
+		CAM_DBG(CAM_OPE, "RD cmd bufs = %d",
 			io_port_cdm->num_s_cmd_bufs[l]);
-		CAM_DBG(CAM_OPE, "off:%d len:%d",
-			io_port_cdm->s_cdm_info[l][idx].offset,
+		CAM_DBG(CAM_OPE, "stripe %d off:%d len:%d",
+			l, io_port_cdm->s_cdm_info[l][idx].offset,
 			io_port_cdm->s_cdm_info[l][idx].len);
-		CAM_DBG(CAM_OPE, "b:%d s:%d",
-			batch_idx, l);
 		count = 0;
 	}
 
