@@ -67,9 +67,12 @@ First Level Node - CAM CPAS device
 
 - cam_hw_fuse
   Usage: optional
-  Value type: <u32>
-  Definition: List of fuse based features and respective
-	fuse info.
+  Value type: <u32:fuse_id> <u32:address> <u32:fuse_bit> <u32:fuse_type> <u32:hw_id>
+   fuse_id: fuse id for each features
+   address: fuse register io address
+   fuse_bit: fuse bit number in the fuse registers
+   fuse_type: fuse feature is enable type or disable type
+   hw_id: Hw id of the feature
 
 - interrupt-names
   Usage: optional
@@ -299,8 +302,8 @@ Example:
 		reg = <0xac40000 0x1000>,
 			<0xac42000 0x5000>;
 		reg-cam-base = <0x40000 0x42000>;
-		cam_hw_fuse = <CAM_CPAS_QCFA_BINNING_ENABLE 0x00780210 29>,
-			<CAM_CPAS_SECURE_CAMERA_ENABLE 0x00780210 18>;
+		cam_hw_fuse = <CAM_CPAS_QCFA_BINNING_ENABLE 0x00780210 29  CAM_CPAS_FEATURE_TYPE_ENABLE 0>,
+			<CAM_CPAS_SECURE_CAMERA_ENABLE 0x00780210 18 CAM_CPAS_FEATURE_TYPE_ENABLE 0>;
 		interrupt-names = "cpas_camnoc";
 		interrupts = <0 459 0>;
 		qcom,cpas-hw-ver = <0x170100>; /* Titan v170 v1.0.0 */
