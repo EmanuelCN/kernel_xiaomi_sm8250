@@ -33,6 +33,7 @@
 			<341330000 0 200000000 0>,
 			<341330000 0 200000000 0>,
 			<384000000 0 268800000 0>;
+		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
 		status = "ok";
 	};
 
@@ -63,6 +64,7 @@
 			<341330000 0 200000000 0>,
 			<341330000 0 200000000 0>,
 			<384000000 0 268800000 0>;
+		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
 		status = "ok";
 	};
 
@@ -271,6 +273,7 @@
 			<0 0 80000000 0 300000000 0 0>;
 		clock-cntl-level = "suspend", "minsvs", "lowsvs", "svs",
 			"svs_l1", "nominal", "turbo";
+		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
 		qcom,cx-ipeak-gpu-limit = <921600000>;
 		control-camnoc-axi-clk;
 		camnoc-bus-width = <32>;
@@ -570,6 +573,7 @@
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_csid_clk_src";
 		clock-control-debugfs = "true";
+		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
 		status = "ok";
 	};
 
@@ -596,6 +600,7 @@
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_clk_src";
 		clock-control-debugfs = "true";
+		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
 		status = "ok";
 	};
 
@@ -632,6 +637,7 @@
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_csid_clk_src";
 		clock-control-debugfs = "true";
+		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
 		status = "ok";
 	};
 
@@ -658,6 +664,7 @@
 		clock-cntl-level = "svs", "svs_l1", "turbo";
 		src-clock-name = "tfe_clk_src";
 		clock-control-debugfs = "true";
+		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
 		status = "ok";
 	};
 
@@ -761,6 +768,7 @@
 			<240000000 0 580000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "nominal", "turbo";
 		src-clock-name = "ope_clk_src";
+		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
 		status = "ok";
 	};
 };
