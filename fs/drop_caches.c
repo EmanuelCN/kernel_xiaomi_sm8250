@@ -59,7 +59,7 @@ void mm_drop_caches(int val)
 }
 
 int drop_caches_sysctl_handler(struct ctl_table *table, int write,
-	void __user *buffer, size_t *length, loff_t *ppos)
+		void *buffer, size_t *length, loff_t *ppos)
 {
 	int ret;
 
