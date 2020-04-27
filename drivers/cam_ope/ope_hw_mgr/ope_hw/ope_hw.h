@@ -13,6 +13,7 @@
 
 #define MAX_RD_CLIENTS   2
 #define MAX_WR_CLIENTS   8
+#define MAX_PP_CLIENTS   29
 
 #define OPE_CDM_BASE     0x0
 #define OPE_TOP_BASE     0x1
@@ -385,6 +386,18 @@ struct cam_ope_debug_register {
 	uint32_t offset;
 };
 
+struct cam_ope_bus_pp_client_reg {
+	uint32_t hw_status;
+};
+
+struct cam_ope_pp_reg {
+	void *base;
+	uint32_t offset;
+
+	uint32_t num_clients;
+	struct cam_ope_bus_pp_client_reg pp_clients[MAX_PP_CLIENTS];
+};
+
 struct ope_hw {
 	struct cam_ope_top_reg        *top_reg;
 	struct cam_ope_top_reg_val    *top_reg_val;
@@ -399,6 +412,8 @@ struct ope_hw {
 	struct cam_ope_qos_reg_val    *qos_reg_val;
 
 	struct cam_ope_common         *common;
+
+	struct cam_ope_pp_reg        *pp_reg;
 };
 
 struct hw_version_reg {
