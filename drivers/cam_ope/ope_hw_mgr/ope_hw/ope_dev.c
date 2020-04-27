@@ -210,6 +210,10 @@ int cam_ope_probe(struct platform_device *pdev)
 
 	rc = cam_cpas_start(core_info->cpas_handle,
 		&cpas_vote.ahb_vote, &cpas_vote.axi_vote);
+	if (rc) {
+		CAM_ERR(CAM_OPE, "cam_cpas_start failed, rc=%d", rc);
+		goto init_hw_failure;
+	}
 
 	rc = cam_ope_init_hw_version(&ope_dev->soc_info, ope_dev->core_info);
 	if (rc)
