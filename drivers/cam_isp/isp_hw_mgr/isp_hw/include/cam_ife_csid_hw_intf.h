@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CSID_HW_INTF_H_
@@ -123,6 +123,8 @@ struct cam_isp_in_port_generic_info {
  * @node_res :    Reserved resource structure pointer
  * @crop_enable : Flag to indicate CSID crop enable
  * @drop_enable : Flag to indicate CSID drop enable
+ * @priv:         private data to be sent in callback
+ * @event_cb:     CSID event callback to hw manager
  *
  */
 struct cam_csid_hw_reserve_resource_args {
@@ -136,6 +138,8 @@ struct cam_csid_hw_reserve_resource_args {
 	struct cam_isp_resource_node             *node_res;
 	bool                                      crop_enable;
 	bool                                      drop_enable;
+	void                                     *priv;
+	cam_hw_mgr_event_cb_func                  event_cb;
 };
 
 /**
