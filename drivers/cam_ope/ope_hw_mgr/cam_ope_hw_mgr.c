@@ -96,12 +96,19 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 	task_data = (struct ope_cmd_work_data *)data;
 	cdm_cmd = task_data->data;
 
-	CAM_DBG(CAM_OPE,
-		"cam_cdm_submit_bls: handle 0x%x, ctx_id %d req %d cookie %d",
-		ctx_data->ope_cdm.cdm_handle, ctx_data->ctx_id,
-		task_data->req_id, cdm_cmd->cookie);
+	if (!cdm_cmd) {
+		CAM_ERR(CAM_OPE, "Invalid params%pK", cdm_cmd);
+		return -EINVAL;
+	}
 
 	mutex_lock(&hw_mgr->hw_mgr_mutex);
+	if (ctx_data->ctx_state != OPE_CTX_STATE_ACQUIRED) {
+		mutex_unlock(&hw_mgr->hw_mgr_mutex);
+		CAM_ERR(CAM_OPE, "ctx id :%u is not in use",
+			ctx_data->ctx_id);
+		return -EINVAL;
+	}
+
 	if (task_data->req_id <= ctx_data->last_flush_req) {
 		CAM_WARN(CAM_OPE,
 			"request %lld has been flushed, reject packet",
@@ -109,6 +116,11 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		return -EINVAL;
 	}
+
+	CAM_DBG(CAM_OPE,
+		"cam_cdm_submit_bls: handle 0x%x, ctx_id %d req %d cookie %d",
+		ctx_data->ope_cdm.cdm_handle, ctx_data->ctx_id,
+		task_data->req_id, cdm_cmd->cookie);
 
 	if (task_data->req_id > ctx_data->last_flush_req)
 		ctx_data->last_flush_req = 0;
