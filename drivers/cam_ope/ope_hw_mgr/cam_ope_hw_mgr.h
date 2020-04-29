@@ -62,8 +62,6 @@
 #define OPE_DEVICE_IDLE_TIMEOUT    400
 #define OPE_REQUEST_TIMEOUT        200
 
-
-
 /**
  * struct cam_ope_clk_bw_request_v2
  * @budget_ns: Time required to process frame
@@ -390,6 +388,7 @@ struct ope_io_buf {
  * @clk_info:            Clock Info V1
  * @clk_info_v2:         Clock Info V2
  * @hang_data:           Debug data for HW error
+ * @submit_timestamp:    Submit timestamp to hw
  */
 struct cam_ope_request {
 	uint64_t request_id;
@@ -410,6 +409,7 @@ struct cam_ope_request {
 	struct cam_ope_clk_bw_request clk_info;
 	struct cam_ope_clk_bw_req_internal_v2 clk_info_v2;
 	struct cam_hw_mgr_dump_pf_data hang_data;
+	ktime_t submit_timestamp;
 };
 
 /**
