@@ -21,8 +21,6 @@
 #include "msm_bus_core.h"
 #include "msm_bus_adhoc.h"
 
-#include <trace/events/trace_msm_bus.h>
-
 #define MAX_BUFF_SIZE 4096
 #define FILL_LIMIT 128
 
@@ -395,9 +393,6 @@ int msm_bus_dbg_rec_transaction(const struct msm_bus_client_handle *pdata,
 	cldata->size = i;
 	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
 
-	trace_bus_update_request((int)ts.tv_sec, (int)ts.tv_nsec,
-		pdata->name, pdata->mas, pdata->slv, ab, ib);
-
 	return i;
 }
 
@@ -517,14 +512,6 @@ static int msm_bus_dbg_fill_cl_buffer(const struct msm_bus_scale_pdata *pdata,
 		i += scnprintf(buf + i, MAX_BUFF_SIZE - i, "%llu  ",
 			pdata->usecase[index].vectors[j].ib);
 	i += scnprintf(buf + i, MAX_BUFF_SIZE - i, "\n");
-
-	for (j = 0; j < pdata->usecase->num_paths; j++)
-		trace_bus_update_request((int)ts.tv_sec, (int)ts.tv_nsec,
-		pdata->name,
-		pdata->usecase[index].vectors[j].src,
-		pdata->usecase[index].vectors[j].dst,
-		pdata->usecase[index].vectors[j].ab,
-		pdata->usecase[index].vectors[j].ib);
 
 	cldata->index = index;
 	cldata->size = i;
@@ -756,23 +743,6 @@ static ssize_t msm_bus_dbg_dump_clients_read(struct file *file,
 	if (*ppos)
 		goto exit_dump_clients_read;
 
-	rt_mutex_lock(&msm_bus_dbg_cllist_lock);
-	list_for_each_entry(cldata, &cl_list, list) {
-		if (IS_ERR_OR_NULL(cldata->pdata))
-			continue;
-		for (j = 0; j < cldata->pdata->usecase->num_paths; j++) {
-			if (cldata->index == -1)
-				continue;
-			trace_bus_client_status(
-			cldata->pdata->name,
-			cldata->pdata->usecase[cldata->index].vectors[j].src,
-			cldata->pdata->usecase[cldata->index].vectors[j].dst,
-			cldata->pdata->usecase[cldata->index].vectors[j].ab,
-			cldata->pdata->usecase[cldata->index].vectors[j].ib,
-			cldata->pdata->active_only,
-			cldata->vote_count);
-		}
-	}
 	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
 exit_dump_clients_read:
 	return simple_read_from_buffer(buf, count, ppos, msg, cnt);

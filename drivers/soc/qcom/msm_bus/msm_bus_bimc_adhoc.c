@@ -11,7 +11,6 @@
 #include "msm_bus_core.h"
 #include "msm_bus_bimc.h"
 #include "msm_bus_adhoc.h"
-#include <trace/events/trace_msm_bus.h>
 
 /* M_Generic */
 
@@ -406,7 +405,6 @@ static void bimc_set_static_qos_bw(void __iomem *base, unsigned int qos_freq,
 	MSM_BUS_DBG("%s: BKE parameters: gp %d, gc %d, thm %d thl %d thh %d",
 			__func__, gp, gc, thm, thl, thh);
 
-	trace_bus_bke_params(gc, gp, thl, thm, thl);
 	set_qos_bw_regs(base, mport, thh, thm, thl, gp, gc);
 }
 
@@ -554,7 +552,6 @@ static int msm_bus_bimc_set_bw(struct msm_bus_node_device_type *dev,
 		}
 
 		qbw.bw = bw + info->qos_params.bw_buffer;
-		trace_bus_bimc_config_limiter(info->id, bw);
 
 		/* Default to gp of 5us */
 		qbw.gp = (info->qos_params.gp ?
