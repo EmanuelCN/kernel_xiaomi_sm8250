@@ -1189,9 +1189,9 @@ static int cam_tfe_bus_acquire_tfe_out(void *priv, void *acquire_args,
 	struct cam_tfe_bus_tfe_out_data        *rsrc_data = NULL;
 	enum cam_tfe_bus_tfe_out_id             tfe_out_res_id;
 	enum cam_tfe_bus_comp_grp_id            comp_grp_id;
-	int                                     rc = -ENODEV;
+	int                                     i, rc = -ENODEV;
 	uint32_t                                secure_caps = 0, mode;
-	uint32_t  i, format, num_wm, client_done_mask = 0;
+	uint32_t  format, num_wm, client_done_mask = 0;
 
 	if (!bus_priv || !acquire_args) {
 		CAM_ERR(CAM_ISP, "Invalid Param");
@@ -1315,10 +1315,10 @@ static int cam_tfe_bus_acquire_tfe_out(void *priv, void *acquire_args,
 
 release_wm:
 	for (i--; i >= 0; i--)
-		cam_tfe_bus_release_wm(bus_priv,
-			rsrc_data->wm_res[i]);
+		cam_tfe_bus_release_wm(bus_priv, rsrc_data->wm_res[i]);
 
-	cam_tfe_bus_release_comp_grp(bus_priv, rsrc_data->comp_grp);
+	if (rsrc_data->comp_grp)
+		cam_tfe_bus_release_comp_grp(bus_priv, rsrc_data->comp_grp);
 
 	return rc;
 }
