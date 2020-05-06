@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
 #include "cam_cci_core.h"
 #include "cam_cci_dev.h"
+#include "cam_req_mgr_workq.h"
 
 static int32_t cam_cci_convert_type_to_num_bytes(
 	enum camera_sensor_i2c_type type)
@@ -1427,6 +1428,8 @@ static void cam_cci_write_async_helper(struct work_struct *work)
 	enum cci_i2c_master_t master;
 	struct cam_cci_master_info *cci_master_info;
 
+	cam_req_mgr_thread_switch_delay_detect(
+		write_async->workq_scheduled_ts);
 	cci_dev = write_async->cci_dev;
 	i2c_msg = &write_async->c_ctrl.cfg.cci_i2c_write_cfg;
 	master = write_async->c_ctrl.cci_info->cci_i2c_master;
@@ -1493,6 +1496,7 @@ static int32_t cam_cci_i2c_write_async(struct v4l2_subdev *sd,
 	cci_i2c_write_cfg_w->size = cci_i2c_write_cfg->size;
 	cci_i2c_write_cfg_w->delay = cci_i2c_write_cfg->delay;
 
+	write_async->workq_scheduled_ts = ktime_get();
 	queue_work(cci_dev->write_wq[write_async->queue], &write_async->work);
 
 	return rc;

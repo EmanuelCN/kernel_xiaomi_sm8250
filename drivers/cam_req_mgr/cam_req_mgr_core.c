@@ -2097,6 +2097,7 @@ int cam_req_mgr_process_flush_req(void *priv, void *data)
 		rc = -EINVAL;
 		goto end;
 	}
+
 	link = (struct cam_req_mgr_core_link *)priv;
 	task_data = (struct crm_task_payload *)data;
 	flush_info  = (struct cam_req_mgr_flush_info *)&task_data->u;
@@ -2396,6 +2397,7 @@ int cam_req_mgr_process_error(void *priv, void *data)
 		rc = -EINVAL;
 		goto end;
 	}
+
 	link = (struct cam_req_mgr_core_link *)priv;
 	task_data = (struct crm_task_payload *)data;
 	err_info  = (struct cam_req_mgr_error_notify *)&task_data->u;
@@ -2489,6 +2491,7 @@ int cam_req_mgr_process_stop(void *priv, void *data)
 		rc = -EINVAL;
 		goto end;
 	}
+
 	link = (struct cam_req_mgr_core_link *)priv;
 	__cam_req_mgr_flush_req_slot(link);
 end:
@@ -2519,6 +2522,7 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 		rc = -EINVAL;
 		goto end;
 	}
+
 	link = (struct cam_req_mgr_core_link *)priv;
 	task_data = (struct crm_task_payload *)data;
 	trigger_data = (struct cam_req_mgr_trigger_notify *)&task_data->u;

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_sync_util.h"
+#include "cam_req_mgr_workq.h"
 
 int cam_sync_util_find_and_set_empty_row(struct sync_device *sync_dev,
 	long *idx)
@@ -289,6 +290,9 @@ void cam_sync_util_cb_dispatch(struct work_struct *cb_dispatch_work)
 	struct sync_callback_info *cb_info = container_of(cb_dispatch_work,
 		struct sync_callback_info,
 		cb_dispatch_work);
+
+	cam_req_mgr_thread_switch_delay_detect(
+			cb_info->workq_scheduled_ts);
 
 	cb_info->callback_func(cb_info->sync_obj,
 		cb_info->status,

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CPASTOP_HW_H_
@@ -276,6 +276,7 @@ struct cam_camnoc_info {
  * @hw: Pointer to HW info
  * @irq_status: IRQ status value
  * @irq_data: IRQ data
+ * @workq_scheduled_ts: workqueue scheduled timestamp
  * @work: Work handle
  *
  */
@@ -283,6 +284,7 @@ struct cam_cpas_work_payload {
 	struct cam_hw_info *hw;
 	uint32_t irq_status;
 	uint32_t irq_data;
+	ktime_t workq_scheduled_ts;
 	struct work_struct work;
 };
 

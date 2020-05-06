@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_req_mgr_workq.h"
@@ -102,6 +102,7 @@ static void cam_req_mgr_process_workq(struct work_struct *w)
 	workq = (struct cam_req_mgr_core_workq *)
 		container_of(w, struct cam_req_mgr_core_workq, work);
 
+	cam_req_mgr_thread_switch_delay_detect(workq->workq_scheduled_ts);
 	while (i < CRM_TASK_PRIORITY_MAX) {
 		WORKQ_ACQUIRE_LOCK(workq, flags);
 		while (!list_empty(&workq->task.process_head[i])) {
@@ -164,6 +165,7 @@ int cam_req_mgr_workq_enqueue_task(struct crm_workq_task *task,
 	CAM_DBG(CAM_CRM, "enq task %pK pending_cnt %d",
 		task, atomic_read(&workq->task.pending_cnt));
 
+	workq->workq_scheduled_ts = ktime_get();
 	queue_work(workq->job, &workq->work);
 	WORKQ_RELEASE_LOCK(workq, flags);
 end:
@@ -263,5 +265,27 @@ void cam_req_mgr_workq_destroy(struct cam_req_mgr_core_workq **crm_workq)
 		kfree((*crm_workq)->task.pool);
 		kfree(*crm_workq);
 		*crm_workq = NULL;
+	}
+}
+
+void cam_req_mgr_thread_switch_delay_detect(ktime_t workq_scheduled)
+{
+	uint64_t                         diff;
+	ktime_t                          cur_time;
+	struct timespec64                cur_ts;
+	struct timespec64                workq_scheduled_ts;
+
+	cur_time = ktime_get();
+	diff = ktime_ms_delta(cur_time, workq_scheduled);
+	workq_scheduled_ts  = ktime_to_timespec64(workq_scheduled);
+	cur_ts = ktime_to_timespec64(cur_time);
+
+	if (diff > CAM_WORKQ_RESPONSE_TIME_THRESHOLD) {
+		CAM_ERR(CAM_CRM,
+			"Workq delay detected %ld:%06ld %ld:%06ld %ld:",
+			workq_scheduled_ts.tv_sec,
+			workq_scheduled_ts.tv_nsec/NSEC_PER_USEC,
+			cur_ts.tv_sec, cur_ts.tv_nsec/NSEC_PER_USEC,
+			diff);
 	}
 }

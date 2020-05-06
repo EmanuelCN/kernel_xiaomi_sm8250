@@ -5,5 +5,6 @@ ccflags-y += -I$(srctree)/techpack/camera/drivers/cam_utils
 ccflags-y += -I$(srctree)/techpack/camera/drivers/cam_core
 ccflags-y += -I$(srctree)/techpack/camera/drivers/cam_cpas/include
 ccflags-y += -I$(srctree)/techpack/camera/drivers/cam_cpas
+ccflags-y += -I$(srctree)/techpack/camera/drivers/cam_req_mgr
 
 obj-$(CONFIG_SPECTRA_CAMERA) += cam_cpastop_hw.o

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CCI_DEV_H_
@@ -30,6 +30,7 @@
 #include "cam_cci_hwreg.h"
 #include "cam_soc_util.h"
 #include "cam_debug_util.h"
+#include "cam_req_mgr_workq.h"
 
 #define V4L2_IDENT_CCI 50005
 #define CCI_I2C_QUEUE_0_SIZE 128
@@ -294,6 +295,7 @@ struct cci_write_async {
 	struct cam_cci_ctrl c_ctrl;
 	enum cci_i2c_queue_t queue;
 	struct work_struct work;
+	ktime_t workq_scheduled_ts;
 	enum cci_i2c_sync sync_en;
 };
 
