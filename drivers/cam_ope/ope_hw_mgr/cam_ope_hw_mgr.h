@@ -499,6 +499,9 @@ struct cam_ope_ctx {
  * @ope_dev_intf:      OPE device interface
  * @cdm_reg_map:       OPE CDM register map
  * @clk_info:          OPE clock Info for HW manager
+ * @dentry:            Pointer to OPE debugfs directory
+ * @frame_dump_enable: OPE frame setting dump enablement
+ * @dump_req_data_enable: OPE hang dump enablement
  */
 struct cam_ope_hw_mgr {
 	int32_t             open_cnt;
@@ -531,6 +534,7 @@ struct cam_ope_hw_mgr {
 	struct cam_ope_clk_info clk_info;
 	struct dentry *dentry;
 	bool   frame_dump_enable;
+	bool   dump_req_data_enable;
 };
 
 /**

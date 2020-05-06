@@ -588,6 +588,7 @@ static void cam_ope_dump_req_data(struct cam_ope_request *ope_req)
 				ope_req->ope_debug_buf.offset);
 		return;
 	}
+
 	dump = (struct cam_ope_hang_dump *)ope_req->ope_debug_buf.cpu_addr;
 	memset(dump, 0, sizeof(struct cam_ope_hang_dump));
 	dump->num_bufs = 0;
@@ -1545,6 +1546,7 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 	struct cam_hw_done_event_data buf_data;
 	struct timespec64 ts;
 	bool flag = false;
+	bool dump_flag = true;
 
 	if (!userdata) {
 		CAM_ERR(CAM_OPE, "Invalid ctx from CDM callback");
@@ -1604,11 +1606,16 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 			 ope_req->request_id, ctx->ctx_id);
 		CAM_ERR(CAM_OPE, "Rst of CDM and OPE for error reqid = %lld",
 			ope_req->request_id);
-		if (status != CAM_CDM_CB_STATUS_HW_FLUSH)
+		if (status != CAM_CDM_CB_STATUS_HW_FLUSH) {
 			cam_ope_dump_req_data(ope_req);
+			dump_flag = false;
+		}
 		rc = cam_ope_mgr_reset_hw();
 		flag = true;
 	}
+
+	if (ope_hw_mgr->dump_req_data_enable && dump_flag)
+		cam_ope_dump_req_data(ope_req);
 
 	ctx->req_cnt--;
 
@@ -3755,6 +3762,15 @@ static int cam_ope_create_debug_fs(void)
 		0644,
 		ope_hw_mgr->dentry,
 		&ope_hw_mgr->frame_dump_enable)) {
+		CAM_ERR(CAM_OPE,
+			"failed to create dump_enable_debug");
+		goto err;
+	}
+
+	if (!debugfs_create_bool("dump_req_data_enable",
+		0644,
+		ope_hw_mgr->dentry,
+		&ope_hw_mgr->dump_req_data_enable)) {
 		CAM_ERR(CAM_OPE,
 			"failed to create dump_enable_debug");
 		goto err;
