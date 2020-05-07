@@ -2429,3 +2429,923 @@ bpf_perf_event_read_simple(void *mem, unsigned long size,
 
 	return ret;
 }
+
+struct perf_buffer;
+
+struct perf_buffer_params {
+	struct perf_event_attr *attr;
+	/* if event_cb is specified, it takes precendence */
+	perf_buffer_event_fn event_cb;
+	/* sample_cb and lost_cb are higher-level common-case callbacks */
+	perf_buffer_sample_fn sample_cb;
+	perf_buffer_lost_fn lost_cb;
+	void *ctx;
+	int cpu_cnt;
+	int *cpus;
+	int *map_keys;
+};
+
+struct perf_cpu_buf {
+	struct perf_buffer *pb;
+	void *base; /* mmap()'ed memory */
+	void *buf; /* for reconstructing segmented data */
+	size_t buf_size;
+	int fd;
+	int cpu;
+	int map_key;
+};
+
+struct perf_buffer {
+	perf_buffer_event_fn event_cb;
+	perf_buffer_sample_fn sample_cb;
+	perf_buffer_lost_fn lost_cb;
+	void *ctx; /* passed into callbacks */
+
+	size_t page_size;
+	size_t mmap_size;
+	struct perf_cpu_buf **cpu_bufs;
+	struct epoll_event *events;
+	int cpu_cnt; /* number of allocated CPU buffers */
+	int epoll_fd; /* perf event FD */
+	int map_fd; /* BPF_MAP_TYPE_PERF_EVENT_ARRAY BPF map FD */
+};
+
+static void perf_buffer__free_cpu_buf(struct perf_buffer *pb,
+				      struct perf_cpu_buf *cpu_buf)
+{
+	if (!cpu_buf)
+		return;
+	if (cpu_buf->base &&
+	    munmap(cpu_buf->base, pb->mmap_size + pb->page_size))
+		pr_warn("failed to munmap cpu_buf #%d\n", cpu_buf->cpu);
+	if (cpu_buf->fd >= 0) {
+		ioctl(cpu_buf->fd, PERF_EVENT_IOC_DISABLE, 0);
+		close(cpu_buf->fd);
+	}
+	free(cpu_buf->buf);
+	free(cpu_buf);
+}
+
+void perf_buffer__free(struct perf_buffer *pb)
+{
+	int i;
+
+	if (!pb)
+		return;
+	if (pb->cpu_bufs) {
+		for (i = 0; i < pb->cpu_cnt && pb->cpu_bufs[i]; i++) {
+			struct perf_cpu_buf *cpu_buf = pb->cpu_bufs[i];
+
+			bpf_map_delete_elem(pb->map_fd, &cpu_buf->map_key);
+			perf_buffer__free_cpu_buf(pb, cpu_buf);
+		}
+		free(pb->cpu_bufs);
+	}
+	if (pb->epoll_fd >= 0)
+		close(pb->epoll_fd);
+	free(pb->events);
+	free(pb);
+}
+
+static struct perf_cpu_buf *
+perf_buffer__open_cpu_buf(struct perf_buffer *pb, struct perf_event_attr *attr,
+			  int cpu, int map_key)
+{
+	struct perf_cpu_buf *cpu_buf;
+	char msg[STRERR_BUFSIZE];
+	int err;
+
+	cpu_buf = calloc(1, sizeof(*cpu_buf));
+	if (!cpu_buf)
+		return ERR_PTR(-ENOMEM);
+
+	cpu_buf->pb = pb;
+	cpu_buf->cpu = cpu;
+	cpu_buf->map_key = map_key;
+
+	cpu_buf->fd = syscall(__NR_perf_event_open, attr, -1 /* pid */, cpu,
+			      -1, PERF_FLAG_FD_CLOEXEC);
+	if (cpu_buf->fd < 0) {
+		err = -errno;
+		pr_warn("failed to open perf buffer event on cpu #%d: %s\n",
+			cpu, libbpf_strerror_r(err, msg, sizeof(msg)));
+		goto error;
+	}
+
+	cpu_buf->base = mmap(NULL, pb->mmap_size + pb->page_size,
+			     PROT_READ | PROT_WRITE, MAP_SHARED,
+			     cpu_buf->fd, 0);
+	if (cpu_buf->base == MAP_FAILED) {
+		cpu_buf->base = NULL;
+		err = -errno;
+		pr_warn("failed to mmap perf buffer on cpu #%d: %s\n",
+			cpu, libbpf_strerror_r(err, msg, sizeof(msg)));
+		goto error;
+	}
+
+	if (ioctl(cpu_buf->fd, PERF_EVENT_IOC_ENABLE, 0) < 0) {
+		err = -errno;
+		pr_warn("failed to enable perf buffer event on cpu #%d: %s\n",
+			cpu, libbpf_strerror_r(err, msg, sizeof(msg)));
+		goto error;
+	}
+
+	return cpu_buf;
+
+error:
+	perf_buffer__free_cpu_buf(pb, cpu_buf);
+	return (struct perf_cpu_buf *)ERR_PTR(err);
+}
+
+static struct perf_buffer *__perf_buffer__new(int map_fd, size_t page_cnt,
+					      struct perf_buffer_params *p);
+
+struct perf_buffer *perf_buffer__new(int map_fd, size_t page_cnt,
+				     const struct perf_buffer_opts *opts)
+{
+	struct perf_buffer_params p = {};
+	struct perf_event_attr attr = { 0, };
+
+	attr.config = PERF_COUNT_SW_BPF_OUTPUT,
+	attr.type = PERF_TYPE_SOFTWARE;
+	attr.sample_type = PERF_SAMPLE_RAW;
+	attr.sample_period = 1;
+	attr.wakeup_events = 1;
+
+	p.attr = &attr;
+	p.sample_cb = opts ? opts->sample_cb : NULL;
+	p.lost_cb = opts ? opts->lost_cb : NULL;
+	p.ctx = opts ? opts->ctx : NULL;
+
+	return __perf_buffer__new(map_fd, page_cnt, &p);
+}
+
+struct perf_buffer *
+perf_buffer__new_raw(int map_fd, size_t page_cnt,
+		     const struct perf_buffer_raw_opts *opts)
+{
+	struct perf_buffer_params p = {};
+
+	p.attr = opts->attr;
+	p.event_cb = opts->event_cb;
+	p.ctx = opts->ctx;
+	p.cpu_cnt = opts->cpu_cnt;
+	p.cpus = opts->cpus;
+	p.map_keys = opts->map_keys;
+
+	return __perf_buffer__new(map_fd, page_cnt, &p);
+}
+
+static struct perf_buffer *__perf_buffer__new(int map_fd, size_t page_cnt,
+					      struct perf_buffer_params *p)
+{
+	const char *online_cpus_file = "/sys/devices/system/cpu/online";
+	struct bpf_map_info map = {};
+	char msg[STRERR_BUFSIZE];
+	struct perf_buffer *pb;
+	bool *online = NULL;
+	__u32 map_info_len;
+	int err, i, j, n;
+
+	if (page_cnt & (page_cnt - 1)) {
+		pr_warn("page count should be power of two, but is %zu\n",
+			page_cnt);
+		return ERR_PTR(-EINVAL);
+	}
+
+	map_info_len = sizeof(map);
+	err = bpf_obj_get_info_by_fd(map_fd, &map, &map_info_len);
+	if (err) {
+		err = -errno;
+		pr_warn("failed to get map info for map FD %d: %s\n",
+			map_fd, libbpf_strerror_r(err, msg, sizeof(msg)));
+		return ERR_PTR(err);
+	}
+
+	if (map.type != BPF_MAP_TYPE_PERF_EVENT_ARRAY) {
+		pr_warn("map '%s' should be BPF_MAP_TYPE_PERF_EVENT_ARRAY\n",
+			map.name);
+		return ERR_PTR(-EINVAL);
+	}
+
+	pb = calloc(1, sizeof(*pb));
+	if (!pb)
+		return ERR_PTR(-ENOMEM);
+
+	pb->event_cb = p->event_cb;
+	pb->sample_cb = p->sample_cb;
+	pb->lost_cb = p->lost_cb;
+	pb->ctx = p->ctx;
+
+	pb->page_size = getpagesize();
+	pb->mmap_size = pb->page_size * page_cnt;
+	pb->map_fd = map_fd;
+
+	pb->epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+	if (pb->epoll_fd < 0) {
+		err = -errno;
+		pr_warn("failed to create epoll instance: %s\n",
+			libbpf_strerror_r(err, msg, sizeof(msg)));
+		goto error;
+	}
+
+	if (p->cpu_cnt > 0) {
+		pb->cpu_cnt = p->cpu_cnt;
+	} else {
+		pb->cpu_cnt = libbpf_num_possible_cpus();
+		if (pb->cpu_cnt < 0) {
+			err = pb->cpu_cnt;
+			goto error;
+		}
+		if (map.max_entries < pb->cpu_cnt)
+			pb->cpu_cnt = map.max_entries;
+	}
+
+	pb->events = calloc(pb->cpu_cnt, sizeof(*pb->events));
+	if (!pb->events) {
+		err = -ENOMEM;
+		pr_warn("failed to allocate events: out of memory\n");
+		goto error;
+	}
+	pb->cpu_bufs = calloc(pb->cpu_cnt, sizeof(*pb->cpu_bufs));
+	if (!pb->cpu_bufs) {
+		err = -ENOMEM;
+		pr_warn("failed to allocate buffers: out of memory\n");
+		goto error;
+	}
+
+	err = parse_cpu_mask_file(online_cpus_file, &online, &n);
+	if (err) {
+		pr_warn("failed to get online CPU mask: %d\n", err);
+		goto error;
+	}
+
+	for (i = 0, j = 0; i < pb->cpu_cnt; i++) {
+		struct perf_cpu_buf *cpu_buf;
+		int cpu, map_key;
+
+		cpu = p->cpu_cnt > 0 ? p->cpus[i] : i;
+		map_key = p->cpu_cnt > 0 ? p->map_keys[i] : i;
+
+		/* in case user didn't explicitly requested particular CPUs to
+		 * be attached to, skip offline/not present CPUs
+		 */
+		if (p->cpu_cnt <= 0 && (cpu >= n || !online[cpu]))
+			continue;
+
+		cpu_buf = perf_buffer__open_cpu_buf(pb, p->attr, cpu, map_key);
+		if (IS_ERR(cpu_buf)) {
+			err = PTR_ERR(cpu_buf);
+			goto error;
+		}
+
+		pb->cpu_bufs[j] = cpu_buf;
+
+		err = bpf_map_update_elem(pb->map_fd, &map_key,
+					  &cpu_buf->fd, 0);
+		if (err) {
+			err = -errno;
+			pr_warn("failed to set cpu #%d, key %d -> perf FD %d: %s\n",
+				cpu, map_key, cpu_buf->fd,
+				libbpf_strerror_r(err, msg, sizeof(msg)));
+			goto error;
+		}
+
+		pb->events[j].events = EPOLLIN;
+		pb->events[j].data.ptr = cpu_buf;
+		if (epoll_ctl(pb->epoll_fd, EPOLL_CTL_ADD, cpu_buf->fd,
+			      &pb->events[j]) < 0) {
+			err = -errno;
+			pr_warn("failed to epoll_ctl cpu #%d perf FD %d: %s\n",
+				cpu, cpu_buf->fd,
+				libbpf_strerror_r(err, msg, sizeof(msg)));
+			goto error;
+		}
+		j++;
+	}
+	pb->cpu_cnt = j;
+	free(online);
+
+	return pb;
+
+error:
+	free(online);
+	if (pb)
+		perf_buffer__free(pb);
+	return ERR_PTR(err);
+}
+
+struct perf_sample_raw {
+	struct perf_event_header header;
+	uint32_t size;
+	char data[];
+};
+
+struct perf_sample_lost {
+	struct perf_event_header header;
+	uint64_t id;
+	uint64_t lost;
+	uint64_t sample_id;
+};
+
+static enum bpf_perf_event_ret
+perf_buffer__process_record(struct perf_event_header *e, void *ctx)
+{
+	struct perf_cpu_buf *cpu_buf = ctx;
+	struct perf_buffer *pb = cpu_buf->pb;
+	void *data = e;
+
+	/* user wants full control over parsing perf event */
+	if (pb->event_cb)
+		return pb->event_cb(pb->ctx, cpu_buf->cpu, e);
+
+	switch (e->type) {
+	case PERF_RECORD_SAMPLE: {
+		struct perf_sample_raw *s = data;
+
+		if (pb->sample_cb)
+			pb->sample_cb(pb->ctx, cpu_buf->cpu, s->data, s->size);
+		break;
+	}
+	case PERF_RECORD_LOST: {
+		struct perf_sample_lost *s = data;
+
+		if (pb->lost_cb)
+			pb->lost_cb(pb->ctx, cpu_buf->cpu, s->lost);
+		break;
+	}
+	default:
+		pr_warn("unknown perf sample type %d\n", e->type);
+		return LIBBPF_PERF_EVENT_ERROR;
+	}
+	return LIBBPF_PERF_EVENT_CONT;
+}
+
+static int perf_buffer__process_records(struct perf_buffer *pb,
+					struct perf_cpu_buf *cpu_buf)
+{
+	enum bpf_perf_event_ret ret;
+
+	ret = bpf_perf_event_read_simple(cpu_buf->base, pb->mmap_size,
+					 pb->page_size, &cpu_buf->buf,
+					 &cpu_buf->buf_size,
+					 perf_buffer__process_record, cpu_buf);
+	if (ret != LIBBPF_PERF_EVENT_CONT)
+		return ret;
+	return 0;
+}
+
+int perf_buffer__poll(struct perf_buffer *pb, int timeout_ms)
+{
+	int i, cnt, err;
+
+	cnt = epoll_wait(pb->epoll_fd, pb->events, pb->cpu_cnt, timeout_ms);
+	for (i = 0; i < cnt; i++) {
+		struct perf_cpu_buf *cpu_buf = pb->events[i].data.ptr;
+
+		err = perf_buffer__process_records(pb, cpu_buf);
+		if (err) {
+			pr_warn("error while processing records: %d\n", err);
+			return err;
+		}
+	}
+	return cnt < 0 ? -errno : cnt;
+}
+
+struct bpf_prog_info_array_desc {
+	int	array_offset;	/* e.g. offset of jited_prog_insns */
+	int	count_offset;	/* e.g. offset of jited_prog_len */
+	int	size_offset;	/* > 0: offset of rec size,
+				 * < 0: fix size of -size_offset
+				 */
+};
+
+static struct bpf_prog_info_array_desc bpf_prog_info_array_desc[] = {
+	[BPF_PROG_INFO_JITED_INSNS] = {
+		offsetof(struct bpf_prog_info, jited_prog_insns),
+		offsetof(struct bpf_prog_info, jited_prog_len),
+		-1,
+	},
+	[BPF_PROG_INFO_XLATED_INSNS] = {
+		offsetof(struct bpf_prog_info, xlated_prog_insns),
+		offsetof(struct bpf_prog_info, xlated_prog_len),
+		-1,
+	},
+	[BPF_PROG_INFO_MAP_IDS] = {
+		offsetof(struct bpf_prog_info, map_ids),
+		offsetof(struct bpf_prog_info, nr_map_ids),
+		-(int)sizeof(__u32),
+	},
+	[BPF_PROG_INFO_JITED_KSYMS] = {
+		offsetof(struct bpf_prog_info, jited_ksyms),
+		offsetof(struct bpf_prog_info, nr_jited_ksyms),
+		-(int)sizeof(__u64),
+	},
+	[BPF_PROG_INFO_JITED_FUNC_LENS] = {
+		offsetof(struct bpf_prog_info, jited_func_lens),
+		offsetof(struct bpf_prog_info, nr_jited_func_lens),
+		-(int)sizeof(__u32),
+	},
+	[BPF_PROG_INFO_FUNC_INFO] = {
+		offsetof(struct bpf_prog_info, func_info),
+		offsetof(struct bpf_prog_info, nr_func_info),
+		offsetof(struct bpf_prog_info, func_info_rec_size),
+	},
+	[BPF_PROG_INFO_LINE_INFO] = {
+		offsetof(struct bpf_prog_info, line_info),
+		offsetof(struct bpf_prog_info, nr_line_info),
+		offsetof(struct bpf_prog_info, line_info_rec_size),
+	},
+	[BPF_PROG_INFO_JITED_LINE_INFO] = {
+		offsetof(struct bpf_prog_info, jited_line_info),
+		offsetof(struct bpf_prog_info, nr_jited_line_info),
+		offsetof(struct bpf_prog_info, jited_line_info_rec_size),
+	},
+	[BPF_PROG_INFO_PROG_TAGS] = {
+		offsetof(struct bpf_prog_info, prog_tags),
+		offsetof(struct bpf_prog_info, nr_prog_tags),
+		-(int)sizeof(__u8) * BPF_TAG_SIZE,
+	},
+
+};
+
+static __u32 bpf_prog_info_read_offset_u32(struct bpf_prog_info *info,
+					   int offset)
+{
+	__u32 *array = (__u32 *)info;
+
+	if (offset >= 0)
+		return array[offset / sizeof(__u32)];
+	return -(int)offset;
+}
+
+static __u64 bpf_prog_info_read_offset_u64(struct bpf_prog_info *info,
+					   int offset)
+{
+	__u64 *array = (__u64 *)info;
+
+	if (offset >= 0)
+		return array[offset / sizeof(__u64)];
+	return -(int)offset;
+}
+
+static void bpf_prog_info_set_offset_u32(struct bpf_prog_info *info, int offset,
+					 __u32 val)
+{
+	__u32 *array = (__u32 *)info;
+
+	if (offset >= 0)
+		array[offset / sizeof(__u32)] = val;
+}
+
+static void bpf_prog_info_set_offset_u64(struct bpf_prog_info *info, int offset,
+					 __u64 val)
+{
+	__u64 *array = (__u64 *)info;
+
+	if (offset >= 0)
+		array[offset / sizeof(__u64)] = val;
+}
+
+struct bpf_prog_info_linear *
+bpf_program__get_prog_info_linear(int fd, __u64 arrays)
+{
+	struct bpf_prog_info_linear *info_linear;
+	struct bpf_prog_info info = {};
+	__u32 info_len = sizeof(info);
+	__u32 data_len = 0;
+	int i, err;
+	void *ptr;
+
+	if (arrays >> BPF_PROG_INFO_LAST_ARRAY)
+		return ERR_PTR(-EINVAL);
+
+	/* step 1: get array dimensions */
+	err = bpf_obj_get_info_by_fd(fd, &info, &info_len);
+	if (err) {
+		pr_debug("can't get prog info: %s", strerror(errno));
+		return ERR_PTR(-EFAULT);
+	}
+
+	/* step 2: calculate total size of all arrays */
+	for (i = BPF_PROG_INFO_FIRST_ARRAY; i < BPF_PROG_INFO_LAST_ARRAY; ++i) {
+		bool include_array = (arrays & (1UL << i)) > 0;
+		struct bpf_prog_info_array_desc *desc;
+		__u32 count, size;
+
+		desc = bpf_prog_info_array_desc + i;
+
+		/* kernel is too old to support this field */
+		if (info_len < desc->array_offset + sizeof(__u32) ||
+		    info_len < desc->count_offset + sizeof(__u32) ||
+		    (desc->size_offset > 0 && info_len < desc->size_offset))
+			include_array = false;
+
+		if (!include_array) {
+			arrays &= ~(1UL << i);	/* clear the bit */
+			continue;
+		}
+
+		count = bpf_prog_info_read_offset_u32(&info, desc->count_offset);
+		size  = bpf_prog_info_read_offset_u32(&info, desc->size_offset);
+
+		data_len += count * size;
+	}
+
+	/* step 3: allocate continuous memory */
+	data_len = roundup(data_len, sizeof(__u64));
+	info_linear = malloc(sizeof(struct bpf_prog_info_linear) + data_len);
+	if (!info_linear)
+		return ERR_PTR(-ENOMEM);
+
+	/* step 4: fill data to info_linear->info */
+	info_linear->arrays = arrays;
+	memset(&info_linear->info, 0, sizeof(info));
+	ptr = info_linear->data;
+
+	for (i = BPF_PROG_INFO_FIRST_ARRAY; i < BPF_PROG_INFO_LAST_ARRAY; ++i) {
+		struct bpf_prog_info_array_desc *desc;
+		__u32 count, size;
+
+		if ((arrays & (1UL << i)) == 0)
+			continue;
+
+		desc  = bpf_prog_info_array_desc + i;
+		count = bpf_prog_info_read_offset_u32(&info, desc->count_offset);
+		size  = bpf_prog_info_read_offset_u32(&info, desc->size_offset);
+		bpf_prog_info_set_offset_u32(&info_linear->info,
+					     desc->count_offset, count);
+		bpf_prog_info_set_offset_u32(&info_linear->info,
+					     desc->size_offset, size);
+		bpf_prog_info_set_offset_u64(&info_linear->info,
+					     desc->array_offset,
+					     ptr_to_u64(ptr));
+		ptr += count * size;
+	}
+
+	/* step 5: call syscall again to get required arrays */
+	err = bpf_obj_get_info_by_fd(fd, &info_linear->info, &info_len);
+	if (err) {
+		pr_debug("can't get prog info: %s", strerror(errno));
+		free(info_linear);
+		return ERR_PTR(-EFAULT);
+	}
+
+	/* step 6: verify the data */
+	for (i = BPF_PROG_INFO_FIRST_ARRAY; i < BPF_PROG_INFO_LAST_ARRAY; ++i) {
+		struct bpf_prog_info_array_desc *desc;
+		__u32 v1, v2;
+
+		if ((arrays & (1UL << i)) == 0)
+			continue;
+
+		desc = bpf_prog_info_array_desc + i;
+		v1 = bpf_prog_info_read_offset_u32(&info, desc->count_offset);
+		v2 = bpf_prog_info_read_offset_u32(&info_linear->info,
+						   desc->count_offset);
+		if (v1 != v2)
+			pr_warn("%s: mismatch in element count\n", __func__);
+
+		v1 = bpf_prog_info_read_offset_u32(&info, desc->size_offset);
+		v2 = bpf_prog_info_read_offset_u32(&info_linear->info,
+						   desc->size_offset);
+		if (v1 != v2)
+			pr_warn("%s: mismatch in rec size\n", __func__);
+	}
+
+	/* step 7: update info_len and data_len */
+	info_linear->info_len = sizeof(struct bpf_prog_info);
+	info_linear->data_len = data_len;
+
+	return info_linear;
+}
+
+void bpf_program__bpil_addr_to_offs(struct bpf_prog_info_linear *info_linear)
+{
+	int i;
+
+	for (i = BPF_PROG_INFO_FIRST_ARRAY; i < BPF_PROG_INFO_LAST_ARRAY; ++i) {
+		struct bpf_prog_info_array_desc *desc;
+		__u64 addr, offs;
+
+		if ((info_linear->arrays & (1UL << i)) == 0)
+			continue;
+
+		desc = bpf_prog_info_array_desc + i;
+		addr = bpf_prog_info_read_offset_u64(&info_linear->info,
+						     desc->array_offset);
+		offs = addr - ptr_to_u64(info_linear->data);
+		bpf_prog_info_set_offset_u64(&info_linear->info,
+					     desc->array_offset, offs);
+	}
+}
+
+void bpf_program__bpil_offs_to_addr(struct bpf_prog_info_linear *info_linear)
+{
+	int i;
+
+	for (i = BPF_PROG_INFO_FIRST_ARRAY; i < BPF_PROG_INFO_LAST_ARRAY; ++i) {
+		struct bpf_prog_info_array_desc *desc;
+		__u64 addr, offs;
+
+		if ((info_linear->arrays & (1UL << i)) == 0)
+			continue;
+
+		desc = bpf_prog_info_array_desc + i;
+		offs = bpf_prog_info_read_offset_u64(&info_linear->info,
+						     desc->array_offset);
+		addr = offs + ptr_to_u64(info_linear->data);
+		bpf_prog_info_set_offset_u64(&info_linear->info,
+					     desc->array_offset, addr);
+	}
+}
+
+int bpf_program__set_attach_target(struct bpf_program *prog,
+				   int attach_prog_fd,
+				   const char *attach_func_name)
+{
+	int btf_id;
+
+	if (!prog || attach_prog_fd < 0 || !attach_func_name)
+		return -EINVAL;
+
+	if (attach_prog_fd)
+		btf_id = libbpf_find_prog_btf_id(attach_func_name,
+						 attach_prog_fd);
+	else
+		btf_id = __find_vmlinux_btf_id(prog->obj->btf_vmlinux,
+					       attach_func_name,
+					       prog->expected_attach_type);
+
+	if (btf_id < 0)
+		return btf_id;
+
+	prog->attach_btf_id = btf_id;
+	prog->attach_prog_fd = attach_prog_fd;
+	return 0;
+}
+
+int parse_cpu_mask_str(const char *s, bool **mask, int *mask_sz)
+{
+	int err = 0, n, len, start, end = -1;
+	bool *tmp;
+
+	*mask = NULL;
+	*mask_sz = 0;
+
+	/* Each sub string separated by ',' has format \d+-\d+ or \d+ */
+	while (*s) {
+		if (*s == ',' || *s == '\n') {
+			s++;
+			continue;
+		}
+		n = sscanf(s, "%d%n-%d%n", &start, &len, &end, &len);
+		if (n <= 0 || n > 2) {
+			pr_warn("Failed to get CPU range %s: %d\n", s, n);
+			err = -EINVAL;
+			goto cleanup;
+		} else if (n == 1) {
+			end = start;
+		}
+		if (start < 0 || start > end) {
+			pr_warn("Invalid CPU range [%d,%d] in %s\n",
+				start, end, s);
+			err = -EINVAL;
+			goto cleanup;
+		}
+		tmp = realloc(*mask, end + 1);
+		if (!tmp) {
+			err = -ENOMEM;
+			goto cleanup;
+		}
+		*mask = tmp;
+		memset(tmp + *mask_sz, 0, start - *mask_sz);
+		memset(tmp + start, 1, end - start + 1);
+		*mask_sz = end + 1;
+		s += len;
+	}
+	if (!*mask_sz) {
+		pr_warn("Empty CPU range\n");
+		return -EINVAL;
+	}
+	return 0;
+cleanup:
+	free(*mask);
+	*mask = NULL;
+	return err;
+}
+
+int parse_cpu_mask_file(const char *fcpu, bool **mask, int *mask_sz)
+{
+	int fd, err = 0, len;
+	char buf[128];
+
+	fd = open(fcpu, O_RDONLY);
+	if (fd < 0) {
+		err = -errno;
+		pr_warn("Failed to open cpu mask file %s: %d\n", fcpu, err);
+		return err;
+	}
+	len = read(fd, buf, sizeof(buf));
+	close(fd);
+	if (len <= 0) {
+		err = len ? -errno : -EINVAL;
+		pr_warn("Failed to read cpu mask from %s: %d\n", fcpu, err);
+		return err;
+	}
+	if (len >= sizeof(buf)) {
+		pr_warn("CPU mask is too big in file %s\n", fcpu);
+		return -E2BIG;
+	}
+	buf[len] = '\0';
+
+	return parse_cpu_mask_str(buf, mask, mask_sz);
+}
+
+int libbpf_num_possible_cpus(void)
+{
+	static const char *fcpu = "/sys/devices/system/cpu/possible";
+	static int cpus;
+	int err, n, i, tmp_cpus;
+	bool *mask;
+
+	tmp_cpus = READ_ONCE(cpus);
+	if (tmp_cpus > 0)
+		return tmp_cpus;
+
+	err = parse_cpu_mask_file(fcpu, &mask, &n);
+	if (err)
+		return err;
+
+	tmp_cpus = 0;
+	for (i = 0; i < n; i++) {
+		if (mask[i])
+			tmp_cpus++;
+	}
+	free(mask);
+
+	WRITE_ONCE(cpus, tmp_cpus);
+	return tmp_cpus;
+}
+
+int bpf_object__open_skeleton(struct bpf_object_skeleton *s,
+			      const struct bpf_object_open_opts *opts)
+{
+	DECLARE_LIBBPF_OPTS(bpf_object_open_opts, skel_opts,
+		.object_name = s->name,
+	);
+	struct bpf_object *obj;
+	int i;
+
+	/* Attempt to preserve opts->object_name, unless overriden by user
+	 * explicitly. Overwriting object name for skeletons is discouraged,
+	 * as it breaks global data maps, because they contain object name
+	 * prefix as their own map name prefix. When skeleton is generated,
+	 * bpftool is making an assumption that this name will stay the same.
+	 */
+	if (opts) {
+		memcpy(&skel_opts, opts, sizeof(*opts));
+		if (!opts->object_name)
+			skel_opts.object_name = s->name;
+	}
+
+	obj = bpf_object__open_mem(s->data, s->data_sz, &skel_opts);
+	if (IS_ERR(obj)) {
+		pr_warn("failed to initialize skeleton BPF object '%s': %ld\n",
+			s->name, PTR_ERR(obj));
+		return PTR_ERR(obj);
+	}
+
+	*s->obj = obj;
+
+	for (i = 0; i < s->map_cnt; i++) {
+		struct bpf_map **map = s->maps[i].map;
+		const char *name = s->maps[i].name;
+		void **mmaped = s->maps[i].mmaped;
+
+		*map = bpf_object__find_map_by_name(obj, name);
+		if (!*map) {
+			pr_warn("failed to find skeleton map '%s'\n", name);
+			return -ESRCH;
+		}
+
+		/* externs shouldn't be pre-setup from user code */
+		if (mmaped && (*map)->libbpf_type != LIBBPF_MAP_KCONFIG)
+			*mmaped = (*map)->mmaped;
+	}
+
+	for (i = 0; i < s->prog_cnt; i++) {
+		struct bpf_program **prog = s->progs[i].prog;
+		const char *name = s->progs[i].name;
+
+		*prog = bpf_object__find_program_by_name(obj, name);
+		if (!*prog) {
+			pr_warn("failed to find skeleton program '%s'\n", name);
+			return -ESRCH;
+		}
+	}
+
+	return 0;
+}
+
+int bpf_object__load_skeleton(struct bpf_object_skeleton *s)
+{
+	int i, err;
+
+	err = bpf_object__load(*s->obj);
+	if (err) {
+		pr_warn("failed to load BPF skeleton '%s': %d\n", s->name, err);
+		return err;
+	}
+
+	for (i = 0; i < s->map_cnt; i++) {
+		struct bpf_map *map = *s->maps[i].map;
+		size_t mmap_sz = bpf_map_mmap_sz(map);
+		int prot, map_fd = bpf_map__fd(map);
+		void **mmaped = s->maps[i].mmaped;
+
+		if (!mmaped)
+			continue;
+
+		if (!(map->def.map_flags & BPF_F_MMAPABLE)) {
+			*mmaped = NULL;
+			continue;
+		}
+
+		if (map->def.map_flags & BPF_F_RDONLY_PROG)
+			prot = PROT_READ;
+		else
+			prot = PROT_READ | PROT_WRITE;
+
+		/* Remap anonymous mmap()-ed "map initialization image" as
+		 * a BPF map-backed mmap()-ed memory, but preserving the same
+		 * memory address. This will cause kernel to change process'
+		 * page table to point to a different piece of kernel memory,
+		 * but from userspace point of view memory address (and its
+		 * contents, being identical at this point) will stay the
+		 * same. This mapping will be released by bpf_object__close()
+		 * as per normal clean up procedure, so we don't need to worry
+		 * about it from skeleton's clean up perspective.
+		 */
+		*mmaped = mmap(map->mmaped, mmap_sz, prot,
+				MAP_SHARED | MAP_FIXED, map_fd, 0);
+		if (*mmaped == MAP_FAILED) {
+			err = -errno;
+			*mmaped = NULL;
+			pr_warn("failed to re-mmap() map '%s': %d\n",
+				 bpf_map__name(map), err);
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+int bpf_object__attach_skeleton(struct bpf_object_skeleton *s)
+{
+	int i;
+
+	for (i = 0; i < s->prog_cnt; i++) {
+		struct bpf_program *prog = *s->progs[i].prog;
+		struct bpf_link **link = s->progs[i].link;
+		const struct bpf_sec_def *sec_def;
+		const char *sec_name = bpf_program__title(prog, false);
+
+		sec_def = find_sec_def(sec_name);
+		if (!sec_def || !sec_def->attach_fn)
+			continue;
+
+		*link = sec_def->attach_fn(sec_def, prog);
+		if (IS_ERR(*link)) {
+			pr_warn("failed to auto-attach program '%s': %ld\n",
+				bpf_program__name(prog), PTR_ERR(*link));
+			return PTR_ERR(*link);
+		}
+	}
+
+	return 0;
+}
+
+void bpf_object__detach_skeleton(struct bpf_object_skeleton *s)
+{
+	int i;
+
+	for (i = 0; i < s->prog_cnt; i++) {
+		struct bpf_link **link = s->progs[i].link;
+
+		if (!IS_ERR_OR_NULL(*link))
+			bpf_link__destroy(*link);
+		*link = NULL;
+	}
+}
+
+void bpf_object__destroy_skeleton(struct bpf_object_skeleton *s)
+{
+	if (s->progs)
+		bpf_object__detach_skeleton(s);
+	if (s->obj)
+		bpf_object__close(*s->obj);
+	free(s->maps);
+	free(s->progs);
+	free(s);
+}
