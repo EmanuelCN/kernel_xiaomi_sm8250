@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -122,6 +122,18 @@ static int __cam_ope_flush_dev_in_ready(struct cam_context *ctx,
 	return rc;
 }
 
+static int __cam_ope_dump_dev_in_ready(struct cam_context *ctx,
+	struct cam_dump_req_cmd *cmd)
+{
+	int rc;
+
+	rc = cam_context_dump_dev_to_hw(ctx, cmd);
+	if (rc)
+		CAM_ERR(CAM_OPE, "Failed to dump device");
+
+	return rc;
+}
+
 static int __cam_ope_config_dev_in_ready(struct cam_context *ctx,
 	struct cam_config_dev_cmd *cmd)
 {
@@ -205,6 +217,7 @@ static struct cam_ctx_ops
 			.start_dev = __cam_ope_start_dev_in_acquired,
 			.config_dev = __cam_ope_config_dev_in_ready,
 			.flush_dev = __cam_ope_flush_dev_in_ready,
+			.dump_dev = __cam_ope_dump_dev_in_ready,
 		},
 		.crm_ops = {},
 		.irq_ops = __cam_ope_handle_buf_done_in_ready,
@@ -217,6 +230,7 @@ static struct cam_ctx_ops
 			.release_dev = __cam_ope_release_dev_in_ready,
 			.config_dev = __cam_ope_config_dev_in_ready,
 			.flush_dev = __cam_ope_flush_dev_in_ready,
+			.dump_dev = __cam_ope_dump_dev_in_ready,
 		},
 		.crm_ops = {},
 		.irq_ops = __cam_ope_handle_buf_done_in_ready,

@@ -50,6 +50,7 @@ static int cam_ope_top_reset(struct ope_hw *ope_hw_info,
 	struct cam_ope_top_reg *top_reg;
 	struct cam_ope_top_reg_val *top_reg_val;
 	uint32_t irq_mask, irq_status;
+	unsigned long flags;
 
 	if (!ope_hw_info) {
 		CAM_ERR(CAM_OPE, "Invalid ope_hw_info");
@@ -72,21 +73,37 @@ static int cam_ope_top_reset(struct ope_hw *ope_hw_info,
 
 	rc = wait_for_completion_timeout(
 			&ope_top_info.reset_complete,
-			msecs_to_jiffies(30));
+			msecs_to_jiffies(60));
 
 	cam_io_w_mb(top_reg_val->debug_cfg_val,
 		top_reg->base + top_reg->debug_cfg);
 
 	if (!rc || rc < 0) {
-		CAM_ERR(CAM_OPE, "reset error result = %d", rc);
-		irq_mask = cam_io_r_mb(ope_hw_info->top_reg->base +
-			top_reg->irq_mask);
-		irq_status = cam_io_r_mb(ope_hw_info->top_reg->base +
-			top_reg->irq_status);
-		CAM_ERR(CAM_OPE, "irq mask 0x%x irq status 0x%x",
-			irq_mask, irq_status);
-		cam_ope_top_dump_debug_reg(ope_hw_info);
-		rc = -ETIMEDOUT;
+		spin_lock_irqsave(&ope_top_info.hw_lock, flags);
+		if (!completion_done(&ope_top_info.reset_complete)) {
+			CAM_DBG(CAM_OPE,
+				"IRQ delayed, checking the status registers");
+			irq_mask = cam_io_r_mb(ope_hw_info->top_reg->base +
+				top_reg->irq_mask);
+			irq_status = cam_io_r_mb(ope_hw_info->top_reg->base +
+				top_reg->irq_status);
+			if (irq_status & top_reg_val->rst_done) {
+				CAM_DBG(CAM_OPE, "ope reset done");
+				cam_io_w_mb(irq_status,
+					top_reg->base + top_reg->irq_clear);
+				cam_io_w_mb(top_reg_val->irq_set_clear,
+					top_reg->base + top_reg->irq_cmd);
+			} else {
+				CAM_ERR(CAM_OPE,
+					"irq mask 0x%x irq status 0x%x",
+					irq_mask, irq_status);
+				cam_ope_top_dump_debug_reg(ope_hw_info);
+				rc = -ETIMEDOUT;
+			}
+		} else {
+			rc = 0;
+		}
+		spin_unlock_irqrestore(&ope_top_info.hw_lock, flags);
 	} else {
 		rc = 0;
 	}
@@ -137,6 +154,7 @@ static int cam_ope_top_init(struct ope_hw *ope_hw_info,
 	struct cam_ope_top_reg_val *top_reg_val;
 	struct cam_ope_dev_init *dev_init = data;
 	uint32_t irq_mask, irq_status;
+	unsigned long flags;
 
 	if (!ope_hw_info) {
 		CAM_ERR(CAM_OPE, "Invalid ope_hw_info");
@@ -160,25 +178,41 @@ static int cam_ope_top_init(struct ope_hw *ope_hw_info,
 
 	rc = wait_for_completion_timeout(
 			&ope_top_info.reset_complete,
-			msecs_to_jiffies(30));
+			msecs_to_jiffies(60));
 
 	cam_io_w_mb(top_reg_val->debug_cfg_val,
 		top_reg->base + top_reg->debug_cfg);
 
 	if (!rc || rc < 0) {
-		CAM_ERR(CAM_OPE, "reset error result = %d", rc);
-		irq_mask = cam_io_r_mb(ope_hw_info->top_reg->base +
-			top_reg->irq_mask);
-		irq_status = cam_io_r_mb(ope_hw_info->top_reg->base +
-			top_reg->irq_status);
-		CAM_ERR(CAM_OPE, "irq mask 0x%x irq status 0x%x",
-			irq_mask, irq_status);
-		cam_ope_top_dump_debug_reg(ope_hw_info);
-		rc = -ETIMEDOUT;
+		spin_lock_irqsave(&ope_top_info.hw_lock, flags);
+		if (!completion_done(&ope_top_info.reset_complete)) {
+			CAM_DBG(CAM_OPE,
+				"IRQ delayed, checking the status registers");
+			irq_mask = cam_io_r_mb(ope_hw_info->top_reg->base +
+				top_reg->irq_mask);
+			irq_status = cam_io_r_mb(ope_hw_info->top_reg->base +
+				top_reg->irq_status);
+			if (irq_status & top_reg_val->rst_done) {
+				CAM_DBG(CAM_OPE, "ope reset done");
+				cam_io_w_mb(irq_status,
+					top_reg->base + top_reg->irq_clear);
+				cam_io_w_mb(top_reg_val->irq_set_clear,
+					top_reg->base + top_reg->irq_cmd);
+			} else {
+				CAM_ERR(CAM_OPE,
+					"irq mask 0x%x irq status 0x%x",
+					irq_mask, irq_status);
+				cam_ope_top_dump_debug_reg(ope_hw_info);
+				rc = -ETIMEDOUT;
+			}
+		} else {
+			CAM_DBG(CAM_OPE, "reset done");
+			rc = 0;
+		}
+		spin_unlock_irqrestore(&ope_top_info.hw_lock, flags);
 	} else {
 		rc = 0;
 	}
-
 	/* enable interrupt mask */
 	cam_io_w_mb(top_reg_val->irq_mask,
 		ope_hw_info->top_reg->base + top_reg->irq_mask);
@@ -197,6 +231,7 @@ static int cam_ope_top_probe(struct ope_hw *ope_hw_info,
 	}
 
 	ope_top_info.ope_hw_info = ope_hw_info;
+	spin_lock_init(&ope_top_info.hw_lock);
 
 	return rc;
 }
@@ -207,9 +242,12 @@ static int cam_ope_top_isr(struct ope_hw *ope_hw_info,
 	int rc = 0;
 	uint32_t irq_status;
 	uint32_t violation_status;
+	uint32_t pp_hw_status = 0;
 	struct cam_ope_top_reg *top_reg;
 	struct cam_ope_top_reg_val *top_reg_val;
+	struct cam_ope_pp_reg *pp_reg;
 	struct cam_ope_irq_data *irq_data = data;
+	int i;
 
 	if (!ope_hw_info) {
 		CAM_ERR(CAM_OPE, "Invalid ope_hw_info");
@@ -218,7 +256,9 @@ static int cam_ope_top_isr(struct ope_hw *ope_hw_info,
 
 	top_reg = ope_hw_info->top_reg;
 	top_reg_val = ope_hw_info->top_reg_val;
+	pp_reg = ope_hw_info->pp_reg;
 
+	spin_lock(&ope_top_info.hw_lock);
 	/* Read and Clear Top Interrupt status */
 	irq_status = cam_io_r_mb(top_reg->base + top_reg->irq_status);
 	cam_io_w_mb(irq_status,
@@ -237,7 +277,22 @@ static int cam_ope_top_isr(struct ope_hw *ope_hw_info,
 			top_reg->violation_status);
 		irq_data->error = 1;
 		CAM_ERR(CAM_OPE, "ope violation: %x", violation_status);
+
+		for (i = 0; i < pp_reg->num_clients ; i++) {
+			pp_hw_status = 0;
+			pp_hw_status =
+				cam_io_r_mb(pp_reg->base +
+					pp_reg->pp_clients[i]
+						.hw_status);
+
+			if (pp_hw_status)
+				CAM_ERR(CAM_OPE,
+					"ope pp hw_status offset 0x%x val 0x%x",
+					pp_reg->pp_clients[i].hw_status,
+					pp_hw_status);
+		}
 	}
+	spin_unlock(&ope_top_info.hw_lock);
 
 	return rc;
 }

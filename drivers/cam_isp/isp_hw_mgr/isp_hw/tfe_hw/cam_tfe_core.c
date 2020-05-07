@@ -1922,23 +1922,6 @@ static int cam_tfe_camif_resource_start(
 		return -ENODEV;
 	}
 
-	/* Camif module config */
-	val = cam_io_r(rsrc_data->mem_base +
-		rsrc_data->camif_reg->module_cfg);
-	val &= ~(rsrc_data->reg_data->pixel_pattern_mask);
-	val |= (rsrc_data->pix_pattern <<
-		rsrc_data->reg_data->pixel_pattern_shift);
-	val |= (1 << rsrc_data->reg_data->module_enable_shift);
-	val |= (1 << rsrc_data->reg_data->pix_out_enable_shift);
-	if (rsrc_data->camif_pd_enable)
-		val |= (1 << rsrc_data->reg_data->pdaf_output_enable_shift);
-
-	cam_io_w_mb(val, rsrc_data->mem_base +
-		rsrc_data->camif_reg->module_cfg);
-
-	CAM_DBG(CAM_ISP, "TFE:%d camif module config val:%d",
-		core_info->core_index, val);
-
 	/* Config tfe core*/
 	val = 0;
 	if (rsrc_data->sync_mode == CAM_ISP_HW_SYNC_SLAVE)

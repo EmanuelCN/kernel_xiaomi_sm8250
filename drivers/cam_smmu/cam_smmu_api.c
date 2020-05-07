@@ -868,6 +868,7 @@ static int cam_smmu_create_add_handle_in_table(char *name,
 
 			if (iommu_cb_set.cb_info[i].handle == HANDLE_INIT &&
 				valid) {
+				mutex_lock(&iommu_cb_set.cb_info[i].lock);
 				/* make sure handle is unique */
 				do {
 					handle =
