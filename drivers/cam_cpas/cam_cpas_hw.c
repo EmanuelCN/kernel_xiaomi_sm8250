@@ -1339,7 +1339,7 @@ static int cam_cpas_hw_start(void *hw_priv, void *start_args,
 		soc_private->gpu_pwr_limit =
 			kgsl_pwr_limits_add(KGSL_DEVICE_3D0);
 		if (soc_private->gpu_pwr_limit) {
-			rc = kgsl_pwr_limits_set_freq(
+			rc = kgsl_pwr_limits_set_gpu_fmax(
 				soc_private->gpu_pwr_limit,
 				soc_private->cx_ipeak_gpu_limit);
 			if (rc) {
