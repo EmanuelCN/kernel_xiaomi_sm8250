@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_REQ_MGR_UTIL_API_H_
@@ -35,6 +35,7 @@ enum hdl_type {
  * @hdl_value: Allocated handle
  * @type: session/device handle
  * @state: free/used
+ * @dev_id: device id for handle
  * @ops: ops structure
  * @priv: private data of a handle
  */
@@ -43,6 +44,7 @@ struct handle {
 	uint32_t hdl_value;
 	enum hdl_type type;
 	enum hdl_state state;
+	uint64_t dev_id;
 	void *ops;
 	void *priv;
 };
@@ -65,6 +67,7 @@ struct cam_req_mgr_util_hdl_tbl {
  * @v4l2_sub_dev_flag: flag to create v4l2 sub device
  * @media_entity_flag: flag for media entity
  * @reserved: reserved field
+ * @dev_id: device id for handle
  * @ops: ops pointer for a device handle
  * @priv: private data for a device handle
  */
@@ -73,6 +76,7 @@ struct cam_create_dev_hdl {
 	int32_t v4l2_sub_dev_flag;
 	int32_t media_entity_flag;
 	int32_t reserved;
+	uint64_t dev_id;
 	void *ops;
 	void *priv;
 };
