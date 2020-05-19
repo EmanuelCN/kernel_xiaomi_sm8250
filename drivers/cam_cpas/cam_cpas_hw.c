@@ -1224,7 +1224,7 @@ static int cam_cpas_hw_start(void *hw_priv, void *start_args,
 	struct cam_ahb_vote remove_ahb;
 	struct cam_axi_vote axi_vote = {0};
 	enum cam_vote_level applied_level = CAM_SVS_VOTE;
-	int rc, i = 0;
+	int rc, rc_eh, i = 0;
 	struct cam_cpas_private_soc *soc_private = NULL;
 	bool invalid_start = true;
 
@@ -1346,6 +1346,9 @@ static int cam_cpas_hw_start(void *hw_priv, void *start_args,
 				kgsl_pwr_limits_del(
 					soc_private->gpu_pwr_limit);
 				soc_private->gpu_pwr_limit = NULL;
+				CAM_ERR(CAM_CPAS,
+					"set cx_ipeak_gpu_limit failed, rc %d",
+					rc);
 				goto remove_axi_vote;
 			}
 		}
@@ -1395,25 +1398,26 @@ static int cam_cpas_hw_start(void *hw_priv, void *start_args,
 
 remove_axi_vote:
 	memset(&axi_vote, 0x0, sizeof(struct cam_axi_vote));
-	rc = cam_cpas_util_create_vote_all_paths(cpas_client, &axi_vote);
-	if (rc)
-		CAM_ERR(CAM_CPAS, "Unable to create per path votes rc: %d", rc);
+	rc_eh = cam_cpas_util_create_vote_all_paths(cpas_client, &axi_vote);
+	if (rc_eh)
+		CAM_ERR(CAM_CPAS,
+			"Unable to create per path votes rc_eh: %d", rc_eh);
 
 	cam_cpas_dump_axi_vote_info(cpas_client, "CPAS Start fail Vote",
 		&axi_vote);
 
-	rc = cam_cpas_util_apply_client_axi_vote(cpas_hw,
+	rc_eh = cam_cpas_util_apply_client_axi_vote(cpas_hw,
 		cpas_client, &axi_vote);
-	if (rc)
-		CAM_ERR(CAM_CPAS, "Unable remove votes rc: %d", rc);
+	if (rc_eh)
+		CAM_ERR(CAM_CPAS, "Unable remove votes rc_eh: %d", rc_eh);
 
 remove_ahb_vote:
 	remove_ahb.type = CAM_VOTE_ABSOLUTE;
 	remove_ahb.vote.level = CAM_SUSPEND_VOTE;
-	rc = cam_cpas_util_apply_client_ahb_vote(cpas_hw, cpas_client,
+	rc_eh = cam_cpas_util_apply_client_ahb_vote(cpas_hw, cpas_client,
 		&remove_ahb, NULL);
-	if (rc)
-		CAM_ERR(CAM_CPAS, "Removing AHB vote failed, rc=%d", rc);
+	if (rc_eh)
+		CAM_ERR(CAM_CPAS, "Removing AHB vote failed, rc_eh=%d", rc_eh);
 
 error:
 	mutex_unlock(&cpas_core->client_mutex[client_indx]);
