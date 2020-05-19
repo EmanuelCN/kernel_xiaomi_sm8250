@@ -58,6 +58,7 @@ struct netpoll_info;
 struct device;
 struct phy_device;
 struct dsa_port;
+struct ip_tunnel_parm;
 struct macsec_context;
 struct macsec_ops;
 
@@ -1268,6 +1269,9 @@ struct netdev_net_notifier {
  *	Get devlink port instance associated with a given netdev.
  *	Called with a reference on the netdevice and devlink locks only,
  *	rtnl_lock is not held.
+ * int (*ndo_tunnel_ctl)(struct net_device *dev, struct ip_tunnel_parm *p,
+ *			 int cmd);
+ *	Add, change, delete or get information on an IPv4 tunnel.
  */
 struct net_device_ops {
 	int			(*ndo_init)(struct net_device *dev);
@@ -1458,6 +1462,8 @@ struct net_device_ops {
 	int			(*ndo_xsk_wakeup)(struct net_device *dev,
 						  u32 queue_id, u32 flags);
 	struct devlink_port *	(*ndo_get_devlink_port)(struct net_device *dev);
+	int			(*ndo_tunnel_ctl)(struct net_device *dev,
+						  struct ip_tunnel_parm *p, int cmd);
 
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
