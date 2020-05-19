@@ -15,6 +15,7 @@
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
 #include "cam_isp_hw_mgr_intf.h"
+#include <dt-bindings/msm/msm-camera.h>
 
 /* Timeout value in msec */
 #define TFE_CSID_TIMEOUT                               1000
@@ -2817,11 +2818,12 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 	uint32_t csid_idx)
 {
 	int rc = -EINVAL;
-	uint32_t i, val, clk_lvl;
+	uint32_t i;
 	struct cam_tfe_csid_path_cfg         *path_data;
 	struct cam_hw_info                   *csid_hw_info;
 	struct cam_tfe_csid_hw               *tfe_csid_hw = NULL;
 	const struct cam_tfe_csid_reg_offset *csid_reg;
+	int                                   pixel_pipe_supported = true;
 
 	if (csid_idx >= CAM_TFE_CSID_HW_NUM_MAX) {
 		CAM_ERR(CAM_ISP, "Invalid csid index:%d", csid_idx);
@@ -2835,11 +2837,34 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 	tfe_csid_hw->hw_info = csid_hw_info;
 	csid_reg = tfe_csid_hw->csid_info->csid_reg;
 
-	CAM_DBG(CAM_ISP, "type %d index %d",
-		tfe_csid_hw->hw_intf->hw_type, csid_idx);
-
 	tfe_csid_hw->device_enabled = 0;
 	tfe_csid_hw->hw_info->hw_state = CAM_HW_STATE_POWER_DOWN;
+
+	if (!cam_cpas_is_feature_supported(CAM_CPAS_ISP_FUSE_ID,
+		csid_idx)) {
+		CAM_INFO(CAM_ISP, "TFE:%d  is not supported",
+		csid_idx);
+		rc = -EINVAL;
+		goto err;
+	}
+
+	CAM_DBG(CAM_ISP, "type %d index %d supported",
+		tfe_csid_hw->hw_intf->hw_type, csid_idx);
+
+	if (!cam_cpas_is_feature_supported(CAM_CPAS_ISP_PIX_FUSE_ID,
+		csid_idx)) {
+		pixel_pipe_supported = false;
+		CAM_INFO(CAM_ISP, "TFE:%d PIX path is not supported",
+		csid_idx);
+	}
+
+	rc = cam_tfe_csid_init_soc_resources(&tfe_csid_hw->hw_info->soc_info,
+		cam_tfe_csid_irq, tfe_csid_hw);
+	if (rc < 0) {
+		CAM_ERR(CAM_ISP, "CSID:%d Failed to init_soc", csid_idx);
+		goto err;
+	}
+
 	mutex_init(&tfe_csid_hw->hw_info->hw_mutex);
 	spin_lock_init(&tfe_csid_hw->hw_info->hw_lock);
 	spin_lock_init(&tfe_csid_hw->spin_lock);
@@ -2850,25 +2875,6 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 	init_completion(&tfe_csid_hw->csid_ipp_complete);
 	for (i = 0; i < CAM_TFE_CSID_RDI_MAX; i++)
 		init_completion(&tfe_csid_hw->csid_rdin_complete[i]);
-
-	rc = cam_tfe_csid_init_soc_resources(&tfe_csid_hw->hw_info->soc_info,
-			cam_tfe_csid_irq, tfe_csid_hw);
-	if (rc < 0) {
-		CAM_ERR(CAM_ISP, "CSID:%d Failed to init_soc", csid_idx);
-		goto err;
-	}
-	rc = cam_soc_util_get_clk_level(&tfe_csid_hw->hw_info->soc_info,
-		tfe_csid_hw->clk_rate,
-		tfe_csid_hw->hw_info->soc_info.src_clk_idx, &clk_lvl);
-	CAM_DBG(CAM_ISP, "CSID clock lvl %u", clk_lvl);
-
-	rc = cam_tfe_csid_enable_soc_resources(&tfe_csid_hw->hw_info->soc_info,
-		clk_lvl);
-	if (rc) {
-		CAM_ERR(CAM_ISP, "CSID:%d Enable SOC failed",
-			tfe_csid_hw->hw_intf->hw_idx);
-		goto err;
-	}
 
 	tfe_csid_hw->hw_intf->hw_ops.get_hw_caps = cam_tfe_csid_get_hw_caps;
 	tfe_csid_hw->hw_intf->hw_ops.init        = cam_tfe_csid_init_hw;
@@ -2889,31 +2895,8 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 		tfe_csid_hw->cid_res[i].cnt = 0;
 	}
 
-	if (tfe_csid_hw->hw_intf->hw_idx == 2) {
-		val = cam_io_r_mb(
-			tfe_csid_hw->hw_info->soc_info.reg_map[1].mem_base +
-			csid_reg->cmn_reg->top_tfe2_fuse_reg);
-		if (val) {
-			CAM_INFO(CAM_ISP, "TFE 2 is not supported by hardware");
-
-			rc = cam_tfe_csid_disable_soc_resources(
-				&tfe_csid_hw->hw_info->soc_info);
-			if (rc)
-				CAM_ERR(CAM_ISP,
-					"CSID:%d Disable CSID SOC failed",
-					tfe_csid_hw->hw_intf->hw_idx);
-			else
-				rc = -EINVAL;
-			goto err;
-		}
-	}
-
-	val = cam_io_r_mb(
-		tfe_csid_hw->hw_info->soc_info.reg_map[1].mem_base +
-		csid_reg->cmn_reg->top_tfe2_pix_pipe_fuse_reg);
-
 	/* Initialize the IPP resources */
-	if (!(val && (tfe_csid_hw->hw_intf->hw_idx == 2))) {
+	if (pixel_pipe_supported) {
 		CAM_DBG(CAM_ISP, "initializing the pix path");
 
 		tfe_csid_hw->ipp_res.res_type = CAM_ISP_RESOURCE_PIX_PATH;
@@ -2953,14 +2936,6 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 
 	tfe_csid_hw->csid_debug = 0;
 	tfe_csid_hw->error_irq_count = 0;
-
-	rc = cam_tfe_csid_disable_soc_resources(
-		&tfe_csid_hw->hw_info->soc_info);
-	if (rc) {
-		CAM_ERR(CAM_ISP, "CSID:%d Disable CSID SOC failed",
-			tfe_csid_hw->hw_intf->hw_idx);
-		goto err;
-	}
 
 	return 0;
 err:

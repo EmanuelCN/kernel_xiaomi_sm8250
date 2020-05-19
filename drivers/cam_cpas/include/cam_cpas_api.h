@@ -525,7 +525,7 @@ int cam_cpas_get_hw_info(
  *
  */
 int cam_cpas_get_cpas_hw_version(
-	uint32_t				 *hw_version);
+	uint32_t  *hw_version);
 
 /**
  * cam_cpas_is_feature_supported()
@@ -534,11 +534,14 @@ int cam_cpas_get_cpas_hw_version(
  *
  * @flag  : Camera hw features to check
  *
- * @return 1 if feature is supported
+ * @hw_id  : HW id index, if hw id is not valid feature, send zero
+ *
+ * @return true if feature is supported
+ *         false if feature is not supported
  *
  */
-int cam_cpas_is_feature_supported(
-	uint32_t flag);
+bool cam_cpas_is_feature_supported(uint32_t flag,
+	uint32_t hw_id);
 
 /**
  * cam_cpas_axi_util_path_type_to_string()

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -118,28 +118,37 @@ const char *cam_cpas_axi_util_trans_type_to_string(
 }
 EXPORT_SYMBOL(cam_cpas_axi_util_trans_type_to_string);
 
-int cam_cpas_is_feature_supported(uint32_t flag)
+bool cam_cpas_is_feature_supported(uint32_t flag,
+	uint32_t hw_id)
 {
 	struct cam_hw_info *cpas_hw = NULL;
 	struct cam_cpas_private_soc *soc_private = NULL;
-	uint32_t feature_mask;
+	uint32_t i;
+	bool  supported = true;
 
 	if (!CAM_CPAS_INTF_INITIALIZED()) {
 		CAM_ERR(CAM_CPAS, "cpas intf not initialized");
-		return -ENODEV;
+		return false;
 	}
 
 	cpas_hw = (struct cam_hw_info *) g_cpas_intf->hw_intf->hw_priv;
 	soc_private =
 		(struct cam_cpas_private_soc *)cpas_hw->soc_info.soc_private;
-	feature_mask = soc_private->feature_mask;
 
 	if (flag >= CAM_CPAS_FUSE_FEATURE_MAX) {
 		CAM_ERR(CAM_CPAS, "Unknown feature flag %x", flag);
-		return -EINVAL;
+		return false;
 	}
 
-	return feature_mask & flag ? 1 : 0;
+	for (i = 0; i < soc_private->num_feature_entries; i++) {
+		if ((soc_private->feature_info[i].feature == flag) &&
+			(soc_private->feature_info[i].hw_id == hw_id)) {
+			supported = soc_private->feature_info[i].enable;
+			break;
+		}
+	}
+
+	return supported;
 }
 EXPORT_SYMBOL(cam_cpas_is_feature_supported);
 

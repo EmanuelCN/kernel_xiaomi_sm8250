@@ -17,6 +17,7 @@
 #include "cam_tfe_bus.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
+#include <dt-bindings/msm/msm-camera.h>
 
 static const char drv_name[] = "tfe";
 
@@ -2811,6 +2812,17 @@ int cam_tfe_core_init(struct cam_tfe_hw_core_info  *core_info,
 {
 	int rc = -EINVAL;
 	int i;
+
+	if (!cam_cpas_is_feature_supported(CAM_CPAS_ISP_FUSE_ID,
+		hw_intf->hw_idx)) {
+		CAM_INFO(CAM_ISP, "TFE:%d is not supported",
+			hw_intf->hw_idx);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	CAM_DBG(CAM_ISP, "TFE:%d  is supported",
+		hw_intf->hw_idx);
 
 	rc = cam_tfe_top_init(soc_info, hw_intf, tfe_hw_info->top_hw_info,
 		core_info);

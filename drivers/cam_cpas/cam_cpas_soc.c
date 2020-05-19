@@ -401,42 +401,95 @@ static int cam_cpas_parse_node_tree(struct cam_cpas *cpas_core,
 	return 0;
 }
 
-
 int cam_cpas_get_hw_features(struct platform_device *pdev,
 	struct cam_cpas_private_soc *soc_private)
 {
 	struct device_node *of_node;
 	void *fuse;
 	uint32_t fuse_addr, fuse_bit;
-	uint32_t fuse_val = 0, feature_bit_pos;
-	int count = 0, i = 0;
+	uint32_t fuse_val = 0, feature;
+	uint32_t enable_type = 0, hw_id = 0;
+	int count = 0, i = 0, num_feature = 0;
 
 	of_node = pdev->dev.of_node;
 	count = of_property_count_u32_elems(of_node, "cam_hw_fuse");
 
-	for (i = 0; (i + 3) <= count; i = i + 3) {
+	CAM_DBG(CAM_CPAS, "fuse info elements count %d", count);
+
+	if (count <= 0)
+		goto end;
+
+	for (i = 0; (i + 5) <= count; i = i + 5) {
 		of_property_read_u32_index(of_node, "cam_hw_fuse", i,
-				&feature_bit_pos);
+				&feature);
 		of_property_read_u32_index(of_node, "cam_hw_fuse", i + 1,
 				&fuse_addr);
 		of_property_read_u32_index(of_node, "cam_hw_fuse", i + 2,
 				&fuse_bit);
-		CAM_INFO(CAM_CPAS, "feature_bit 0x%x addr 0x%x, bit %d",
-				feature_bit_pos, fuse_addr, fuse_bit);
+		of_property_read_u32_index(of_node, "cam_hw_fuse", i + 3,
+				&enable_type);
+		of_property_read_u32_index(of_node, "cam_hw_fuse", i + 4,
+				&hw_id);
+		CAM_INFO(CAM_CPAS,
+			"feature 0x%x addr 0x%x, bit %d enable type:%d hw_id=%d",
+				feature, fuse_addr, fuse_bit,
+				enable_type, hw_id);
 
 		fuse = ioremap(fuse_addr, 4);
 		if (fuse) {
 			fuse_val = cam_io_r(fuse);
-			if (fuse_val & BIT(fuse_bit))
-				soc_private->feature_mask |= feature_bit_pos;
-			else
-				soc_private->feature_mask &= ~feature_bit_pos;
-		}
-		CAM_INFO(CAM_CPAS, "fuse %pK, fuse_val %x, feature_mask %x",
-				fuse, fuse_val, soc_private->feature_mask);
+		} else {
+			/* if fuse ioremap is failed, disable the feature */
+			CAM_ERR(CAM_CPAS,
+				"fuse register io remap failed fuse_addr:0x%x feature0x%x ",
+				fuse_addr, feature);
 
+			if (enable_type)
+				fuse_val = ~BIT(fuse_bit);
+			else
+				fuse_val = BIT(fuse_bit);
+		}
+
+		soc_private->feature_info[num_feature].feature =
+			feature;
+		soc_private->feature_info[num_feature].hw_id = hw_id;
+
+		if (enable_type) {
+		/*
+		 * fuse is for enable feature
+		 * if fust bit is set means feature is enabled or
+		 * HW is enabled
+		 */
+			if (fuse_val & BIT(fuse_bit))
+				soc_private->feature_info[num_feature].enable =
+				true;
+			else
+				soc_private->feature_info[num_feature].enable =
+				false;
+		} else {
+		/*
+		 * fuse is for disable feature
+		 * if fust bit is set means feature is disabled or
+		 * HW is disabled
+		 */
+			if (fuse_val & BIT(fuse_bit))
+				soc_private->feature_info[num_feature].enable =
+				false;
+			else
+				soc_private->feature_info[num_feature].enable =
+				true;
+		}
+		CAM_INFO(CAM_CPAS,
+			"num entries:%d feature 0x%x enable=%d hw id=%d",
+				num_feature,
+				soc_private->feature_info[num_feature].feature,
+				soc_private->feature_info[num_feature].enable,
+				soc_private->feature_info[num_feature].hw_id);
+		num_feature++;
 	}
 
+end:
+	soc_private->num_feature_entries = num_feature;
 	return 0;
 }
 
@@ -454,8 +507,7 @@ int cam_cpas_get_custom_dt_info(struct cam_hw_info *cpas_hw,
 	}
 
 	of_node = pdev->dev.of_node;
-	soc_private->feature_mask = 0xFFFFFFFF;
-
+	soc_private->num_feature_entries = 0;
 	rc = of_property_read_string(of_node, "arch-compat",
 		&soc_private->arch_compat);
 	if (rc) {
