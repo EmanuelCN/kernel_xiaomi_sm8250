@@ -383,6 +383,8 @@ struct cam_tfe_csid_path_cfg {
  * @lock_state                csid spin lock
  * @event_cb:                 Callback function to hw mgr in case of hw events
  * @event_cb_priv:            Context data
+ * @prev_boot_timestamp       previous frame bootime stamp
+ * @prev_qtimer_ts            previous frame qtimer csid timestamp
  *
  */
 struct cam_tfe_csid_hw {
@@ -409,6 +411,8 @@ struct cam_tfe_csid_hw {
 	spinlock_t                          spin_lock;
 	cam_hw_mgr_event_cb_func            event_cb;
 	void                               *event_cb_priv;
+	uint64_t                            prev_boot_timestamp;
+	uint64_t                            prev_qtimer_ts;
 };
 
 int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
