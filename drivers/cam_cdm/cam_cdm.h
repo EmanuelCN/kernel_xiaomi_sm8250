@@ -434,6 +434,7 @@ struct cam_cdm_work_payload {
 	uint32_t irq_status;
 	uint32_t irq_data;
 	int fifo_idx;
+	ktime_t workq_scheduled_ts;
 	struct work_struct work;
 };
 

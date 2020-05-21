@@ -23,6 +23,7 @@
 #include "cam_cdm_hw_reg_1_2.h"
 #include "cam_cdm_hw_reg_2_0.h"
 #include "cam_trace.h"
+#include "cam_req_mgr_workq.h"
 
 #define CAM_CDM_BL_FIFO_WAIT_TIMEOUT 2000
 #define CAM_CDM_DBG_GEN_IRQ_USR_DATA 0xff
@@ -1105,6 +1106,9 @@ static void cam_hw_cdm_work(struct work_struct *work)
 			payload = NULL;
 			return;
 		}
+		cam_req_mgr_thread_switch_delay_detect(
+			payload->workq_scheduled_ts);
+
 		CAM_DBG(CAM_CDM, "IRQ status=0x%x", payload->irq_status);
 		if (payload->irq_status &
 			CAM_CDM_IRQ_STATUS_INLINE_IRQ_MASK) {
@@ -1342,6 +1346,8 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 			cdm_hw->soc_info.index);
 
 		cdm_core->bl_fifo[i].work_record++;
+		payload[i]->workq_scheduled_ts = ktime_get();
+
 		work_status = queue_work(
 				cdm_core->bl_fifo[i].work_queue,
 				&payload[i]->work);
