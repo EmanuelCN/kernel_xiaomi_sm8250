@@ -1084,7 +1084,7 @@ static void cam_hw_cdm_reset_cleanup(
 		}
 		core->bl_fifo[i].bl_tag = 0;
 		core->bl_fifo[i].last_bl_tag_done = -1;
-		core->bl_fifo[i].work_record = 0;
+		atomic_set(&core->bl_fifo[i].work_record, 0);
 	}
 }
 
@@ -1093,15 +1093,16 @@ static void cam_hw_cdm_work(struct work_struct *work)
 	struct cam_cdm_work_payload *payload;
 	struct cam_hw_info *cdm_hw;
 	struct cam_cdm *core;
-	int i;
+	int i, fifo_idx;
 
 	payload = container_of(work, struct cam_cdm_work_payload, work);
 	if (payload) {
 		cdm_hw = payload->hw;
 		core = (struct cam_cdm *)cdm_hw->core_info;
-		if (payload->fifo_idx >= core->offsets->reg_data->num_bl_fifo) {
+		fifo_idx = payload->fifo_idx;
+		if (fifo_idx >= core->offsets->reg_data->num_bl_fifo) {
 			CAM_ERR(CAM_CDM, "Invalid fifo idx %d",
-			payload->fifo_idx);
+			fifo_idx);
 			kfree(payload);
 			payload = NULL;
 			return;
@@ -1116,7 +1117,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 
 			CAM_DBG(CAM_CDM, "inline IRQ data=0x%x last tag: 0x%x",
 				payload->irq_data,
-				core->bl_fifo[payload->fifo_idx]
+				core->bl_fifo[fifo_idx]
 					.last_bl_tag_done);
 
 			if (payload->irq_data == 0xff) {
@@ -1126,31 +1127,32 @@ static void cam_hw_cdm_work(struct work_struct *work)
 				return;
 			}
 
-			mutex_lock(&core->bl_fifo[payload->fifo_idx]
+			mutex_lock(&core->bl_fifo[fifo_idx]
 				.fifo_lock);
 
-			if (core->bl_fifo[payload->fifo_idx].work_record)
-				core->bl_fifo[payload->fifo_idx].work_record--;
+			if (atomic_read(&core->bl_fifo[fifo_idx].work_record))
+				atomic_dec(
+					&core->bl_fifo[fifo_idx].work_record);
 
-			if (list_empty(&core->bl_fifo[payload->fifo_idx]
+			if (list_empty(&core->bl_fifo[fifo_idx]
 					.bl_request_list)) {
 				CAM_INFO(CAM_CDM,
 					"Fifo list empty, idx %d tag %d arb %d",
-					payload->fifo_idx, payload->irq_data,
+					fifo_idx, payload->irq_data,
 					core->arbitration);
-				mutex_unlock(&core->bl_fifo[payload->fifo_idx]
+				mutex_unlock(&core->bl_fifo[fifo_idx]
 						.fifo_lock);
 				return;
 			}
 
-			if (core->bl_fifo[payload->fifo_idx]
+			if (core->bl_fifo[fifo_idx]
 				.last_bl_tag_done !=
 				payload->irq_data) {
-				core->bl_fifo[payload->fifo_idx]
+				core->bl_fifo[fifo_idx]
 					.last_bl_tag_done =
 					payload->irq_data;
 				list_for_each_entry_safe(node, tnode,
-					&core->bl_fifo[payload->fifo_idx]
+					&core->bl_fifo[fifo_idx]
 						.bl_request_list,
 					entry) {
 					if (node->request_type ==
@@ -1177,17 +1179,17 @@ static void cam_hw_cdm_work(struct work_struct *work)
 			} else {
 				CAM_INFO(CAM_CDM,
 					"Skip GenIRQ, tag 0x%x fifo %d",
-					payload->irq_data, payload->fifo_idx);
+					payload->irq_data, fifo_idx);
 			}
-			mutex_unlock(&core->bl_fifo[payload->fifo_idx]
+			mutex_unlock(&core->bl_fifo[fifo_idx]
 				.fifo_lock);
 		}
 
 		if (payload->irq_status &
 			CAM_CDM_IRQ_STATUS_BL_DONE_MASK) {
-			if (test_bit(payload->fifo_idx, &core->cdm_status)) {
+			if (test_bit(fifo_idx, &core->cdm_status)) {
 				CAM_DBG(CAM_CDM, "CDM HW BL done IRQ");
-				complete(&core->bl_fifo[payload->fifo_idx]
+				complete(&core->bl_fifo[fifo_idx]
 					.bl_complete);
 			}
 		}
@@ -1345,7 +1347,7 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 			payload[i]->irq_status,
 			cdm_hw->soc_info.index);
 
-		cdm_core->bl_fifo[i].work_record++;
+		atomic_inc(&cdm_core->bl_fifo[i].work_record);
 		payload[i]->workq_scheduled_ts = ktime_get();
 
 		work_status = queue_work(
@@ -1653,19 +1655,13 @@ int cam_hw_cdm_hang_detect(
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
-		mutex_lock(&cdm_core->bl_fifo[i].fifo_lock);
-
-	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
-		if (cdm_core->bl_fifo[i].work_record) {
+		if (atomic_read(&cdm_core->bl_fifo[i].work_record)) {
 			CAM_WARN(CAM_CDM,
 				"workqueue got delayed, work_record :%u",
-				cdm_core->bl_fifo[i].work_record);
+				atomic_read(&cdm_core->bl_fifo[i].work_record));
 			rc = 0;
 			break;
 		}
-
-	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
-		mutex_unlock(&cdm_core->bl_fifo[i].fifo_lock);
 
 	return rc;
 }
@@ -1771,7 +1767,7 @@ int cam_hw_cdm_init(void *hw_priv,
 	}
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
 		cdm_core->bl_fifo[i].last_bl_tag_done = -1;
-		cdm_core->bl_fifo[i].work_record = 0;
+		atomic_set(&cdm_core->bl_fifo[i].work_record, 0);
 	}
 
 	rc = cam_hw_cdm_reset_hw(cdm_hw, reset_hw_hdl);

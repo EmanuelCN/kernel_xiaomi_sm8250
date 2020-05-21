@@ -798,13 +798,11 @@ int cam_cdm_process_cmd(void *hw_priv,
 		}
 
 		idx = CAM_CDM_GET_CLIENT_IDX(*handle);
-		mutex_lock(&cdm_hw->hw_mutex);
 		client = core->clients[idx];
 		if (!client) {
 			CAM_ERR(CAM_CDM,
 				"Client not present for handle %d",
 				*handle);
-			mutex_unlock(&cdm_hw->hw_mutex);
 			break;
 		}
 
@@ -812,12 +810,10 @@ int cam_cdm_process_cmd(void *hw_priv,
 			CAM_ERR(CAM_CDM,
 				"handle mismatch, client handle %d index %d received handle %d",
 				client->handle, idx, *handle);
-			mutex_unlock(&cdm_hw->hw_mutex);
 			break;
 		}
 
 		rc = cam_hw_cdm_hang_detect(cdm_hw, *handle);
-		mutex_unlock(&cdm_hw->hw_mutex);
 		break;
 	}
 	default:
