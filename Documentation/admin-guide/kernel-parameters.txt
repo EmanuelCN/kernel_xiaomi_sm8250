@@ -3826,6 +3826,13 @@
 			rcutree.jiffies_to_sched_qs.  Any attempt to
 			set rcutree.jiffies_to_sched_qs will be
 			cheerfully overwritten.
+	rcutree.rcu_min_cached_objs= [KNL]
+			Minimum number of objects which are cached and
+			maintained per one CPU. Object size is equal
+			to PAGE_SIZE. The cache allows to reduce the
+			pressure to page allocator, also it makes the
+			whole algorithm to behave better in low memory
+			condition.
 
 	rcutree.jiffies_till_first_fqs= [KNL]
 			Set delay from grace-period initialization to
