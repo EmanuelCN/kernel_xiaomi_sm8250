@@ -59,7 +59,7 @@ mlx5e_xmit_xdp_buff(struct mlx5e_xdpsq *sq, struct mlx5e_dma_info *di,
 {
 	struct mlx5e_xdp_info xdpi;
 
-	xdpi.xdpf = convert_to_xdp_frame(xdp);
+	xdpi.xdpf = xdp_convert_buff_to_frame(xdp);
 	if (unlikely(!xdpi.xdpf))
 		return false;
 	xdpi.dma_addr = di->addr + (xdpi.xdpf->data - (void *)xdpi.xdpf);

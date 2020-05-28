@@ -116,7 +116,7 @@ void xdp_warn(const char *msg, const char *func, const int line);
 
 /* Convert xdp_buff to xdp_frame */
 static inline
-struct xdp_frame *convert_to_xdp_frame(struct xdp_buff *xdp)
+struct xdp_frame *xdp_convert_buff_to_frame(struct xdp_buff *xdp)
 {
 	struct xdp_frame *xdp_frame;
 	int metasize;
