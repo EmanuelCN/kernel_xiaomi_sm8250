@@ -8,6 +8,8 @@
 #include <linux/string.h>
 #include <uapi/linux/if_ether.h>
 
+struct bpf_prog;
+struct net;
 struct sk_buff;
 
 /**
@@ -335,5 +337,9 @@ struct bpf_flow_dissector {
 	void			*data;
 	void			*data_end;
 };
+
+#ifdef CONFIG_BPF_SYSCALL
+int flow_dissector_bpf_prog_attach(struct net *net, struct bpf_prog *prog);
+#endif /* CONFIG_BPF_SYSCALL */
 
 #endif
