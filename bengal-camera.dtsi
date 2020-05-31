@@ -874,7 +874,7 @@
 			<171428571 200000000 0>,
 			<171428571 266600000 0>,
 			<240000000 465000000 0>,
-			<240000000 580000000 0>;
+			<240000000 576000000 0>;
 		clock-cntl-level = "svs", "svs_l1", "nominal", "turbo";
 		src-clock-name = "ope_clk_src";
 		qcom,cam-cx-ipeak = <&cx_ipeak_lm 8>;
