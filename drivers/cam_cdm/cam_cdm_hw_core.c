@@ -1256,7 +1256,7 @@ static void cam_hw_cdm_iommu_fault_handler(struct iommu_domain *domain,
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_unlock(&core->bl_fifo[i].fifo_lock);
 		mutex_unlock(&cdm_hw->hw_mutex);
-		CAM_ERR_RATE_LIMIT(CAM_CDM, "Page fault iova addr %pK\n",
+		CAM_ERR_RATE_LIMIT(CAM_CDM, "Page fault iova addr %pK",
 			(void *)iova);
 		cam_cdm_notify_clients(cdm_hw, CAM_CDM_CB_STATUS_PAGEFAULT,
 			(void *)iova);
