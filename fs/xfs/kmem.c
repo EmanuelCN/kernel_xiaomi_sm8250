@@ -55,7 +55,7 @@ kmem_alloc_large(size_t size, xfs_km_flags_t flags)
 		nofs_flag = memalloc_nofs_save();
 
 	lflags = kmem_flags_convert(flags);
-	ptr = __vmalloc(size, lflags, PAGE_KERNEL);
+	ptr = __vmalloc(size, lflags);
 
 	if (flags & KM_NOFS)
 		memalloc_nofs_restore(nofs_flag);
