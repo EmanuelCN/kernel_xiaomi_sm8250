@@ -835,11 +835,19 @@ static int bolero_ssr_enable(struct device *dev, void *data)
 				priv->component,
 				BOLERO_MACRO_EVT_CLK_RESET, 0x0);
 	}
+	trace_printk("%s: clk count reset\n", __func__);
 
 	if (priv->rsc_clk_cb)
 		priv->rsc_clk_cb(priv->clk_dev, BOLERO_MACRO_EVT_SSR_GFMUX_UP);
 
-	trace_printk("%s: clk count reset\n", __func__);
+	for (macro_idx = START_MACRO; macro_idx < MAX_MACRO; macro_idx++) {
+		if (!priv->macro_params[macro_idx].event_handler)
+			continue;
+		priv->macro_params[macro_idx].event_handler(
+			priv->component,
+			BOLERO_MACRO_EVT_PRE_SSR_UP, 0x0);
+	}
+
 	regcache_cache_only(priv->regmap, false);
 	mutex_lock(&priv->clk_lock);
 	priv->dev_up = true;
@@ -1078,7 +1086,7 @@ EXPORT_SYMBOL(bolero_tx_mclk_enable);
  * Returns 0 on success or -EINVAL on error.
  */
 int bolero_register_event_listener(struct snd_soc_component *component,
-				   bool enable)
+				   bool enable, bool is_dmic_sva)
 {
 	struct bolero_priv *priv = NULL;
 	int ret = 0;
@@ -1097,7 +1105,8 @@ int bolero_register_event_listener(struct snd_soc_component *component,
 
 	if (priv->macro_params[TX_MACRO].reg_evt_listener)
 		ret = priv->macro_params[TX_MACRO].reg_evt_listener(component,
-								    enable);
+								    enable,
+								    is_dmic_sva);
 
 	return ret;
 }

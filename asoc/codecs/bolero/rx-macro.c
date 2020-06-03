@@ -378,6 +378,7 @@ struct rx_swr_ctrl_platform_data {
 							  void *data),
 			  void *swrm_handle,
 			  int action);
+	int (*pinctrl_setup)(void *handle, bool enable);
 };
 
 enum {
@@ -1388,11 +1389,7 @@ static int rx_macro_event_handler(struct snd_soc_component *component,
 			}
 		}
 		break;
-	case BOLERO_MACRO_EVT_SSR_UP:
-		trace_printk("%s, enter SSR up\n", __func__);
-		rx_priv->dev_up = true;
-		/* reset swr after ssr/pdr */
-		rx_priv->reset_swr = true;
+	case BOLERO_MACRO_EVT_PRE_SSR_UP:
 		/* enable&disable RX_CORE_CLK to reset GFMUX reg */
 		ret = bolero_clk_rsc_request_clock(rx_priv->dev,
 						rx_priv->default_clk_id,
@@ -1405,6 +1402,12 @@ static int rx_macro_event_handler(struct snd_soc_component *component,
 			bolero_clk_rsc_request_clock(rx_priv->dev,
 						rx_priv->default_clk_id,
 						RX_CORE_CLK, false);
+		break;
+	case BOLERO_MACRO_EVT_SSR_UP:
+		trace_printk("%s, enter SSR up\n", __func__);
+		rx_priv->dev_up = true;
+		/* reset swr after ssr/pdr */
+		rx_priv->reset_swr = true;
 
 		if (rx_priv->swr_ctrl_data)
 			swrm_wcd_notify(
@@ -1687,13 +1690,6 @@ static int rx_macro_config_compander(struct snd_soc_component *component,
 	dev_dbg(component->dev, "%s: event %d compander %d, enabled %d\n",
 		__func__, event, comp + 1, rx_priv->comp_enabled[comp]);
 
-	if (!rx_priv->comp_enabled[comp])
-		return 0;
-
-	comp_ctl0_reg = BOLERO_CDC_RX_COMPANDER0_CTL0 +
-					(comp * RX_MACRO_COMP_OFFSET);
-	rx_path_cfg0_reg = BOLERO_CDC_RX_RX0_RX_PATH_CFG0 +
-					(comp * RX_MACRO_RX_PATH_OFFSET);
 	rx_path_cfg3_reg = BOLERO_CDC_RX_RX0_RX_PATH_CFG3 +
 					(comp * RX_MACRO_RX_PATH_OFFSET);
 	rx0_path_ctl_reg = BOLERO_CDC_RX_RX0_RX_PATH_CTL +
@@ -1709,6 +1705,19 @@ static int rx_macro_config_compander(struct snd_soc_component *component,
 	else
 		val = 0x00;
 
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		snd_soc_component_update_bits(component, rx_path_cfg3_reg,
+					0x03, val);
+	if (SND_SOC_DAPM_EVENT_OFF(event))
+		snd_soc_component_update_bits(component, rx_path_cfg3_reg,
+					0x03, 0x03);
+	if (!rx_priv->comp_enabled[comp])
+		return 0;
+
+	comp_ctl0_reg = BOLERO_CDC_RX_COMPANDER0_CTL0 +
+					(comp * RX_MACRO_COMP_OFFSET);
+	rx_path_cfg0_reg = BOLERO_CDC_RX_RX0_RX_PATH_CFG0 +
+					(comp * RX_MACRO_RX_PATH_OFFSET);
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
 		/* Enable Compander Clock */
 		snd_soc_component_update_bits(component, comp_ctl0_reg,
@@ -1719,8 +1728,6 @@ static int rx_macro_config_compander(struct snd_soc_component *component,
 					0x02, 0x00);
 		snd_soc_component_update_bits(component, rx_path_cfg0_reg,
 					0x02, 0x02);
-		snd_soc_component_update_bits(component, rx_path_cfg3_reg,
-					0x03, val);
 	}
 
 	if (SND_SOC_DAPM_EVENT_OFF(event)) {
@@ -1732,8 +1739,6 @@ static int rx_macro_config_compander(struct snd_soc_component *component,
 					0x01, 0x00);
 		snd_soc_component_update_bits(component, comp_ctl0_reg,
 					0x04, 0x00);
-		snd_soc_component_update_bits(component, rx_path_cfg3_reg,
-					0x03, 0x03);
 	}
 
 	return 0;
@@ -4066,6 +4071,7 @@ static int rx_macro_probe(struct platform_device *pdev)
 	rx_priv->swr_plat_data.clk = rx_swrm_clock;
 	rx_priv->swr_plat_data.core_vote = rx_macro_core_vote;
 	rx_priv->swr_plat_data.handle_irq = NULL;
+	rx_priv->swr_plat_data.pinctrl_setup = NULL;
 
 	ret = of_property_read_u8_array(pdev->dev.of_node,
 				"qcom,rx-bcl-pmic-params", bcl_pmic_params,

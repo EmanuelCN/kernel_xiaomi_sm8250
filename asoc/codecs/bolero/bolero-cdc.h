@@ -54,6 +54,7 @@ enum {
 	BOLERO_MACRO_EVT_RX_COMPANDER_SOFT_RST,
 	BOLERO_MACRO_EVT_BCS_CLK_OFF,
 	BOLERO_MACRO_EVT_SSR_GFMUX_UP,
+	BOLERO_MACRO_EVT_PRE_SSR_UP,
 };
 
 enum {
@@ -88,7 +89,8 @@ struct macro_ops {
 			    u32 size, void *data);
 	int (*clk_div_get)(struct snd_soc_component *component);
 	int (*clk_switch)(struct snd_soc_component *component, int clk_src);
-	int (*reg_evt_listener)(struct snd_soc_component *component, bool en);
+	int (*reg_evt_listener)(struct snd_soc_component *component,
+			bool en, bool is_dmic_sva);
 	int (*clk_enable)(struct snd_soc_component *c, bool en);
 	char __iomem *io_base;
 	u16 clk_id_req;
@@ -115,7 +117,7 @@ int bolero_runtime_suspend(struct device *dev);
 int bolero_set_port_map(struct snd_soc_component *component, u32 size, void *data);
 int bolero_tx_clk_switch(struct snd_soc_component *component, int clk_src);
 int bolero_register_event_listener(struct snd_soc_component *component,
-				   bool enable);
+				   bool enable, bool is_dmic_sva);
 void bolero_wsa_pa_on(struct device *dev);
 bool bolero_check_core_votes(struct device *dev);
 int bolero_tx_mclk_enable(struct snd_soc_component *c, bool enable);
@@ -189,7 +191,7 @@ static inline int bolero_tx_clk_switch(struct snd_soc_component *component,
 
 static inline int bolero_register_event_listener(
 					struct snd_soc_component *component,
-					bool enable)
+					bool enable, bool is_dmic_sva)
 {
 	return 0;
 }
