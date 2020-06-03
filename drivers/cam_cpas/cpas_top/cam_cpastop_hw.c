@@ -24,6 +24,7 @@
 #include "cpastop_v480_100.h"
 #include "cpastop_v540_100.h"
 #include "cpastop_v520_100.h"
+#include "cam_req_mgr_workq.h"
 
 struct cam_camnoc_info *camnoc_info;
 
@@ -415,6 +416,9 @@ static void cam_cpastop_work(struct work_struct *work)
 		return;
 	}
 
+	cam_req_mgr_thread_switch_delay_detect(
+			payload->workq_scheduled_ts);
+
 	cpas_hw = payload->hw;
 	cpas_core = (struct cam_cpas *) cpas_hw->core_info;
 	soc_info = &cpas_hw->soc_info;
@@ -514,6 +518,7 @@ static irqreturn_t cam_cpastop_handle_irq(int irq_num, void *data)
 
 	cam_cpastop_reset_irq(cpas_hw);
 
+	payload->workq_scheduled_ts = ktime_get();
 	queue_work(cpas_core->work_queue, &payload->work);
 done:
 	atomic_dec(&cpas_core->irq_count);

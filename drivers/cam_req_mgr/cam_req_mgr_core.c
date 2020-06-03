@@ -15,6 +15,7 @@
 #include "cam_trace.h"
 #include "cam_debug_util.h"
 #include "cam_req_mgr_dev.h"
+#include "cam_req_mgr_debug.h"
 
 static struct cam_req_mgr_core_device *g_crm_core_dev;
 static struct cam_req_mgr_core_link g_links[MAXIMUM_LINKS_PER_SESSION];
@@ -1471,6 +1472,15 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 				"Max retry attempts reached on link[0x%x] for req [%lld]",
 				link->link_hdl,
 				in_q->slot[in_q->rd_idx].req_id);
+
+			cam_req_mgr_debug_delay_detect();
+			trace_cam_delay_detect("CRM",
+				"Max retry attempts reached",
+				in_q->slot[in_q->rd_idx].req_id,
+				CAM_DEFAULT_VALUE,
+				link->link_hdl,
+				CAM_DEFAULT_VALUE, rc);
+
 			__cam_req_mgr_notify_error_on_link(link, dev);
 			link->retry_cnt = 0;
 		}
@@ -2097,6 +2107,7 @@ int cam_req_mgr_process_flush_req(void *priv, void *data)
 		rc = -EINVAL;
 		goto end;
 	}
+
 	link = (struct cam_req_mgr_core_link *)priv;
 	task_data = (struct crm_task_payload *)data;
 	flush_info  = (struct cam_req_mgr_flush_info *)&task_data->u;
@@ -2396,6 +2407,7 @@ int cam_req_mgr_process_error(void *priv, void *data)
 		rc = -EINVAL;
 		goto end;
 	}
+
 	link = (struct cam_req_mgr_core_link *)priv;
 	task_data = (struct crm_task_payload *)data;
 	err_info  = (struct cam_req_mgr_error_notify *)&task_data->u;
@@ -2489,6 +2501,7 @@ int cam_req_mgr_process_stop(void *priv, void *data)
 		rc = -EINVAL;
 		goto end;
 	}
+
 	link = (struct cam_req_mgr_core_link *)priv;
 	__cam_req_mgr_flush_req_slot(link);
 end:
@@ -2519,6 +2532,7 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 		rc = -EINVAL;
 		goto end;
 	}
+
 	link = (struct cam_req_mgr_core_link *)priv;
 	task_data = (struct crm_task_payload *)data;
 	trigger_data = (struct cam_req_mgr_trigger_notify *)&task_data->u;

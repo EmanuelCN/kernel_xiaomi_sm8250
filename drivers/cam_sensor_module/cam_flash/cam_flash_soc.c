@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -94,6 +94,9 @@ static int32_t cam_get_source_node_info(
 				rc = of_property_read_u32(flash_src_node,
 					"qcom,max-current",
 					&soc_private->flash_max_current[i]);
+				rc &= of_property_read_u32(flash_src_node,
+					"qcom,max-current-ma",
+					&soc_private->flash_max_current[i]);
 				if (rc < 0) {
 					CAM_WARN(CAM_FLASH,
 					"LED FLASH max-current read fail: %d",
@@ -179,6 +182,9 @@ static int32_t cam_get_source_node_info(
 			} else {
 				rc = of_property_read_u32(torch_src_node,
 					"qcom,max-current",
+					&soc_private->torch_max_current[i]);
+				rc &= of_property_read_u32(torch_src_node,
+					"qcom,max-current-ma",
 					&soc_private->torch_max_current[i]);
 				if (rc < 0) {
 					CAM_WARN(CAM_FLASH,

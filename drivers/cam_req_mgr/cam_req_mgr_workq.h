@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_REQ_MGR_WORKQ_H_
@@ -25,6 +25,13 @@
  * given CPU.
  */
 #define CAM_WORKQ_FLAG_SERIAL                    (1 << 1)
+
+/*
+ * Response time threshold in ms beyond which it is considered
+ * as workq scheduling/processing delay.
+ */
+#define CAM_WORKQ_RESPONSE_TIME_THRESHOLD   5
+
 
 /* Task priorities, lower the number higher the priority*/
 enum crm_task_priority {
@@ -54,27 +61,28 @@ enum crm_workq_context {
  * @ret        : return value in future to use for blocking calls
  */
 struct crm_workq_task {
-	int32_t                  priority;
-	void                    *payload;
-	int32_t                (*process_cb)(void *priv, void *data);
-	void                    *parent;
-	struct list_head         entry;
-	uint8_t                  cancel;
-	void                    *priv;
-	int32_t                  ret;
+	int32_t                    priority;
+	void                      *payload;
+	int32_t                  (*process_cb)(void *priv, void *data);
+	void                      *parent;
+	struct list_head           entry;
+	uint8_t                    cancel;
+	void                      *priv;
+	int32_t                    ret;
 };
 
 /** struct cam_req_mgr_core_workq
- * @work       : work token used by workqueue
- * @job        : workqueue internal job struct
+ * @work              : work token used by workqueue
+ * @job               : workqueue internal job struct
+ * @workq_scheduled_ts: workqueue scheduled timestamp
  * task -
- * @lock_bh    : lock for task structs
- * @in_irq     : set true if workque can be used in irq context
- * @free_cnt   : num of free/available tasks
- * @empty_head : list  head of available taska which can be used
- *               or acquired in order to enqueue a task to workq
- * @pool       : pool of tasks used for handling events in workq context
- * @num_task   : size of tasks pool
+ * @lock_bh           : lock for task structs
+ * @in_irq            : set true if workque can be used in irq context
+ * @free_cnt          : num of free/available tasks
+ * @empty_head        : list  head of available taska which can be used
+ *                      or acquired in order to enqueue a task to workq
+ * @pool              : pool of tasks used for handling events in workq context
+ * @num_task          : size of tasks pool
  * -
  */
 struct cam_req_mgr_core_workq {
@@ -82,6 +90,7 @@ struct cam_req_mgr_core_workq {
 	struct workqueue_struct   *job;
 	spinlock_t                 lock_bh;
 	uint32_t                   in_irq;
+	ktime_t                    workq_scheduled_ts;
 
 	/* tasks */
 	struct {
@@ -132,6 +141,14 @@ void cam_req_mgr_workq_destroy(struct cam_req_mgr_core_workq **workq);
  */
 int cam_req_mgr_workq_enqueue_task(struct crm_workq_task *task,
 	void *priv, int32_t prio);
+
+/**
+ * cam_req_mgr_thread_switch_delay_detect()
+ * @brief: Detects if workq delay has occurred or not
+ * @timestamp: workq scheduled timestamp
+ */
+void cam_req_mgr_thread_switch_delay_detect(
+	ktime_t timestamp);
 
 /**
  * cam_req_mgr_workq_get_task()
