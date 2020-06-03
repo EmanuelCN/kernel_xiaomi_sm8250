@@ -9,7 +9,7 @@
 		reg-names = "core_base";
 
 		iommus = <&apps_smmu 0x540 0x0>;
-		qcom,iommu-dma = "bypass";
+		qcom,iommu-dma = "atomic";
 		qcom,iommu-dma-addr-pool = <0x90000000 0x60000000>;
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -50,6 +50,7 @@
 			0x144 /* GSI_RING_BASE_ADDR_H */
 			0x1a4>; /* GSI_IF_STS */
 		qcom,dwc-usb3-msm-tx-fifo-size = <21288>;
+		qcom,pm-qos-latency = <61>; /* CPU0-WFI-LVL latency +1 */
 
 		qcom,gsi-disable-io-coherency;
 
@@ -135,9 +136,11 @@
 		compatible = "qcom,qusb2phy-v2";
 		reg = <0x088e3000 0x400>,
 			<0x00780268 0x4>,
-			<0x088e7014 0x4>;
+			<0x088e7014 0x4>,
+			<0x088e2000 0x4>;
 		reg-names = "qusb_phy_base", "efuse_addr",
-				"refgen_north_bg_reg_addr";
+				"refgen_north_bg_reg_addr",
+				"eud_enable_reg";
 
 		qcom,efuse-bit-pos = <25>;
 		qcom,efuse-num-bits = <3>;
@@ -155,6 +158,8 @@
 			 0x198 /* PLL_BIAS_CONTROL_2 */
 			 0x27c /* QUSB2PHY_DEBUG_CTRL1 */
 			 0x280 /* QUSB2PHY_DEBUG_CTRL2 */
+			 0x284 /* QUSB2PHY_DEBUG_CTRL3 */
+			 0x288 /* QUSB2PHY_DEBUG_CTRL4 */
 			 0x2a0>; /* QUSB2PHY_STAT5 */
 
 		qcom,qusb-phy-init-seq =

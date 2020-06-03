@@ -49,6 +49,9 @@
 
 		clocks = <&aopcc QDSS_CLK>;
 		clock-names = "apb_pclk";
+
+		qcom,msr-fix-req;
+
 		port {
 			tpdm_swao_1_out_tpda_swao1: endpoint {
 				remote-endpoint = <&tpda_swao1_in_tpdm_swao_1>;
@@ -158,6 +161,9 @@
 
 		clocks = <&aopcc QDSS_CLK>;
 		clock-names = "apb_pclk";
+
+		qcom,msr-fix-req;
+
 		port {
 			tpdm_lpass_out_tpda0: endpoint {
 				remote-endpoint =
@@ -350,8 +356,12 @@
 
 		coresight-name = "coresight-tpdm-ddr";
 
+		status = "disabled";
 		clocks = <&aopcc QDSS_CLK>;
 		clock-names = "apb_pclk";
+
+		qcom,msr-fix-req;
+
 		port {
 			tpdm_ddr_out_funnel_ddr0: endpoint {
 				remote-endpoint =
@@ -370,6 +380,9 @@
 
 		clocks = <&aopcc QDSS_CLK>;
 		clock-names = "apb_pclk";
+
+		qcom,msr-fix-req;
+
 		port {
 			tpdm_turing_out_funnel_turing: endpoint {
 				remote-endpoint =
@@ -658,6 +671,9 @@
 
 		clocks = <&aopcc QDSS_CLK>;
 		clock-names = "apb_pclk";
+
+		qcom,msr-fix-req;
+
 		port {
 			tpdm_modem0_out_tpda_modem0: endpoint {
 				remote-endpoint =
@@ -677,6 +693,9 @@
 		status = "disabled";
 		clocks = <&aopcc QDSS_CLK>;
 		clock-names = "apb_pclk";
+
+		qcom,msr-fix-req;
+
 		port {
 			tpdm_modem1_out_tpda_modem1: endpoint {
 				remote-endpoint =
@@ -2187,6 +2206,7 @@
 		reg-names = "tmc-base";
 
 		coresight-name = "coresight-tmc-etf";
+		coresight-ctis = <&cti_swao_cti0 &cti_swao_cti3>;
 		coresight-csr = <&swao_csr>;
 
 		clocks = <&aopcc QDSS_CLK>;
@@ -2298,6 +2318,7 @@
 
 		qcom,sw-usb;
 		coresight-name = "coresight-tmc-etr";
+		coresight-ctis = <&cti0 &cti_swao_cti3>;
 		coresight-csr = <&csr>;
 
 		interrupts = <GIC_SPI 270 IRQ_TYPE_EDGE_RISING>;
@@ -2993,6 +3014,22 @@
 		reg-names = "cti-base";
 
 		coresight-name = "coresight-cti-dl-apss";
+
+		clocks = <&aopcc QDSS_CLK>;
+		clock-names = "apb_pclk";
+	};
+
+	ipcb_tgu: tgu@6b0b000 {
+		compatible = "arm,primecell";
+		arm,primecell-periphid = <0x000bb999>;
+		reg = <0x06b0b000 0x1000>;
+		reg-names = "tgu-base";
+		tgu-steps = <3>;
+		tgu-conditions = <4>;
+		tgu-regs = <4>;
+		tgu-timer-counters = <8>;
+
+		coresight-name = "coresight-tgu-ipcb";
 
 		clocks = <&aopcc QDSS_CLK>;
 		clock-names = "apb_pclk";
