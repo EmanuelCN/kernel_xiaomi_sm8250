@@ -1244,7 +1244,7 @@ struct vm_area_struct *__vma_merge(struct mm_struct *mm,
 }
 
 /*
- * Rough compatbility check to quickly see if it's even worth looking
+ * Rough compatibility check to quickly see if it's even worth looking
  * at sharing an anon_vma.
  *
  * They need to have the same vm_file, and the flags can only differ
