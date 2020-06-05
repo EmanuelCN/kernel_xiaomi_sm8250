@@ -1319,6 +1319,46 @@ static int cam_ope_mgr_update_clk_rate(struct cam_ope_hw_mgr *hw_mgr,
 	return 0;
 }
 
+static int cam_ope_mgr_calculate_num_path(
+	struct cam_ope_clk_bw_req_internal_v2 *clk_info,
+	struct cam_ope_ctx *ctx_data)
+{
+	int i, path_index = 0;
+
+	for (i = 0; i < CAM_OPE_MAX_PER_PATH_VOTES; i++) {
+		if ((clk_info->axi_path[i].path_data_type <
+			CAM_AXI_PATH_DATA_OPE_START_OFFSET) ||
+			(clk_info->axi_path[i].path_data_type >
+			CAM_AXI_PATH_DATA_OPE_MAX_OFFSET) ||
+			((clk_info->axi_path[i].path_data_type -
+			CAM_AXI_PATH_DATA_OPE_START_OFFSET) >=
+			CAM_OPE_MAX_PER_PATH_VOTES)) {
+			CAM_WARN(CAM_OPE,
+				"Invalid path %d, start offset=%d, max=%d",
+				ctx_data->clk_info.axi_path[i].path_data_type,
+				CAM_AXI_PATH_DATA_OPE_START_OFFSET,
+				CAM_OPE_MAX_PER_PATH_VOTES);
+			continue;
+		}
+
+		path_index = clk_info->axi_path[i].path_data_type -
+			CAM_AXI_PATH_DATA_OPE_START_OFFSET;
+
+		CAM_DBG(CAM_OPE,
+			"clk_info: i[%d]: [%s %s] bw [%lld %lld] num_path: %d",
+			i,
+			cam_cpas_axi_util_trans_type_to_string(
+			clk_info->axi_path[i].transac_type),
+			cam_cpas_axi_util_path_type_to_string(
+			clk_info->axi_path[i].path_data_type),
+			clk_info->axi_path[i].camnoc_bw,
+			clk_info->axi_path[i].mnoc_ab_bw,
+			clk_info->num_paths);
+	}
+
+	return (path_index+1);
+}
+
 static bool cam_ope_update_bw_v2(struct cam_ope_hw_mgr *hw_mgr,
 	struct cam_ope_ctx *ctx_data,
 	struct cam_ope_clk_info *hw_mgr_clk_info,
@@ -1401,7 +1441,8 @@ static bool cam_ope_update_bw_v2(struct cam_ope_hw_mgr *hw_mgr,
 		ctx_data->clk_info.axi_path[i].ddr_ib_bw;
 	}
 
-	ctx_data->clk_info.num_paths = clk_info->num_paths;
+	ctx_data->clk_info.num_paths =
+		cam_ope_mgr_calculate_num_path(clk_info, ctx_data);
 
 	memcpy(&ctx_data->clk_info.axi_path[0],
 		&clk_info->axi_path[0],
