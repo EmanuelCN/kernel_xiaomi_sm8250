@@ -200,4 +200,10 @@ struct cam_tfe_hw_event_recovery_data {
  */
 int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl);
 
+#ifndef CONFIG_SPECTRA_CAMERA_TFE
+int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
+{
+	return 0;
+}
+#endif
 #endif /* _CAM_TFE_HW_MGR_H_ */
