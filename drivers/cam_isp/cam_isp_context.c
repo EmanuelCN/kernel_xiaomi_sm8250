@@ -4986,14 +4986,14 @@ int cam_isp_context_init(struct cam_isp_context *ctx,
 	ctx->init_timestamp = jiffies_to_msecs(jiffies);
 	ctx->isp_device_type = isp_device_type;
 
-	for (i = 0; i < CAM_CTX_REQ_MAX; i++) {
+	for (i = 0; i < CAM_ISP_CTX_REQ_MAX; i++) {
 		ctx->req_base[i].req_priv = &ctx->req_isp[i];
 		ctx->req_isp[i].base = &ctx->req_base[i];
 	}
 
 	/* camera context setup */
 	rc = cam_context_init(ctx_base, isp_dev_name, CAM_ISP, ctx_id,
-		crm_node_intf, hw_intf, ctx->req_base, CAM_CTX_REQ_MAX);
+		crm_node_intf, hw_intf, ctx->req_base, CAM_ISP_CTX_REQ_MAX);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Camera Context Base init failed");
 		goto err;

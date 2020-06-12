@@ -22,6 +22,8 @@
  */
 #define CAM_ISP_CTX_RES_MAX                     24
 
+/* max requests per ctx for isp */
+#define CAM_ISP_CTX_REQ_MAX                     8
 /*
  * Maximum configuration entry size  - This is based on the
  * worst case DUAL IFE use case plus some margin.
@@ -261,8 +263,8 @@ struct cam_isp_context {
 	struct cam_ctx_ops              *substate_machine;
 	struct cam_isp_ctx_irq_ops      *substate_machine_irq;
 
-	struct cam_ctx_request           req_base[CAM_CTX_REQ_MAX];
-	struct cam_isp_ctx_req           req_isp[CAM_CTX_REQ_MAX];
+	struct cam_ctx_request           req_base[CAM_ISP_CTX_REQ_MAX];
+	struct cam_isp_ctx_req           req_isp[CAM_ISP_CTX_REQ_MAX];
 
 	void                            *hw_ctx;
 	uint64_t                         sof_timestamp_val;
