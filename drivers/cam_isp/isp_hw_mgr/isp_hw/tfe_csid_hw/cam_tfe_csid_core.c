@@ -7,6 +7,7 @@
 #include <linux/slab.h>
 #include <media/cam_tfe.h>
 #include <media/cam_defs.h>
+#include <media/cam_req_mgr.h>
 
 #include "cam_tfe_csid_core.h"
 #include "cam_isp_hw.h"
@@ -16,6 +17,7 @@
 #include "cam_cpas_api.h"
 #include "cam_isp_hw_mgr_intf.h"
 #include <dt-bindings/msm/msm-camera.h>
+#include "cam_subdev.h"
 
 /* Timeout value in msec */
 #define TFE_CSID_TIMEOUT                               1000
@@ -2637,6 +2639,12 @@ irqreturn_t cam_tfe_csid_irq(int irq_num, void *data)
 			csid_reg->csi2_reg->csid_csi2_rx_cfg1_addr);
 		cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
 			csid_reg->csi2_reg->csid_csi2_rx_irq_mask_addr);
+		/* phy_sel starts from 1 and should never be zero*/
+		if (csid_hw->csi2_rx_cfg.phy_sel > 0) {
+			cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
+				CAM_SUBDEV_MESSAGE_IRQ_ERR,
+				(csid_hw->csi2_rx_cfg.phy_sel - 1));
+		}
 	}
 
 	if (csid_hw->csid_debug & TFE_CSID_DEBUG_ENABLE_EOT_IRQ) {
