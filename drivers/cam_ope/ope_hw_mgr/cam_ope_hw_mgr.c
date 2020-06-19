@@ -2504,6 +2504,9 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 	struct cam_ope_dev_clk_update clk_update;
 	struct cam_ope_dev_bw_update *bw_update;
 	struct cam_ope_set_irq_cb irq_cb;
+	struct cam_hw_info *dev = NULL;
+	struct cam_hw_soc_info *soc_info = NULL;
+	int32_t idx;
 
 	if ((!hw_priv) || (!hw_acquire_args)) {
 		CAM_ERR(CAM_OPE, "Invalid args: %x %x",
@@ -2592,8 +2595,14 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 			}
 		}
 
-		hw_mgr->clk_info.base_clk = 600000000;
-		hw_mgr->clk_info.curr_clk = 600000000;
+		dev = (struct cam_hw_info *)hw_mgr->ope_dev_intf[0]->hw_priv;
+		soc_info = &dev->soc_info;
+		idx = soc_info->src_clk_idx;
+
+		hw_mgr->clk_info.base_clk =
+			soc_info->clk_rate[CAM_TURBO_VOTE][idx];
+		hw_mgr->clk_info.curr_clk =
+			soc_info->clk_rate[CAM_TURBO_VOTE][idx];
 		hw_mgr->clk_info.threshold = 5;
 		hw_mgr->clk_info.over_clked = 0;
 
@@ -2620,7 +2629,11 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 	}
 
 	for (i = 0; i < ope_hw_mgr->num_ope; i++) {
-		clk_update.clk_rate = 600000000;
+		dev = (struct cam_hw_info *)hw_mgr->ope_dev_intf[i]->hw_priv;
+		soc_info = &dev->soc_info;
+		idx = soc_info->src_clk_idx;
+		clk_update.clk_rate = soc_info->clk_rate[CAM_TURBO_VOTE][idx];
+
 		rc = hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 			hw_mgr->ope_dev_intf[i]->hw_priv, OPE_HW_CLK_UPDATE,
 			&clk_update, sizeof(clk_update));
