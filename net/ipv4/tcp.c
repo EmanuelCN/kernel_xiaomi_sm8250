@@ -2752,7 +2752,7 @@ static int tcp_repair_options_est(struct sock *sk,
 	return 0;
 }
 
-static int __tcp_sock_set_keepidle(struct sock *sk, int val)
+int tcp_sock_set_keepidle_locked(struct sock *sk, int val)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 
@@ -2779,7 +2779,7 @@ int tcp_sock_set_keepidle(struct sock *sk, int val)
 	int err;
 
 	lock_sock(sk);
-	err = __tcp_sock_set_keepidle(sk, val);
+	err = tcp_sock_set_keepidle_locked(sk, val);
 	release_sock(sk);
 	return err;
 }
@@ -2984,7 +2984,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
 		break;
 
 	case TCP_KEEPIDLE:
-		err = __tcp_sock_set_keepidle(sk, val);
+		err = tcp_sock_set_keepidle_locked(sk, val);
 		break;
 	case TCP_KEEPINTVL:
 		if (val < 1 || val > MAX_TCP_KEEPINTVL)
