@@ -1101,7 +1101,7 @@ void post_init_entity_util_avg(struct sched_entity *se)
 		}
 	}
 
-        sa->runnable_avg = cpu_scale;
+	sa->runnable_avg = sa->util_avg;
 
 	if (entity_is_task(se)) {
 		struct task_struct *p = task_of(se);
