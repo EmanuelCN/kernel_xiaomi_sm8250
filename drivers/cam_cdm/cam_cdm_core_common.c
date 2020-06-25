@@ -204,6 +204,7 @@ void cam_cdm_notify_clients(struct cam_hw_info *cdm_hw,
 	} else if (status == CAM_CDM_CB_STATUS_HW_RESET_DONE ||
 			status == CAM_CDM_CB_STATUS_HW_FLUSH ||
 			status == CAM_CDM_CB_STATUS_HW_RESUBMIT ||
+			status == CAM_CDM_CB_STATUS_INVALID_BL_CMD ||
 			status == CAM_CDM_CB_STATUS_HW_ERROR) {
 		int client_idx;
 		struct cam_cdm_bl_cb_request_entry *node =
