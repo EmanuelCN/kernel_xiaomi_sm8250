@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_cci_dev.h"
@@ -89,8 +89,11 @@ int cam_cci_init(struct v4l2_subdev *sd,
 
 	rc = cam_cpas_start(cci_dev->cpas_handle,
 		&ahb_vote, &axi_vote);
-	if (rc != 0)
+	if (rc) {
 		CAM_ERR(CAM_CCI, "CPAS start failed");
+		cci_dev->ref_count--;
+		return rc;
+	}
 
 	cam_cci_get_clk_rates(cci_dev, c_ctrl);
 
