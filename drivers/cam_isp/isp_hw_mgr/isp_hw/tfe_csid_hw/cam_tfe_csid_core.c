@@ -2732,7 +2732,7 @@ irqreturn_t cam_tfe_csid_irq(int irq_num, void *data)
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
 			"CSID:%d short pkt VC :%d DT:%d LC:%d",
 			csid_hw->hw_intf->hw_idx,
-			(val >> 22), ((val >> 16) & 0x1F), (val & 0xFFFF));
+			(val >> 22), ((val >> 16) & 0x3F), (val & 0xFFFF));
 		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 			csi2_reg->csid_csi2_rx_captured_short_pkt_1_addr);
 		CAM_INFO_RATE_LIMIT(CAM_ISP, "CSID:%d short packet ECC :%d",
@@ -2749,7 +2749,7 @@ irqreturn_t cam_tfe_csid_irq(int irq_num, void *data)
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
 			"CSID:%d cphy packet VC :%d DT:%d WC:%d",
 			csid_hw->hw_intf->hw_idx,
-			(val >> 22), ((val >> 16) & 0x1F), (val & 0xFFFF));
+			(val >> 22), ((val >> 16) & 0x3F), (val & 0xFFFF));
 	}
 
 	if (csid_hw->csid_debug & TFE_CSID_DEBUG_ENABLE_RST_IRQ_LOG) {
