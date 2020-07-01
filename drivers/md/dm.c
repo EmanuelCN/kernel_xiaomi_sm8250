@@ -1699,7 +1699,7 @@ typedef blk_qc_t (process_bio_fn)(struct mapped_device *, struct dm_table *, str
 static blk_qc_t __dm_make_request(struct request_queue *q, struct bio *bio,
 				  process_bio_fn process_bio)
 {
-	struct mapped_device *md = q->queuedata;
+	struct mapped_device *md = bio->bi_disk->private_data;
 	blk_qc_t ret = BLK_QC_T_NONE;
 	int srcu_idx;
 	struct dm_table *map;
@@ -1915,7 +1915,6 @@ static struct mapped_device *alloc_dev(int minor)
 	md->queue = blk_alloc_queue_node(GFP_KERNEL, numa_node_id, NULL);
 	if (!md->queue)
 		goto bad;
-	md->queue->queuedata = md;
 	/*
 	 * default to bio-based required ->make_request_fn until DM
 	 * table is loaded and md->type established. If request-based
