@@ -6259,21 +6259,22 @@ long schedtune_task_margin(struct task_struct *task)
 	return margin;
 }
 
+#ifdef CONFIG_SCHED_WALT
 unsigned long
 stune_util(int cpu, unsigned long other_util,
 		 struct sched_walt_cpu_load *walt_load)
 {
-	unsigned long util = min_t(unsigned long, SCHED_CAPACITY_SCALE,
-				   cpu_util_freq(cpu, walt_load) + other_util);
+	unsigned long util =
+		min_t(unsigned long, SCHED_CAPACITY_SCALE,
+		      cpu_util_freq_walt(cpu, walt_load) + other_util);
 	long margin = schedtune_cpu_margin_with(util, cpu, NULL);
-
-	trace_sched_boost_cpu(cpu, util, margin);
 
 	if (sched_feat(SCHEDTUNE_BOOST_UTIL))
 		return util + margin;
 	else
 		return util;
 }
+#endif
 
 #else /* CONFIG_SCHED_TUNE */
 
