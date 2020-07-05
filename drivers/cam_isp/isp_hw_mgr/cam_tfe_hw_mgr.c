@@ -2309,7 +2309,7 @@ static int cam_isp_tfe_blob_bw_update(
 {
 	struct cam_isp_hw_mgr_res             *hw_mgr_res;
 	struct cam_hw_intf                    *hw_intf;
-	struct cam_tfe_bw_update_args          bw_upd_args;
+	struct cam_tfe_bw_update_args          *bw_upd_args = NULL;
 	int                                    rc = -EINVAL;
 	uint32_t                               i, split_idx;
 	bool                                   camif_l_bw_updated = false;
@@ -2330,32 +2330,38 @@ static int cam_isp_tfe_blob_bw_update(
 			bw_config->axi_path[i].mnoc_ib_bw);
 	}
 
+	bw_upd_args = kzalloc(sizeof(struct cam_tfe_bw_update_args),
+		GFP_KERNEL);
+	if (!bw_upd_args) {
+		CAM_ERR(CAM_ISP, "Out of memory");
+		return -ENOMEM;
+	}
 	list_for_each_entry(hw_mgr_res, &ctx->res_list_tfe_in, list) {
 		for (split_idx = 0; split_idx < CAM_ISP_HW_SPLIT_MAX;
 			split_idx++) {
 			if (!hw_mgr_res->hw_res[split_idx])
 				continue;
 
-			memset(&bw_upd_args.isp_vote, 0,
+			memset(&bw_upd_args->isp_vote, 0,
 				sizeof(struct cam_axi_vote));
 			rc = cam_tfe_classify_vote_info(hw_mgr_res, bw_config,
-				&bw_upd_args.isp_vote, split_idx,
+				&bw_upd_args->isp_vote, split_idx,
 				&camif_l_bw_updated, &camif_r_bw_updated);
 			if (rc)
-				return rc;
+				goto end;
 
-			if (!bw_upd_args.isp_vote.num_paths)
+			if (!bw_upd_args->isp_vote.num_paths)
 				continue;
 
 			hw_intf = hw_mgr_res->hw_res[split_idx]->hw_intf;
 			if (hw_intf && hw_intf->hw_ops.process_cmd) {
-				bw_upd_args.node_res =
+				bw_upd_args->node_res =
 					hw_mgr_res->hw_res[split_idx];
 
 				rc = hw_intf->hw_ops.process_cmd(
 					hw_intf->hw_priv,
 					CAM_ISP_HW_CMD_BW_UPDATE_V2,
-					&bw_upd_args,
+					bw_upd_args,
 					sizeof(
 					struct cam_tfe_bw_update_args));
 				if (rc)
@@ -2367,6 +2373,9 @@ static int cam_isp_tfe_blob_bw_update(
 		}
 	}
 
+end:
+	kzfree(bw_upd_args);
+	bw_upd_args = NULL;
 	return rc;
 }
 
