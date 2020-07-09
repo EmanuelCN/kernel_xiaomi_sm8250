@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_IFE_HW_MGR_H_
@@ -196,4 +196,10 @@ struct cam_ife_hw_event_recovery_data {
  */
 int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl);
 
+#ifndef CONFIG_SPECTRA_CAMERA_IFE
+int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
+{
+	return 0;
+}
+#endif
 #endif /* _CAM_IFE_HW_MGR_H_ */
