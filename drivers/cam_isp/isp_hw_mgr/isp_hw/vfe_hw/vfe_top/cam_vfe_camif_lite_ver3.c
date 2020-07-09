@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -888,6 +888,7 @@ static void cam_vfe_camif_lite_print_status(uint32_t *status,
 		CAM_INFO(CAM_ISP,
 			"CAMNOC REG ife_linear: 0x%X ife_rdi_wr: 0x%X ife_ubwc_stats: 0x%X",
 			val0, val1, val2);
+		cam_cpas_log_votes();
 	}
 
 	if (err_type == CAM_VFE_IRQ_STATUS_OVERFLOW && !bus_overflow_status) {

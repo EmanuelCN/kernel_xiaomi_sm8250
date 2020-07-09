@@ -916,6 +916,7 @@ static void cam_vfe_camif_ver3_print_status(uint32_t *status,
 		CAM_INFO(CAM_ISP,
 			"CAMNOC REG ife_linear: 0x%X ife_rdi_wr: 0x%X ife_ubwc_stats: 0x%X",
 			val0, val1, val2);
+		cam_cpas_log_votes();
 		return;
 	}
 
