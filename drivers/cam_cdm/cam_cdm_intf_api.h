@@ -10,6 +10,8 @@
 #include "cam_cdm_util.h"
 #include "cam_soc_util.h"
 
+#define CAM_CDM_BL_CMD_MAX  25
+
 /* enum cam_cdm_id - Enum for possible CAM CDM hardwares */
 enum cam_cdm_id {
 	CAM_CDM_VIRTUAL,
@@ -148,6 +150,41 @@ struct cam_cdm_bl_request {
 	uint32_t cmd_arrary_count;
 	bool gen_irq_arb;
 	struct cam_cdm_bl_cmd cmd[1];
+};
+
+/**
+ * struct cam_cdm_bl_data - last submiited CDM BL data
+ *
+ * @mem_handle : Input mem handle of bl cmd
+ * @hw_addr    : Hw address of submitted Bl command
+ * @offset     : Input offset of the actual bl cmd in the memory pointed
+ *               by mem_handle
+ * @len        : length of submitted Bl command to CDM.
+ * @input_len  : Input length of the BL command, Cannot be more than 1MB and
+ *           this is will be validated with offset+size of the memory pointed
+ *           by mem_handle
+ * @type       :  CDM bl cmd addr types.
+ */
+struct cam_cdm_bl_data {
+	int32_t mem_handle;
+	dma_addr_t hw_addr;
+	uint32_t offset;
+	size_t len;
+	uint32_t  input_len;
+	enum cam_cdm_bl_cmd_addr_type type;
+};
+
+/**
+ * struct cam_cdm_bl_info
+ *
+ * @bl_count   : No. of Bl commands submiited to CDM.
+ * @cmd        : payload holding the BL cmd's arrary
+ *               that is sumbitted.
+ *
+ */
+struct cam_cdm_bl_info {
+	int32_t bl_count;
+	struct cam_cdm_bl_data cmd[CAM_CDM_BL_CMD_MAX];
 };
 
 /**

@@ -7,7 +7,7 @@
 #include <linux/slab.h>
 #include <uapi/media/cam_isp.h>
 #include <uapi/media/cam_defs.h>
-
+#include <media/cam_req_mgr.h>
 #include <dt-bindings/msm/msm-camera.h>
 
 #include "cam_ife_csid_core.h"
@@ -16,6 +16,7 @@
 #include "cam_io_util.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
+#include "cam_subdev.h"
 
 /* Timeout value in msec */
 #define IFE_CSID_TIMEOUT                               1000
@@ -1654,6 +1655,9 @@ static void cam_ife_csid_halt_csi2(
 		csid_reg->csi2_reg->csid_csi2_rx_cfg0_addr);
 	cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
 		csid_reg->csi2_reg->csid_csi2_rx_cfg1_addr);
+	cam_subdev_notify_message(CAM_CSIPHY_DEVICE_TYPE,
+			CAM_SUBDEV_MESSAGE_IRQ_ERR,
+			csid_hw->csi2_rx_cfg.phy_sel);
 }
 
 static int cam_ife_csid_init_config_pxl_path(
@@ -4140,7 +4144,7 @@ irqreturn_t cam_ife_csid_irq(int irq_num, void *data)
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
 			"CSID:%d short pkt VC :%d DT:%d LC:%d",
 			csid_hw->hw_intf->hw_idx,
-			(val >> 22), ((val >> 16) & 0x1F), (val & 0xFFFF));
+			(val >> 22), ((val >> 16) & 0x3F), (val & 0xFFFF));
 		val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 			csi2_reg->csid_csi2_rx_captured_short_pkt_1_addr);
 		CAM_INFO_RATE_LIMIT(CAM_ISP, "CSID:%d short packet ECC :%d",
@@ -4156,7 +4160,7 @@ irqreturn_t cam_ife_csid_irq(int irq_num, void *data)
 		CAM_INFO_RATE_LIMIT(CAM_ISP,
 			"CSID:%d cphy packet VC :%d DT:%d WC:%d",
 			csid_hw->hw_intf->hw_idx,
-			(val >> 22), ((val >> 16) & 0x1F), (val & 0xFFFF));
+			(val >> 22), ((val >> 16) & 0x3F), (val & 0xFFFF));
 	}
 
 	/*read the IPP errors */

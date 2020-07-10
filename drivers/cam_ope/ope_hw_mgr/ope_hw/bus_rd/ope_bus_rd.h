@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef OPE_BUS_RD_H
@@ -132,7 +132,7 @@ struct ope_bus_rd_ctx {
 struct ope_bus_rd {
 	struct ope_hw *ope_hw_info;
 	struct ope_bus_in_port_to_rm in_port_to_rm[OPE_IN_RES_MAX];
-	struct ope_bus_rd_ctx bus_rd_ctx[OPE_CTX_MAX];
+	struct ope_bus_rd_ctx *bus_rd_ctx[OPE_CTX_MAX];
 	struct completion reset_complete;
 };
 #endif /* OPE_BUS_RD_H */

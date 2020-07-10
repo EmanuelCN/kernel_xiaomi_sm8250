@@ -71,4 +71,10 @@ int cam_csiphy_disable_hw(struct csiphy_device *csiphy_dev);
  */
 int cam_csiphy_mem_dmp(struct cam_hw_soc_info *soc_info);
 
+/**
+ * @csiphy_dev: CSIPhy device structure
+ *
+ * This API dumps memory for the entire status region
+ */
+int32_t cam_csiphy_status_dmp(struct csiphy_device *csiphy_dev);
 #endif /* _CAM_CSIPHY_SOC_H_ */

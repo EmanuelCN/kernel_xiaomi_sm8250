@@ -961,7 +961,7 @@ static int cam_cpas_hw_update_axi_vote(struct cam_hw_info *cpas_hw,
 {
 	struct cam_cpas *cpas_core = (struct cam_cpas *) cpas_hw->core_info;
 	struct cam_cpas_client *cpas_client = NULL;
-	struct cam_axi_vote axi_vote = {0};
+	struct cam_axi_vote *axi_vote = NULL;
 	uint32_t client_indx = CAM_CPAS_GET_CLIENT_IDX(client_handle);
 	int rc = 0;
 
@@ -971,16 +971,24 @@ static int cam_cpas_hw_update_axi_vote(struct cam_hw_info *cpas_hw,
 		return -EINVAL;
 	}
 
-	memcpy(&axi_vote, client_axi_vote, sizeof(struct cam_axi_vote));
-
 	if (!CAM_CPAS_CLIENT_VALID(client_indx))
 		return -EINVAL;
 
-	cam_cpas_dump_axi_vote_info(cpas_core->cpas_client[client_indx],
-		"Incoming Vote", &axi_vote);
-
 	mutex_lock(&cpas_hw->hw_mutex);
 	mutex_lock(&cpas_core->client_mutex[client_indx]);
+
+	axi_vote = kmemdup(client_axi_vote, sizeof(struct cam_axi_vote),
+		GFP_KERNEL);
+	if (!axi_vote) {
+		CAM_ERR(CAM_CPAS, "Out of memory");
+		mutex_unlock(&cpas_core->client_mutex[client_indx]);
+		mutex_unlock(&cpas_hw->hw_mutex);
+		return -ENOMEM;
+	}
+
+	cam_cpas_dump_axi_vote_info(cpas_core->cpas_client[client_indx],
+		"Incoming Vote", axi_vote);
+
 	cpas_client = cpas_core->cpas_client[client_indx];
 
 	if (!CAM_CPAS_CLIENT_STARTED(cpas_core, client_indx)) {
@@ -991,7 +999,7 @@ static int cam_cpas_hw_update_axi_vote(struct cam_hw_info *cpas_hw,
 		goto unlock_client;
 	}
 
-	rc = cam_cpas_util_translate_client_paths(&axi_vote);
+	rc = cam_cpas_util_translate_client_paths(axi_vote);
 	if (rc) {
 		CAM_ERR(CAM_CPAS,
 			"Unable to translate per path votes rc: %d", rc);
@@ -999,12 +1007,14 @@ static int cam_cpas_hw_update_axi_vote(struct cam_hw_info *cpas_hw,
 	}
 
 	cam_cpas_dump_axi_vote_info(cpas_core->cpas_client[client_indx],
-		"Translated Vote", &axi_vote);
+		"Translated Vote", axi_vote);
 
 	rc = cam_cpas_util_apply_client_axi_vote(cpas_hw,
-		cpas_core->cpas_client[client_indx], &axi_vote);
+		cpas_core->cpas_client[client_indx], axi_vote);
 
 unlock_client:
+	kzfree(axi_vote);
+	axi_vote = NULL;
 	mutex_unlock(&cpas_core->client_mutex[client_indx]);
 	mutex_unlock(&cpas_hw->hw_mutex);
 	return rc;

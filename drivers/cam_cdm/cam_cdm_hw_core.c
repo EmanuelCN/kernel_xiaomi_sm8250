@@ -1056,7 +1056,8 @@ static void cam_hw_cdm_reset_cleanup(
 	struct cam_cdm_bl_cb_request_entry *node, *tnode;
 	bool flush_hw = false;
 
-	if (test_bit(CAM_CDM_FLUSH_HW_STATUS, &core->cdm_status))
+	if (test_bit(CAM_CDM_ERROR_HW_STATUS, &core->cdm_status) ||
+		test_bit(CAM_CDM_FLUSH_HW_STATUS, &core->cdm_status))
 		flush_hw = true;
 
 	for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++) {
@@ -1084,7 +1085,7 @@ static void cam_hw_cdm_reset_cleanup(
 		}
 		core->bl_fifo[i].bl_tag = 0;
 		core->bl_fifo[i].last_bl_tag_done = -1;
-		core->bl_fifo[i].work_record = 0;
+		atomic_set(&core->bl_fifo[i].work_record, 0);
 	}
 }
 
@@ -1093,136 +1094,170 @@ static void cam_hw_cdm_work(struct work_struct *work)
 	struct cam_cdm_work_payload *payload;
 	struct cam_hw_info *cdm_hw;
 	struct cam_cdm *core;
-	int i;
+	int i, fifo_idx;
+	struct cam_cdm_bl_cb_request_entry *tnode = NULL;
+	struct cam_cdm_bl_cb_request_entry *node = NULL;
 
 	payload = container_of(work, struct cam_cdm_work_payload, work);
-	if (payload) {
-		cdm_hw = payload->hw;
-		core = (struct cam_cdm *)cdm_hw->core_info;
-		if (payload->fifo_idx >= core->offsets->reg_data->num_bl_fifo) {
-			CAM_ERR(CAM_CDM, "Invalid fifo idx %d",
-			payload->fifo_idx);
+	if (!payload) {
+		CAM_ERR(CAM_CDM, "NULL payload");
+		return;
+	}
+
+	cdm_hw = payload->hw;
+	core = (struct cam_cdm *)cdm_hw->core_info;
+	fifo_idx = payload->fifo_idx;
+	if (fifo_idx >= core->offsets->reg_data->num_bl_fifo) {
+		CAM_ERR(CAM_CDM, "Invalid fifo idx %d",
+		fifo_idx);
+		kfree(payload);
+		payload = NULL;
+		return;
+	}
+
+	cam_req_mgr_thread_switch_delay_detect(
+		payload->workq_scheduled_ts);
+
+	CAM_DBG(CAM_CDM, "IRQ status=0x%x", payload->irq_status);
+	if (payload->irq_status &
+		CAM_CDM_IRQ_STATUS_INLINE_IRQ_MASK) {
+		CAM_DBG(CAM_CDM, "inline IRQ data=0x%x last tag: 0x%x",
+			payload->irq_data,
+			core->bl_fifo[payload->fifo_idx]
+				.last_bl_tag_done);
+
+		if (payload->irq_data == 0xff) {
+			CAM_INFO(CAM_CDM, "Debug genirq received");
 			kfree(payload);
 			payload = NULL;
 			return;
 		}
-		cam_req_mgr_thread_switch_delay_detect(
-			payload->workq_scheduled_ts);
 
-		CAM_DBG(CAM_CDM, "IRQ status=0x%x", payload->irq_status);
-		if (payload->irq_status &
-			CAM_CDM_IRQ_STATUS_INLINE_IRQ_MASK) {
-			struct cam_cdm_bl_cb_request_entry *node, *tnode;
+		mutex_lock(&core->bl_fifo[fifo_idx]
+			.fifo_lock);
 
-			CAM_DBG(CAM_CDM, "inline IRQ data=0x%x last tag: 0x%x",
-				payload->irq_data,
-				core->bl_fifo[payload->fifo_idx]
-					.last_bl_tag_done);
+		if (atomic_read(&core->bl_fifo[fifo_idx].work_record))
+			atomic_dec(
+				&core->bl_fifo[fifo_idx].work_record);
 
-			if (payload->irq_data == 0xff) {
-				CAM_INFO(CAM_CDM, "Debug genirq received");
-				kfree(payload);
-				payload = NULL;
-				return;
-			}
+		if (list_empty(&core->bl_fifo[fifo_idx]
+				.bl_request_list)) {
+			CAM_INFO(CAM_CDM,
+				"Fifo list empty, idx %d tag %d arb %d",
+				fifo_idx, payload->irq_data,
+				core->arbitration);
+			mutex_unlock(&core->bl_fifo[fifo_idx]
+					.fifo_lock);
+			return;
+		}
 
-			mutex_lock(&core->bl_fifo[payload->fifo_idx]
-				.fifo_lock);
-
-			if (core->bl_fifo[payload->fifo_idx].work_record)
-				core->bl_fifo[payload->fifo_idx].work_record--;
-
-			if (list_empty(&core->bl_fifo[payload->fifo_idx]
-					.bl_request_list)) {
-				CAM_INFO(CAM_CDM,
-					"Fifo list empty, idx %d tag %d arb %d",
-					payload->fifo_idx, payload->irq_data,
-					core->arbitration);
-				mutex_unlock(&core->bl_fifo[payload->fifo_idx]
-						.fifo_lock);
-				return;
-			}
-
-			if (core->bl_fifo[payload->fifo_idx]
-				.last_bl_tag_done !=
-				payload->irq_data) {
-				core->bl_fifo[payload->fifo_idx]
-					.last_bl_tag_done =
-					payload->irq_data;
-				list_for_each_entry_safe(node, tnode,
-					&core->bl_fifo[payload->fifo_idx]
-						.bl_request_list,
-					entry) {
-					if (node->request_type ==
-						CAM_HW_CDM_BL_CB_CLIENT) {
-						cam_cdm_notify_clients(cdm_hw,
-						CAM_CDM_CB_STATUS_BL_SUCCESS,
-						(void *)node);
-					} else if (node->request_type ==
-						CAM_HW_CDM_BL_CB_INTERNAL) {
-						CAM_ERR(CAM_CDM,
-							"Invalid node=%pK %d",
-							node,
-							node->request_type);
-					}
-					list_del_init(&node->entry);
-					if (node->bl_tag == payload->irq_data) {
-						kfree(node);
-						node = NULL;
-						break;
-					}
+		if (core->bl_fifo[fifo_idx]
+			.last_bl_tag_done !=
+			payload->irq_data) {
+			core->bl_fifo[fifo_idx]
+				.last_bl_tag_done =
+				payload->irq_data;
+			list_for_each_entry_safe(node, tnode,
+				&core->bl_fifo[fifo_idx]
+					.bl_request_list,
+				entry) {
+				if (node->request_type ==
+					CAM_HW_CDM_BL_CB_CLIENT) {
+					cam_cdm_notify_clients(cdm_hw,
+					CAM_CDM_CB_STATUS_BL_SUCCESS,
+					(void *)node);
+				} else if (node->request_type ==
+					CAM_HW_CDM_BL_CB_INTERNAL) {
+					CAM_ERR(CAM_CDM,
+						"Invalid node=%pK %d",
+						node,
+						node->request_type);
+				}
+				list_del_init(&node->entry);
+				if (node->bl_tag == payload->irq_data) {
 					kfree(node);
 					node = NULL;
+					break;
 				}
-			} else {
-				CAM_INFO(CAM_CDM,
-					"Skip GenIRQ, tag 0x%x fifo %d",
-					payload->irq_data, payload->fifo_idx);
+				kfree(node);
+				node = NULL;
 			}
-			mutex_unlock(&core->bl_fifo[payload->fifo_idx]
-				.fifo_lock);
+		} else {
+			CAM_INFO(CAM_CDM,
+				"Skip GenIRQ, tag 0x%x fifo %d",
+				payload->irq_data, payload->fifo_idx);
 		}
+		mutex_unlock(&core->bl_fifo[payload->fifo_idx]
+			.fifo_lock);
+	}
+
+	if (payload->irq_status &
+		CAM_CDM_IRQ_STATUS_BL_DONE_MASK) {
+		if (test_bit(payload->fifo_idx, &core->cdm_status)) {
+			CAM_DBG(CAM_CDM, "CDM HW BL done IRQ");
+			complete(&core->bl_fifo[payload->fifo_idx]
+				.bl_complete);
+		}
+	}
+	if (payload->irq_status &
+		CAM_CDM_IRQ_STATUS_ERRORS) {
+		int reset_hw_hdl = 0x0;
+
+		CAM_ERR_RATE_LIMIT(CAM_CDM,
+			"CDM Error IRQ status %d\n",
+			payload->irq_status);
+		set_bit(CAM_CDM_ERROR_HW_STATUS, &core->cdm_status);
+		mutex_lock(&cdm_hw->hw_mutex);
+		for (i = 0; i < core->offsets->reg_data->num_bl_fifo;
+				i++)
+			mutex_lock(&core->bl_fifo[i].fifo_lock);
+		/*
+		 * First pause CDM, If it fails still proceed
+		 * to dump debug info
+		 */
+		cam_hw_cdm_pause_core(cdm_hw, true);
+		cam_hw_cdm_dump_core_debug_registers(cdm_hw);
 
 		if (payload->irq_status &
-			CAM_CDM_IRQ_STATUS_BL_DONE_MASK) {
-			if (test_bit(payload->fifo_idx, &core->cdm_status)) {
-				CAM_DBG(CAM_CDM, "CDM HW BL done IRQ");
-				complete(&core->bl_fifo[payload->fifo_idx]
-					.bl_complete);
+		CAM_CDM_IRQ_STATUS_ERROR_INV_CMD_MASK) {
+			node = list_first_entry_or_null(
+			&core->bl_fifo[payload->fifo_idx].bl_request_list,
+			struct cam_cdm_bl_cb_request_entry, entry);
+
+			if (node != NULL) {
+				if (node->request_type ==
+					CAM_HW_CDM_BL_CB_CLIENT) {
+					cam_cdm_notify_clients(cdm_hw,
+					CAM_CDM_CB_STATUS_INVALID_BL_CMD,
+						(void *)node);
+				} else if (node->request_type ==
+					CAM_HW_CDM_BL_CB_INTERNAL) {
+					CAM_ERR(CAM_CDM,
+						"Invalid node=%pK %d", node,
+						node->request_type);
+				}
+				list_del_init(&node->entry);
+				kfree(node);
 			}
 		}
+		/* Resume CDM back */
+		cam_hw_cdm_pause_core(cdm_hw, false);
+		for (i = 0; i < core->offsets->reg_data->num_bl_fifo;
+				i++)
+			mutex_unlock(&core->bl_fifo[i].fifo_lock);
+
 		if (payload->irq_status &
-				CAM_CDM_IRQ_STATUS_ERRORS) {
-			CAM_ERR_RATE_LIMIT(CAM_CDM,
-				"CDM Error IRQ status %d\n",
-				payload->irq_status);
-			set_bit(CAM_CDM_ERROR_HW_STATUS, &core->cdm_status);
-			mutex_lock(&cdm_hw->hw_mutex);
-			for (i = 0; i < core->offsets->reg_data->num_bl_fifo;
-					i++)
-				mutex_lock(&core->bl_fifo[i].fifo_lock);
-			/*
-			 * First pause CDM, If it fails still proceed
-			 * to dump debug info
-			 */
-			cam_hw_cdm_pause_core(cdm_hw, true);
-			cam_hw_cdm_dump_core_debug_registers(cdm_hw);
-			/* Resume CDM back */
-			cam_hw_cdm_pause_core(cdm_hw, false);
-			for (i = 0; i < core->offsets->reg_data->num_bl_fifo;
-					i++)
-				mutex_unlock(&core->bl_fifo[i].fifo_lock);
-			mutex_unlock(&cdm_hw->hw_mutex);
-			if (!(payload->irq_status &
-					CAM_CDM_IRQ_STATUS_ERROR_INV_CMD_MASK))
-				clear_bit(CAM_CDM_ERROR_HW_STATUS,
-					&core->cdm_status);
-		}
-		kfree(payload);
-		payload = NULL;
-	} else {
-		CAM_ERR(CAM_CDM, "NULL payload");
+			CAM_CDM_IRQ_STATUS_ERROR_INV_CMD_MASK)
+			cam_hw_cdm_reset_hw(cdm_hw, reset_hw_hdl);
+
+		mutex_unlock(&cdm_hw->hw_mutex);
+		if (!(payload->irq_status &
+				CAM_CDM_IRQ_STATUS_ERROR_INV_CMD_MASK))
+			clear_bit(CAM_CDM_ERROR_HW_STATUS,
+				&core->cdm_status);
 	}
+	kfree(payload);
+	payload = NULL;
 
 }
 
@@ -1256,7 +1291,7 @@ static void cam_hw_cdm_iommu_fault_handler(struct iommu_domain *domain,
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_unlock(&core->bl_fifo[i].fifo_lock);
 		mutex_unlock(&cdm_hw->hw_mutex);
-		CAM_ERR_RATE_LIMIT(CAM_CDM, "Page fault iova addr %pK\n",
+		CAM_ERR_RATE_LIMIT(CAM_CDM, "Page fault iova addr %pK",
 			(void *)iova);
 		cam_cdm_notify_clients(cdm_hw, CAM_CDM_CB_STATUS_PAGEFAULT,
 			(void *)iova);
@@ -1345,7 +1380,7 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 			payload[i]->irq_status,
 			cdm_hw->soc_info.index);
 
-		cdm_core->bl_fifo[i].work_record++;
+		atomic_inc(&cdm_core->bl_fifo[i].work_record);
 		payload[i]->workq_scheduled_ts = ktime_get();
 
 		work_status = queue_work(
@@ -1653,19 +1688,13 @@ int cam_hw_cdm_hang_detect(
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
-		mutex_lock(&cdm_core->bl_fifo[i].fifo_lock);
-
-	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
-		if (cdm_core->bl_fifo[i].work_record) {
+		if (atomic_read(&cdm_core->bl_fifo[i].work_record)) {
 			CAM_WARN(CAM_CDM,
 				"workqueue got delayed, work_record :%u",
-				cdm_core->bl_fifo[i].work_record);
+				atomic_read(&cdm_core->bl_fifo[i].work_record));
 			rc = 0;
 			break;
 		}
-
-	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++)
-		mutex_unlock(&cdm_core->bl_fifo[i].fifo_lock);
 
 	return rc;
 }
@@ -1771,7 +1800,7 @@ int cam_hw_cdm_init(void *hw_priv,
 	}
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo; i++) {
 		cdm_core->bl_fifo[i].last_bl_tag_done = -1;
-		cdm_core->bl_fifo[i].work_record = 0;
+		atomic_set(&cdm_core->bl_fifo[i].work_record, 0);
 	}
 
 	rc = cam_hw_cdm_reset_hw(cdm_hw, reset_hw_hdl);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -796,14 +796,14 @@ int cam_node_handle_ioctl(struct cam_node *node, struct cam_control *cmd)
 			rc = __cam_node_handle_acquire_hw_v1(node, acquire_ptr);
 			if (rc) {
 				CAM_ERR(CAM_CORE,
-					"acquire device failed(rc = %d)", rc);
+					"acquire hw failed(rc = %d)", rc);
 				goto acquire_kfree;
 			}
 		} else if (api_version == 2) {
 			rc = __cam_node_handle_acquire_hw_v2(node, acquire_ptr);
 			if (rc) {
 				CAM_ERR(CAM_CORE,
-					"acquire device failed(rc = %d)", rc);
+					"acquire hw failed(rc = %d)", rc);
 				goto acquire_kfree;
 			}
 		}

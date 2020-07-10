@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #define pr_fmt(fmt) "CAM-REQ-MGR_UTIL %s:%d " fmt, __func__, __LINE__
@@ -113,12 +113,28 @@ static int32_t cam_get_free_handle_index(void)
 
 	idx = find_first_zero_bit(hdl_tbl->bitmap, hdl_tbl->bits);
 
-	if (idx >= CAM_REQ_MGR_MAX_HANDLES_V2 || idx < 0)
+	if (idx >= CAM_REQ_MGR_MAX_HANDLES_V2 || idx < 0) {
+		CAM_DBG(CAM_CRM, "idx: %d", idx);
 		return -ENOSR;
+	}
 
 	set_bit(idx, hdl_tbl->bitmap);
 
 	return idx;
+}
+
+void cam_dump_tbl_info(void)
+{
+	int i;
+
+	for (i = 0; i < CAM_REQ_MGR_MAX_HANDLES_V2; i++)
+		CAM_INFO(CAM_CRM,
+			"i: %d session_hdl=0x%x hdl_value=0x%x type=%d state=%d dev_id=0x%llx",
+			i, hdl_tbl->hdl[i].session_hdl,
+			hdl_tbl->hdl[i].hdl_value,
+			hdl_tbl->hdl[i].type,
+			hdl_tbl->hdl[i].state,
+			hdl_tbl->hdl[i].dev_id);
 }
 
 int32_t cam_create_session_hdl(void *priv)
@@ -137,6 +153,7 @@ int32_t cam_create_session_hdl(void *priv)
 	idx = cam_get_free_handle_index();
 	if (idx < 0) {
 		CAM_ERR(CAM_CRM, "Unable to create session handle");
+		cam_dump_tbl_info();
 		spin_unlock_bh(&hdl_tbl_lock);
 		return idx;
 	}
@@ -149,6 +166,7 @@ int32_t cam_create_session_hdl(void *priv)
 	hdl_tbl->hdl[idx].state = HDL_ACTIVE;
 	hdl_tbl->hdl[idx].priv = priv;
 	hdl_tbl->hdl[idx].ops = NULL;
+	hdl_tbl->hdl[idx].dev_id = CAM_CRM;
 	spin_unlock_bh(&hdl_tbl_lock);
 
 	return handle;
@@ -169,7 +187,9 @@ int32_t cam_create_device_hdl(struct cam_create_dev_hdl *hdl_data)
 
 	idx = cam_get_free_handle_index();
 	if (idx < 0) {
-		CAM_ERR(CAM_CRM, "Unable to create device handle");
+		CAM_ERR(CAM_CRM,
+			"Unable to create device handle(idx= %d)", idx);
+		cam_dump_tbl_info();
 		spin_unlock_bh(&hdl_tbl_lock);
 		return idx;
 	}
@@ -182,9 +202,10 @@ int32_t cam_create_device_hdl(struct cam_create_dev_hdl *hdl_data)
 	hdl_tbl->hdl[idx].state = HDL_ACTIVE;
 	hdl_tbl->hdl[idx].priv = hdl_data->priv;
 	hdl_tbl->hdl[idx].ops = hdl_data->ops;
+	hdl_tbl->hdl[idx].dev_id = hdl_data->dev_id;
 	spin_unlock_bh(&hdl_tbl_lock);
 
-	pr_debug("%s: handle = %x", __func__, handle);
+	pr_debug("%s: handle = 0x%x idx = %d\n", __func__, handle, idx);
 	return handle;
 }
 
