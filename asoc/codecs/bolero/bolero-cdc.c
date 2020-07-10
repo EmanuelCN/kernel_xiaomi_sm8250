@@ -735,7 +735,7 @@ void bolero_unregister_macro(struct device *dev, u16 macro_id)
 }
 EXPORT_SYMBOL(bolero_unregister_macro);
 
-void bolero_wsa_pa_on(struct device *dev)
+void bolero_wsa_pa_on(struct device *dev, bool adie_lb)
 {
 	struct bolero_priv *priv;
 
@@ -753,8 +753,12 @@ void bolero_wsa_pa_on(struct device *dev)
 		dev_err(dev, "%s: priv is null\n", __func__);
 		return;
 	}
-
-	bolero_cdc_notifier_call(priv, BOLERO_WCD_EVT_PA_ON_POST_FSCLK);
+	if (adie_lb)
+		bolero_cdc_notifier_call(priv,
+			BOLERO_WCD_EVT_PA_ON_POST_FSCLK_ADIE_LB);
+	else
+		bolero_cdc_notifier_call(priv,
+			BOLERO_WCD_EVT_PA_ON_POST_FSCLK);
 }
 EXPORT_SYMBOL(bolero_wsa_pa_on);
 
@@ -1086,7 +1090,7 @@ EXPORT_SYMBOL(bolero_tx_mclk_enable);
  * Returns 0 on success or -EINVAL on error.
  */
 int bolero_register_event_listener(struct snd_soc_component *component,
-				   bool enable, bool is_dmic_sva)
+				   bool enable)
 {
 	struct bolero_priv *priv = NULL;
 	int ret = 0;
@@ -1105,8 +1109,7 @@ int bolero_register_event_listener(struct snd_soc_component *component,
 
 	if (priv->macro_params[TX_MACRO].reg_evt_listener)
 		ret = priv->macro_params[TX_MACRO].reg_evt_listener(component,
-								    enable,
-								    is_dmic_sva);
+								    enable);
 
 	return ret;
 }

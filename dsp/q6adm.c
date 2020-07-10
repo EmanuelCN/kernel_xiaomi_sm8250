@@ -3082,7 +3082,8 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 				this_adm.ffecns_port_id);
 	}
 
-	if (topology == VPM_TX_VOICE_SMECNS_V2_COPP_TOPOLOGY)
+	if (topology == VPM_TX_VOICE_SMECNS_V2_COPP_TOPOLOGY ||
+	    topology == VPM_TX_VOICE_FLUENCE_SM_COPP_TOPOLOGY)
 		channel_mode = 1;
 
 	/*
@@ -3280,7 +3281,6 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			if ((this_adm.num_ec_ref_rx_chans != 0)
 				&& (path != ADM_PATH_PLAYBACK)
 				&& (open_v8.endpoint_id_2 != 0xFFFF)) {
-				this_adm.num_ec_ref_rx_chans = 0;
 				memcpy(adm_params + sizeof(open_v8)
 						+ ep1_payload_size,
 						(void *)&ep2_payload,
