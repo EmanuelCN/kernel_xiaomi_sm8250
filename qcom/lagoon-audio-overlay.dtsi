@@ -76,7 +76,7 @@
 			 <&clock_audio_rx_2 0>;
 		qcom,rx-swr-gpios = <&rx_swr_gpios>;
 		qcom,rx_mclk_mode_muxsel = <0x033240D8>;
-		qcom,rx-bcl-pmic-params = /bits/ 8 <0x00 0x04 0x3E>;
+		qcom,rx-bcl-pmic-params = /bits/ 8 <0x00 0x02 0x1E>;
 		qcom,default-clk-id = <TX_CORE_CLK>;
 		swr1: rx_swr_master {
 			compatible = "qcom,swr-mstr";
@@ -119,7 +119,7 @@
 		clocks = <&clock_audio_wsa_1 0>,
 			 <&clock_audio_wsa_2 0>;
 		qcom,wsa-swr-gpios = <&wsa_swr_gpios>;
-		qcom,wsa-bcl-pmic-params = /bits/ 8 <0x00 0x04 0x3E>;
+		qcom,wsa-bcl-pmic-params = /bits/ 8 <0x00 0x02 0x1E>;
 		qcom,default-clk-id = <TX_CORE_CLK>;
 		swr0: wsa_swr_master {
 			compatible = "qcom,swr-mstr";
@@ -226,8 +226,8 @@
 
 		qcom,cdc-static-supplies = "cdc-vdd-rxtx",
 					   "cdc-vddio",
-					   "cdc-vdd-buck",
 					   "cdc-vdd-mic-bias";
+		qcom,cdc-on-demand-supplies = "cdc-vdd-buck";
 	};
 
 	wcd937x_codec: wcd937x-codec {
@@ -273,8 +273,8 @@
 
 		qcom,cdc-static-supplies = "cdc-vdd-rxtx",
 					   "cdc-vddio",
-					   "cdc-vdd-buck",
 					   "cdc-vdd-mic-bias";
+		qcom,cdc-on-demand-supplies = "cdc-vdd-buck";
 	};
 
 };
@@ -378,7 +378,7 @@
 	asoc-codec  = <&stub_codec>, <&bolero>;
 	asoc-codec-names = "msm-stub-codec.1", "bolero_codec";
 	qcom,wsa-max-devs = <2>;
-	qcom,wsa-devs = <&wsa883x_0222>, <&wsa883x_0221>;
+	qcom,wsa-devs = <&wsa883x_0221>, <&wsa883x_0222>;
 	qcom,wsa-aux-dev-prefix = "SpkrLeft", "SpkrRight";
 	qcom,codec-max-aux-devs = <1>;
 	qcom,codec-aux-devs = <&wcd938x_codec>;
