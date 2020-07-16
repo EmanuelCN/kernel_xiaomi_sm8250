@@ -159,7 +159,7 @@ struct cam_ife_hw_mgr {
 	atomic_t                       active_ctx_cnt;
 	struct list_head               free_ctx_list;
 	struct list_head               used_ctx_list;
-	struct cam_ife_hw_mgr_ctx      ctx_pool[CAM_CTX_MAX];
+	struct cam_ife_hw_mgr_ctx      ctx_pool[CAM_IFE_CTX_MAX];
 
 	struct cam_ife_csid_hw_caps    ife_csid_dev_caps[
 						CAM_IFE_CSID_HW_NUM_MAX];
@@ -180,7 +180,7 @@ struct cam_ife_hw_mgr {
 struct cam_ife_hw_event_recovery_data {
 	uint32_t                   error_type;
 	uint32_t                   affected_core[CAM_ISP_HW_NUM_MAX];
-	struct cam_ife_hw_mgr_ctx *affected_ctx[CAM_CTX_MAX];
+	struct cam_ife_hw_mgr_ctx *affected_ctx[CAM_IFE_CTX_MAX];
 	uint32_t                   no_of_context;
 };
 
