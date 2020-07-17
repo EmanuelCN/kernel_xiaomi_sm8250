@@ -432,7 +432,7 @@ static u32 udp_ehashfn(const struct net *net, const __be32 laddr,
 			      udp_ehash_secret + net_hash_mix(net));
 }
 
-static inline struct sock *lookup_reuseport(struct net *net, struct sock *sk,
+struct sock *lookup_reuseport(struct net *net, struct sock *sk,
 					    struct sk_buff *skb,
 					    __be32 saddr, __be16 sport,
 					    __be32 daddr, unsigned short hnum)
