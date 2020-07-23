@@ -21,6 +21,7 @@
 #include <linux/kallsyms.h>
 #include <linux/if_vlan.h>
 #include <linux/vmalloc.h>
+#include <linux/sockptr.h>
 
 #include <net/sch_generic.h>
 
@@ -1379,7 +1380,7 @@ struct bpf_sockopt_kern {
 	s32		retval;
 };
 
-int copy_bpf_fprog_from_user(struct sock_fprog *dst, void __user *src, int len);
+int copy_bpf_fprog_from_user(struct sock_fprog *dst, sockptr_t src, int len);
 
 struct bpf_sk_lookup_kern {
 	u16		family;
