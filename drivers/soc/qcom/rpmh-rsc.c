@@ -19,6 +19,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/wait.h>
 
 #include <soc/qcom/cmd-db.h>
 #include <soc/qcom/tcs.h>
@@ -324,6 +325,7 @@ skip:
 		write_tcs_reg(drv, RSC_DRV_CMD_WAIT_FOR_CMPL, i, 0);
 		write_tcs_reg(drv, RSC_DRV_IRQ_CLEAR, 0, BIT(i));
 		clear_bit(i, drv->tcs_in_use);
+		wake_up(&drv->tcs_wait);
 		if (req)
 			rpmh_tx_done(req, err);
 	}
@@ -406,11 +408,58 @@ static int find_free_tcs(struct tcs_group *tcs)
 	return -EBUSY;
 }
 
-static int tcs_write(struct rsc_drv *drv, const struct tcs_request *msg)
+/**
+ * claim_tcs_for_req() - Claim a tcs in the given tcs_group; only for active.
+ * @drv: The controller.
+ * @tcs: The tcs_group used for ACTIVE_ONLY transfers.
+ * @msg: The data to be sent.
+ *
+ * Claims a tcs in the given tcs_group while making sure that no existing cmd
+ * is in flight that would conflict with the one in @msg.
+ *
+ * Context: Must be called with the drv->lock held since that protects
+ * tcs_in_use.
+ *
+ * Return: The id of the claimed tcs or -EBUSY if a matching msg is in flight
+ * or the tcs_group is full.
+ */
+static int claim_tcs_for_req(struct rsc_drv *drv, struct tcs_group *tcs,
+			     const struct tcs_request *msg)
+{
+	int ret;
+
+	/*
+	 * The h/w does not like if we send a request to the same address,
+	 * when one is already in-flight or being processed.
+	 */
+	ret = check_for_req_inflight(drv, tcs, msg);
+	if (ret)
+		return ret;
+
+	return find_free_tcs(tcs);
+}
+
+/**
+ * rpmh_rsc_send_data: Validate the incoming message and write to the
+ * appropriate TCS block.
+ *
+ * @drv: the controller
+ * @msg: the data to be sent
+ *
+ * Return: 0 on success, -EINVAL on error.
+ * Note: This call blocks until a valid data is written to the TCS.
+ */
+int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg)
 {
 	struct tcs_group *tcs;
 	int tcs_id;
-	int ret;
+	unsigned long flags;
+
+	if (!msg || !msg->cmds || !msg->num_cmds ||
+	    msg->num_cmds > MAX_RPMH_PAYLOAD) {
+		WARN_ON(1);
+		return -EINVAL;
+	}
 
 	tcs = get_tcs_for_msg(drv, msg);
 	if (IS_ERR(tcs))
@@ -418,24 +467,18 @@ static int tcs_write(struct rsc_drv *drv, const struct tcs_request *msg)
 
 	spin_lock_irqsave(&drv->lock, flags);
 	if (msg->state == RPMH_ACTIVE_ONLY_STATE && drv->in_solver_mode) {
-		ret = -EINVAL;
-		goto unlock;
+		spin_unlock_irqrestore(&drv->lock, flags);
+		return -EINVAL;
 	}
-	/*
-	 * The h/w does not like if we send a request to the same address,
-	 * when one is already in-flight or being processed.
-	 */
-	ret = check_for_req_inflight(drv, tcs, msg);
-	if (ret)
-		goto unlock;
 
-	ret = find_free_tcs(tcs);
-	if (ret < 0)
-		goto unlock;
-	tcs_id = ret;
+	/* Wait forever for a free tcs. It better be there eventually! */
+	wait_event_lock_irq(drv->tcs_wait,
+			    (tcs_id = claim_tcs_for_req(drv, tcs, msg)) >= 0,
+			    drv->lock);
 
 	tcs->req[tcs_id - tcs->offset] = msg;
 	set_bit(tcs_id, drv->tcs_in_use);
+
 	if (msg->state == RPMH_ACTIVE_ONLY_STATE && tcs->type != ACTIVE_TCS)
 		enable_tcs_irq(drv, tcs_id, true);
 	spin_unlock_irqrestore(&drv->lock, flags);
@@ -452,49 +495,6 @@ static int tcs_write(struct rsc_drv *drv, const struct tcs_request *msg)
 	__tcs_trigger(drv, tcs_id, true);
 
 	return 0;
-unlock:
-	spin_unlock_irqrestore(&drv->lock, flags);
-	return ret;
-}
-
-/**
- * rpmh_rsc_send_data: Validate the incoming message and write to the
- * appropriate TCS block.
- *
- * @drv: the controller
- * @msg: the data to be sent
- *
- * Return: 0 on success, -EINVAL on error.
- * Note: This call blocks until a valid data is written to the TCS.
- */
- extern int in_long_press;
-int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg)
-{
-	int ret;
-	int count = 0;
-
-	if (!msg || !msg->cmds || !msg->num_cmds ||
-	    msg->num_cmds > MAX_RPMH_PAYLOAD) {
-		WARN_ON(1);
-		return -EINVAL;
-	}
-
-	do {
-		ret = tcs_write(drv, msg);
-		if (ret == -EBUSY) {
-			pr_info_ratelimited("DRV:%s TCS Busy, retrying RPMH message send: addr=%#x\n",
-					    drv->name, msg->cmds[0].addr);
-			udelay(10);
-			count++;
-		}
-		if ((count == 50000) && (in_long_press)) {
-			printk(KERN_ERR "Long Press :TCS Busy but log saved!");
-			break;
-		}
-
-	} while (ret == -EBUSY);
-
-	return ret;
 }
 
 static int find_match(const struct tcs_group *tcs, const struct tcs_cmd *cmd,
@@ -904,6 +904,7 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 
 	spin_lock_init(&drv->lock);
 	drv->in_solver_mode = false;
+	init_waitqueue_head(&drv->tcs_wait);
 	bitmap_zero(drv->tcs_in_use, MAX_TCS_NR);
 
 	irq = platform_get_irq(pdev, drv->id);
