@@ -46,7 +46,6 @@
 #include <linux/cleancache.h>
 
 #include "ext4.h"
-#include <trace/events/android_fs.h>
 
 #define NUM_PREALLOC_POST_READ_CTXS	128
 
@@ -147,17 +146,6 @@ static bool bio_post_read_required(struct bio *bio)
 	return bio->bi_private && !bio->bi_status;
 }
 
-static void
-ext4_trace_read_completion(struct bio *bio)
-{
-	struct page *first_page = bio->bi_io_vec[0].bv_page;
-
-	if (first_page != NULL)
-		trace_android_fs_dataread_end(first_page->mapping->host,
-					      page_offset(first_page),
-					      bio->bi_iter.bi_size);
-}
-
 /*
  * I/O completion handler for multipage BIOs.
  *
@@ -172,9 +160,6 @@ ext4_trace_read_completion(struct bio *bio)
  */
 static void mpage_end_io(struct bio *bio)
 {
-	if (trace_android_fs_dataread_start_enabled())
-		ext4_trace_read_completion(bio);
-
 	if (bio_post_read_required(bio)) {
 		struct bio_post_read_ctx *ctx = bio->bi_private;
 
@@ -222,37 +207,6 @@ static inline loff_t ext4_readpage_limit(struct inode *inode)
 		return inode->i_sb->s_maxbytes;
 
 	return i_size_read(inode);
-}
-
-static void
-ext4_submit_bio_read(struct bio *bio)
-{
-#ifdef CONFIG_FS_HPB
-	struct inode *inode = bio->bi_io_vec[0].bv_page->mapping->host;
-#endif
-	if (trace_android_fs_dataread_start_enabled()) {
-		struct page *first_page = bio->bi_io_vec[0].bv_page;
-
-		if (first_page != NULL) {
-			char *path, pathbuf[MAX_TRACE_PATHBUF_LEN];
-
-			path = android_fstrace_get_pathname(pathbuf,
-						    MAX_TRACE_PATHBUF_LEN,
-						    first_page->mapping->host);
-			trace_android_fs_dataread_start(
-				first_page->mapping->host,
-				page_offset(first_page),
-				bio->bi_iter.bi_size,
-				current->pid,
-				path,
-				current->comm);
-		}
-	}
-#ifdef CONFIG_FS_HPB
-	if(ext4_test_inode_state(inode, EXT4_STATE_HPB))
-		bio->bi_opf |= REQ_HPB_PREFER;
-#endif
-	submit_bio(bio);
 }
 
 int ext4_mpage_readpages(struct address_space *mapping,
@@ -402,7 +356,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 		if (bio && (last_block_in_bio != blocks[0] - 1 ||
 			    !fscrypt_mergeable_bio(bio, inode, next_block))) {
 		submit_and_realloc:
-			ext4_submit_bio_read(bio);
+			submit_bio(bio);
 			bio = NULL;
 		}
 		if (bio == NULL) {
@@ -435,14 +389,14 @@ int ext4_mpage_readpages(struct address_space *mapping,
 		if (((map.m_flags & EXT4_MAP_BOUNDARY) &&
 		     (relative_block == map.m_len)) ||
 		    (first_hole != blocks_per_page)) {
-			ext4_submit_bio_read(bio);
+			submit_bio(bio);
 			bio = NULL;
 		} else
 			last_block_in_bio = blocks[blocks_per_page - 1];
 		goto next_page;
 	confused:
 		if (bio) {
-			ext4_submit_bio_read(bio);
+			submit_bio(bio);
 			bio = NULL;
 		}
 		if (!PageUptodate(page))
@@ -455,7 +409,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 	}
 	BUG_ON(pages && !list_empty(pages));
 	if (bio)
-		ext4_submit_bio_read(bio);
+		submit_bio(bio);
 	return 0;
 }
 
