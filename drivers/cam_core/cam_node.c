@@ -96,8 +96,9 @@ static int __cam_node_handle_acquire_dev(struct cam_node *node,
 
 	ctx = cam_node_get_ctxt_from_free_list(node);
 	if (!ctx) {
-		CAM_ERR(CAM_CORE, "No free ctx in free list node %s",
-			node->name);
+		CAM_ERR(CAM_CORE,
+			"No free ctx in free list node %s with size:%d",
+			node->name, node->ctx_size);
 		cam_node_print_ctx_state(node);
 
 		rc = -ENOMEM;

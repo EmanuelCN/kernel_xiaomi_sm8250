@@ -2854,14 +2854,15 @@ irqreturn_t cam_tfe_csid_irq(int irq_num, void *data)
 
 	if (is_error_irq)
 		CAM_ERR_RATE_LIMIT(CAM_ISP,
-			"CSID %d irq status TOP: 0x%x RX: 0x%x IPP: 0x%x RDI0: 0x%x RDI1: 0x%x RDI2: 0x%x",
+			"CSID %d irq status TOP: 0x%x RX: 0x%x IPP: 0x%x RDI0: 0x%x RDI1: 0x%x RDI2: 0x%x CSID clk:%d",
 			csid_hw->hw_intf->hw_idx,
 			irq_status[TFE_CSID_IRQ_REG_TOP],
 			irq_status[TFE_CSID_IRQ_REG_RX],
 			irq_status[TFE_CSID_IRQ_REG_IPP],
 			irq_status[TFE_CSID_IRQ_REG_RDI0],
 			irq_status[TFE_CSID_IRQ_REG_RDI1],
-			irq_status[TFE_CSID_IRQ_REG_RDI2]);
+			irq_status[TFE_CSID_IRQ_REG_RDI2],
+			csid_hw->clk_rate);
 
 	if (csid_hw->irq_debug_cnt >= CAM_TFE_CSID_IRQ_SOF_DEBUG_CNT_MAX) {
 		cam_tfe_csid_sof_irq_debug(csid_hw, &sof_irq_debug_en);
