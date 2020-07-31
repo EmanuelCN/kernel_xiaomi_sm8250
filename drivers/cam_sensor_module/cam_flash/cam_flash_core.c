@@ -201,8 +201,13 @@ int cam_flash_pmic_power_ops(struct cam_flash_ctrl *fctrl,
 	}
 
 	if (!regulator_enable) {
-		if ((fctrl->flash_state == CAM_FLASH_STATE_START) &&
+		if (((fctrl->flash_state == CAM_FLASH_STATE_START) ||
+			(fctrl->flash_state == CAM_FLASH_STATE_ACQUIRE)) &&
 			(fctrl->is_regulator_enabled == true)) {
+			/*
+			 * Release dev is called after stop dev and in
+			 * stop dev flash state is set to acquire dev.
+			 */
 			rc = cam_flash_prepare(fctrl, false);
 			if (rc)
 				CAM_ERR(CAM_FLASH,
