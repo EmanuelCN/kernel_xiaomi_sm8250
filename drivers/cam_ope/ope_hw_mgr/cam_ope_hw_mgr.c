@@ -1083,8 +1083,7 @@ static int cam_ope_calc_total_clk(struct cam_ope_hw_mgr *hw_mgr,
 	hw_mgr_clk_info->base_clk = 0;
 	for (i = 0; i < OPE_CTX_MAX; i++) {
 		ctx_data = &hw_mgr->ctx[i];
-		if (ctx_data->ctx_state == OPE_CTX_STATE_ACQUIRED &&
-			ctx_data->ope_acquire.dev_type == dev_type)
+		if (ctx_data->ctx_state == OPE_CTX_STATE_ACQUIRED)
 			hw_mgr_clk_info->base_clk +=
 				ctx_data->clk_info.base_clk;
 	}
