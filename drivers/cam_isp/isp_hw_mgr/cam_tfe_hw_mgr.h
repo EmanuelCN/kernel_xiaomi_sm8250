@@ -28,6 +28,7 @@
  * @dentry:                    Debugfs entry
  * @csid_debug:                csid debug information
  * @enable_recovery:           enable recovery
+ * @enable_csid_recovery:      enable csid recovery
  * @camif_debug:               enable sensor diagnosis status
  * @enable_reg_dump:           enable reg dump on error;
  * @per_req_reg_dump:          Enable per request reg dump
@@ -37,6 +38,7 @@ struct cam_tfe_hw_mgr_debug {
 	struct dentry  *dentry;
 	uint64_t       csid_debug;
 	uint32_t       enable_recovery;
+	uint32_t       enable_csid_recovery;
 	uint32_t       camif_debug;
 	uint32_t       enable_reg_dump;
 	uint32_t       per_req_reg_dump;
@@ -152,6 +154,7 @@ struct cam_tfe_hw_mgr_ctx {
  * @tfe_dev_caps           tfe device capability per core
  * @work q                 work queue for TFE hw manager
  * @debug_cfg              debug configuration
+ * @ctx_lock               Spinlock for HW manager
  */
 struct cam_tfe_hw_mgr {
 	struct cam_isp_hw_mgr          mgr_common;
@@ -170,6 +173,7 @@ struct cam_tfe_hw_mgr {
 	struct cam_tfe_hw_get_hw_cap   tfe_dev_caps[CAM_TFE_HW_NUM_MAX];
 	struct cam_req_mgr_core_workq *workq;
 	struct cam_tfe_hw_mgr_debug    debug_cfg;
+	spinlock_t                     ctx_lock;
 };
 
 /**

@@ -1458,6 +1458,8 @@ static int cam_tfe_hw_mgr_acquire_res_tfe_csid_rdi(
 		csid_acquire.out_port = out_port;
 		csid_acquire.sync_mode = CAM_ISP_HW_SYNC_NONE;
 		csid_acquire.node_res = NULL;
+		csid_acquire.event_cb = cam_tfe_hw_mgr_event_handler;
+		csid_acquire.event_cb_prv = tfe_ctx;
 
 		if (tfe_ctx->is_tpg) {
 			if (tfe_ctx->res_list_tpg.hw_res[0]->hw_intf->hw_idx ==
@@ -4904,6 +4906,12 @@ static int  cam_tfe_hw_mgr_find_affected_ctx(
 			affected_core, CAM_TFE_HW_NUM_MAX))
 			continue;
 
+		if (atomic_read(&tfe_hwr_mgr_ctx->overflow_pending)) {
+			CAM_INFO(CAM_ISP, "CTX:%d already error reported",
+				tfe_hwr_mgr_ctx->ctx_index);
+			continue;
+		}
+
 		atomic_set(&tfe_hwr_mgr_ctx->overflow_pending, 1);
 		notify_err_cb = tfe_hwr_mgr_ctx->common.event_cb[event_type];
 
@@ -4919,8 +4927,13 @@ static int  cam_tfe_hw_mgr_find_affected_ctx(
 		 * In the call back function corresponding ISP context
 		 * will update CRM about fatal Error
 		 */
-		notify_err_cb(tfe_hwr_mgr_ctx->common.cb_priv,
+		if (notify_err_cb) {
+			notify_err_cb(tfe_hwr_mgr_ctx->common.cb_priv,
 			CAM_ISP_HW_EVENT_ERROR, error_event_data);
+		} else {
+			CAM_WARN(CAM_ISP, "Error call back is not set");
+			goto end;
+		}
 	}
 
 	/* fill the affected_core in recovery data */
@@ -4929,7 +4942,34 @@ static int  cam_tfe_hw_mgr_find_affected_ctx(
 		CAM_DBG(CAM_ISP, "tfe core %d is affected (%d)",
 			 i, recovery_data->affected_core[i]);
 	}
+end:
+	return 0;
+}
 
+static int cam_tfe_hw_mgr_handle_csid_event(
+	struct cam_isp_hw_event_info *event_info)
+{
+	struct cam_isp_hw_error_event_data  error_event_data = {0};
+	struct cam_tfe_hw_event_recovery_data     recovery_data = {0};
+
+	/* this can be extended based on the types of error
+	 * received from CSID
+	 */
+	switch (event_info->err_type) {
+	case CAM_ISP_HW_ERROR_CSID_FATAL: {
+
+		if (!g_tfe_hw_mgr.debug_cfg.enable_csid_recovery)
+			break;
+
+		error_event_data.error_type = event_info->err_type;
+		cam_tfe_hw_mgr_find_affected_ctx(&error_event_data,
+			event_info->hw_idx,
+			&recovery_data);
+		break;
+	}
+	default:
+		break;
+	}
 	return 0;
 }
 
@@ -4950,6 +4990,13 @@ static int cam_tfe_hw_mgr_handle_hw_err(
 	else if (event_info->res_type == CAM_ISP_RESOURCE_TFE_OUT)
 		error_event_data.error_type = CAM_ISP_HW_ERROR_BUSIF_OVERFLOW;
 
+	spin_lock(&g_tfe_hw_mgr.ctx_lock);
+	if (event_info->err_type == CAM_ISP_HW_ERROR_CSID_FATAL) {
+		rc = cam_tfe_hw_mgr_handle_csid_event(event_info);
+		spin_unlock(&g_tfe_hw_mgr.ctx_lock);
+		return rc;
+	}
+
 	core_idx = event_info->hw_idx;
 
 	if (g_tfe_hw_mgr.debug_cfg.enable_recovery)
@@ -4959,9 +5006,13 @@ static int cam_tfe_hw_mgr_handle_hw_err(
 
 	rc = cam_tfe_hw_mgr_find_affected_ctx(&error_event_data,
 		core_idx, &recovery_data);
+	if (rc || !(recovery_data.no_of_context))
+		goto end;
 
-	if (event_info->res_type == CAM_ISP_RESOURCE_TFE_OUT)
+	if (event_info->res_type == CAM_ISP_RESOURCE_TFE_OUT) {
+		spin_unlock(&g_tfe_hw_mgr.ctx_lock);
 		return rc;
+	}
 
 	if (g_tfe_hw_mgr.debug_cfg.enable_recovery) {
 		/* Trigger for recovery */
@@ -4974,7 +5025,8 @@ static int cam_tfe_hw_mgr_handle_hw_err(
 		CAM_DBG(CAM_ISP, "recovery is not enabled");
 		rc = 0;
 	}
-
+end:
+	spin_unlock(&g_tfe_hw_mgr.ctx_lock);
 	return rc;
 }
 
@@ -5422,6 +5474,14 @@ static int cam_tfe_hw_mgr_debug_register(void)
 		goto err;
 	}
 
+	if (!debugfs_create_u32("enable_csid_recovery",
+		0644,
+		g_tfe_hw_mgr.debug_cfg.dentry,
+		&g_tfe_hw_mgr.debug_cfg.enable_csid_recovery)) {
+		CAM_ERR(CAM_ISP, "failed to create enable_csid_recovery");
+		goto err;
+	}
+
 	if (!debugfs_create_u32("enable_reg_dump",
 		0644,
 		g_tfe_hw_mgr.debug_cfg.dentry,
@@ -5469,6 +5529,7 @@ int cam_tfe_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	memset(&g_tfe_hw_mgr, 0, sizeof(g_tfe_hw_mgr));
 
 	mutex_init(&g_tfe_hw_mgr.ctx_mutex);
+	spin_lock_init(&g_tfe_hw_mgr.ctx_lock);
 
 	if (CAM_TFE_HW_NUM_MAX != CAM_TFE_CSID_HW_NUM_MAX) {
 		CAM_ERR(CAM_ISP, "CSID num is different then TFE num");
