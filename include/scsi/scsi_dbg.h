@@ -6,6 +6,7 @@ struct scsi_cmnd;
 struct scsi_device;
 struct scsi_sense_hdr;
 
+#ifdef CONFIG_DEBUG_KERNEL
 extern void scsi_print_command(struct scsi_cmnd *);
 extern size_t __scsi_format_command(char *, size_t,
 				   const unsigned char *, size_t);
@@ -16,6 +17,19 @@ extern void __scsi_print_sense(const struct scsi_device *, const char *name,
 			       const unsigned char *sense_buffer,
 			       int sense_len);
 extern void scsi_print_result(const struct scsi_cmnd *, const char *, int);
+#else
+static inline void scsi_print_command(struct scsi_cmnd *cmd) {}
+static inline size_t __scsi_format_command(char *logbuf, size_t logbuf_len,
+				const unsigned char *cdb, size_t cdb_len) { return 0; }
+static inline void scsi_print_sense_hdr(const struct scsi_device *sdev, const char *name,
+				const struct scsi_sense_hdr *sshdr) {}
+static inline void scsi_print_sense(const struct scsi_cmnd *cmd) {}
+static inline void __scsi_print_sense(const struct scsi_device *sdev, const char *name,
+				const unsigned char *sense_buffer,
+				int sense_len) {}
+static inline void scsi_print_result(const struct scsi_cmnd *cmd, const char *msg,
+				int disposition) {}
+#endif
 
 #ifdef CONFIG_SCSI_CONSTANTS
 extern bool scsi_opcode_sa_name(int, int, const char **, const char **);
