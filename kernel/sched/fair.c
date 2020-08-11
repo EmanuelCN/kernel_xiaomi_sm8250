@@ -3011,7 +3011,7 @@ static void reweight_entity(struct cfs_rq *cfs_rq, struct sched_entity *se,
 		/* commit outstanding execution time */
 		if (cfs_rq->curr == se)
 			update_curr(cfs_rq);
-		account_entity_dequeue(cfs_rq, se);
+                update_load_sub(&cfs_rq->load, se->load.weight);
 		dequeue_runnable_load_avg(cfs_rq, se);
 	}
 	dequeue_load_avg(cfs_rq, se);
@@ -3031,7 +3031,7 @@ static void reweight_entity(struct cfs_rq *cfs_rq, struct sched_entity *se,
 
 	enqueue_load_avg(cfs_rq, se);
 	if (se->on_rq) {
-		account_entity_enqueue(cfs_rq, se);
+                update_load_sub(&cfs_rq->load, se->load.weight);
 		enqueue_runnable_load_avg(cfs_rq, se);
 	}
 }
