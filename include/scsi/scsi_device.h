@@ -258,15 +258,25 @@ struct scsi_device {
  * like scmd_printk, but the device name is passed in
  * as a string pointer
  */
+#ifdef CONFIG_DEBUG_KERNEL
 __printf(4, 5) void
 sdev_prefix_printk(const char *, const struct scsi_device *, const char *,
 		const char *, ...);
+#else
+static inline void sdev_prefix_printk(const char *level, const struct scsi_device *sdev,
+			const char *name, const char *fmt, ...) {}
+#endif
 
 #define sdev_printk(l, sdev, fmt, a...)				\
 	sdev_prefix_printk(l, sdev, NULL, fmt, ##a)
 
+#ifdef CONFIG_DEBUG_KERNEL
 __printf(3, 4) void
 scmd_printk(const char *, const struct scsi_cmnd *, const char *, ...);
+#else
+static inline void scmd_printk(const char *level, const struct scsi_cmnd *scmd,
+		const char *fmt, ...) {}
+#endif
 
 #define scmd_dbg(scmd, fmt, a...)					   \
 	do {								   \
