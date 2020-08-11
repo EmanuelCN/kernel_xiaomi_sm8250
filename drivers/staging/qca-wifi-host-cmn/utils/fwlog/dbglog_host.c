@@ -739,7 +739,7 @@ char *DBG_MSG_ARR[WLAN_MODULE_ID_MAX][MAX_DBG_MSGS] = {
 	},
 	{""                     /* HOST */
 	},
-	{""                     /* BEACON */
+	{                       /* BEACON */
 	 "BEACON_EVENT_SWBA_SEND_FAILED",
 	 "BEACON_EVENT_EARLY_RX_BMISS_STATUS",
 	 "BEACON_EVENT_EARLY_RX_SLEEP_SLOP",
