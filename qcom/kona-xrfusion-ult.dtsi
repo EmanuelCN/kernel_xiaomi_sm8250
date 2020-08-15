@@ -210,21 +210,37 @@
 };
 
 &kona_snd {
-	qcom,model = "kona-xrfusion-snd-card";
+	qcom,model = "kona-xrfusion-ult-snd-card";
 	qcom,mi2s-audio-intf = <0>;
 	qcom,audio-routing =
+		"AMIC1", "MIC BIAS1",
+		"MIC BIAS1", "Analog Mic1",
 		"AMIC2", "MIC BIAS2",
 		"MIC BIAS2", "Analog Mic2",
-		"TX DMIC0", "MIC BIAS1",
+		"AMIC3", "MIC BIAS3",
+		"MIC BIAS3", "Analog Mic3",
+		"AMIC4", "MIC BIAS4",
+		"MIC BIAS4", "Analog Mic4",
+		"AMIC5", "MIC BIAS5",
+		"MIC BIAS5", "Analog Mic5",
+		"AMIC6", "MIC BIAS6",
+		"MIC BIAS6", "Analog Mic6",
+		"DMIC0", "MIC BIAS1",
 		"MIC BIAS1", "Digital Mic0",
-		"TX DMIC1", "MIC BIAS1",
+		"DMIC1", "MIC BIAS1",
 		"MIC BIAS1", "Digital Mic1",
-		"TX DMIC2", "MIC BIAS4",
-		"MIC BIAS4", "Digital Mic2",
-		"TX DMIC3", "MIC BIAS4",
-		"MIC BIAS4", "Digital Mic3",
-		"TX DMIC5", "MIC BIAS3",
-		"MIC BIAS3", "Digital Mic5",
+		"DMIC2", "MIC BIAS1",
+		"MIC BIAS1", "Digital Mic2",
+		"DMIC3", "MIC BIAS1",
+		"MIC BIAS1", "Digital Mic3",
+		"DMIC4", "MIC BIAS3",
+		"MIC BIAS3", "Digital Mic4",
+		"DMIC5", "MIC BIAS4",
+		"MIC BIAS4", "Digital Mic5",
+		"DMIC6", "MIC BIAS3",
+		"MIC BIAS3", "Digital Mic6",
+		"DMIC7", "MIC BIAS3",
+		"MIC BIAS3", "Digital Mic7",
 		"IN1_HPHL", "HPHL_OUT",
 		"IN2_HPHR", "HPHR_OUT",
 		"IN3_AUX", "AUX_OUT",
@@ -402,6 +418,10 @@
 
 	qcom,xr-stdalonevwr-misc {
 		compatible = "qcom,xr-stdalonevwr-misc";
+		/* IMU CLK Enable PM8150 GPIO 3 */
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&imu_clkin_default>;
+		pinctrl-1 = <&imu_clkin_sleep>;
 	};
 };
 
@@ -1084,7 +1104,7 @@
 			qcom,mdss-dsc-bit-per-pixel = <8>;
 			qcom,mdss-dsc-block-prediction-enable;
 			qcom,mdss-dsi-panel-phy-timings =  [00 17 05 05 20 1F
-							06 06 03 02 04 00 13 15];
+						06 06 03 02 04 00 13 15];
 			qcom,display-topology = <4 4 2>,
 						<1 0 2>;
 			qcom,default-topology-index = <0>;

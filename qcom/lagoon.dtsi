@@ -1884,7 +1884,7 @@
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
 				<129 512 0 0>,
-				<129 512 0 1041408>;
+				<129 512 0 8171520>;
 
 		/* Outputs to mss */
 		qcom,smem-states = <&mpss_smp2p_out 0>;
@@ -3212,6 +3212,7 @@
 		vdd-3.3-ch1-supply = <&L11E>;
 		vdd-3.3-ch0-supply = <&L10E>;
 		qcom,vdd-cx-mx-config = <0 0>;
+		qcom,vdd-1.3-rfa-config = <1224000 1304000>;
 		qcom,vdd-3.3-ch1-config = <3000000 3312000>;
 		qcom,vdd-3.3-ch0-config = <3000000 3312000>;
 		qcom,smp2p_map_wlan_1_in {
