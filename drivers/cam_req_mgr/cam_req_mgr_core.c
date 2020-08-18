@@ -2930,7 +2930,7 @@ static int cam_req_mgr_cb_notify_trigger(
 
 	task = cam_req_mgr_workq_get_task(link->workq);
 	if (!task) {
-		CAM_ERR(CAM_CRM, "no empty task frame %lld",
+		CAM_ERR_RATE_LIMIT(CAM_CRM, "no empty task frame %lld",
 			trigger_data->frame_id);
 		rc = -EBUSY;
 		goto end;
