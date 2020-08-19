@@ -1,9 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0
 # Most of this file is copied from tools/lib/traceevent/Makefile
 
-BPF_VERSION = 0
-BPF_PATCHLEVEL = 0
-BPF_EXTRAVERSION = 1
+RM ?= rm
+srctree = $(abs_srctree)
+
+LIBBPF_VERSION := $(shell \
+	grep -oE '^LIBBPF_([0-9.]+)' libbpf.map | \
+	sort -rV | head -n1 | cut -d'_' -f2)
+LIBBPF_MAJOR_VERSION := $(firstword $(subst ., ,$(LIBBPF_VERSION)))
 
 MAKEFLAGS += --no-print-directory
 
@@ -172,8 +176,21 @@ $(BPF_IN): force elfdep bpfdep
 $(OUTPUT)libbpf.so: $(BPF_IN)
 	$(QUIET_LINK)$(CC) --shared $^ -o $@
 
-$(OUTPUT)libbpf.a: $(BPF_IN)
-	$(QUIET_LINK)$(RM) $@; $(AR) rcs $@ $^
+$(BPF_HELPER_DEFS): $(srctree)/tools/include/uapi/linux/bpf.h
+	$(QUIET_GEN)$(srctree)/scripts/bpf_helpers_doc.py --header \
+		--file $(srctree)/tools/include/uapi/linux/bpf.h > $(BPF_HELPER_DEFS)
+
+$(OUTPUT)libbpf.so: $(OUTPUT)libbpf.so.$(LIBBPF_VERSION)
+
+$(OUTPUT)libbpf.so.$(LIBBPF_VERSION): $(BPF_IN_SHARED)
+	$(QUIET_LINK)$(CC) $(LDFLAGS) \
+		--shared -Wl,-soname,libbpf.so.$(LIBBPF_MAJOR_VERSION) \
+		-Wl,--version-script=$(VERSION_SCRIPT) $^ -lelf -lz -o $@
+	@ln -sf $(@F) $(OUTPUT)libbpf.so
+	@ln -sf $(@F) $(OUTPUT)libbpf.so.$(LIBBPF_MAJOR_VERSION)
+
+$(OUTPUT)libbpf.a: $(BPF_IN_STATIC)
+	$(QUIET_LINK)$(RM) -f $@; $(AR) rcs $@ $^
 
 define do_install
 	if [ ! -d '$(DESTDIR_SQ)$2' ]; then		\
@@ -215,6 +232,14 @@ elfdep:
 
 bpfdep:
 	@if [ "$(feature-bpf)" != "1" ]; then echo "BPF API too old"; exit 1 ; fi
+
+cscope:
+	ls *.c *.h > cscope.files
+	cscope -b -q -I $(srctree)/include -f cscope.out
+
+tags:
+	$(RM) -f TAGS tags
+	ls *.c *.h | xargs $(TAGS_PROG) -a
 
 # Declare the contents of the .PHONY variable as phony.  We keep that
 # information in a variable so we can use it in if_changed and friends.
