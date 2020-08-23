@@ -12396,7 +12396,7 @@ int bpf_check_attach_target(struct bpf_verifier_log *log,
 	default:
 		if (!prog_extension)
 			return -EINVAL;
-		/* fallthrough */
+		fallthrough;
 	case BPF_MODIFY_RETURN:
 	case BPF_LSM_MAC:
 	case BPF_TRACE_FENTRY:
