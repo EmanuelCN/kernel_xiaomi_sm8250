@@ -36,6 +36,12 @@ MAP COMMANDS
 |	*PROG* := { **id** *PROG_ID* | **pinned** *FILE* | **tag** *PROG_TAG* }
 |	*VALUE* := { *DATA* | *MAP* | *PROG* }
 |	*UPDATE_FLAGS* := { **any** | **exist** | **noexist** }
+|	*TYPE* := { **hash** | **array** | **prog_array** | **perf_event_array** | **percpu_hash**
+|		| **percpu_array** | **stack_trace** | **cgroup_array** | **lru_hash**
+|		| **lru_percpu_hash** | **lpm_trie** | **array_of_maps** | **hash_of_maps**
+|		| **devmap** | **devmap_hash** | **sockmap** | **cpumap** | **xskmap** | **sockhash**
+|		| **cgroup_storage** | **reuseport_sockarray** | **percpu_cgroup_storage**
+|		| **queue** | **stack** | **sk_storage** | **struct_ops** | **ringbuf** | **inode_storage** }
 
 DESCRIPTION
 ===========

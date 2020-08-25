@@ -50,27 +50,36 @@
 #include "json_writer.h"
 #include "main.h"
 
-static const char * const map_type_name[] = {
-	[BPF_MAP_TYPE_UNSPEC]		= "unspec",
-	[BPF_MAP_TYPE_HASH]		= "hash",
-	[BPF_MAP_TYPE_ARRAY]		= "array",
-	[BPF_MAP_TYPE_PROG_ARRAY]	= "prog_array",
-	[BPF_MAP_TYPE_PERF_EVENT_ARRAY]	= "perf_event_array",
-	[BPF_MAP_TYPE_PERCPU_HASH]	= "percpu_hash",
-	[BPF_MAP_TYPE_PERCPU_ARRAY]	= "percpu_array",
-	[BPF_MAP_TYPE_STACK_TRACE]	= "stack_trace",
-	[BPF_MAP_TYPE_CGROUP_ARRAY]	= "cgroup_array",
-	[BPF_MAP_TYPE_LRU_HASH]		= "lru_hash",
-	[BPF_MAP_TYPE_LRU_PERCPU_HASH]	= "lru_percpu_hash",
-	[BPF_MAP_TYPE_LPM_TRIE]		= "lpm_trie",
-	[BPF_MAP_TYPE_ARRAY_OF_MAPS]	= "array_of_maps",
-	[BPF_MAP_TYPE_HASH_OF_MAPS]	= "hash_of_maps",
-	[BPF_MAP_TYPE_DEVMAP]		= "devmap",
-	[BPF_MAP_TYPE_SOCKMAP]		= "sockmap",
-	[BPF_MAP_TYPE_CPUMAP]		= "cpumap",
-	[BPF_MAP_TYPE_XSKMAP]           = "xskmap",
-	[BPF_MAP_TYPE_SOCKHASH]		= "sockhash",
-	[BPF_MAP_TYPE_CGROUP_STORAGE]	= "cgroup_storage",
+const char * const map_type_name[] = {
+	[BPF_MAP_TYPE_UNSPEC]			= "unspec",
+	[BPF_MAP_TYPE_HASH]			= "hash",
+	[BPF_MAP_TYPE_ARRAY]			= "array",
+	[BPF_MAP_TYPE_PROG_ARRAY]		= "prog_array",
+	[BPF_MAP_TYPE_PERF_EVENT_ARRAY]		= "perf_event_array",
+	[BPF_MAP_TYPE_PERCPU_HASH]		= "percpu_hash",
+	[BPF_MAP_TYPE_PERCPU_ARRAY]		= "percpu_array",
+	[BPF_MAP_TYPE_STACK_TRACE]		= "stack_trace",
+	[BPF_MAP_TYPE_CGROUP_ARRAY]		= "cgroup_array",
+	[BPF_MAP_TYPE_LRU_HASH]			= "lru_hash",
+	[BPF_MAP_TYPE_LRU_PERCPU_HASH]		= "lru_percpu_hash",
+	[BPF_MAP_TYPE_LPM_TRIE]			= "lpm_trie",
+	[BPF_MAP_TYPE_ARRAY_OF_MAPS]		= "array_of_maps",
+	[BPF_MAP_TYPE_HASH_OF_MAPS]		= "hash_of_maps",
+	[BPF_MAP_TYPE_DEVMAP]			= "devmap",
+	[BPF_MAP_TYPE_DEVMAP_HASH]		= "devmap_hash",
+	[BPF_MAP_TYPE_SOCKMAP]			= "sockmap",
+	[BPF_MAP_TYPE_CPUMAP]			= "cpumap",
+	[BPF_MAP_TYPE_XSKMAP]			= "xskmap",
+	[BPF_MAP_TYPE_SOCKHASH]			= "sockhash",
+	[BPF_MAP_TYPE_CGROUP_STORAGE]		= "cgroup_storage",
+	[BPF_MAP_TYPE_REUSEPORT_SOCKARRAY]	= "reuseport_sockarray",
+	[BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE]	= "percpu_cgroup_storage",
+	[BPF_MAP_TYPE_QUEUE]			= "queue",
+	[BPF_MAP_TYPE_STACK]			= "stack",
+	[BPF_MAP_TYPE_SK_STORAGE]		= "sk_storage",
+	[BPF_MAP_TYPE_STRUCT_OPS]		= "struct_ops",
+	[BPF_MAP_TYPE_RINGBUF]			= "ringbuf",
+	[BPF_MAP_TYPE_INODE_STORAGE]		= "inode_storage",
 };
 
 static bool map_is_per_cpu(__u32 type)
@@ -1036,6 +1045,12 @@ static int do_help(int argc, char **argv)
 		"       " HELP_SPEC_PROGRAM "\n"
 		"       VALUE := { DATA | MAP | PROG }\n"
 		"       UPDATE_FLAGS := { any | exist | noexist }\n"
+		"       TYPE := { hash | array | prog_array | perf_event_array | percpu_hash |\n"
+		"                 percpu_array | stack_trace | cgroup_array | lru_hash |\n"
+		"                 lru_percpu_hash | lpm_trie | array_of_maps | hash_of_maps |\n"
+		"                 devmap | devmap_hash | sockmap | cpumap | xskmap | sockhash |\n"
+		"                 cgroup_storage | reuseport_sockarray | percpu_cgroup_storage |\n"
+		"                 queue | stack | sk_storage | struct_ops | ringbuf | inode_storage }\n"
 		"       " HELP_SPEC_OPTIONS "\n"
 		"",
 		bin_name, argv[-2], bin_name, argv[-2], bin_name, argv[-2],
