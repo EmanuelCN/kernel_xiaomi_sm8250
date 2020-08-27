@@ -73,6 +73,8 @@
 #define TFE_CSID_DEBUG_DISABLE_EARLY_EOF              BIT(8)
 #define TFE_CSID_DEBUG_ENABLE_RST_IRQ_LOG             BIT(9)
 
+#define CAM_CSID_EVT_PAYLOAD_MAX                  10
+
 /* enum cam_csid_path_halt_mode select the path halt mode control */
 enum cam_tfe_csid_path_halt_mode {
 	TFE_CSID_HALT_MODE_INTERNAL,
@@ -354,11 +356,30 @@ struct cam_tfe_csid_path_cfg {
 };
 
 /**
+ * struct cam_csid_evt_payload- payload for csid hw event
+ * @list       : list head
+ * @evt_type   : Event type from CSID
+ * @irq_status : IRQ Status register
+ * @hw_idx     : Hw index
+ * @priv       : Private data of payload
+ */
+struct cam_csid_evt_payload {
+	struct list_head   list;
+	uint32_t           evt_type;
+	uint32_t           irq_status[TFE_CSID_IRQ_REG_MAX];
+	uint32_t           hw_idx;
+	void              *priv;
+};
+
+/**
  * struct cam_tfe_csid_hw- csid hw device resources data
  *
  * @hw_intf:                  contain the csid hw interface information
  * @hw_info:                  csid hw device information
  * @csid_info:                csid hw specific information
+ * @tasklet:                  tasklet to handle csid errors
+ * @free_payload_list:        list head for payload
+ * @evt_payload:              Event payload to be passed to tasklet
  * @in_res_id:                csid in resource type
  * @csi2_rx_cfg:              csi2 rx decoder configuration for csid
  * @csi2_rx_reserve_cnt:      csi2 reservations count value
@@ -381,6 +402,7 @@ struct cam_tfe_csid_path_cfg {
  * @device_enabled            Device enabled will set once CSID powered on and
  *                            initial configuration are done.
  * @lock_state                csid spin lock
+ * @fatal_err_detected        flag to indicate fatal errror is reported
  * @event_cb:                 Callback function to hw mgr in case of hw events
  * @event_cb_priv:            Context data
  * @prev_boot_timestamp       previous frame bootime stamp
@@ -391,6 +413,9 @@ struct cam_tfe_csid_hw {
 	struct cam_hw_intf                 *hw_intf;
 	struct cam_hw_info                 *hw_info;
 	struct cam_tfe_csid_hw_info        *csid_info;
+	void                               *tasklet;
+	struct list_head                    free_payload_list;
+	struct cam_csid_evt_payload   evt_payload[CAM_CSID_EVT_PAYLOAD_MAX];
 	uint32_t                            in_res_id;
 	struct cam_tfe_csid_csi2_rx_cfg     csi2_rx_cfg;
 	uint32_t                            csi2_reserve_cnt;
@@ -409,6 +434,7 @@ struct cam_tfe_csid_hw {
 	uint32_t                            error_irq_count;
 	uint32_t                            device_enabled;
 	spinlock_t                          spin_lock;
+	bool                                fatal_err_detected;
 	cam_hw_mgr_event_cb_func            event_cb;
 	void                               *event_cb_priv;
 	uint64_t                            prev_boot_timestamp;
