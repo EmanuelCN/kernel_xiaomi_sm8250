@@ -819,6 +819,22 @@ int cam_cdm_process_cmd(void *hw_priv,
 		rc = cam_hw_cdm_hang_detect(cdm_hw, *handle);
 		break;
 	}
+	case CAM_CDM_HW_INTF_DUMP_DBG_REGS:
+	{
+		uint32_t *handle = cmd_args;
+
+		if (sizeof(uint32_t) != arg_size) {
+			CAM_ERR(CAM_CDM,
+				"Invalid CDM cmd %d size=%x for handle=0x%x",
+				cmd, arg_size, *handle);
+				return -EINVAL;
+		}
+
+		mutex_lock(&cdm_hw->hw_mutex);
+		cam_hw_cdm_dump_core_debug_registers(cdm_hw, true);
+		mutex_unlock(&cdm_hw->hw_mutex);
+		break;
+	}
 	default:
 		CAM_ERR(CAM_CDM, "CDM HW intf command not valid =%d", cmd);
 		break;

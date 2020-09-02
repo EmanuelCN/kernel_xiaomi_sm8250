@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CDM_API_H_
@@ -296,4 +296,13 @@ struct cam_cdm_utils_ops *cam_cdm_publish_ops(void);
  * @return 0 on success
  */
 int cam_cdm_detect_hang_error(uint32_t handle);
+
+/**
+ * @brief : API to dump the CDM Debug registers
+ *
+ * @handle : Input handle of the CDM to dump the registers
+ *
+ * @return 0 on success
+ */
+int cam_cdm_dump_debug_registers(uint32_t handle);
 #endif /* _CAM_CDM_API_H_ */
