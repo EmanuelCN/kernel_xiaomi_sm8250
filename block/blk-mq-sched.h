@@ -72,7 +72,7 @@ static inline void blk_mq_sched_requeue_request(struct request *rq)
 	struct request_queue *q = rq->q;
 	struct elevator_queue *e = q->elevator;
 
-	if (e && e->type->ops.mq.requeue_request)
+	if ((rq->rq_flags & RQF_ELVPRIV) && e && e->type->ops.mq.requeue_request)
 		e->type->ops.mq.requeue_request(rq);
 }
 
