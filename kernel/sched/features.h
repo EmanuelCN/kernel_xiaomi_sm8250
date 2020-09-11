@@ -104,7 +104,8 @@ SCHED_FEAT(FIND_BEST_TARGET, true)
  *   the EAS path for wakeup task placement. Otherwise, put
  *   those tasks through the mainline slow path.
  */
-SCHED_FEAT(EAS_PREFER_IDLE, true)
+
+SCHED_FEAT(EAS_PREFER_IDLE, false)
 
 /*
  * Request max frequency from schedutil whenever a RT task is running.
