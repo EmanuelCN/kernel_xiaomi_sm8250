@@ -536,7 +536,7 @@ int fscrypt_get_encryption_info(struct inode *inode)
 		memcpy(&ctx, dummy_ctx, res);
 	}
 
-	crypt_info = kmem_cache_zalloc(fscrypt_info_cachep, GFP_NOFS);
+	crypt_info = kmem_cache_zalloc(fscrypt_info_cachep, GFP_KERNEL);
 	if (!crypt_info)
 		return -ENOMEM;
 
