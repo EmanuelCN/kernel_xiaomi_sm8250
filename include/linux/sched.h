@@ -897,6 +897,7 @@ struct task_struct {
 	int				nr_cpus_allowed;
 	cpumask_t			cpus_allowed;
 	cpumask_t			cpus_requested;
+	void				*migration_pending;
 #if defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT)
 	int				migration_disabled;
 #endif
