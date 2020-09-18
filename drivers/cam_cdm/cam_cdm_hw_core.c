@@ -964,7 +964,6 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 					rc = -EIO;
 					break;
 				}
-				write_count--;
 			}
 		} else {
 			CAM_ERR(CAM_CDM,
