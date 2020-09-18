@@ -3537,6 +3537,18 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
 		handle_t *handle;
 		int retries = 0;
 
+		/*
+		 * We check here if the blocks are already allocated, then we
+		 * don't need to start a journal txn and we can directly return
+		 * the mapping information. This could boost performance
+		 * especially in multi-threaded overwrite requests.
+		 */
+		if (offset + length <= i_size_read(inode)) {
+			ret = ext4_map_blocks(NULL, inode, &map, 0);
+			if (ret > 0 && (map.m_flags & EXT4_MAP_MAPPED))
+				goto out;
+		}
+
 		/* Trim mapping request to maximum we can map at once for DIO */
 		if (map.m_len > DIO_MAX_BLOCKS)
 			map.m_len = DIO_MAX_BLOCKS;
@@ -3588,7 +3600,7 @@ retry:
 		if (ret < 0)
 			return ret;
 	}
-
+out:
 	/*
 	 * Writes that span EOF might trigger an I/O size update on completion,
 	 * so consider them to be dirty for the purposes of O_DSYNC, even if
