@@ -4,6 +4,7 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
                 kona-cdp-lcd-overlay.dtbo \
                 kona-mtp-overlay.dtbo \
                 kona-mtp-ws-overlay.dtbo \
+		kona-sa-mtp-overlay.dtbo \
                 kona-xr-overlay.dtbo \
                 kona-rumi-overlay.dtbo \
                 kona-qrd-overlay.dtbo \
@@ -15,6 +16,7 @@ kona-cdp-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-cdp-lcd-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-mtp-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-mtp-ws-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
+kona-sa-mtp-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-xr-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-rumi-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-qrd-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
@@ -25,6 +27,7 @@ else
 dtb-$(CONFIG_ARCH_KONA) += kona-rumi.dtb \
         kona-mtp.dtb \
         kona-mtp-ws.dtb \
+        kona-mtp-sa.dtb \
         kona-xr.dtb \
 	kona-xrfusion.dtb \
 	kona-xrfusion-ult.dtb \
@@ -34,6 +37,7 @@ dtb-$(CONFIG_ARCH_KONA) += kona-rumi.dtb \
         kona-v2-rumi.dtb \
         kona-v2-mtp.dtb \
         kona-v2-mtp-ws.dtb \
+        kona-v2-mtp-sa.dtb \
         kona-v2-cdp.dtb \
         kona-v2-qrd.dtb \
 	kona-v2-xrfusion.dtb \
@@ -41,6 +45,7 @@ dtb-$(CONFIG_ARCH_KONA) += kona-rumi.dtb \
         kona-hdk.dtb \
         kona-v2.1-mtp.dtb \
         kona-v2.1-mtp-ws.dtb \
+        kona-v2.1-mtp-sa.dtb \
         kona-v2.1-cdp.dtb \
         kona-v2.1-qrd.dtb \
         kona-v2.1-hdk.dtb \
@@ -61,6 +66,8 @@ dtbo-$(CONFIG_ARCH_LITO) += lito-rumi-overlay.dtbo \
                 lito-v2-atp-lcd-overlay.dtbo \
                 lito-qrd-overlay.dtbo \
                 lito-v2-qrd-overlay.dtbo \
+                litomagnus-mtp-overlay.dtbo \
+                litomagnus-cdp-overlay.dtbo \
                 orchid-mtp-overlay.dtbo \
                 orchid-cdp-overlay.dtbo
 
@@ -74,6 +81,8 @@ lito-v2-atp-overlay.dtbo-base := lito-v2.dtb
 lito-v2-atp-lcd-overlay.dtbo-base := lito-v2.dtb
 lito-qrd-overlay.dtbo-base := lito.dtb
 lito-v2-qrd-overlay.dtbo-base := lito-v2.dtb
+litomagnus-mtp-overlay.dtbo-base := litomagnus.dtb
+litomagnus-cdp-overlay.dtbo-base := litomagnus.dtb
 orchid-mtp-overlay.dtbo-base := orchid.dtb
 orchid-cdp-overlay.dtbo-base := orchid.dtb
 else
@@ -87,6 +96,8 @@ dtb-$(CONFIG_ARCH_LITO) += lito-rumi.dtb \
                 lito-v2-atp.dtb \
                 lito-v2-atp-lcd.dtb \
                 lito-v2-qrd.dtb \
+                litomagnus-mtp.dtb \
+                litomagnus-cdp.dtb \
                 orchid-mtp.dtb \
                 orchid-cdp.dtb
 endif
@@ -179,13 +190,21 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 		scuba-idp-overlay.dtbo \
 		scuba-idp-usbc-overlay.dtbo \
 		scuba-qrd-eldo-overlay.dtbo \
-		scuba-qrd-non-eldo-overlay.dtbo
+		scuba-qrd-non-eldo-overlay.dtbo \
+		scuba-iot-idp-overlay.dtbo \
+		scuba-iot-idp-usbc-overlay.dtbo \
+		scuba-iot-qrd-eldo-overlay.dtbo \
+		scuba-iot-qrd-non-eldo-overlay.dtbo
 
 scuba-rumi-overlay.dtbo-base := scuba.dtb scubap.dtb scuba-2gb.dtb
 scuba-idp-overlay.dtbo-base := scuba.dtb scubap.dtb scuba-2gb.dtb
 scuba-qrd-eldo-overlay.dtbo-base := scuba.dtb scubap.dtb scuba-2gb.dtb
 scuba-qrd-non-eldo-overlay.dtbo-base := scuba.dtb scubap.dtb scuba-2gb.dtb
 scuba-idp-usbc-overlay.dtbo-base := scuba.dtb scubap.dtb scuba-2gb.dtb
+scuba-iot-idp-overlay.dtbo-base := scuba-iot.dtb scubap-iot.dtb scuba-iot-2gb.dtb
+scuba-iot-qrd-eldo-overlay.dtbo-base := scuba-iot.dtb scubap-iot.dtb scuba-iot-2gb.dtb
+scuba-iot-qrd-non-eldo-overlay.dtbo-base := scuba-iot.dtb scubap-iot.dtb scuba-iot-2gb.dtb
+scuba-iot-idp-usbc-overlay.dtbo-base := scuba-iot.dtb scubap-iot.dtb scuba-iot-2gb.dtb
 else
 dtb-$(CONFIG_ARCH_SCUBA) += scuba-rumi.dtb \
 	scuba-idp.dtb \
@@ -195,7 +214,15 @@ dtb-$(CONFIG_ARCH_SCUBA) += scuba-rumi.dtb \
 	scubap-idp.dtb \
 	scubap-idp-2gb.dtb \
 	scuba-idp-2gb.dtb \
-	scuba-idp-usbc-2gb.dtb
+	scuba-idp-usbc-2gb.dtb \
+	scuba-iot-idp.dtb \
+	scuba-iot-idp-usbc.dtb \
+	scubap-iot-idp.dtb \
+	scuba-iot-qrd-eldo.dtb \
+	scuba-iot-qrd-non-eldo.dtb \
+	scubap-iot-idp-2gb.dtb \
+	scuba-iot-idp-2gb.dtb \
+	scuba-iot-idp-usbc-2gb.dtb
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
