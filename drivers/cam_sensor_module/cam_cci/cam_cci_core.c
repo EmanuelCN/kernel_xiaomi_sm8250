@@ -177,16 +177,25 @@ static int32_t cam_cci_lock_queue(struct cci_device *cci_dev,
 	return cam_cci_write_i2c_queue(cci_dev, val, master, queue);
 }
 
-#ifdef DUMP_CCI_REGISTERS
-static void cam_cci_dump_registers(struct cci_device *cci_dev,
+
+void cam_cci_dump_registers(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master, enum cci_i2c_queue_t queue)
 {
+	uint32_t dump_en = 0;
 	uint32_t read_val = 0;
 	uint32_t i = 0;
 	uint32_t reg_offset = 0;
 	uint32_t read_buf_level = 0;
 	uint32_t read_data_reg_offset = 0x0;
 	void __iomem *base = cci_dev->soc_info.reg_map[0].mem_base;
+
+	dump_en = cci_dev->dump_en;
+	if (!(dump_en & CAM_CCI_NACK_DUMP_EN) &&
+		!(dump_en & CAM_CCI_TIMEOUT_DUMP_EN)) {
+		CAM_DBG(CAM_CCI,
+			"Nack and Timeout dump is not enabled");
+		return;
+	}
 
 	/* CCI Top Registers */
 	CAM_INFO(CAM_CCI, "****CCI TOP Registers ****");
@@ -238,7 +247,7 @@ static void cam_cci_dump_registers(struct cci_device *cci_dev,
 			reg_offset, read_val);
 	}
 }
-#endif
+EXPORT_SYMBOL(cam_cci_dump_registers);
 
 static uint32_t cam_cci_wait(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master,
@@ -256,9 +265,8 @@ static uint32_t cam_cci_wait(struct cci_device *cci_dev,
 	CAM_DBG(CAM_CCI, "wait DONE_for_completion_timeout");
 
 	if (rc <= 0) {
-#ifdef DUMP_CCI_REGISTERS
 		cam_cci_dump_registers(cci_dev, master, queue);
-#endif
+
 		CAM_ERR(CAM_CCI, "wait for queue: %d", queue);
 		if (rc == 0)
 			rc = -ETIMEDOUT;
@@ -1031,9 +1039,8 @@ static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 			CAM_ERR(CAM_CCI,
 				"wait_for_completion_timeout rc = %d FIFO buf_lvl:0x%x",
 				rc, val);
-#ifdef DUMP_CCI_REGISTERS
 			cam_cci_dump_registers(cci_dev, master, queue);
-#endif
+
 			cam_cci_flush_queue(cci_dev, master);
 			goto rel_mutex_q;
 		}
@@ -1111,11 +1118,10 @@ static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 				CAM_ERR(CAM_CCI,
 					"Failed to receive RD_DONE irq rc = %d FIFO buf_lvl:0x%x",
 					rc, val);
-				#ifdef DUMP_CCI_REGISTERS
-					cam_cci_dump_registers(cci_dev,
-						master, queue);
-				#endif
-					cam_cci_flush_queue(cci_dev, master);
+				cam_cci_dump_registers(cci_dev,
+					master, queue);
+
+				cam_cci_flush_queue(cci_dev, master);
 				goto rel_mutex_q;
 			}
 			break;
@@ -1288,9 +1294,8 @@ static int32_t cam_cci_read(struct v4l2_subdev *sd,
 	rc = wait_for_completion_timeout(
 		&cci_dev->cci_master_info[master].rd_done, CCI_TIMEOUT);
 	if (rc <= 0) {
-#ifdef DUMP_CCI_REGISTERS
 		cam_cci_dump_registers(cci_dev, master, queue);
-#endif
+
 		if (rc == 0)
 			rc = -ETIMEDOUT;
 		val = cam_io_r_mb(base +

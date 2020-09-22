@@ -543,7 +543,7 @@ int cam_hw_cdm_wait_for_bl_fifo(
 			CAM_DBG(CAM_CDM,
 				"BL slot available_cnt=%d requested=%d",
 				(available_bl_slots - 1), bl_count);
-				rc = bl_count;
+				rc = available_bl_slots - 1;
 				break;
 		} else if (0 == (available_bl_slots - 1)) {
 			rc = cam_hw_cdm_enable_bl_done_irq(cdm_hw,
@@ -569,7 +569,7 @@ int cam_hw_cdm_wait_for_bl_fifo(
 			if (cam_hw_cdm_enable_bl_done_irq(cdm_hw,
 					false, fifo_idx))
 				CAM_ERR(CAM_CDM, "Disable BL done irq failed");
-			rc = 0;
+			rc = 1;
 			CAM_DBG(CAM_CDM, "CDM HW is ready for data");
 		} else {
 			rc = (bl_count - (available_bl_slots - 1));
@@ -898,8 +898,6 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 				rc = -EIO;
 				break;
 			}
-		} else {
-			write_count--;
 		}
 
 		if (req->data->type == CAM_CDM_BL_CMD_TYPE_MEM_HANDLE) {
@@ -966,6 +964,7 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 					rc = -EIO;
 					break;
 				}
+				write_count--;
 			}
 		} else {
 			CAM_ERR(CAM_CDM,
@@ -1002,27 +1001,58 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 					rc = -EIO;
 					break;
 				}
+				write_count--;
 				CAM_DBG(CAM_CDM, "commit success BL %d tag=%d",
 					i, core->bl_fifo[fifo_idx].bl_tag);
 			}
 			core->bl_fifo[fifo_idx].bl_tag++;
 
 			if (cdm_cmd->cmd[i].enable_debug_gen_irq) {
+				if (write_count == 0) {
+					write_count =
+						cam_hw_cdm_wait_for_bl_fifo(
+						cdm_hw, 1, fifo_idx);
+					if (write_count < 0) {
+						CAM_ERR(CAM_CDM,
+						"wait for bl fifo failed %d:%d",
+						i, req->data->cmd_arrary_count);
+						rc = -EIO;
+						break;
+					}
+				}
+
 				rc = cam_hw_cdm_submit_debug_gen_irq(cdm_hw,
 					fifo_idx);
-				if (rc == 0)
+				if (rc == 0) {
+					write_count--;
 					core->bl_fifo[fifo_idx].bl_tag++;
+				}
 				if (core->bl_fifo[fifo_idx].bl_tag >=
 						(bl_fifo->bl_depth -
 						1))
 					core->bl_fifo[fifo_idx].bl_tag = 0;
 			}
 
-			if ((req->data->flag == true) &&
+			if ((!rc) && (req->data->flag == true) &&
 				(i == (req->data->cmd_arrary_count -
 				1))) {
+
+				if (write_count == 0) {
+					write_count =
+						cam_hw_cdm_wait_for_bl_fifo(
+						cdm_hw, 1, fifo_idx);
+					if (write_count < 0) {
+						CAM_ERR(CAM_CDM,
+						"wait for bl fifo failed %d:%d",
+						i, req->data->cmd_arrary_count);
+						rc = -EIO;
+						break;
+					}
+				}
+
 				if (core->arbitration !=
 					CAM_CDM_ARBITRATION_PRIORITY_BASED) {
+
 					rc = cam_hw_cdm_submit_gen_irq(
 						cdm_hw, req, fifo_idx,
 						cdm_cmd->gen_irq_arb);

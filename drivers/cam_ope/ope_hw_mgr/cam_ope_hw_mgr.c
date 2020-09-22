@@ -43,6 +43,8 @@
 
 static struct cam_ope_hw_mgr *ope_hw_mgr;
 
+static int cam_ope_req_timer_reset(struct cam_ope_ctx *ctx_data);
+
 static int cam_ope_mgr_get_rsc_idx(struct cam_ope_ctx *ctx_data,
 	struct ope_io_buf_info *in_io_buf)
 {
@@ -124,6 +126,8 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 
 	if (task_data->req_id > ctx_data->last_flush_req)
 		ctx_data->last_flush_req = 0;
+
+	cam_ope_req_timer_reset(ctx_data);
 
 	rc = cam_cdm_submit_bls(ctx_data->ope_cdm.cdm_handle, cdm_cmd);
 
@@ -1083,8 +1087,7 @@ static int cam_ope_calc_total_clk(struct cam_ope_hw_mgr *hw_mgr,
 	hw_mgr_clk_info->base_clk = 0;
 	for (i = 0; i < OPE_CTX_MAX; i++) {
 		ctx_data = &hw_mgr->ctx[i];
-		if (ctx_data->ctx_state == OPE_CTX_STATE_ACQUIRED &&
-			ctx_data->ope_acquire.dev_type == dev_type)
+		if (ctx_data->ctx_state == OPE_CTX_STATE_ACQUIRED)
 			hw_mgr_clk_info->base_clk +=
 				ctx_data->clk_info.base_clk;
 	}
@@ -3626,6 +3629,7 @@ static int cam_ope_mgr_hw_dump(void *hw_priv, void *hw_dump_args)
 	}
 
 	mutex_lock(&hw_mgr->hw_mgr_mutex);
+	mutex_lock(&ctx_data->ctx_mutex);
 
 	CAM_INFO(CAM_OPE, "Req %lld", dump_args->request_id);
 	for (idx = 0; idx < CAM_CTX_REQ_MAX; idx++) {
@@ -3639,6 +3643,7 @@ static int cam_ope_mgr_hw_dump(void *hw_priv, void *hw_dump_args)
 
 	/* no matching request found */
 	if (idx == CAM_CTX_REQ_MAX) {
+		mutex_unlock(&ctx_data->ctx_mutex);
 		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		return 0;
 	}
@@ -3656,6 +3661,7 @@ static int cam_ope_mgr_hw_dump(void *hw_priv, void *hw_dump_args)
 			req_ts.tv_nsec/NSEC_PER_USEC,
 			cur_ts.tv_sec,
 			cur_ts.tv_nsec/NSEC_PER_USEC);
+		mutex_unlock(&ctx_data->ctx_mutex);
 		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		return 0;
 	}
@@ -3667,6 +3673,7 @@ static int cam_ope_mgr_hw_dump(void *hw_priv, void *hw_dump_args)
 		cur_ts.tv_sec,
 		cur_ts.tv_nsec/NSEC_PER_USEC);
 
+	mutex_unlock(&ctx_data->ctx_mutex);
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 	return 0;
 }
