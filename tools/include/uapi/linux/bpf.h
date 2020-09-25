@@ -3095,7 +3095,7 @@ union bpf_attr {
  * 	Return
  * 		The id is returned or 0 in case the id could not be retrieved.
  *
- * long bpf_sk_assign(struct sk_buff *skb, struct bpf_sock *sk, u64 flags)
+ * long bpf_sk_assign(struct sk_buff *skb, void *sk, u64 flags)
  *	Description
  *		Assign the *sk* to the *skb*. When combined with appropriate
  *		routing configuration to receive the packet towards the socket,
