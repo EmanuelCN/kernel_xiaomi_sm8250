@@ -609,6 +609,13 @@ struct bpf_trampoline {
 	struct bpf_ksym ksym;
 };
 
+struct bpf_attach_target_info {
+	struct btf_func_model fmodel;
+	long tgt_addr;
+	const char *tgt_name;
+	const struct btf_type *tgt_type;
+};
+
 #define BPF_DISPATCHER_MAX 48 /* Fits in 2048B */
 
 struct bpf_dispatcher_prog {
@@ -636,9 +643,10 @@ static __always_inline unsigned int bpf_dispatcher_nop_func(
 	return bpf_func(ctx, insnsi);
 }
 #ifdef CONFIG_BPF_JIT
-struct bpf_trampoline *bpf_trampoline_lookup(u64 key);
 int bpf_trampoline_link_prog(struct bpf_prog *prog);
 int bpf_trampoline_unlink_prog(struct bpf_prog *prog);
+struct bpf_trampoline *bpf_trampoline_get(u64 key,
+					  struct bpf_attach_target_info *tgt_info);
 void bpf_trampoline_put(struct bpf_trampoline *tr);
 #define BPF_DISPATCHER_INIT(_name) {				\
 	.mutex = __MUTEX_INITIALIZER(_name.mutex),		\
@@ -683,10 +691,6 @@ void bpf_image_ksym_del(struct bpf_ksym *ksym);
 void bpf_ksym_add(struct bpf_ksym *ksym);
 void bpf_ksym_del(struct bpf_ksym *ksym);
 #else
-static inline struct bpf_trampoline *bpf_trampoline_lookup(u64 key)
-{
-	return NULL;
-}
 static inline int bpf_trampoline_link_prog(struct bpf_prog *prog)
 {
 	return -ENOTSUPP;
@@ -694,6 +698,11 @@ static inline int bpf_trampoline_link_prog(struct bpf_prog *prog)
 static inline int bpf_trampoline_unlink_prog(struct bpf_prog *prog)
 {
 	return -ENOTSUPP;
+}
+static inline struct bpf_trampoline *bpf_trampoline_get(u64 key,
+							struct bpf_attach_target_info *tgt_info)
+{
+	return ERR_PTR(-EOPNOTSUPP);
 }
 static inline void bpf_trampoline_put(struct bpf_trampoline *tr) {}
 #define DEFINE_BPF_DISPATCHER(name)
