@@ -1371,6 +1371,8 @@ int bpf_check(struct bpf_prog **fp, union bpf_attr *attr,
 void bpf_patch_call_args(struct bpf_insn *insn, u32 stack_depth);
 #endif
 
+struct btf *bpf_get_btf_vmlinux(void);
+
 /* Map specifics */
 struct xdp_buff;
 struct sk_buff;
