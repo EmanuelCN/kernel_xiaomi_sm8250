@@ -1236,6 +1236,8 @@ struct rq {
 #if defined(CONFIG_PREEMPT_RT) && defined(CONFIG_SMP)
 	unsigned int		nr_pinned;
 #endif
+	unsigned int		push_busy;
+	struct cpu_stop_work	push_work;
 };
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -1338,6 +1340,17 @@ static inline bool sched_group_cookie_match(struct rq *rq,
 	return true;
 }
 #endif /* CONFIG_SCHED_CORE */
+
+#define MDF_PUSH	0x01
+
+static inline bool is_migration_disabled(struct task_struct *p)
+{
+#if defined(CONFIG_SMP) && defined(CONFIG_PREEMPT_RT)
+	return p->migration_disabled;
+#else
+	return false;
+#endif
+}
 
 #ifdef CONFIG_SCHED_SMT
 extern void __update_idle_core(struct rq *rq);
@@ -2026,6 +2039,8 @@ struct sched_class {
 
 	void (*rq_online)(struct rq *rq);
 	void (*rq_offline)(struct rq *rq);
+
+	struct rq *(*find_lock_rq)(struct task_struct *p, struct rq *rq);
 #endif
 
 	void (*task_tick)(struct rq *rq, struct task_struct *p, int queued);
@@ -2129,6 +2144,25 @@ extern void set_cpus_allowed_common(struct task_struct *p, const struct cpumask 
 
 bool __cpu_overutilized(int cpu, int delta);
 bool cpu_overutilized(int cpu);
+
+static inline struct task_struct *get_push_task(struct rq *rq)
+{
+	struct task_struct *p = rq->curr;
+
+	lockdep_assert_held(&rq->lock);
+
+	if (rq->push_busy)
+		return NULL;
+
+	if (p->nr_cpus_allowed == 1)
+		return NULL;
+
+	rq->push_busy = true;
+	get_task_struct(p);
+	return p;
+}
+
+extern int push_cpu_stop(void *arg);
 
 #endif
 
