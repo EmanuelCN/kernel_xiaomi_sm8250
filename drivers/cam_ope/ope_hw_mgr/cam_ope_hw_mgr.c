@@ -81,6 +81,11 @@ end:
 	return rsc_idx;
 }
 
+static bool cam_ope_is_pending_request(struct cam_ope_ctx *ctx_data)
+{
+	return !bitmap_empty(ctx_data->bitmap, CAM_CTX_REQ_MAX);
+}
+
 static int cam_ope_mgr_process_cmd(void *priv, void *data)
 {
 	int rc;
@@ -96,14 +101,16 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 
 	ctx_data = priv;
 	task_data = (struct ope_cmd_work_data *)data;
+
+	mutex_lock(&hw_mgr->hw_mgr_mutex);
 	cdm_cmd = task_data->data;
 
 	if (!cdm_cmd) {
 		CAM_ERR(CAM_OPE, "Invalid params%pK", cdm_cmd);
+		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		return -EINVAL;
 	}
 
-	mutex_lock(&hw_mgr->hw_mgr_mutex);
 	if (ctx_data->ctx_state != OPE_CTX_STATE_ACQUIRED) {
 		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		CAM_ERR(CAM_OPE, "ctx id :%u is not in use",
@@ -114,6 +121,13 @@ static int cam_ope_mgr_process_cmd(void *priv, void *data)
 	if (task_data->req_id <= ctx_data->last_flush_req) {
 		CAM_WARN(CAM_OPE,
 			"request %lld has been flushed, reject packet",
+			task_data->req_id, ctx_data->last_flush_req);
+		mutex_unlock(&hw_mgr->hw_mgr_mutex);
+		return -EINVAL;
+	}
+
+	if (!cam_ope_is_pending_request(ctx_data)) {
+		CAM_WARN(CAM_OPE, "no pending req, req %lld last flush %lld",
 			task_data->req_id, ctx_data->last_flush_req);
 		mutex_unlock(&hw_mgr->hw_mgr_mutex);
 		return -EINVAL;
@@ -254,11 +268,6 @@ static int cam_ope_mgr_reapply_config(struct cam_ope_hw_mgr *hw_mgr,
 		CRM_TASK_PRIORITY_0);
 
 	return rc;
-}
-
-static bool cam_ope_is_pending_request(struct cam_ope_ctx *ctx_data)
-{
-	return !bitmap_empty(ctx_data->bitmap, CAM_CTX_REQ_MAX);
 }
 
 static int cam_get_valid_ctx_id(void)
