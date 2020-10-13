@@ -2339,8 +2339,18 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 		goto out;
 	}
 
-	if (!(flags & SCA_MIGRATE_ENABLE) && cpumask_equal(&p->cpus_allowed, new_mask))
-		goto out;
+	if (!(flags & SCA_MIGRATE_ENABLE)) {
+		if (cpumask_equal(&p->cpus_allowed, new_mask))
+			goto out;
+
+		if (WARN_ON_ONCE(p == current &&
+				 is_migration_disabled(p) &&
+				 !cpumask_test_cpu(task_cpu(p), new_mask))) {
+			ret = -EBUSY;
+			goto out;
+		}
+	}
+
 #ifdef CONFIG_SCHED_WALT
 	cpumask_andnot(&allowed_mask, new_mask, cpu_isolated_mask);
 	cpumask_and(&allowed_mask, &allowed_mask, cpu_valid_mask);
