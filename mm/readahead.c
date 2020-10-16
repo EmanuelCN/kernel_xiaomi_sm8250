@@ -168,11 +168,7 @@ void __do_page_cache_readahead(struct address_space *mapping,
 	LIST_HEAD(page_pool);
 	loff_t isize = i_size_read(inode);
 	gfp_t gfp_mask = readahead_gfp_mask(mapping);
-	struct readahead_control rac = {
-		.mapping = mapping,
-		.file = filp,
-		._index = index,
-	};
+	DEFINE_READAHEAD(rac, filp, mapping, index);
 	unsigned long i;
 	pgoff_t end_index;	/* The last page we want to read */
 
