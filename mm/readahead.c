@@ -546,25 +546,10 @@ readit:
 	do_page_cache_ra(ractl, ra->size, ra->async_size);
 }
 
-/**
- * page_cache_sync_readahead - generic file readahead
- * @mapping: address_space which holds the pagecache and I/O vectors
- * @ra: file_ra_state which holds the readahead state
- * @filp: passed on to ->readpage() and ->readpages()
- * @index: Index of first page to be read.
- * @req_count: Total number of pages being read by the caller.
- *
- * page_cache_sync_readahead() should be called when a cache miss happened:
- * it will submit the read.  The readahead logic may decide to piggyback more
- * pages onto the read request if access patterns suggest it will improve
- * performance.
- */
-void page_cache_sync_readahead(struct address_space *mapping,
-			       struct file_ra_state *ra, struct file *filp,
-			       pgoff_t index, unsigned long req_count)
+void page_cache_sync_ra(struct readahead_control *ractl,
+		struct file_ra_state *ra, unsigned long req_count)
 {
-	DEFINE_READAHEAD(ractl, filp, mapping, index);
-	bool do_forced_ra = filp && (filp->f_mode & FMODE_RANDOM);
+	bool do_forced_ra = ractl->file && (ractl->file->f_mode & FMODE_RANDOM);
 
 	/*
 	 * Even if read-ahead is disabled, issue this request as read-ahead
@@ -573,7 +558,7 @@ void page_cache_sync_readahead(struct address_space *mapping,
 	 * requested range, which we'll set to 1 page for this case.
 	 */
 	if (!ra->ra_pages || blk_cgroup_congested()) {
-		if (!filp)
+		if (!ractl->file)
 			return;
 		req_count = 1;
 		do_forced_ra = true;
@@ -581,37 +566,19 @@ void page_cache_sync_readahead(struct address_space *mapping,
 
 	/* be dumb */
 	if (do_forced_ra) {
-		force_page_cache_ra(&ractl, req_count);
+		force_page_cache_ra(ractl, req_count);
 		return;
 	}
 
 	/* do read-ahead */
-	ondemand_readahead(&ractl, ra, false, req_count);
+	ondemand_readahead(ractl, ra, false, req_count);
 }
-EXPORT_SYMBOL_GPL(page_cache_sync_readahead);
+EXPORT_SYMBOL_GPL(page_cache_sync_ra);
 
-/**
- * page_cache_async_readahead - file readahead for marked pages
- * @mapping: address_space which holds the pagecache and I/O vectors
- * @ra: file_ra_state which holds the readahead state
- * @filp: passed on to ->readpage() and ->readpages()
- * @page: The page at @index which triggered the readahead call.
- * @index: Index of first page to be read.
- * @req_count: Total number of pages being read by the caller.
- *
- * page_cache_async_readahead() should be called when a page is used which
- * is marked as PageReadahead; this is a marker to suggest that the application
- * has used up enough of the readahead window that we should start pulling in
- * more pages.
- */
-void
-page_cache_async_readahead(struct address_space *mapping,
-			   struct file_ra_state *ra, struct file *filp,
-			   struct page *page, pgoff_t index,
-			   unsigned long req_count)
+void page_cache_async_ra(struct readahead_control *ractl,
+		struct file_ra_state *ra, struct page *page,
+		unsigned long req_count)
 {
-	DEFINE_READAHEAD(ractl, filp, mapping, index);
-
 	/* no read-ahead */
 	if (!ra->ra_pages)
 		return;
@@ -627,16 +594,16 @@ page_cache_async_readahead(struct address_space *mapping,
 	/*
 	 * Defer asynchronous read-ahead on IO congestion.
 	 */
-	if (inode_read_congested(mapping->host))
+	if (inode_read_congested(ractl->mapping->host))
 		return;
 
 	if (blk_cgroup_congested())
 		return;
 
 	/* do read-ahead */
-	ondemand_readahead(&ractl, ra, true, req_count);
+	ondemand_readahead(ractl, ra, true, req_count);
 }
-EXPORT_SYMBOL_GPL(page_cache_async_readahead);
+EXPORT_SYMBOL_GPL(page_cache_async_ra);
 
 ssize_t ksys_readahead(int fd, loff_t offset, size_t count)
 {
