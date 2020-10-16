@@ -155,10 +155,8 @@ out:
 }
 
 /**
- * page_cache_readahead_unbounded - Start unchecked readahead.
- * @mapping: File address space.
- * @file: This instance of the open file; used for authentication.
- * @index: First page index to read.
+ * page_cache_ra_unbounded - Start unchecked readahead.
+ * @ractl: Readahead control.
  * @nr_to_read: The number of pages to read.
  * @lookahead_size: Where to start the next readahead.
  *
@@ -170,13 +168,13 @@ out:
  * Context: File is referenced by caller.  Mutexes may be held by caller.
  * May sleep, but will not reenter filesystem to reclaim memory.
  */
-void page_cache_readahead_unbounded(struct address_space *mapping,
-		struct file *file, pgoff_t index, unsigned long nr_to_read,
-		unsigned long lookahead_size)
+void page_cache_ra_unbounded(struct readahead_control *ractl,
+		unsigned long nr_to_read, unsigned long lookahead_size)
 {
+	struct address_space *mapping = ractl->mapping;
+	unsigned long index = readahead_index(ractl);
 	LIST_HEAD(page_pool);
 	gfp_t gfp_mask = readahead_gfp_mask(mapping);
-	DEFINE_READAHEAD(rac, file, mapping, index);
 	unsigned long i;
 
 	/*
@@ -200,7 +198,7 @@ void page_cache_readahead_unbounded(struct address_space *mapping,
 		page = radix_tree_lookup(&mapping->i_pages, index + i);
 		rcu_read_unlock();
 
-		BUG_ON(index + i != rac._index + rac._nr_pages);
+		BUG_ON(index + i != ractl->_index + ractl->_nr_pages);
 
 		if (page && !radix_tree_exceptional_entry(page)) {
 			/*
@@ -208,7 +206,7 @@ void page_cache_readahead_unbounded(struct address_space *mapping,
 			 * contiguous pages before continuing with the next
 			 * batch.
 			 */
-			read_pages(&rac, &page_pool, true);
+			read_pages(ractl, &page_pool, true);
 			continue;
 		}
 
@@ -221,12 +219,12 @@ void page_cache_readahead_unbounded(struct address_space *mapping,
 		} else if (add_to_page_cache_lru(page, mapping, index + i,
 					gfp_mask) < 0) {
 			put_page(page);
-			read_pages(&rac, &page_pool, true);
+			read_pages(ractl, &page_pool, true);
 			continue;
 		}
 		if (i == nr_to_read - lookahead_size)
 			SetPageReadahead(page);
-		rac._nr_pages++;
+		ractl->_nr_pages++;
 	}
 
 	/*
@@ -234,10 +232,10 @@ void page_cache_readahead_unbounded(struct address_space *mapping,
 	 * uptodate then the caller will launch readpage again, and
 	 * will then handle the error.
 	 */
-	read_pages(&rac, &page_pool, false);
+	read_pages(ractl, &page_pool, false);
 	memalloc_nofs_restore(nofs);
 }
-EXPORT_SYMBOL_GPL(page_cache_readahead_unbounded);
+EXPORT_SYMBOL_GPL(page_cache_ra_unbounded);
 
 /*
  * __do_page_cache_readahead() actually reads a chunk of disk.  It allocates
@@ -249,6 +247,7 @@ void __do_page_cache_readahead(struct address_space *mapping,
 		struct file *file, pgoff_t index, unsigned long nr_to_read,
 		unsigned long lookahead_size)
 {
+	DEFINE_READAHEAD(ractl, file, mapping, index);
 	struct inode *inode = mapping->host;
 	loff_t isize = i_size_read(inode);
 	pgoff_t end_index;	/* The last page we want to read */
@@ -263,8 +262,7 @@ void __do_page_cache_readahead(struct address_space *mapping,
 	if (nr_to_read > end_index - index)
 		nr_to_read = end_index - index + 1;
 
-	page_cache_readahead_unbounded(mapping, file, index, nr_to_read,
-			lookahead_size);
+	page_cache_ra_unbounded(&ractl, nr_to_read, lookahead_size);
 }
 
 /*
