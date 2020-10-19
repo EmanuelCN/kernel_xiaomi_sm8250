@@ -658,7 +658,7 @@ int msm_vdec_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 		}
 
 		mplane->plane_fmt[0].sizeimage =
-			msm_vidc_calculate_dec_input_frame_size(inst);
+			msm_vidc_calculate_dec_input_frame_size(inst, inst->buffer_size_limit);
 
 		/* Driver can recalculate buffer count only for
 		 * only for bitstream port. Decoder YUV port reconfig
@@ -706,7 +706,7 @@ int msm_vdec_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 	} else if (f->type == INPUT_MPLANE) {
 		fmt = &inst->fmts[INPUT_PORT].v4l2_fmt;
 		fmt->fmt.pix_mp.plane_fmt[0].sizeimage =
-			msm_vidc_calculate_dec_input_frame_size(inst);
+			msm_vidc_calculate_dec_input_frame_size(inst, inst->buffer_size_limit);
 		memcpy(f, fmt, sizeof(struct v4l2_format));
 	} else {
 		s_vpr_e(inst->sid, "%s: Unsupported buf type: %d\n",
@@ -790,7 +790,7 @@ int msm_vdec_inst_init(struct msm_vidc_inst *inst)
 	f->fmt.pix_mp.pixelformat = V4L2_PIX_FMT_H264;
 	f->fmt.pix_mp.num_planes = 1;
 	f->fmt.pix_mp.plane_fmt[0].sizeimage =
-		msm_vidc_calculate_dec_input_frame_size(inst);
+		msm_vidc_calculate_dec_input_frame_size(inst, inst->buffer_size_limit);
 	fmt_desc = msm_comm_get_pixel_fmt_fourcc(vdec_input_formats,
 		ARRAY_SIZE(vdec_input_formats), f->fmt.pix_mp.pixelformat,
 		inst->sid);

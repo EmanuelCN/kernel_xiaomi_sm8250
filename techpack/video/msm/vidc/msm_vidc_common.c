@@ -3428,7 +3428,10 @@ static void msm_comm_print_mem_usage(struct msm_vidc_core *core)
 				break;
 			}
 		}
-		sz_i = iplane->plane_fmt[0].sizeimage;
+		if (is_decode_session(inst))
+			sz_i = msm_vidc_calculate_dec_input_frame_size(inst, 0);
+		else
+			sz_i = iplane->plane_fmt[0].sizeimage;
 		sz_i_e = iplane->plane_fmt[1].sizeimage;
 		cnt_i = inp_f->count_min_host;
 
@@ -5860,7 +5863,7 @@ int msm_comm_check_memory_supported(struct msm_vidc_inst *vidc_inst)
 	struct v4l2_format *f;
 	struct hal_buffer_requirements *req;
 	struct context_bank_info *cb = NULL;
-	u32 i, dpb_cnt = 0, dpb_size = 0, rc = 0;
+	u32 i, dpb_cnt = 0, dpb_size = 0, input_size = 1, rc = 0;
 	u32 inst_mem_size, non_sec_cb_size = 0;
 	u64 total_mem_size = 0, non_sec_mem_size = 0;
 	u32 memory_limit_mbytes;
@@ -5870,10 +5873,17 @@ int msm_comm_check_memory_supported(struct msm_vidc_inst *vidc_inst)
 	mutex_lock(&core->lock);
 	list_for_each_entry(inst, &core->instances, list) {
 		inst_mem_size = 0;
+		input_size = 1;
 		/* input port buffers memory size */
 		fmt = &inst->fmts[INPUT_PORT];
 		f = &fmt->v4l2_fmt;
-		for (i = 0; i < f->fmt.pix_mp.num_planes; i++)
+		if (is_decode_session(inst))
+			input_size = msm_vidc_calculate_dec_input_frame_size(inst, 0);
+		else
+			input_size = f->fmt.pix_mp.plane_fmt[0].sizeimage;
+		inst_mem_size += input_size * fmt->count_min_host;
+
+		for (i = 1; i < f->fmt.pix_mp.num_planes; i++)
 			inst_mem_size += f->fmt.pix_mp.plane_fmt[i].sizeimage *
 							fmt->count_min_host;
 
