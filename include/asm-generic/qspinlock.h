@@ -80,7 +80,7 @@ extern void queued_spin_lock_slowpath(struct qspinlock *lock, u32 val);
  */
 static __always_inline void queued_spin_lock(struct qspinlock *lock)
 {
-	u32 val;
+	int val = 0;
 
 	val = atomic_cmpxchg_acquire(&lock->val, 0, _Q_LOCKED_VAL);
 	if (likely(val == 0))
