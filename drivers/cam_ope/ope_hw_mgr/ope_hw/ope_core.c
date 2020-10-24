@@ -393,6 +393,7 @@ static int cam_ope_dev_prepare_cdm_request(
 		ope_request->ope_kmd_buf.offset;
 	cdm_cmd->cmd[i].len = len;
 	cdm_cmd->cmd[i].arbitrate = arbitrate;
+	cdm_cmd->cmd[i].enable_debug_gen_irq = false;
 
 	cdm_cmd->cmd_arrary_count++;
 
