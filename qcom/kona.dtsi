@@ -347,7 +347,7 @@
 	};
 
 	chosen {
-		bootargs = "rcupdate.rcu_expedited=1 rcu_nocbs=0-7";
+		bootargs = "rcupdate.rcu_expedited=1 rcu_nocbs=0-7 kpti=off";
 	};
 
 	firmware: firmware {
@@ -391,6 +391,12 @@
 			reg = <0x0 0x80860000 0x0 0x20000>;
 			compatible = "qcom,cmd-db";
 			no-map;
+		};
+
+		reserved_xbl_uefi_log: res_xbl_uefi_log_region@80880000 {
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0x0 0x80880000 0x0 0x14000>;
 		};
 
 		smem_mem: smem_region@80900000 {
@@ -2445,6 +2451,7 @@
 		#clock-cells = <1>;
 		mboxes = <&qmp_aop 0>;
 		mbox-names = "qdss_clk";
+		qcom,clk-stop-bimc-log;
 	};
 
 	clock_gcc: qcom,gcc@100000 {
@@ -4722,6 +4729,7 @@
 		cnss-daemon-support;
 		qcom,cmd_db_name = "smpf2";
 		qcom,set-wlaon-pwr-ctrl;
+		cnss-enable-self-recovery;
 
 		qcom,msm-bus,name = "msm-cnss";
 		qcom,msm-bus,num-cases = <7>;
