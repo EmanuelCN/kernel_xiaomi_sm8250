@@ -467,7 +467,9 @@ batadv_iv_ogm_emit_send_time(const struct batadv_priv *bat_priv)
 	msecs = atomic_read(&bat_priv->orig_interval) - BATADV_JITTER;
 	msecs += prandom_u32() % (2 * BATADV_JITTER);
 
-	return jiffies + msecs_to_jiffies(msecs);
+	return jiffies + msecs_to_jiffies(
+		   atomic_read(&bat_priv->orig_interval) -
+		   JITTER + (random32() % (2*JITTER)));
 }
 
 /* when do we schedule a ogm packet to be sent */
