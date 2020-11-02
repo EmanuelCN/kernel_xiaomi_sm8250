@@ -474,7 +474,7 @@ int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg)
 
 			irq_get_irqchip_state(drv->irq, IRQCHIP_STATE_PENDING,
 					      &irq_sts);
-			pr_info_ratelimited("DRV:%s TCS Busy, retrying RPMH message send: addr=%#x interrupt status=%s\n",
+			pr_debug("DRV:%s TCS Busy, retrying RPMH message send: addr=%#x interrupt status=%s\n",
 					    drv->name, msg->cmds[0].addr,
 					    irq_sts ?
 					    "PENDING" : "NOT PENDING");

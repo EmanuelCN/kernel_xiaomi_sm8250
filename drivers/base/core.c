@@ -459,7 +459,7 @@ reorder:
 	 */
 	device_reorder_to_tail(consumer, NULL);
 
-	dev_info(consumer, "Linked as a consumer to %s\n", dev_name(supplier));
+	dev_dbg(consumer, "Linked as a consumer to %s\n", dev_name(supplier));
 
 out:
 	device_pm_unlock();
@@ -560,7 +560,7 @@ static void __device_link_del(struct kref *kref)
 {
 	struct device_link *link = container_of(kref, struct device_link, kref);
 
-	dev_info(link->consumer, "Dropping the link to %s\n",
+	dev_dbg(link->consumer, "Dropping the link to %s\n",
 		 dev_name(link->supplier));
 
 	if (link->flags & DL_FLAG_PM_RUNTIME)
@@ -575,7 +575,7 @@ static void __device_link_del(struct kref *kref)
 {
 	struct device_link *link = container_of(kref, struct device_link, kref);
 
-	dev_info(link->consumer, "Dropping the link to %s\n",
+	dev_dbg(link->consumer, "Dropping the link to %s\n",
 		 dev_name(link->supplier));
 
 	if (link->flags & DL_FLAG_PM_RUNTIME)
