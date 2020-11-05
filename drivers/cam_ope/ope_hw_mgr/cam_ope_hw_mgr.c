@@ -1947,6 +1947,14 @@ static int cam_ope_mgr_process_cmd_io_buf_req(struct cam_ope_hw_mgr *hw_mgr,
 				alignment = in_res->alignment;
 				unpack_format = in_res->unpacker_format;
 				pack_format = 0;
+				if (in_io_buf->pix_pattern >
+					PIXEL_PATTERN_CRYCBY) {
+					CAM_ERR(CAM_OPE,
+						 "Invalid pix pattern = %u",
+						in_io_buf->pix_pattern);
+					return -EINVAL;
+				}
+				io_buf->pix_pattern = in_io_buf->pix_pattern;
 			} else if (in_io_buf->direction == CAM_BUF_OUTPUT) {
 				out_res =
 					&ctx_data->ope_acquire.out_res[rsc_idx];
