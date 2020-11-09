@@ -707,6 +707,7 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 		task = cam_req_mgr_workq_get_task(ope_hw_mgr->msg_work);
 		if (!task) {
 			CAM_ERR(CAM_OPE, "no empty task");
+			mutex_unlock(&ctx_data->ctx_mutex);
 			return 0;
 		}
 		task_data = (struct ope_msg_work_data *)task->payload;
