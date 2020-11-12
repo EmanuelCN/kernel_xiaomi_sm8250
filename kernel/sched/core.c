@@ -1483,7 +1483,10 @@ static inline bool is_cpu_allowed(struct task_struct *p, int cpu)
 	if (is_per_cpu_kthread(p))
 		return cpu_online(cpu);
 
-	return cpu_active(cpu);
+	if (!cpu_active(cpu))
+		return false;
+
+	return cpumask_test_cpu(cpu, task_cpu_possible_mask(p));
 }
 
 /*
@@ -2183,10 +2186,9 @@ static int select_fallback_rq(int cpu, struct task_struct *p, bool allow_iso)
 			}
 			/* Fall-through */
 		case possible:
-			do_set_cpus_allowed(p, cpu_possible_mask);
+			do_set_cpus_allowed(p, task_cpu_possible_mask(p));
 			state = fail;
 			break;
-
 		case fail:
 			allow_iso = true;
 			state = bug;
