@@ -5831,8 +5831,8 @@ int sysctl_sched_lib_name_handler(struct ctl_table *table, int write,
 		strlcpy(dup_sched_lib_name, sched_lib_name, LIB_PATH_LENGTH);
 		next = dup_sched_lib_name;
 		while ((curr = strsep(&next, ",")) != NULL) {
-			pos = kmalloc(sizeof(struct libname_node), GFP_KERNEL);
-			pos->name = kstrdup(curr, GFP_KERNEL);
+			pos = kmalloc(sizeof(struct libname_node), GFP_ATOMIC);
+			pos->name = kstrdup(curr, GFP_ATOMIC);
 			list_add_tail(&pos->list, &__sched_lib_name_list);
 		}
 		spin_unlock(&__sched_lib_name_lock);
