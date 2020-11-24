@@ -1587,6 +1587,11 @@ int cam_hw_cdm_handle_error_info(
 	set_bit(CAM_CDM_RESET_HW_STATUS, &cdm_core->cdm_status);
 	set_bit(CAM_CDM_FLUSH_HW_STATUS, &cdm_core->cdm_status);
 
+	if (cdm_hw->hw_state == CAM_HW_STATE_POWER_DOWN) {
+		CAM_WARN(CAM_CDM, "CDM is in power down state");
+		goto end;
+	}
+
 	/* First pause CDM, If it fails still proceed to dump debug info */
 	cam_hw_cdm_pause_core(cdm_hw, true);
 
