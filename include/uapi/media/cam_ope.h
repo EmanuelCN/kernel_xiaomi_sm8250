@@ -104,7 +104,7 @@ struct ope_stripe_info {
  * @direction:     Direction of a buffer of a port(Input/Output)
  * @resource_type: Port type
  * @num_planes:    Number of planes for a port
- * @reserved:      Reserved
+ * @pix_pattern:   Pixel pattern for raw input
  * @num_stripes:   Stripes per plane
  * @mem_handle:    Memhandles of each Input/Output Port
  * @plane_offset:  Offsets of planes
@@ -120,7 +120,7 @@ struct ope_io_buf_info {
 	uint32_t direction;
 	uint32_t resource_type;
 	uint32_t num_planes;
-	uint32_t reserved;
+	uint32_t pix_pattern;
 	uint32_t num_stripes[OPE_MAX_PLANES];
 	uint32_t mem_handle[OPE_MAX_PLANES];
 	uint32_t plane_offset[OPE_MAX_PLANES];
