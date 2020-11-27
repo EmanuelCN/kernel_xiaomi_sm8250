@@ -104,6 +104,7 @@ static void swrm_unlock_sleep(struct swr_mstr_ctrl *swrm);
 static u32 swr_master_read(struct swr_mstr_ctrl *swrm, unsigned int reg_addr);
 static void swr_master_write(struct swr_mstr_ctrl *swrm, u16 reg_addr, u32 val);
 static int swrm_runtime_resume(struct device *dev);
+static void swrm_wait_for_fifo_avail(struct swr_mstr_ctrl *swrm, int swrm_rd_wr);
 
 static u8 swrm_get_clk_div(int mclk_freq, int bus_clk_freq)
 {
@@ -627,6 +628,9 @@ static int swr_master_bulk_write(struct swr_mstr_ctrl *swrm, u32 *reg_addr,
 		 * This still meets the hardware spec
 		 */
 			usleep_range(50, 55);
+			if (reg_addr[i] == SWRM_CMD_FIFO_WR_CMD)
+				swrm_wait_for_fifo_avail(swrm,
+							 SWRM_WR_CHECK_AVAIL);
 			swr_master_write(swrm, reg_addr[i], val[i]);
 		}
 		usleep_range(100, 110);
@@ -805,6 +809,11 @@ static int swrm_cmd_fifo_rd_cmd(struct swr_mstr_ctrl *swrm, int *cmd_data,
 	u32 val;
 	u32 retry_attempt = 0;
 
+	if (!dev_addr) {
+		dev_err(swrm->dev, "%s: invalid slave dev num\n", __func__);
+		return -EINVAL;
+	}
+
 	mutex_lock(&swrm->iolock);
 	val = swrm_get_packed_reg_val(&swrm->rcmd_id, len, dev_addr, reg_addr);
 	if (swrm->read) {
@@ -859,6 +868,11 @@ static int swrm_cmd_fifo_wr_cmd(struct swr_mstr_ctrl *swrm, u8 cmd_data,
 {
 	u32 val;
 	int ret = 0;
+
+	if (!dev_addr) {
+		dev_err(swrm->dev, "%s: invalid slave dev num\n", __func__);
+		return -EINVAL;
+	}
 
 	mutex_lock(&swrm->iolock);
 	if (!cmd_id)
@@ -2838,6 +2852,10 @@ static int swrm_probe(struct platform_device *pdev)
 	mutex_lock(&swrm->mlock);
 	swrm_clk_request(swrm, true);
 	swrm->version = swr_master_read(swrm, SWRM_COMP_HW_VERSION);
+	swrm->rd_fifo_depth = ((swr_master_read(swrm, SWRM_COMP_PARAMS)
+				& SWRM_COMP_PARAMS_RD_FIFO_DEPTH) >> 15);
+	swrm->wr_fifo_depth = ((swr_master_read(swrm, SWRM_COMP_PARAMS)
+				& SWRM_COMP_PARAMS_WR_FIFO_DEPTH) >> 10);
 	ret = swrm_master_init(swrm);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
@@ -2853,11 +2871,6 @@ static int swrm_probe(struct platform_device *pdev)
 
 	if (pdev->dev.of_node)
 		of_register_swr_devices(&swrm->master);
-
-	swrm->rd_fifo_depth = ((swr_master_read(swrm, SWRM_COMP_PARAMS)
-				& SWRM_COMP_PARAMS_RD_FIFO_DEPTH) >> 15);
-	swrm->wr_fifo_depth = ((swr_master_read(swrm, SWRM_COMP_PARAMS)
-				& SWRM_COMP_PARAMS_WR_FIFO_DEPTH) >> 10);
 
 #ifdef CONFIG_DEBUG_FS
 	swrm->debugfs_swrm_dent = debugfs_create_dir(dev_name(&pdev->dev), 0);
@@ -3090,7 +3103,7 @@ exit:
 		swrm_request_hw_vote(swrm, LPASS_AUDIO_CORE, false);
 	if (!hw_core_err)
 		swrm_request_hw_vote(swrm, LPASS_HW_CORE, false);
-	if (swrm_clk_req_err)
+	if (swrm_clk_req_err || aud_core_err  || hw_core_err)
 		pm_runtime_set_autosuspend_delay(&pdev->dev,
 				ERR_AUTO_SUSPEND_TIMER_VAL);
 	else
@@ -3120,6 +3133,10 @@ static int swrm_runtime_suspend(struct device *dev)
 		__func__, swrm->state);
 	dev_dbg(dev, "%s: pm_runtime: suspend state: %d\n",
 		__func__, swrm->state);
+	if (swrm->state == SWR_MSTR_SSR_RESET) {
+		swrm->state = SWR_MSTR_SSR;
+		return 0;
+	}
 	mutex_lock(&swrm->reslock);
 	mutex_lock(&swrm->force_down_lock);
 	current_state = swrm->state;
@@ -3473,6 +3490,18 @@ int swrm_wcd_notify(struct platform_device *pdev, u32 id, void *data)
 						   msecs_to_jiffies(500)))
 			dev_err(swrm->dev, "%s: clock voting not zero\n",
 				__func__);
+
+		if (swrm->state == SWR_MSTR_UP ||
+			pm_runtime_autosuspend_expiration(swrm->dev)) {
+			swrm->state = SWR_MSTR_SSR_RESET;
+			dev_dbg(swrm->dev,
+				"%s:suspend swr if active at SSR up\n",
+				__func__);
+			pm_runtime_set_autosuspend_delay(swrm->dev,
+				ERR_AUTO_SUSPEND_TIMER_VAL);
+			usleep_range(50000, 50100);
+			swrm->state = SWR_MSTR_SSR;
+		}
 
 		mutex_lock(&swrm->devlock);
 		swrm->dev_up = true;
