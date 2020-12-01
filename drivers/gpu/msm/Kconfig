@@ -46,3 +46,7 @@ config QCOM_KGSL_PROCESS_RECLAIM
 	  foreground/background activity through the sysfs entry exposed per
 	  process. Based on this kgsl can unpin the pages of the process and
 	  make those pages available to the Per Process Reclaim (PPR)
+
+config CORESIGHT_ADRENO
+	bool
+	default y if QCOM_KGSL=y && CORESIGHT=y
