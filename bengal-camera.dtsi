@@ -694,7 +694,7 @@
 		reg = <0x5c75000 0x5000>;
 		reg-cam-base = <0x75000>;
 		interrupt-names = "tfe1";
-		interrupts = <0 213 0>;
+		interrupts = <GIC_SPI 213 IRQ_TYPE_EDGE_RISING>;
 		regulator-names = "camss";
 		camss-supply = <&gcc_camss_top_gdsc>;
 		clock-names =
