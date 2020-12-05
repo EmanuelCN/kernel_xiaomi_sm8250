@@ -1612,7 +1612,7 @@ static int gmu_start(struct kgsl_device *device)
 
 		/* Vote for minimal DDR BW for GMU to init */
 		ret = msm_bus_scale_client_update_request(gmu->pcl,
-				pwr->pwrlevels[pwr->default_pwrlevel].bus_min);
+				pwr->pwrlevels[pwr->num_pwrlevels - 1].bus_min);
 		if (ret)
 			dev_err(&gmu->pdev->dev,
 				"Failed to allocate gmu b/w: %d\n", ret);
