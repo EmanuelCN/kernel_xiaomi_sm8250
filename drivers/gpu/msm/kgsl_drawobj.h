@@ -100,17 +100,6 @@ struct kgsl_drawobj_sync {
 	unsigned long timeout_jiffies;
 };
 
-#define KGSL_FENCE_NAME_LEN 74
-
-struct fence_info {
-	char name[KGSL_FENCE_NAME_LEN];
-};
-
-struct event_fence_info {
-	struct fence_info *fences;
-	int num_fences;
-};
-
 /**
  * struct kgsl_drawobj_sync_event
  * @id: identifer (positiion within the pending bitmap)
@@ -131,7 +120,6 @@ struct kgsl_drawobj_sync_event {
 	unsigned int timestamp;
 	struct kgsl_sync_fence_cb *handle;
 	struct kgsl_device *device;
-	struct event_fence_info info;
 };
 
 /**
