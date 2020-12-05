@@ -122,17 +122,6 @@ struct kgsl_drawobj_timeline {
 	int count;
 };
 
-#define KGSL_FENCE_NAME_LEN 74
-
-struct fence_info {
-	char name[KGSL_FENCE_NAME_LEN];
-};
-
-struct event_fence_info {
-	struct fence_info *fences;
-	int num_fences;
-};
-
 struct event_timeline_info {
 	u64 seqno;
 	u32 timeline;
