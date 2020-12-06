@@ -124,7 +124,11 @@ obj-$(CONFIG_NILFS2_FS)		+= nilfs2/
 obj-$(CONFIG_BEFS_FS)		+= befs/
 obj-$(CONFIG_HOSTFS)		+= hostfs/
 obj-$(CONFIG_CACHEFILES)	+= cachefiles/
-obj-$(CONFIG_DEBUG_FS)		+= debugfs/
+ifeq ($(CONFIG_DEBUG_FS),y)
+obj-y				+= debugfs/
+else
+obj-$(CONFIG_DEBUG_KMEMLEAK)	+= debugfs/
+endif
 obj-$(CONFIG_TRACING)		+= tracefs/
 obj-$(CONFIG_OCFS2_FS)		+= ocfs2/
 obj-$(CONFIG_BTRFS_FS)		+= btrfs/
