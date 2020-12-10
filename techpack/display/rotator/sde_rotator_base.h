@@ -18,7 +18,6 @@
 #include "sde_rotator_io_util.h"
 #include "sde_rotator_smmu.h"
 #include "sde_rotator_formats.h"
-#include <linux/pm_qos.h>
 
 /* HW Revisions for different targets */
 #define SDE_GET_MAJOR_REV(rev)	((rev) >> 28)
@@ -262,11 +261,6 @@ struct sde_rot_data_type {
 	u32 npriority_lvl;
 
 	u32 vbif_xin_id[MAX_XIN];
-
-	struct pm_qos_request pm_qos_rot_cpu_req;
-	u32 rot_pm_qos_cpu_count;
-	u32 rot_pm_qos_cpu_mask;
-	u32 rot_pm_qos_cpu_dma_latency;
 
 	u32 vbif_memtype_count;
 	u32 *vbif_memtype;
