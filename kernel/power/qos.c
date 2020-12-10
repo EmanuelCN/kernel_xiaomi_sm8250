@@ -897,6 +897,9 @@ static int __init pm_qos_power_init(void)
 
 	BUILD_BUG_ON(ARRAY_SIZE(pm_qos_array) != PM_QOS_NUM_CLASSES);
 
+	/* Don't let userspace impose restrictions on CPU idle levels */
+	return 0;
+
 	d = debugfs_create_dir("pm_qos", NULL);
 	if (IS_ERR_OR_NULL(d))
 		d = NULL;
