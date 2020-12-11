@@ -1206,22 +1206,23 @@ done:
 static int qg_trigger_good_ocv(struct qpnp_qg *chip)
 {
 	int rc = 0;
-	u32 ocv_uv = 0, ocv_raw = 0;
+	u32 vbat_uv = 0;
 	unsigned long rtc_sec = 0;
 
-	qg_dbg(chip, QG_DEBUG_STATUS, "QG FORCE GOOD_OCV triggered\n");
+	pr_info("Force to trigger QG GOOD_OCV\n");
 
 	mutex_lock(&chip->data_lock);
 
-	rc = qg_read_ocv(chip, &ocv_uv, &ocv_raw, S3_GOOD_OCV);
-	if (rc < 0) {
-		pr_err("Failed to read good_ocv, rc=%d\n", rc);
+	rc = qg_get_vbat_avg(chip, &vbat_uv);
+	if (rc != 0) {
+		pr_err("Failed to read vbat_avg for good_ocv trigger, rc=%d\n",
+		       rc);
 		goto done;
 	}
 
 	get_rtc_time(&rtc_sec);
 	chip->kdata.fifo_time = (u32)rtc_sec;
-	chip->kdata.param[QG_GOOD_OCV_UV].data = ocv_uv;
+	chip->kdata.param[QG_GOOD_OCV_UV].data = vbat_uv;
 	chip->kdata.param[QG_GOOD_OCV_UV].valid = true;
 
 	vote(chip->awake_votable, GOOD_OCV_VOTER, true, 0);
@@ -1250,9 +1251,8 @@ static void process_udata_work(struct work_struct *work)
 				chip->udata.param[QG_CC_SOC].data,
 				chip->cc_soc);
 		} else if (input_present && cc_soc_delta > MAX_CC_SOC_DELTA) {
-			pr_info("cc_soc %d exceeds SOC_FULL %d, reset qg\n",
-				chip->udata.param[QG_CC_SOC].data,
-				cc_soc_delta);
+			pr_info("cc_soc %d exceeds FULL, calibrate qg_soc\n",
+				chip->udata.param[QG_CC_SOC].data);
 			qg_trigger_good_ocv(chip);
 		} else {
 			chip->cc_soc = chip->udata.param[QG_CC_SOC].data;
