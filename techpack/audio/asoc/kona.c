@@ -5249,15 +5249,10 @@ err:
 
 static int msm_fe_qos_prepare(struct snd_pcm_substream *substream)
 {
-	cpumask_t mask;
-
 	if (pm_qos_request_active(&substream->latency_pm_qos_req))
 		pm_qos_remove_request(&substream->latency_pm_qos_req);
 
-	cpumask_clear(&mask);
-	cpumask_set_cpu(1, &mask); /* affine to core 1 */
-	cpumask_set_cpu(2, &mask); /* affine to core 2 */
-	cpumask_copy(&substream->latency_pm_qos_req.cpus_affine, &mask);
+	atomic_set(&substream->latency_pm_qos_req.cpus_affine, BIT(1) | BIT(2));
 
 	substream->latency_pm_qos_req.type = PM_QOS_REQ_AFFINE_CORES;
 

@@ -5279,7 +5279,6 @@ int kgsl_of_property_read_ddrtype(struct device_node *node, const char *base,
 int kgsl_device_platform_probe(struct kgsl_device *device)
 {
 	int status = -EINVAL;
-	int cpu;
 
 	status = _register_device(device);
 	if (status)
@@ -5376,6 +5375,19 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 			if ((1 << cpu) & device->pwrctrl.l2pc_cpus_mask)
 				cpumask_set_cpu(cpu, &qos->cpus_affine);
 		}
+
+		pm_qos_add_request(&device->pwrctrl.l2pc_cpus_qos,
+				PM_QOS_CPU_DMA_LATENCY,
+				PM_QOS_DEFAULT_VALUE);
+	}
+
+	if (device->pwrctrl.l2pc_cpus_mask) {
+		struct pm_qos_request *qos = &device->pwrctrl.l2pc_cpus_qos;
+
+		qos->type = PM_QOS_REQ_AFFINE_CORES;
+
+		atomic_set(&device->pwrctrl.l2pc_cpus_qos.cpus_affine,
+			   device->pwrctrl.l2pc_cpus_mask);
 
 		pm_qos_add_request(&device->pwrctrl.l2pc_cpus_qos,
 				PM_QOS_CPU_DMA_LATENCY,
