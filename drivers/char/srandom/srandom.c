@@ -36,7 +36,7 @@
     #define COPY_FROM_USER copy_from_user
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,18,0)
     #define KTIME_GET_NS ktime_get_real_ts64
     #define TIMESPEC timespec64
 #else
