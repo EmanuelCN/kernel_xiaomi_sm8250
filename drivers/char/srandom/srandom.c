@@ -130,7 +130,7 @@ uint64_t (*prngArrays)[numberOfRndArrays + 1];  /* Array of Array of SECURE RND 
 uint16_t ArraysBusyFlags = 0;             /* Binary Flags for Busy Arrays */
 int      arraysBufferPosition = 0;        /* Array reserved to determine which buffer to use */
 uint64_t tm_seed;
-struct   TIMESPEC ts;
+struct   TIMESPEC tsp;
 
 /*
  * Global counters
@@ -159,8 +159,8 @@ int mod_init(void)
         /*
          * Entropy Initialize #1
          */
-        KTIME_GET_NS(&ts);
-        x    = (uint64_t)ts.tv_nsec;
+        KTIME_GET_NS(&tsp);
+        x    = (uint64_t)tsp.tv_nsec;
         s[0] = xorshft64();
         s[1] = xorshft64();
 
@@ -474,24 +474,24 @@ void update_sarray(int arraysPosition)
  */
  void seed_PRND_s0(void)
  {
-         KTIME_GET_NS(&ts);
-         s[0] = (s[0] << 31) ^ (uint64_t)ts.tv_nsec;
+         KTIME_GET_NS(&tsp);
+         s[0] = (s[0] << 31) ^ (uint64_t)tsp.tv_nsec;
          #ifdef DEBUG_PRNG_SEED
          printk(KERN_INFO "[srandom] seed_PRNG_s0 x:%llu, s[0]:%llu, s[1]:%llu\n", x, s[0], s[1]);
          #endif
  }
 void seed_PRND_s1(void)
 {
-        KTIME_GET_NS(&ts);
-        s[1] = (s[1] << 24) ^ (uint64_t)ts.tv_nsec;
+        KTIME_GET_NS(&tsp);
+        s[1] = (s[1] << 24) ^ (uint64_t)tsp.tv_nsec;
         #ifdef DEBUG_PRNG_SEED
         printk(KERN_INFO "[srandom] seed_PRNG_s1 x:%llu, s[0]:%llu, s[1]:%llu\n", x, s[0], s[1]);
         #endif
 }
 void seed_PRND_x(void)
 {
-        KTIME_GET_NS(&ts);
-        x = (x << 32) ^ (uint64_t)ts.tv_nsec;
+        KTIME_GET_NS(&tsp);
+        x = (x << 32) ^ (uint64_t)tsp.tv_nsec;
         #ifdef DEBUG_PRNG_SEED
         printk(KERN_INFO "[srandom] seed_PRNG_x x:%llu, s[0]:%llu, s[1]:%llu\n", x, s[0], s[1]);
         #endif
@@ -626,8 +626,8 @@ module_exit(mod_exit);
 unsigned long __stack_chk_guard;
 void __stack_chk_guard_setup(void)
 {
-        KTIME_GET_NS(&ts);
-        __stack_chk_guard = (uint64_t)ts.tv_nsec;
+        KTIME_GET_NS(&tsp);
+        __stack_chk_guard = (uint64_t)tsp.tv_nsec;
 }
 
 void __stack_chk_fail(void)
