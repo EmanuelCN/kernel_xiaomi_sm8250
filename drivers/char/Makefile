@@ -78,3 +78,4 @@ CFLAGS_vs_serial_server.o	+= -Werror
 obj-$(CONFIG_RB5_FAN_CONTROLLER)	+= rb5_fan.o
 obj-$(CONFIG_RB5_GPIOS_ENABLE)	+= rb5-gpios-enable.o
 obj-$(CONFIG_XLOGCHAR)		+= xlogchar.o
+obj-$(CONFIG_SRANDOM)		+= srandom/
