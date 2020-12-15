@@ -12,6 +12,7 @@
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include <linux/kthread.h>
+#include "srandom.h"
 
 #define DRIVER_AUTHOR "Jonathan Senkerik <josenk@jintegrate.co>"
 #define DRIVER_DESC   "Improved random number generator."
@@ -64,8 +65,6 @@
  */
 static int device_open(struct inode *, struct file *);
 static int device_release(struct inode *, struct file *);
-static ssize_t sdevice_read(struct file *, char *, size_t, loff_t *);
-static ssize_t sdevice_write(struct file *, const char *, size_t, loff_t *);
 static uint64_t xorshft64(void);
 static uint64_t xorshft128(void);
 static int nextbuffer(void);
@@ -81,7 +80,7 @@ static int work_thread(void *data);
 /*
  * Global variables are declared as static, so are global within the file.
  */
-static struct file_operations sfops = {
+const struct file_operations sfops = {
         .owner   = THIS_MODULE,
         .open    = device_open,
         .read    = sdevice_read,
@@ -284,7 +283,7 @@ static int device_release(struct inode *inode, struct file *file)
 /*
  * Called when a process reads from the device.
  */
-static ssize_t sdevice_read(struct file * file, char * buf, size_t requestedCount, loff_t *ppos)
+ssize_t sdevice_read(struct file * file, char * buf, size_t requestedCount, loff_t *ppos)
 {
         int arraysPosition;
         int Block, ret;
@@ -375,11 +374,12 @@ static ssize_t sdevice_read(struct file * file, char * buf, size_t requestedCoun
         return requestedCount;
 }
 
+EXPORT_SYMBOL(sdevice_read);
 
 /*
  * Called when someone tries to write to /dev/srandom device
  */
-static ssize_t sdevice_write(struct file *file, const char __user *buf, size_t receivedCount, loff_t *ppos)
+ssize_t sdevice_write(struct file *file, const char __user *buf, size_t receivedCount, loff_t *ppos)
 {
 
         char *newdata;
@@ -411,6 +411,7 @@ static ssize_t sdevice_write(struct file *file, const char __user *buf, size_t r
         return receivedCount;
 }
 
+EXPORT_SYMBOL(sdevice_write);
 
 
 /*
