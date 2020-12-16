@@ -48,6 +48,9 @@ static int get_range(char **str, int *pint, int n)
  *	1 - int found, no subsequent comma
  *	2 - int found including a subsequent comma
  *	3 - hyphen found to denote a range
+ *
+ *	Leading hyphen without integer is no integer case, but we consume it
+ *	for the sake of simplification.
  */
 
 int get_option(char **str, int *pint)
@@ -56,7 +59,10 @@ int get_option(char **str, int *pint)
 
 	if (!cur || !(*cur))
 		return 0;
-	*pint = simple_strtol(cur, str, 0);
+	if (*cur == '-')
+		*pint = -simple_strtoull(++cur, str, 0);
+	else
+		*pint = simple_strtoull(cur, str, 0);
 	if (cur == *str)
 		return 0;
 	if (**str == ',') {
