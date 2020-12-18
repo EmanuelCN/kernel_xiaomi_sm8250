@@ -230,7 +230,7 @@ dp_rx_link_desc_return_by_addr(struct dp_soc *soc,
 		status = QDF_STATUS_SUCCESS;
 	} else {
 #ifdef WLAN_DEBUG
-		struct hal_srng *srng = (struct hal_srng *)wbm_rel_srng;
+		struct hal_srng *srng __maybe_unused = (struct hal_srng *)wbm_rel_srng;
 #endif
 
 		DP_STATS_INC(soc, rx.err.hal_ring_access_full_fail, 1);

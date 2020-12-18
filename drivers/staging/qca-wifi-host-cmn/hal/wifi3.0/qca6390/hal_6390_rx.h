@@ -557,7 +557,7 @@ static void hal_rx_dump_msdu_end_tlv_6390(void *msduend,
 					  uint8_t dbg_level)
 {
 #ifdef WLAN_DEBUG
-	struct rx_msdu_end *msdu_end = (struct rx_msdu_end *)msduend;
+	struct rx_msdu_end *msdu_end __maybe_unused = (struct rx_msdu_end *)msduend;
 #endif
 
 	__QDF_TRACE_RL(dbg_level, QDF_MODULE_ID_DP,
