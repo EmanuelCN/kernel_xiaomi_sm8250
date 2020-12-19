@@ -16,14 +16,14 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "hif.h"
+#include "hif_main.h"
 #if defined(CONFIG_ATH_PROCFS_DIAG_SUPPORT)
 #include <linux/module.h>       /* Specifically, a module */
 #include <linux/kernel.h>       /* We're doing kernel work */
 #include <linux/version.h>      /* We're doing kernel work */
 #include <linux/proc_fs.h>      /* Necessary because we use the proc fs */
 #include <linux/uaccess.h>        /* for copy_from_user */
-#include "hif.h"
-#include "hif_main.h"
 #if defined(HIF_USB)
 #include "if_usb.h"
 #endif
