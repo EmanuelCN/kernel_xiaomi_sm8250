@@ -432,6 +432,9 @@ int afe_pseudo_port_start_nowait(u16 port_id);
 int afe_pseudo_port_stop_nowait(u16 port_id);
 int afe_set_lpass_clock(u16 port_id, struct afe_clk_cfg *cfg);
 int afe_set_lpass_clock_v2(u16 port_id, struct afe_clk_set *cfg);
+void afe_set_cps_config(int src_port,
+			struct afe_cps_hw_intf_cfg *cps_config,
+			u32 ch_mask);
 int afe_set_lpass_clk_cfg(int index, struct afe_clk_set *cfg);
 int afe_set_digital_codec_core_clock(u16 port_id,
 			struct afe_digital_clk_cfg *cfg);
@@ -496,6 +499,7 @@ int afe_get_doa_tracking_mon(u16 port_id,
 int afe_set_pll_clk_drift(u16 port_id, int32_t set_clk_drift,
 			  uint32_t clk_reset);
 int afe_set_clk_id(u16 port_id, uint32_t clk_id);
+void afe_set_lsm_afe_port_id(int idx, int lsm_port);
 
 enum {
 	AFE_LPASS_CORE_HW_BLOCK_ID_NONE,
