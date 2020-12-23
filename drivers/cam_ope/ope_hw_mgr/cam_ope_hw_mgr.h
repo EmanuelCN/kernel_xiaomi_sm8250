@@ -363,6 +363,7 @@ struct ope_io_buf {
 	uint32_t format;
 	uint32_t fence;
 	uint32_t num_planes;
+	uint32_t pix_pattern;
 	uint32_t num_stripes[OPE_MAX_PLANES];
 	struct ope_stripe_io s_io[OPE_MAX_PLANES][OPE_MAX_STRIPES];
 };
