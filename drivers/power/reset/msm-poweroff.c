@@ -74,7 +74,7 @@ static bool dload_mode_enabled;
 static void *emergency_dload_mode_addr;
 static bool scm_dload_supported;
 
-static bool force_warm_reboot;
+static bool force_warm_reboot = true;
 
 /* interface for exporting attributes */
 struct reset_attribute {
@@ -680,9 +680,6 @@ static int msm_restart_probe(struct platform_device *pdev)
 	set_dload_mode(download_mode);
 	if (!download_mode)
 		scm_disable_sdi();
-
-	force_warm_reboot = of_property_read_bool(dev->of_node,
-						"qcom,force-warm-reboot");
 
 	return 0;
 
