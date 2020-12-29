@@ -198,10 +198,16 @@ static void __cam_req_mgr_find_dev_name(
 			if (masked_val & (1 << dev->dev_bit))
 				continue;
 
-			CAM_INFO(CAM_CRM,
-				"Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %d",
-				req_id, link->link_hdl, pd, dev->dev_info.name,
-				link->open_req_cnt);
+			if (link->wq_congestion)
+				CAM_INFO_RATE_LIMIT(CAM_CRM,
+					"WQ congestion, Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %d",
+					req_id, link->link_hdl, pd,
+					dev->dev_info.name, link->open_req_cnt);
+			else
+				CAM_INFO(CAM_CRM,
+					"Skip Frame: req: %lld not ready on link: 0x%x for pd: %d dev: %s open_req count: %d",
+					req_id, link->link_hdl, pd,
+					dev->dev_info.name, link->open_req_cnt);
 		}
 	}
 }
@@ -1371,18 +1377,18 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 	if (slot->status == CRM_SLOT_STATUS_NO_REQ) {
 		CAM_DBG(CAM_CRM, "No Pending req");
 		rc = 0;
-		goto error;
+		goto end;
 	}
 
 	if ((trigger != CAM_TRIGGER_POINT_SOF) &&
 		(trigger != CAM_TRIGGER_POINT_EOF))
-		goto error;
+		goto end;
 
 	if ((trigger == CAM_TRIGGER_POINT_EOF) &&
 		(!(link->trigger_mask & CAM_TRIGGER_POINT_SOF))) {
 		CAM_DBG(CAM_CRM, "Applying for last SOF fails");
 		rc = -EINVAL;
-		goto error;
+		goto end;
 	}
 
 	if (trigger == CAM_TRIGGER_POINT_SOF) {
@@ -1393,11 +1399,19 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 		link->prev_sof_timestamp = link->sof_timestamp;
 		link->sof_timestamp = trigger_data->sof_timestamp_val;
 
+		/* Check for WQ congestion */
+		if (jiffies_to_msecs(jiffies -
+			link->last_sof_trigger_jiffies) <
+			MINIMUM_WORKQUEUE_SCHED_TIME_IN_MS)
+			link->wq_congestion = true;
+		else
+			link->wq_congestion = false;
+
 		if (link->trigger_mask) {
 			CAM_ERR_RATE_LIMIT(CAM_CRM,
 				"Applying for last EOF fails");
 			rc = -EINVAL;
-			goto error;
+			goto end;
 		}
 
 		if ((slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC) &&
@@ -1457,7 +1471,7 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 				rc = -EPERM;
 			}
 			spin_unlock_bh(&link->link_state_spin_lock);
-			goto error;
+			goto end;
 		}
 	}
 
@@ -1466,24 +1480,30 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 		/* Apply req failed retry at next sof */
 		slot->status = CRM_SLOT_STATUS_REQ_PENDING;
 
-		link->retry_cnt++;
-		if (link->retry_cnt == MAXIMUM_RETRY_ATTEMPTS) {
-			CAM_DBG(CAM_CRM,
-				"Max retry attempts reached on link[0x%x] for req [%lld]",
-				link->link_hdl,
-				in_q->slot[in_q->rd_idx].req_id);
+		if (!link->wq_congestion && dev) {
+			link->retry_cnt++;
+			if (link->retry_cnt == MAXIMUM_RETRY_ATTEMPTS) {
+				CAM_DBG(CAM_CRM,
+					"Max retry attempts reached on link[0x%x] for req [%lld]",
+					link->link_hdl,
+					in_q->slot[in_q->rd_idx].req_id);
 
-			cam_req_mgr_debug_delay_detect();
-			trace_cam_delay_detect("CRM",
-				"Max retry attempts reached",
-				in_q->slot[in_q->rd_idx].req_id,
-				CAM_DEFAULT_VALUE,
-				link->link_hdl,
-				CAM_DEFAULT_VALUE, rc);
+				cam_req_mgr_debug_delay_detect();
+				trace_cam_delay_detect("CRM",
+					"Max retry attempts reached",
+					in_q->slot[in_q->rd_idx].req_id,
+					CAM_DEFAULT_VALUE,
+					link->link_hdl,
+					CAM_DEFAULT_VALUE, rc);
 
-			__cam_req_mgr_notify_error_on_link(link, dev);
-			link->retry_cnt = 0;
-		}
+				__cam_req_mgr_notify_error_on_link(link, dev);
+				link->retry_cnt = 0;
+			}
+		} else
+			CAM_WARN_RATE_LIMIT(CAM_CRM,
+				"workqueue congestion, last applied idx:%d rd idx:%d",
+				in_q->last_applied_idx,
+				in_q->rd_idx);
 	} else {
 		if (link->retry_cnt)
 			link->retry_cnt = 0;
@@ -1531,10 +1551,9 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 			link->open_req_cnt--;
 		}
 	}
-
-	mutex_unlock(&session->lock);
-	return rc;
-error:
+end:
+	if (trigger == CAM_TRIGGER_POINT_SOF)
+		link->last_sof_trigger_jiffies = jiffies;
 	mutex_unlock(&session->lock);
 	return rc;
 }
