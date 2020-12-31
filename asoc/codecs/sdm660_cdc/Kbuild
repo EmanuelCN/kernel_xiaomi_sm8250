@@ -20,6 +20,21 @@ ifeq ($(KERNEL_BUILD), 0)
 		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sdm660autoconf.h
 	endif
+	ifeq ($(CONFIG_ARCH_SDM450), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
+	ifeq ($(CONFIG_ARCH_SDM439), y)
+	include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
+	ifeq ($(CONFIG_ARCH_MSM8917), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
 endif
 
 # As per target team, build is done as follows:
@@ -57,6 +72,10 @@ endif
 ifdef CONFIG_SND_SOC_DIGITAL_CDC
 	DIGITAL_CDC_OBJS += msm-digital-cdc.o
 	DIGITAL_CDC_OBJS += msm-digital-cdc-regmap.o
+endif
+ifdef CONFIG_SND_SOC_DIGITAL_CDC_LEGACY
+	DIGITAL_CDC_OBJS += msm-digital-cdc-legacy.o
+	DIGITAL_CDC_OBJS += msm-digital-cdc-legacy-regmap.o
 endif
 LINUX_INC +=	-Iinclude/linux
 
@@ -109,6 +128,9 @@ obj-$(CONFIG_SND_SOC_ANALOG_CDC) += analog_cdc_dlkm.o
 analog_cdc_dlkm-y := $(ANALOG_CDC_OBJS)
 
 obj-$(CONFIG_SND_SOC_DIGITAL_CDC) += digital_cdc_dlkm.o
+digital_cdc_dlkm-y := $(DIGITAL_CDC_OBJS)
+
+obj-$(CONFIG_SND_SOC_DIGITAL_CDC_LEGACY) += digital_cdc_dlkm.o
 digital_cdc_dlkm-y := $(DIGITAL_CDC_OBJS)
 
 # inject some build related information

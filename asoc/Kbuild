@@ -81,6 +81,21 @@ ifeq ($(KERNEL_BUILD), 0)
 		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sdm660autoconf.h
 	endif
+	ifeq ($(CONFIG_ARCH_SDM450), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
+	ifeq ($(CONFIG_ARCH_SDM439), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
+	ifeq ($(CONFIG_ARCH_MSM8917), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
 endif
 
 # As per target team, build is done as follows:
@@ -170,6 +185,17 @@ ifdef CONFIG_SND_SOC_CPE
 	CPE_LSM_OBJS += msm-cpe-lsm.o
 endif
 
+# for SDM450 internal codec sound card driver
+ifdef CONFIG_SND_SOC_SDM450
+	MACHINE_OBJS += msm8952.o
+endif
+
+# for SDM450 external codec sound card driver
+ifdef CONFIG_SND_SOC_EXT_CODEC_SDM450
+	MACHINE_EXT_OBJS += msm8952-slimbus.o
+	MACHINE_EXT_OBJS += msm8952-dai-links.o
+endif
+
 ifdef CONFIG_SND_SOC_QDSP6V2
 	PLATFORM_OBJS += msm-audio-effects-q6-v2.o
 	PLATFORM_OBJS += msm-compress-q6-v2.o
@@ -253,6 +279,12 @@ endif
 # Module information used by KBuild framework
 obj-$(CONFIG_SND_SOC_QDSP6V2) += platform_dlkm.o
 platform_dlkm-y := $(PLATFORM_OBJS)
+
+obj-$(CONFIG_SND_SOC_SDM450) += machine_dlkm.o
+machine_dlkm-y := $(MACHINE_OBJS)
+
+obj-$(CONFIG_SND_SOC_EXT_CODEC_SDM450) += machine_ext_dlkm.o
+machine_ext_dlkm-y := $(MACHINE_EXT_OBJS)
 
 obj-$(CONFIG_SND_SOC_SM8150) += machine_dlkm.o
 machine_dlkm-y := $(MACHINE_OBJS)
