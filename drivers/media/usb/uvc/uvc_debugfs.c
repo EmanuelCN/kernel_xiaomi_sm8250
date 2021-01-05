@@ -88,8 +88,10 @@ void uvc_debugfs_init_stream(struct uvc_streaming *stream)
 
 	dent = debugfs_create_dir(dir_name, uvc_debugfs_root_dir);
 	if (IS_ERR_OR_NULL(dent)) {
+#ifdef CONFIG_DEBUG_FS
 		uvc_printk(KERN_INFO, "Unable to create debugfs %s "
 			   "directory.\n", dir_name);
+#endif
 		return;
 	}
 
@@ -98,7 +100,9 @@ void uvc_debugfs_init_stream(struct uvc_streaming *stream)
 	dent = debugfs_create_file("stats", 0444, stream->debugfs_dir,
 				   stream, &uvc_debugfs_stats_fops);
 	if (IS_ERR_OR_NULL(dent)) {
+#ifdef CONFIG_DEBUG_FS
 		uvc_printk(KERN_INFO, "Unable to create debugfs stats file.\n");
+#endif
 		uvc_debugfs_cleanup_stream(stream);
 		return;
 	}
@@ -119,7 +123,9 @@ void uvc_debugfs_init(void)
 
 	dir = debugfs_create_dir("uvcvideo", usb_debug_root);
 	if (IS_ERR_OR_NULL(dir)) {
+#ifdef CONFIG_DEBUG_FS
 		uvc_printk(KERN_INFO, "Unable to create debugfs directory\n");
+#endif
 		return;
 	}
 

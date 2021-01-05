@@ -1692,9 +1692,9 @@ int fg_debugfs_create(struct fg_dev *fg)
 	fg->dfs_root = debugfs_create_dir("fg", NULL);
 	if (IS_ERR_OR_NULL(fg->dfs_root)) {
 		if (PTR_ERR(fg->dfs_root) == -ENODEV)
-			pr_err("debugfs is not enabled in the kernel\n");
+			pr_debug("debugfs is not enabled in the kernel\n");
 		else
-			pr_err("error creating fg dfs root rc=%ld\n",
+			pr_debug("error creating fg dfs root rc=%ld\n",
 			       (long)fg->dfs_root);
 		return -ENODEV;
 	}
@@ -1702,20 +1702,20 @@ int fg_debugfs_create(struct fg_dev *fg)
 	file = debugfs_create_u32("debug_mask", 0600, fg->dfs_root,
 			fg->debug_mask);
 	if (IS_ERR_OR_NULL(file)) {
-		pr_err("failed to create debug_mask\n");
+		pr_debug("failed to create debug_mask\n");
 		goto err_remove_fs;
 	}
 
 	rc = fg_sram_debugfs_create(fg);
 	if (rc < 0) {
-		pr_err("failed to create sram dfs rc=%d\n", rc);
+		pr_debug("failed to create sram dfs rc=%d\n", rc);
 		goto err_remove_fs;
 	}
 
 	if (fg->alg_flags) {
 		if (!debugfs_create_file("alg_flags", 0400, fg->dfs_root, fg,
 					 &fg_alg_flags_fops)) {
-			pr_err("failed to create alg_flags file\n");
+			pr_debug("failed to create alg_flags file\n");
 			goto err_remove_fs;
 		}
 	}
