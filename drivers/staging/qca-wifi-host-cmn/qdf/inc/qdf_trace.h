@@ -1035,10 +1035,34 @@ void qdf_dp_track_noack_check(qdf_nbuf_t nbuf, enum qdf_proto_subtype *subtype)
 }
 #endif
 
+#ifdef WLAN_DEBUG
 void qdf_trace_display(void);
 
 void __printf(3, 4) qdf_snprintf(char *str_buffer, unsigned int size,
 		  char *str_format, ...);
+#else
+static inline
+void qdf_trace_display(void)
+{
+}
+
+static inline
+void qdf_trace_set_value(QDF_MODULE_ID module, QDF_TRACE_LEVEL level,
+			 uint8_t on)
+{
+}
+
+static inline
+void qdf_trace_set_module_trace_level(QDF_MODULE_ID module, uint32_t level)
+{
+}
+
+static inline
+void __printf(3, 4) qdf_snprintf(char *str_buffer, unsigned int size,
+		  char *str_format, ...)
+{
+}
+#endif
 
 #define QDF_SNPRINTF qdf_snprintf
 
@@ -1165,6 +1189,7 @@ qdf_tso_seg_dbg_zero(struct qdf_tso_seg_elem_t *tsoseg)
 
 #endif /* TSOSEG_DEBUG */
 
+#ifdef WLAN_DEBUG
 /**
  * qdf_trace_hex_dump() - externally called hex dump function
  * @module: Module identifier a member of the QDF_MODULE_ID enumeration that
@@ -1181,6 +1206,13 @@ qdf_tso_seg_dbg_zero(struct qdf_tso_seg_elem_t *tsoseg)
  */
 void qdf_trace_hex_dump(QDF_MODULE_ID module, QDF_TRACE_LEVEL level,
 			void *data, int buf_len);
+#else
+static inline
+void qdf_trace_hex_dump(QDF_MODULE_ID module, QDF_TRACE_LEVEL level,
+			void *data, int buf_len)
+{
+}
+#endif
 
 /**
  * qdf_trace_hex_ascii_dump() - externally called hex and ascii dump function
@@ -1205,6 +1237,7 @@ void qdf_trace_hex_ascii_dump(QDF_MODULE_ID module, QDF_TRACE_LEVEL level,
 
 #define MAX_SUPPORTED_CATEGORY QDF_MODULE_ID_MAX
 
+#ifdef WLAN_DEBUG
 /**
  * qdf_set_pidx() - Sets the global qdf_pidx.
  * @pidx : Index of print control object assigned to the module
@@ -1222,9 +1255,22 @@ int qdf_get_pidx(void);
  * Shared print control index
  * for converged debug framework
  */
+#else
+static inline
+void qdf_set_pidx(int pidx)
+{
+}
+
+static inline
+int qdf_get_pidx(void)
+{
+	return 0;
+}
+#endif /* WLAN_DEBUG */
 
 #define QDF_PRINT_IDX_SHARED -1
 
+#ifdef WLAN_DEBUG
 /**
  * QDF_PRINT_INFO() - Generic wrapper API for logging
  * @idx : Index of print control object
@@ -1245,6 +1291,14 @@ int qdf_get_pidx(void);
 void QDF_PRINT_INFO(unsigned int idx, QDF_MODULE_ID module,
 		    QDF_TRACE_LEVEL level,
 		    char *str_format, ...);
+#else
+static inline
+void QDF_PRINT_INFO(unsigned int idx, QDF_MODULE_ID module,
+		    QDF_TRACE_LEVEL level,
+		    char *str_format, ...)
+{
+}
+#endif /* WLAN_DEBUG */
 
 /**
  * struct category_info  : Category information structure
@@ -1313,6 +1367,7 @@ struct qdf_print_ctrl {
 	bool in_use;
 };
 
+#ifdef WLAN_DEBUG
 /**
  * qdf_print_ctrl_register() - Allocate QDF print control object, assign
  *                             pointer to category info or print control
@@ -1445,6 +1500,67 @@ bool qdf_print_is_verbose_enabled(unsigned int idx,
  * Return : None
  */
 void qdf_print_clean_node_flag(unsigned int idx);
+#else
+static inline
+int qdf_print_ctrl_register(const struct category_info *cinfo,
+			    void *custom_print_handler,
+			    void *custom_ctx,
+			    const char *pctrl_name)
+{
+	return 0;
+}
+
+static inline
+void qdf_shared_print_ctrl_init(void)
+{
+}
+
+static inline
+QDF_STATUS qdf_print_setup(void)
+{
+	return 0;
+}
+
+static inline
+QDF_STATUS qdf_print_ctrl_cleanup(unsigned int idx)
+{
+	return 0;
+}
+
+static inline
+void qdf_shared_print_ctrl_cleanup(void)
+{
+}
+
+static inline
+QDF_STATUS qdf_print_set_category_verbose(unsigned int idx,
+					  QDF_MODULE_ID category,
+					  QDF_TRACE_LEVEL verbose,
+					  bool is_set)
+{
+	return 0;
+}
+
+static inline
+bool qdf_print_is_category_enabled(unsigned int idx,
+				   QDF_MODULE_ID category)
+{
+	return false;
+}
+
+static inline
+bool qdf_print_is_verbose_enabled(unsigned int idx,
+				  QDF_MODULE_ID category,
+				  QDF_TRACE_LEVEL verbose)
+{
+	return false;
+}
+
+static inline
+void qdf_print_clean_node_flag(unsigned int idx)
+{
+}
+#endif /* WLAN_DEBUG */
 
 #ifdef DBG_LVL_MAC_FILTERING
 
@@ -1470,6 +1586,7 @@ bool qdf_print_get_node_flag(unsigned int idx);
 
 #endif
 
+#ifdef WLAN_DEBUG
 /**
  * qdf_logging_init() - Initialize msg logging functionality
  *
@@ -1485,9 +1602,21 @@ void qdf_logging_init(void);
  * Return : void
  */
 void qdf_logging_exit(void);
+#else
+static inline
+void qdf_logging_init(void)
+{
+}
+
+static inline
+void qdf_logging_exit(void)
+{
+}
+#endif /* WLAN_DEBUG */
 
 #define QDF_SYMBOL_LEN __QDF_SYMBOL_LEN
 
+#ifdef WLAN_DEBUG
 /**
  * qdf_sprint_symbol() - prints the name of a symbol into a string buffer
  * @buffer: the string buffer to print into
@@ -1496,6 +1625,13 @@ void qdf_logging_exit(void);
  * Return: number of characters printed
  */
 int qdf_sprint_symbol(char *buffer, void *addr);
+#else
+static inline
+int qdf_sprint_symbol(char *buffer, void *addr)
+{
+	return 0;
+}
+#endif /* WLAN_DEBUG */
 
 /**
  * qdf_minidump_log() - Log memory address to be included in minidump
