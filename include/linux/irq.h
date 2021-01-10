@@ -210,6 +210,7 @@ struct irq_data {
  * IRQD_CAN_RESERVE		- Can use reservation mode
  * IRQD_MSI_NOMASK_QUIRK	- Non-maskable MSI quirk for affinity change
  *				  required
+ * IRQD_PERF_CRITICAL		- IRQ is performance-critical
  * IRQD_AFFINITY_ON_ACTIVATE	- Affinity is set on activation. Don't call
  *				  irq_chip::irq_set_affinity() when deactivated.
  */
@@ -235,6 +236,7 @@ enum {
 	IRQD_DEFAULT_TRIGGER_SET	= (1 << 25),
 	IRQD_CAN_RESERVE		= (1 << 26),
 	IRQD_MSI_NOMASK_QUIRK		= (1 << 27),
+	IRQD_PERF_CRITICAL		= (1 << 28),
 	IRQD_AFFINITY_ON_ACTIVATE	= (1 << 29),
 };
 
