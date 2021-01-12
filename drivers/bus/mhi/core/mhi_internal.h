@@ -847,7 +847,7 @@ int mhi_get_capability_offset(struct mhi_controller *mhi_cntrl, u32 capability,
 			      u32 *offset);
 void *mhi_to_virtual(struct mhi_ring *ring, dma_addr_t addr);
 int mhi_init_sfr(struct mhi_controller *mhi_cntrl);
-void mhi_create_sysfs(struct mhi_controller *mhi_cntrl);
+int mhi_create_sysfs(struct mhi_controller *mhi_cntrl);
 void mhi_destroy_sysfs(struct mhi_controller *mhi_cntrl);
 int mhi_early_notify_device(struct device *dev, void *data);
 void mhi_write_reg_offload(struct mhi_controller *mhi_cntrl,

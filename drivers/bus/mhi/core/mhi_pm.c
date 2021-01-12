@@ -550,13 +550,18 @@ static int mhi_pm_mission_mode_transition(struct mhi_controller *mhi_cntrl)
 	mhi_special_events_pending(mhi_cntrl);
 
 	/* setup sysfs nodes for userspace votes */
-	mhi_create_sysfs(mhi_cntrl);
+	ret = mhi_create_sysfs(mhi_cntrl);
+	if (ret) {
+		MHI_ERR("Failed to create sysfs nodes with ret:%d\n", ret);
+		goto error_sysfs_create;
+	}
 
 	MHI_CNTRL_LOG("Adding new devices\n");
 
 	/* add supported devices */
 	mhi_create_devices(mhi_cntrl);
 
+error_sysfs_create:
 	read_lock_bh(&mhi_cntrl->pm_lock);
 
 error_mission_mode:
