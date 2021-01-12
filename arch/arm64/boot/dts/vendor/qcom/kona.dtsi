@@ -287,24 +287,20 @@
 				core3 {
 					cpu = <&CPU3>;
 				};
-			};
 
-			cluster1 {
-				core0 {
+				core4 {
 					cpu = <&CPU4>;
 				};
 
-				core1 {
+				core5 {
 					cpu = <&CPU5>;
 				};
 
-				core2 {
+				core6 {
 					cpu = <&CPU6>;
 				};
-			};
 
-			cluster2 {
-				core0 {
+				core7 {
 					cpu = <&CPU7>;
 				};
 			};
