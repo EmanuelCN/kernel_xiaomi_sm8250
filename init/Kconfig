@@ -128,6 +128,17 @@ config BUILD_SALT
           This is mostly useful for distributions which want to ensure the
           build is unique between builds. It's safe to leave the default.
 
+config INLINE_OPTIMIZATION
+	bool "Optimize compiler inlining"
+	default n
+	help
+	  Inlining functions in the hot-path can help improve performance,
+	  while also increasing the final size of the kernel image. Setting
+	  this option informs the compiler to optimize inlining. Whether to
+	  inline for performance or reduced size is controlled via the
+	  optimize for size (CC_OPTIMIZE_FOR_SIZE) or optimize for
+	  performance (CC_OPTIMIZE_FOR_PERFORMANCE) configs.
+
 config HAVE_KERNEL_GZIP
 	bool
 
