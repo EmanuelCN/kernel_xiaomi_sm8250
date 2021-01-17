@@ -1595,8 +1595,8 @@ static void wma_inc_wow_stats(t_wma_handle *wma,
 
 static void wma_wow_stats_display(struct wake_lock_stats *stats)
 {
-	WMA_LOGA("WLAN wake reason counters:");
-	WMA_LOGA("uc:%d bc:%d v4_mc:%d v6_mc:%d ra:%d ns:%d na:%d "
+	WMA_LOGD("WLAN wake reason counters:");
+	WMA_LOGD("uc:%d bc:%d v4_mc:%d v6_mc:%d ra:%d ns:%d na:%d "
 		 "icmp:%d icmpv6:%d",
 		 stats->ucast_wake_up_count,
 		 stats->bcast_wake_up_count,
@@ -1608,7 +1608,7 @@ static void wma_wow_stats_display(struct wake_lock_stats *stats)
 		 stats->icmpv4_count,
 		 stats->icmpv6_count);
 
-	WMA_LOGA("assoc:%d disassoc:%d assoc_resp:%d reassoc:%d "
+	WMA_LOGD("assoc:%d disassoc:%d assoc_resp:%d reassoc:%d "
 		 "reassoc_resp:%d auth:%d deauth:%d action:%d",
 		 stats->mgmt_assoc,
 		 stats->mgmt_disassoc,
@@ -1619,7 +1619,7 @@ static void wma_wow_stats_display(struct wake_lock_stats *stats)
 		 stats->mgmt_deauth,
 		 stats->mgmt_action);
 
-	WMA_LOGA("pno_match:%d pno_complete:%d gscan:%d "
+	WMA_LOGD("pno_match:%d pno_complete:%d gscan:%d "
 		 "low_rssi:%d rssi_breach:%d oem:%d scan_11d:%d",
 		 stats->pno_match_wake_up_count,
 		 stats->pno_complete_wake_up_count,
@@ -2064,7 +2064,7 @@ static void wma_log_pkt_ipv4(uint8_t *data, uint32_t length)
 		 ip_addr[2], ip_addr[3]);
 	src_port = *(uint16_t *)(data + IPV4_SRC_PORT_OFFSET);
 	dst_port = *(uint16_t *)(data + IPV4_DST_PORT_OFFSET);
-	WMA_LOGI("Pkt_len: %u, src_port: %u, dst_port: %u",
+	WMA_LOGD("Pkt_len: %u, src_port: %u, dst_port: %u",
 		 qdf_cpu_to_be16(pkt_len),
 		 qdf_cpu_to_be16(src_port),
 		 qdf_cpu_to_be16(dst_port));
@@ -2095,7 +2095,7 @@ static void wma_log_pkt_ipv6(uint8_t *data, uint32_t length)
 		 ip_addr[15]);
 	src_port = *(uint16_t *)(data + IPV6_SRC_PORT_OFFSET);
 	dst_port = *(uint16_t *)(data + IPV6_DST_PORT_OFFSET);
-	WMA_LOGI("Pkt_len: %u, src_port: %u, dst_port: %u",
+	WMA_LOGD("Pkt_len: %u, src_port: %u, dst_port: %u",
 		 qdf_cpu_to_be16(pkt_len),
 		 qdf_cpu_to_be16(src_port),
 		 qdf_cpu_to_be16(dst_port));
@@ -2168,7 +2168,7 @@ static void wma_wow_parse_data_pkt(t_wma_handle *wma,
 
 	src_mac = data + QDF_NBUF_SRC_MAC_OFFSET;
 	dest_mac = data + QDF_NBUF_DEST_MAC_OFFSET;
-	wma_info("Src_mac: " QDF_MAC_ADDR_FMT ", Dst_mac: " QDF_MAC_ADDR_FMT,
+	wma_debug("Src_mac: " QDF_MAC_ADDR_FMT ", Dst_mac: " QDF_MAC_ADDR_FMT,
 		 QDF_MAC_ADDR_REF(src_mac), QDF_MAC_ADDR_REF(dest_mac));
 
 	wma_wow_inc_wake_lock_stats_by_dst_addr(wma, vdev_id, dest_mac);
@@ -2176,7 +2176,7 @@ static void wma_wow_parse_data_pkt(t_wma_handle *wma,
 	proto_subtype = wma_wow_get_pkt_proto_subtype(data, length);
 	proto_subtype_name = wma_pkt_proto_subtype_to_string(proto_subtype);
 	if (proto_subtype_name)
-		WMA_LOGI("WOW Wakeup: %s rcvd", proto_subtype_name);
+		WMA_LOGD("WOW Wakeup: %s rcvd", proto_subtype_name);
 
 	switch (proto_subtype) {
 	case QDF_PROTO_EAPOL_M1:
@@ -2710,14 +2710,14 @@ static void wma_wake_event_log_reason(t_wma_handle *wma,
 	/* "Unspecified" means APPS triggered wake, else firmware triggered */
 	if (wake_info->wake_reason != WOW_REASON_UNSPECIFIED) {
 		vdev = &wma->interfaces[wake_info->vdev_id];
-		WMA_LOGA("WLAN triggered wakeup: %s (%d), vdev: %d (%s)",
+		WMA_LOGD("WLAN triggered wakeup: %s (%d), vdev: %d (%s)",
 			 wma_wow_wake_reason_str(wake_info->wake_reason),
 			 wake_info->wake_reason,
 			 wake_info->vdev_id,
 			 wma_vdev_type_str(vdev->type));
 		wma_debug_assert_page_fault_wakeup(wake_info->wake_reason);
 	} else if (!wmi_get_runtime_pm_inprogress(wma->wmi_handle)) {
-		WMA_LOGA("Non-WLAN triggered wakeup: %s (%d)",
+		WMA_LOGD("Non-WLAN triggered wakeup: %s (%d)",
 			 wma_wow_wake_reason_str(wake_info->wake_reason),
 			 wake_info->wake_reason);
 	}

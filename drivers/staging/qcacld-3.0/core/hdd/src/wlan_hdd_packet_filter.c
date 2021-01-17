@@ -46,7 +46,7 @@ int hdd_enable_default_pkt_filters(struct hdd_adapter *adapter)
 
 	while (filters != 0) {
 		if (filters & 0x1) {
-			hdd_err("setting filter[%d], of id = %d",
+			hdd_debug("setting filter[%d], of id = %d",
 				i+1, filter_id);
 			packet_filter_default_rules[i].filter_id = filter_id;
 			wlan_hdd_set_filter(hdd_ctx,
@@ -83,7 +83,7 @@ int hdd_disable_default_pkt_filters(struct hdd_adapter *adapter)
 
 	while (filters != 0) {
 		if (filters & 0x1) {
-			hdd_err("Clearing filter[%d], of id = %d",
+			hdd_debug("Clearing filter[%d], of id = %d",
 				i+1, filter_id);
 			packet_filter_default_rules.filter_action =
 						HDD_RCV_FILTER_CLEAR;
