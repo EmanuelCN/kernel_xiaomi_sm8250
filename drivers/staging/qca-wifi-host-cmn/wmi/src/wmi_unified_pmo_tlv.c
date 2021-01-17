@@ -1443,7 +1443,7 @@ static QDF_STATUS send_enable_disable_packet_filter_cmd_tlv(
 	else
 		cmd->enable = PACKET_FILTER_SET_DISABLE;
 
-	WMI_LOGE("%s: Packet filter enable %d for vdev_id %d",
+	WMI_LOGD("%s: Packet filter enable %d for vdev_id %d",
 		 __func__, cmd->enable, vdev_id);
 
 	wmi_mtrace(WMI_PACKET_FILTER_ENABLE_CMDID, cmd->vdev_id, 0);
@@ -1521,7 +1521,7 @@ static QDF_STATUS send_config_packet_filter_cmd_tlv(wmi_unified_t wmi_handle,
 		}
 	}
 
-	WMI_LOGE("Packet filter action %d filter with id: %d, num_params=%d",
+	WMI_LOGD("Packet filter action %d filter with id: %d, num_params=%d",
 		 cmd->filter_action, cmd->filter_id, cmd->num_params);
 	/* send the command along with data */
 	wmi_mtrace(WMI_PACKET_FILTER_CONFIG_CMDID, cmd->vdev_id, 0);
