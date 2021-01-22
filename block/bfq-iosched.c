@@ -3803,31 +3803,38 @@ static void bfq_dispatch_remove(struct request_queue *q, struct request *rq)
  * order until all the requests already queued in the device have been
  * served. The last sub-condition commented above somewhat mitigates
  * this problem for weight-raised queues.
+ *
+ * However, as an additional mitigation for this problem, we preserve
+ * plugging for a special symmetric case that may suddenly turn into
+ * asymmetric: the case where only bfqq is busy. In this case, not
+ * expiring bfqq does not cause any harm to any other queues in terms
+ * of service guarantees. In contrast, it avoids the following unlucky
+ * sequence of events: (1) bfqq is expired, (2) a new queue with a
+ * lower weight than bfqq becomes busy (or more queues), (3) the new
+ * queue is served until a new request arrives for bfqq, (4) when bfqq
+ * is finally served, there are so many requests of the new queue in
+ * the drive that the pending requests for bfqq take a lot of time to
+ * be served. In particular, event (2) may case even already
+ * dispatched requests of bfqq to be delayed, inside the drive. So, to
+ * avoid this series of events, the scenario is preventively declared
+ * as asymmetric also if bfqq is the only busy queues
  */
 static bool idling_needed_for_service_guarantees(struct bfq_data *bfqd,
 						 struct bfq_queue *bfqq)
 {
-	bool asymmetric_scenario;
+	int tot_busy_queues = bfq_tot_busy_queues(bfqd);
 
 	/* No point in idling for bfqq if it won't get requests any longer */
 	if (unlikely(!bfqq_process_refs(bfqq)))
 		return false;
 
-	asymmetric_scenario = (bfqq->wr_coeff > 1 &&
-			       (bfqd->wr_busy_queues <
-				bfq_tot_busy_queues(bfqd) ||
-				bfqd->rq_in_driver >=
-				bfqq->dispatched + 4)) ||
-		bfq_asymmetric_scenario(bfqd, bfqq);
-
-	bfq_log_bfqq(bfqd, bfqq,
-		     "wr_coeff %d wr_busy %d busy %d asymmetric %d",
-		     bfqq->wr_coeff,
-		     bfqd->wr_busy_queues,
-		     bfq_tot_busy_queues(bfqd),
-		     asymmetric_scenario);
-
-	return asymmetric_scenario;
+	return (bfqq->wr_coeff > 1 &&
+		(bfqd->wr_busy_queues <
+		 tot_busy_queues ||
+		 bfqd->rq_in_driver >=
+		 bfqq->dispatched + 4)) ||
+		bfq_asymmetric_scenario(bfqd, bfqq) ||
+		tot_busy_queues == 1;
 }
 
 static bool __bfq_bfqq_expire(struct bfq_data *bfqd, struct bfq_queue *bfqq,
