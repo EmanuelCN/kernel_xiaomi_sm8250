@@ -36,6 +36,8 @@
 
 #define MAXIMUM_RETRY_ATTEMPTS 2
 
+#define MINIMUM_WORKQUEUE_SCHED_TIME_IN_MS 5
+
 #define VERSION_1  1
 #define VERSION_2  2
 
@@ -346,6 +348,8 @@ struct cam_req_mgr_connected_device {
  *                         as part of shutdown.
  * @sof_timestamp_value  : SOF timestamp value
  * @prev_sof_timestamp   : Previous SOF timestamp value
+ * @last_sof_trigger_jiffies : Record the jiffies of last sof trigger jiffies
+ * @wq_congestion        : Indicates if WQ congestion is detected or not
  */
 struct cam_req_mgr_core_link {
 	int32_t                              link_hdl;
@@ -376,6 +380,8 @@ struct cam_req_mgr_core_link {
 	bool                                 is_shutdown;
 	uint64_t                             sof_timestamp;
 	uint64_t                             prev_sof_timestamp;
+	uint64_t                             last_sof_trigger_jiffies;
+	bool                                 wq_congestion;
 };
 
 /**
