@@ -557,30 +557,32 @@ static void complete_commit(struct msm_commit *c)
 
 static void _msm_drm_commit_work_cb(struct kthread_work *work)
 {
-	ktime_t start, end;
-	s64 duration;
 	struct msm_commit *c = container_of(work, typeof(*c), commit_work);
+	struct pm_qos_request req = {
+		.type = PM_QOS_REQ_AFFINE_CORES,
+		.cpus_affine = ATOMIC_INIT(BIT(raw_smp_processor_id()))
+	};
 
-	start = ktime_get();
-	frame_stat_collector(0, COMMIT_START_TS);
-
+	/*
+	 * Optimistically assume the current task won't migrate to another CPU
+	 * and restrict the current CPU to shallow idle states so that it won't
+	 * take too long to resume after waiting for the prior commit to finish.
+	 */
+	pm_qos_add_request(&req, PM_QOS_CPU_DMA_LATENCY, 100);
 	SDE_ATRACE_BEGIN("complete_commit");
 	complete_commit(c);
 	SDE_ATRACE_END("complete_commit");
+	pm_qos_remove_request(&req);
 
-        if (c->nonblock) {
-                /* Offload the cleanup onto little CPUs (an unbound wq) */
-                INIT_WORK(&c->clean_work, complete_commit_cleanup);
-                queue_work(system_unbound_wq, &c->clean_work);
-        } else {
-                complete_commit_cleanup(&c->clean_work);
-        }
-
-	end = ktime_get();
-	duration = ktime_to_ns(ktime_sub(end, start));
-	frame_stat_collector(duration, COMMIT_END_TS);
-
+	if (c->nonblock) {
+		/* Offload the cleanup onto little CPUs (an unbound wq) */
+		INIT_WORK(&c->clean_work, complete_commit_cleanup);
+		queue_work(system_unbound_wq, &c->clean_work);
+	} else {
+		complete_commit_cleanup(&c->clean_work);
+	}
 }
+
 
 static struct msm_commit *commit_init(struct drm_atomic_state *state,
 	bool nonblock)
