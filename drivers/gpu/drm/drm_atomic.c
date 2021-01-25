@@ -1,4 +1,4 @@
-/*
+w/*
  * Copyright (C) 2014 Red Hat
  * Copyright (C) 2014 Intel Corp.
  *
@@ -31,6 +31,7 @@
 #include <drm/drm_mode.h>
 #include <drm/drm_print.h>
 #include <drm/drm_writeback.h>
+#include <linux/pm_qos.h>
 #include <linux/sync_file.h>
 
 #include "drm_crtc_internal.h"
@@ -2556,8 +2557,8 @@ static void complete_signaling(struct drm_device *dev,
 	kfree(fence_state);
 }
 
-int drm_mode_atomic_ioctl(struct drm_device *dev,
-			  void *data, struct drm_file *file_priv)
+static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
+				   struct drm_file *file_priv)
 {
 	struct drm_mode_atomic *arg = data;
 	uint32_t __user *objs_ptr = (uint32_t __user *)(unsigned long)(arg->objs_ptr);
@@ -2710,6 +2711,28 @@ out:
 
 	drm_modeset_drop_locks(&ctx);
 	drm_modeset_acquire_fini(&ctx);
+
+	return ret;
+}
+
+int drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
+			  struct drm_file *file_priv)
+{
+	/*
+	 * Optimistically assume the current task won't migrate to another CPU
+	 * and restrict the current CPU to shallow idle states so that it won't
+	 * take too long to finish running the ioctl whenever the ioctl runs a
+	 * command that sleeps, such as for an "atomic" commit.
+	 */
+	struct pm_qos_request req = {
+		.type = PM_QOS_REQ_AFFINE_CORES,
+		.cpus_affine = ATOMIC_INIT(BIT(raw_smp_processor_id()))
+	};
+	int ret;
+
+	pm_qos_add_request(&req, PM_QOS_CPU_DMA_LATENCY, 100);
+	ret = __drm_mode_atomic_ioctl(dev, data, file_priv);
+	pm_qos_remove_request(&req);
 
 	return ret;
 }
