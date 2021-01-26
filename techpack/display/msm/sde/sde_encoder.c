@@ -5134,7 +5134,7 @@ void sde_encoder_helper_get_pp_line_count(struct drm_encoder *drm_enc,
 		if (phys && phys->hw_intf && phys->hw_pp
 				&& phys->hw_intf->ops.get_vsync_info) {
 			ret = phys->hw_intf->ops.get_vsync_info(
-						phys->hw_intf, &info[i]);
+						phys->hw_intf, &info[i], true);
 			if (!ret) {
 				info[i].pp_idx = phys->hw_pp->idx - PINGPONG_0;
 				info[i].intf_idx = phys->hw_intf->idx - INTF_0;
