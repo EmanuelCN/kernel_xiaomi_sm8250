@@ -7478,8 +7478,6 @@ static struct kmem_cache *task_group_cache __read_mostly;
 
 DECLARE_PER_CPU(cpumask_var_t, load_balance_mask);
 DECLARE_PER_CPU(cpumask_var_t, select_idle_mask);
-DECLARE_PER_CPU(unsigned long *, prioritized_task_mask);
-DECLARE_PER_CPU(int, prioritized_task_nr);
 
 void __init sched_init(void)
 {
@@ -7552,9 +7550,6 @@ void __init sched_init(void)
 		rq = cpu_rq(i);
 		raw_spin_lock_init(&rq->lock);
 		rq->nr_running = 0;
-		per_cpu(prioritized_task_mask, i) =
-			bitmap_zalloc(TASK_BITS, GFP_KERNEL);
-		per_cpu(prioritized_task_nr, i) = 0;
 		rq->calc_load_active = 0;
 		rq->calc_load_update = jiffies + LOAD_FREQ;
 		init_cfs_rq(&rq->cfs);
