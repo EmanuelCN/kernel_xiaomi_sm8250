@@ -11,8 +11,6 @@
 
 #include <trace/events/sched.h>
 
-#include "walt.h"
-
 int sched_rr_timeslice = RR_TIMESLICE;
 int sysctl_sched_rr_timeslice = (MSEC_PER_SEC / HZ) * RR_TIMESLICE;
 
@@ -1421,7 +1419,6 @@ enqueue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 		rt_se->timeout = 0;
 
 	enqueue_rt_entity(rt_se, flags);
-	walt_inc_cumulative_runnable_avg(rq, p);
 
 	if (!task_current(rq, p) && p->nr_cpus_allowed > 1)
 		enqueue_pushable_task(rq, p);
@@ -1435,7 +1432,6 @@ static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 
 	update_curr_rt(rq);
 	dequeue_rt_entity(rt_se, flags);
-	walt_dec_cumulative_runnable_avg(rq, p);
 
 	dequeue_pushable_task(rq, p);
 }
@@ -1779,7 +1775,11 @@ static int rt_energy_aware_wake_cpu(struct task_struct *task)
 	unsigned long tutil = task_util(task);
 	int best_cpu_idle_idx = INT_MAX;
 	int cpu_idle_idx = -1;
-	bool boost_on_big = rt_boost_on_big();
+#ifdef CONFIG_SCHED_TUNE
+	bool prefer_high_cap = schedtune_prefer_idle(task);
+#else
+	bool prefer_high_cap = uclamp_boosted(task);
+#endif
 
 	rcu_read_lock();
 
@@ -1797,7 +1797,7 @@ retry:
 		int fcpu = group_first_cpu(sg);
 		int capacity_orig = capacity_orig_of(fcpu);
 
-		if (boost_on_big) {
+		if (prefer_high_cap) {
 			if (is_min_capacity_cpu(fcpu))
 				continue;
 		} else {
@@ -1807,15 +1807,12 @@ retry:
 
 		for_each_cpu_and(cpu, lowest_mask, sched_group_span(sg)) {
 
-			trace_sched_cpu_util(cpu);
-
 			if (cpu_isolated(cpu))
 				continue;
 
-			if (sched_cpu_high_irqload(cpu))
-				continue;
+			util = cpu_util(cpu);
 
-			if (__cpu_overutilized(cpu, tutil))
+			if (__cpu_overutilized(cpu, util + tutil))
 				continue;
 
 			util = cpu_util(cpu);
@@ -1860,8 +1857,8 @@ retry:
 
 	} while (sg = sg->next, sg != sd->groups);
 
-	if (unlikely(boost_on_big) && best_cpu == -1) {
-		boost_on_big = false;
+	if (unlikely(prefer_high_cap) && best_cpu == -1) {
+		prefer_high_cap = false;
 		goto retry;
 	}
 
@@ -2101,9 +2098,7 @@ retry:
 	}
 
 	deactivate_task(rq, next_task, 0);
-	next_task->on_rq = TASK_ON_RQ_MIGRATING;
 	set_task_cpu(next_task, lowest_rq->cpu);
-	next_task->on_rq = TASK_ON_RQ_QUEUED;
 	activate_task(lowest_rq, next_task, 0);
 	ret = 1;
 
@@ -2375,9 +2370,7 @@ static void pull_rt_task(struct rq *this_rq)
 			resched = true;
 
 			deactivate_task(src_rq, p, 0);
-			p->on_rq = TASK_ON_RQ_MIGRATING;
 			set_task_cpu(p, this_cpu);
-			p->on_rq = TASK_ON_RQ_QUEUED;
 			activate_task(this_rq, p, 0);
 			/*
 			 * We continue with the search, just in
@@ -2646,9 +2639,6 @@ const struct sched_class rt_sched_class = {
 	.switched_to		= switched_to_rt,
 
 	.update_curr		= update_curr_rt,
-#ifdef CONFIG_SCHED_WALT
-	.fixup_walt_sched_stats	= fixup_walt_sched_stats_common,
-#endif
 
 #ifdef CONFIG_UCLAMP_TASK
 	.uclamp_enabled		= 1,
