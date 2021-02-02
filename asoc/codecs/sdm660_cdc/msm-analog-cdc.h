@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2015-2018, 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2018, 2020-2021, The Linux Foundation. All rights reserved.
  */
 #ifndef MSM_ANALOG_CDC_H
 #define MSM_ANALOG_CDC_H
@@ -227,7 +227,7 @@ extern int msm_anlg_cdc_mclk_enable(struct snd_soc_component *component,
 extern int msm_anlg_cdc_hs_detect(struct snd_soc_component *component,
 		    struct wcd_mbhc_config *mbhc_cfg);
 extern void msm_anlg_cdc_hs_detect_exit(struct snd_soc_component *component);
-extern void sdm660_cdc_update_int_spk_boost(bool enable);
+extern void msm_anlg_cdc_update_int_spk_boost(bool enable);
 extern void msm_anlg_cdc_spk_ext_pa_cb(
 		int (*codec_spk_ext_pa)(struct snd_soc_component *component,
 		int enable), struct snd_soc_component *component);
@@ -249,7 +249,7 @@ static inline void msm_anlg_cdc_hs_detect_exit(
 {
 
 }
-static inline void sdm660_cdc_update_int_spk_boost(bool enable)
+static inline void msm_anlg_cdc_update_int_spk_boost(bool enable)
 {
 
 }

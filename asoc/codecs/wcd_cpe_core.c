@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2019, 2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -18,7 +18,7 @@
 #include <soc/qcom/pm.h>
 #include <dsp/audio_cal_utils.h>
 #include <asoc/core.h>
-#include "cpe_core.h"
+#include <asoc/cpe_core.h>
 #include "cpe_err.h"
 #include "cpe_cmi.h"
 #include "wcd_cpe_core.h"
