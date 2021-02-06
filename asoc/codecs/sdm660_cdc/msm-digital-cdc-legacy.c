@@ -2369,6 +2369,7 @@ static int msm_dig_cdc_resume(struct snd_soc_component *component)
 }
 
 const struct snd_soc_component_driver soc_msm_dig_codec = {
+	.name = DRV_NAME,
 	.probe  = msm_dig_cdc_soc_probe,
 	.remove = msm_dig_cdc_soc_remove,
 	.suspend = msm_dig_cdc_suspend,
@@ -2543,8 +2544,14 @@ static int msm_dig_cdc_probe(struct platform_device *pdev)
 
 
 	dev_set_drvdata(&pdev->dev, msm_dig_cdc);
-	snd_soc_register_component(&pdev->dev, &soc_msm_dig_codec,
+	ret = snd_soc_register_component(&pdev->dev, &soc_msm_dig_codec,
 				msm_codec_dais, ARRAY_SIZE(msm_codec_dais));
+	if (ret) {
+		dev_err(&pdev->dev,
+			"%s:snd_soc_register_component failed with error %d\n",
+			__func__, ret);
+		goto err_supplies;
+	}
 	dev_dbg(&pdev->dev, "%s: registered DIG CODEC 0x%x\n",
 			__func__, dig_cdc_addr);
 	return ret;
