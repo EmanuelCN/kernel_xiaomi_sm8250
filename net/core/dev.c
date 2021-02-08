@@ -6289,14 +6289,9 @@ struct napi_struct *get_current_napi_context(void)
 }
 EXPORT_SYMBOL(get_current_napi_context);
 
-static int napi_poll(struct napi_struct *n, struct list_head *repoll)
+static int __napi_poll(struct napi_struct *n, bool *repoll)
 {
-	void *have;
 	int work, weight;
-
-	list_del_init(&n->poll_list);
-
-	have = netpoll_poll_lock(n);
 
 	weight = n->weight;
 
@@ -6318,7 +6313,7 @@ static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 	WARN_ON_ONCE(work > weight);
 
 	if (likely(work < weight))
-		goto out_unlock;
+		return work;
 
 	/* Drivers must not modify the NAPI state if they
 	 * consume the entire weight.  In such cases this code
@@ -6327,7 +6322,7 @@ static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 	 */
 	if (unlikely(napi_disable_pending(n))) {
 		napi_complete(n);
-		goto out_unlock;
+		return work;
 	}
 
 	if (n->gro_bitmask) {
@@ -6343,12 +6338,29 @@ static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 	if (unlikely(!list_empty(&n->poll_list))) {
 		pr_warn_once("%s: Budget exhausted after napi rescheduled\n",
 			     n->dev ? n->dev->name : "backlog");
-		goto out_unlock;
+		return work;
 	}
 
-	list_add_tail(&n->poll_list, repoll);
+	*repoll = true;
 
-out_unlock:
+	return work;
+}
+
+static int napi_poll(struct napi_struct *n, struct list_head *repoll)
+{
+	bool do_repoll = false;
+	void *have;
+	int work;
+
+	list_del_init(&n->poll_list);
+
+	have = netpoll_poll_lock(n);
+
+	work = __napi_poll(n, &do_repoll);
+
+	if (do_repoll)
+		list_add_tail(&n->poll_list, repoll);
+
 	netpoll_poll_unlock(have);
 
 	return work;
