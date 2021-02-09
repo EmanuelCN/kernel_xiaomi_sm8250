@@ -1971,6 +1971,7 @@ static int check_stack_write(struct bpf_verifier_env *env,
 	} else if (reg && is_spillable_regtype(reg->type)) {
 		/* register containing pointer is being spilled into stack */
 		if (size != BPF_REG_SIZE) {
+			verbose_linfo(env, insn_idx, "; ");
 			verbose(env, "invalid size of register spill\n");
 			return -EACCES;
 		}
@@ -2038,6 +2039,7 @@ static int check_stack_read(struct bpf_verifier_env *env,
 	if (stype[0] == STACK_SPILL) {
 		if (size != BPF_REG_SIZE) {
 			if (reg->type != SCALAR_VALUE) {
+				verbose_linfo(env, env->insn_idx, "; ");
 				verbose(env, "invalid size of register fill\n");
 				return -EACCES;
 			}
@@ -3020,7 +3022,7 @@ static int __check_stack_boundary(struct bpf_verifier_env *env, u32 regno,
 				  int off, int access_size,
 				  bool zero_size_allowed)
 {
-	struct bpf_reg_state *reg = cur_regs(env) + regno;
+	struct bpf_reg_state *reg = reg_state(env, regno);
 
 	if (off >= 0 || off < -MAX_BPF_STACK || off + access_size > 0 ||
 	    access_size < 0 || (access_size == 0 && !zero_size_allowed)) {
@@ -6147,7 +6149,7 @@ static int check_cond_jmp_op(struct bpf_verifier_env *env,
 
 	if (BPF_SRC(insn->code) == BPF_K)
 		pred = is_branch_taken(dst_reg, insn->imm,
-					   opcode, is_jmp32);
+				       opcode, is_jmp32);
 	else if (src_reg->type == SCALAR_VALUE &&
 		 tnum_is_const(src_reg->var_off))
 		pred = is_branch_taken(dst_reg, src_reg->var_off.value,
@@ -6474,7 +6476,7 @@ static int check_return_code(struct bpf_verifier_env *env)
 			verbose(env, "has unknown scalar value");
 		}
 		tnum_strn(tn_buf, sizeof(tn_buf), range);
-		verbose(env, " should have been %s\n", tn_buf);
+		verbose(env, " should have been in %s\n", tn_buf);
 		return -EINVAL;
 	}
 
@@ -9215,31 +9217,30 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 		    insn->code == (BPF_ALU | BPF_MOD | BPF_X) ||
 		    insn->code == (BPF_ALU | BPF_DIV | BPF_X)) {
 			bool is64 = BPF_CLASS(insn->code) == BPF_ALU64;
-			struct bpf_insn mask_and_div[] = {
-				BPF_MOV_REG(BPF_CLASS(insn->code), BPF_REG_AX, insn->src_reg),
+			bool isdiv = BPF_OP(insn->code) == BPF_DIV;
+			struct bpf_insn *patchlet;
+			struct bpf_insn chk_and_div[] = {
 				/* [R,W]x div 0 -> 0 */
-				BPF_JMP_IMM(BPF_JEQ, BPF_REG_AX, 0, 2),
-				BPF_RAW_REG(*insn, insn->dst_reg, BPF_REG_AX),
+				BPF_RAW_INSN((is64 ? BPF_JMP : BPF_JMP32) |
+					     BPF_JNE | BPF_K, insn->src_reg,
+					     0, 2, 0),
+				BPF_ALU32_REG(BPF_XOR, insn->dst_reg, insn->dst_reg),
 				BPF_JMP_IMM(BPF_JA, 0, 0, 1),
-				BPF_ALU_REG(BPF_CLASS(insn->code), BPF_XOR, insn->dst_reg, insn->dst_reg),
+				*insn,
 			};
-			struct bpf_insn mask_and_mod[] = {
-				BPF_MOV_REG(BPF_CLASS(insn->code), BPF_REG_AX, insn->src_reg),
-				BPF_JMP_IMM(BPF_JEQ, BPF_REG_AX, 0, 1 + (is64 ? 0 : 1)),
-				BPF_RAW_REG(*insn, insn->dst_reg, BPF_REG_AX),
+			struct bpf_insn chk_and_mod[] = {
+				/* [R,W]x mod 0 -> [R,W]x */
+				BPF_RAW_INSN((is64 ? BPF_JMP : BPF_JMP32) |
+					     BPF_JEQ | BPF_K, insn->src_reg,
+					     0, 1 + (is64 ? 0 : 1), 0),
+				*insn,
 				BPF_JMP_IMM(BPF_JA, 0, 0, 1),
 				BPF_MOV32_REG(insn->dst_reg, insn->dst_reg),
 			};
-			struct bpf_insn *patchlet;
 
-			if (insn->code == (BPF_ALU64 | BPF_DIV | BPF_X) ||
-			    insn->code == (BPF_ALU | BPF_DIV | BPF_X)) {
-				patchlet = mask_and_div;
-				cnt = ARRAY_SIZE(mask_and_div);
-			} else {
-				patchlet = mask_and_mod;
-				cnt = ARRAY_SIZE(mask_and_mod) - (is64 ? 2 : 0);
-			}
+			patchlet = isdiv ? chk_and_div : chk_and_mod;
+			cnt = isdiv ? ARRAY_SIZE(chk_and_div) :
+				      ARRAY_SIZE(chk_and_mod) - (is64 ? 2 : 0);
 
 			new_prog = bpf_patch_insn_data(env, i + delta, patchlet, cnt);
 			if (!new_prog)
@@ -9593,7 +9594,6 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr,
 	env->strict_alignment = !!(attr->prog_flags & BPF_F_STRICT_ALIGNMENT);
 	if (!IS_ENABLED(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS))
 		env->strict_alignment = true;
-
 	if (attr->prog_flags & BPF_F_ANY_ALIGNMENT)
 		env->strict_alignment = false;
 

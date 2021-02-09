@@ -826,7 +826,6 @@ static int map_lookup_elem(union bpf_attr *attr)
 			ptr = map->ops->map_lookup_elem_sys_only(map, key);
 		else
 			ptr = map->ops->map_lookup_elem(map, key);
-		ptr = map->ops->map_lookup_elem(map, key);
 		if (IS_ERR(ptr)) {
 			err = PTR_ERR(ptr);
 		} else if (!ptr) {
