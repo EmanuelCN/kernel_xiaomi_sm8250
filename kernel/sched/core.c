@@ -3389,6 +3389,13 @@ static void finish_task_switch_dead(struct task_struct *prev)
 	queue_work(system_unbound_wq, &prev->async_free.work);
 }
 
+static void mmdrop_async_free(struct work_struct *work)
+{
+	struct mm_struct *mm = container_of(work, typeof(*mm), async_put_work);
+
+	__mmdrop(mm);
+}
+
 /**
  * finish_task_switch - clean up after a task-switch
  * @prev: the thread we just switched away from.
@@ -3465,9 +3472,12 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 	 *   provided by mmdrop(),
 	 * - a sync_core for SYNC_CORE.
 	 */
-	if (mm) {
+	if (mm)
 		membarrier_mm_sync_core_before_usermode(mm);
-		mmdrop(mm);
+
+	if (mm && atomic_dec_and_test(&mm->mm_count)) {
+		INIT_WORK(&mm->async_put_work, mmdrop_async_free);
+		queue_work(system_unbound_wq, &mm->async_put_work);
 	}
 	if (unlikely(prev_state == TASK_DEAD)) {
 		if (prev->sched_class->task_dead)
