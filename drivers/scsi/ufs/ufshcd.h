@@ -61,6 +61,7 @@
 #include <linux/reset.h>
 #include <linux/extcon-provider.h>
 #include <linux/devfreq.h>
+#include <linux/pm_qos.h>
 #include "unipro.h"
 
 #include <asm/irq.h>
@@ -1146,11 +1147,22 @@ struct ufs_hba {
 	struct keyslot_manager *ksm;
 #endif /* CONFIG_SCSI_UFS_CRYPTO */
 
+
+	struct {
+		struct pm_qos_request req;
+		struct work_struct get_work;
+		struct work_struct put_work;
+		struct mutex lock;
+		atomic_t count;
+		bool active;
+	} pm_qos;
+
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
 };
+
 
 static inline void ufshcd_mark_shutdown_ongoing(struct ufs_hba *hba)
 {
