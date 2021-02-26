@@ -27,6 +27,8 @@ static void _update_wptr(struct adreno_device *adreno_dev, bool reset_timer)
 {
 	struct adreno_ringbuffer *rb = adreno_dev->cur_rb;
 	unsigned long flags;
+	bool write = false;
+	unsigned int val;
 	int ret = 0;
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 
@@ -38,29 +40,8 @@ static void _update_wptr(struct adreno_device *adreno_dev, bool reset_timer)
 		 * dispatcher context. Do it now.
 		 */
 		if (rb->skip_inline_wptr) {
-			/*
-			 * There could be a situation where GPU comes out of
-			 * ifpc after a fenced write transaction but before
-			 * reading AHB_FENCE_STATUS from KMD, it goes back to
-			 * ifpc due to inactivity (kernel scheduler plays a
-			 * role here). Thus, the GPU could technically be
-			 * re-collapsed between subsequent register writes
-			 * leading to a prolonged preemption sequence. The
-			 * keepalive bit prevents any further power collapse
-			 * while it is set.
-			 */
-			if (gmu_core_isenabled(device))
-				gmu_core_regrmw(device, A6XX_GMU_AO_SPARE_CNTL,
-					0x0, 0x2);
-
-			ret = adreno_gmu_fenced_write(adreno_dev,
-				ADRENO_REG_CP_RB_WPTR, rb->wptr,
-				FENCE_STATUS_WRITEDROPPED0_MASK);
-
-			/* Clear the keep alive */
-			if (gmu_core_isenabled(device))
-				gmu_core_regrmw(device, A6XX_GMU_AO_SPARE_CNTL,
-					0x2, 0x0);
+			write = true;
+			val = rb->wptr;
 
 			reset_timer = true;
 			rb->skip_inline_wptr = false;
@@ -81,6 +62,30 @@ static void _update_wptr(struct adreno_device *adreno_dev, bool reset_timer)
 			msecs_to_jiffies(adreno_drawobj_timeout);
 
 	spin_unlock_irqrestore(&rb->preempt_lock, flags);
+
+	if (write) {
+		bool gmu_core_enabled = gmu_core_isenabled(device);
+
+		/*
+		 * There could be a situation where GPU comes out of ifpc after
+		 * a fenced write but before reading AHB_FENCE_STATUS from KMD,
+		 * it goes back to ifpc due to inactivity (kernel scheduler
+		 * plays a role here). Thus, the GPU could technically be
+		 * re-collapsed between subsequent register writes leading to a
+		 * prolonged preemption sequence. The keepalive bit prevents any
+		 * further power collapse while it is set.
+		 */
+		if (gmu_core_enabled)
+			gmu_core_regrmw(device, A6XX_GMU_AO_SPARE_CNTL, 0, 2);
+
+		ret = adreno_gmu_fenced_write(adreno_dev, ADRENO_REG_CP_RB_WPTR,
+					      val,
+					      FENCE_STATUS_WRITEDROPPED0_MASK);
+
+		/* Clear the keep alive */
+		if (gmu_core_enabled)
+			gmu_core_regrmw(device, A6XX_GMU_AO_SPARE_CNTL, 2, 0);
+	}
 
 	if (in_interrupt() == 0) {
 		/* If WPTR update fails, set the fault and trigger recovery */
