@@ -548,12 +548,8 @@ static int sendcmd(struct adreno_device *adreno_dev,
 	struct kgsl_drawobj *drawobj = DRAWOBJ(cmdobj);
 	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
-	struct adreno_context *drawctxt = ADRENO_CONTEXT(drawobj->context);
 	struct adreno_dispatcher_drawqueue *dispatch_q =
 				ADRENO_DRAWOBJ_DISPATCH_DRAWQUEUE(drawobj);
-	struct adreno_submit_time time;
-	uint64_t secs = 0;
-	unsigned long nsecs = 0;
 	int ret;
 
 	mutex_lock(&device->mutex);
@@ -561,8 +557,6 @@ static int sendcmd(struct adreno_device *adreno_dev,
 		mutex_unlock(&device->mutex);
 		return -EBUSY;
 	}
-
-	memset(&time, 0x0, sizeof(time));
 
 	dispatcher->inflight++;
 	dispatch_q->inflight++;
@@ -589,7 +583,7 @@ static int sendcmd(struct adreno_device *adreno_dev,
 			ADRENO_DRAWOBJ_PROFILE_COUNT;
 	}
 
-	ret = adreno_ringbuffer_submitcmd(adreno_dev, cmdobj, &time);
+	ret = adreno_ringbuffer_submitcmd(adreno_dev, cmdobj, NULL);
 
 	/*
 	 * On the first command, if the submission was successful, then read the
@@ -649,9 +643,6 @@ static int sendcmd(struct adreno_device *adreno_dev,
 		return ret;
 	}
 
-	secs = time.ktime;
-	nsecs = do_div(secs, 1000000000);
-
 	/*
 	 * For the first submission in any given command queue update the
 	 * expected expire time - this won't actually be used / updated until
@@ -663,13 +654,7 @@ static int sendcmd(struct adreno_device *adreno_dev,
 		dispatch_q->expires = jiffies +
 			msecs_to_jiffies(adreno_drawobj_timeout);
 
-	trace_adreno_cmdbatch_submitted(drawobj, (int) dispatcher->inflight,
-		time.ticks, (unsigned long) secs, nsecs / 1000, drawctxt->rb,
-		adreno_get_rptr(drawctxt->rb));
-
 	mutex_unlock(&device->mutex);
-
-	cmdobj->submit_ticks = time.ticks;
 
 	dispatch_q->cmd_q[dispatch_q->tail] = cmdobj;
 	dispatch_q->tail = (dispatch_q->tail + 1) %
@@ -2398,12 +2383,6 @@ static void retire_cmdobj(struct adreno_device *adreno_dev,
 			(int) dispatcher->inflight, start, end,
 			ADRENO_DRAWOBJ_RB(drawobj),
 			adreno_get_rptr(drawctxt->rb), cmdobj->fault_recovery);
-
-	drawctxt->submit_retire_ticks[drawctxt->ticks_index] =
-		end - cmdobj->submit_ticks;
-
-	drawctxt->ticks_index = (drawctxt->ticks_index + 1) %
-		SUBMIT_RETIRE_TICKS_SIZE;
 
 	kgsl_drawobj_destroy(drawobj);
 }
