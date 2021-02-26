@@ -40,8 +40,6 @@ void adreno_drawctxt_dump(struct kgsl_device *device,
 {
 	unsigned int queue, start, retire;
 	struct adreno_context *drawctxt = ADRENO_CONTEXT(context);
-	int index, pos;
-	char buf[120];
 
 	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_QUEUED, &queue);
 	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_CONSUMED, &start);
@@ -102,25 +100,6 @@ void adreno_drawctxt_dump(struct kgsl_device *device,
 	}
 
 stats:
-	memset(buf, 0, sizeof(buf));
-
-	pos = 0;
-
-	for (index = 0; index < SUBMIT_RETIRE_TICKS_SIZE; index++) {
-		uint64_t msecs;
-		unsigned int usecs;
-
-		if (!drawctxt->submit_retire_ticks[index])
-			continue;
-		msecs = drawctxt->submit_retire_ticks[index] * 10;
-		usecs = do_div(msecs, 192);
-		usecs = do_div(msecs, 1000);
-		pos += scnprintf(buf + pos, sizeof(buf) - pos, "%u.%0u ",
-			(unsigned int)msecs, usecs);
-	}
-	dev_err(device->dev, "  context[%u]: submit times: %s\n",
-		context->id, buf);
-
 	spin_unlock_bh(&drawctxt->lock);
 }
 
