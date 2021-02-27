@@ -15,7 +15,6 @@
 #include "kgsl_device.h"
 #include "kgsl_pwrscale.h"
 #include "kgsl_trace.h"
-#include "kgsl_trace_power.h"
 
 #define KGSL_PWRFLAGS_POWER_ON 0
 #define KGSL_PWRFLAGS_CLK_ON   1
@@ -652,8 +651,6 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 			pwr->active_pwrlevel, pwrlevel->gpu_freq,
 			pwr->previous_pwrlevel,
 			pwr->pwrlevels[old_level].gpu_freq);
-
-	trace_gpu_frequency(pwrlevel->gpu_freq/1000, 0);
 
 	/*
 	 * Some targets do not support the bandwidth requirement of
