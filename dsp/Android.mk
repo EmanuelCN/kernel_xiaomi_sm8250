@@ -102,6 +102,7 @@ LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
 include $(DLKM_DIR)/AndroidKernelModule.mk
 ###########################################################
+ifneq ($(call is-board-platform-in-list, msm8937 msm8953),true)
 include $(CLEAR_VARS)
 LOCAL_MODULE              := $(AUDIO_CHIPSET)_q6_pdr.ko
 LOCAL_MODULE_KBUILD_NAME  := q6_pdr_dlkm.ko
@@ -109,6 +110,7 @@ LOCAL_MODULE_TAGS         := optional
 LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
 include $(DLKM_DIR)/AndroidKernelModule.mk
+endif
 ###########################################################
 endif # target specific build
 endif # DLKM check
