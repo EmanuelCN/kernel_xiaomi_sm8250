@@ -178,6 +178,7 @@ static inline struct bio *erofs_read_raw_page(struct bio *bio,
 					      struct page *page,
 					      erofs_off_t *last_block,
 					      unsigned int nblocks,
+					      unsigned int *eblks,
 					      bool ra)
 {
 	struct inode *const inode = mapping->host;
@@ -194,8 +195,7 @@ static inline struct bio *erofs_read_raw_page(struct bio *bio,
 
 	/* note that for readpage case, bio also equals to NULL */
 	if (bio &&
-	    /* not continuous */
-	    *last_block + 1 != current_block) {
+	    (*last_block + 1 != current_block || !*eblks)) {
 submit_bio_retry:
 		submit_bio(bio);
 		bio = NULL;
@@ -264,8 +264,9 @@ submit_bio_retry:
 		/* max # of continuous pages */
 		if (nblocks > DIV_ROUND_UP(map.m_plen, PAGE_SIZE))
 			nblocks = DIV_ROUND_UP(map.m_plen, PAGE_SIZE);
-			
-		bio = bio_alloc(GFP_NOIO, bio_max_segs(nblocks));
+
+		*eblks = bio_max_segs(nblocks);
+		bio = bio_alloc(GFP_NOIO, *eblks);
 
 		bio->bi_end_io = erofs_readendio;
 		bio_set_dev(bio, sb->s_bdev);
@@ -278,16 +279,8 @@ submit_bio_retry:
 	/* out of the extent or bio is full */
 	if (err < PAGE_SIZE)
 		goto submit_bio_retry;
-
+	--*eblks;
 	*last_block = current_block;
-
-	/* shift in advance in case of it followed by too many gaps */
-	if (bio->bi_iter.bi_size >= bio->bi_max_vecs * PAGE_SIZE) {
-		/* err should reassign to 0 after submitting */
-		err = 0;
-		goto submit_bio_out;
-	}
-
 	return bio;
 
 err_out:
@@ -301,7 +294,6 @@ has_updated:
 
 	/* if updated manually, continuous pages has a gap */
 	if (bio)
-submit_bio_out:
 		submit_bio(bio);
 	return err ? ERR_PTR(err) : NULL;
 }
@@ -313,17 +305,19 @@ submit_bio_out:
 static int erofs_raw_access_readpage(struct file *file, struct page *page)
 {
 	erofs_off_t last_block;
+	unsigned int eblks;
 	struct bio *bio;
 
 	trace_erofs_readpage(page, true);
 
 	bio = erofs_read_raw_page(NULL, page->mapping,
-				  page, &last_block, 1, false);
+				  page, &last_block, 1, &eblks, false);
 
 	if (IS_ERR(bio))
 		return PTR_ERR(bio);
 
-	DBG_BUGON(bio);	/* since we have only one bio -- must be NULL */
+	if (bio)
+		submit_bio(bio);
 	return 0;
 }
 
@@ -333,6 +327,7 @@ static int erofs_raw_access_readpages(struct file *filp,
 				      unsigned int nr_pages)
 {
 	erofs_off_t last_block;
+	unsigned int eblks;
 	struct bio *bio = NULL;
 	gfp_t gfp = readahead_gfp_mask(mapping);
 	struct page *page = list_last_entry(pages, struct page, lru);
@@ -347,7 +342,7 @@ static int erofs_raw_access_readpages(struct file *filp,
 
 		if (!add_to_page_cache_lru(page, mapping, page->index, gfp)) {
 			bio = erofs_read_raw_page(bio, mapping, page,
-						  &last_block, nr_pages, true);
+						  &last_block, nr_pages, &eblks, true);
 
 			/* all the page errors are ignored when readahead */
 			if (IS_ERR(bio)) {
@@ -364,7 +359,6 @@ static int erofs_raw_access_readpages(struct file *filp,
 	}
 	DBG_BUGON(!list_empty(pages));
 
-	/* the rare case (end in gaps) */
 	if (bio)
 		submit_bio(bio);
 	return 0;
