@@ -34,6 +34,7 @@
 #include <dt-bindings/sound/audio-codec-port-types.h>
 #include "codecs/bolero/bolero-cdc.h"
 #include "codecs/bolero/wsa-macro.h"
+#include "codecs/ep92/ep92.h"
 
 #define DRV_NAME "qcs405-asoc-snd"
 
@@ -182,6 +183,24 @@ struct dev_config {
 	u32 data_format;
 };
 
+struct ext_mclk_cfg {
+	u32 clk_freq;
+	u32 div2x;
+	u32 m;
+	u32 n;
+	u32 d;
+	u32 clk_root;
+};
+
+#define MCLK_CFG_CELLS	6
+
+struct ext_mclk_cfg_info {
+	u32 mclk_freq;
+	const char *prop;
+	struct ext_mclk_cfg *mclk_cfg;
+	u32 num_mclk_cfg;
+};
+
 struct msm_wsa881x_dev_info {
 	struct device_node *of_node;
 	u32 index;
@@ -200,6 +219,8 @@ struct msm_asoc_mach_data {
 	struct device_node *dmic_67_gpio_p; /* used by pinctrl API */
 	struct device_node *lineout_booster_gpio_p; /* used by pinctrl API */
 	struct device_node *mi2s_gpio_p[MI2S_MAX]; /* used by pinctrl API */
+	struct device_node *ext_mclk_gpio_p; /* used by pinctrl API */
+	u32 ext_mclk_en_count;
 	int dmic_01_gpio_cnt;
 	int dmic_23_gpio_cnt;
 	int dmic_45_gpio_cnt;
@@ -758,6 +779,136 @@ static struct afe_clk_set mi2s_clk[MI2S_MAX] = {
 static struct mi2s_conf mi2s_intf_conf[MI2S_MAX];
 
 static struct meta_mi2s_conf meta_mi2s_intf_conf[META_MI2S_MAX];
+
+static struct ext_mclk_cfg_info msm_ext_mclk_cfg[MCLK_FREQ_MAX] = {
+	[MCLK_FREQ_11P2896_MHZ] = {11289600, "ext-mclk-1-cfg-11p2896", NULL, 0},
+	[MCLK_FREQ_12P288_MHZ]  = {12288000, "ext-mclk-1-cfg-12p288",  NULL, 0},
+	[MCLK_FREQ_16P384_MHZ]  = {16384000, "ext-mclk-1-cfg-16p384",  NULL, 0},
+	[MCLK_FREQ_22P5792_MHZ] = {22579200, "ext-mclk-1-cfg-22p5792", NULL, 0},
+	[MCLK_FREQ_24P576_MHZ]  = {24576000, "ext-mclk-1-cfg-24p576",  NULL, 0},
+};
+
+static int qcs405_start_stop_mclk(void *private_data, uint32_t start,
+						uint32_t mclk_freq)
+{
+	int ret = 0;
+	struct snd_soc_card *card = (struct snd_soc_card *)private_data;
+	struct msm_asoc_mach_data *data = NULL;
+	struct snd_soc_component *component = NULL;
+	struct device_node *np = NULL;
+
+	if (!card)
+		return -EINVAL;
+
+	data = snd_soc_card_get_drvdata(card);
+	if (!data || !data->ext_mclk_gpio_p)
+		return -EINVAL;
+
+	pr_debug("%s: ep92 clock: %d\n", __func__, start);
+	if (start) {
+		if (data->ext_mclk_en_count == 0) {
+			np = of_parse_phandle(card->dev->of_node,
+						"qcom,ext-mclk-src", 0);
+			if (!np) {
+				pr_err("%s: no external mclk source found\n",
+					__func__);
+				return -EINVAL;
+			}
+
+			component = soc_find_component(np, NULL);
+			if (!component) {
+				pr_err("%s: inalid external mclk source\n",
+					__func__);
+				return -EINVAL;
+			}
+
+			ret = ep92_set_ext_mclk(component->codec, mclk_freq);
+			if (ret)
+				return ret;
+
+			np = data->ext_mclk_gpio_p;
+			ret = msm_cdc_pinctrl_select_active_state(np);
+			if (ret) {
+				pr_err("%s: coundn't set active mclk pinctrl\n",
+					__func__);
+				return ret;
+			}
+		}
+		data->ext_mclk_en_count++;
+	} else {
+		if (data->ext_mclk_en_count == 1) {
+			np = data->ext_mclk_gpio_p;
+			msm_cdc_pinctrl_select_sleep_state(np);
+			data->ext_mclk_en_count = 0;
+		} else if (data->ext_mclk_en_count > 1) {
+			data->ext_mclk_en_count--;
+		}
+	}
+
+	return ret;
+}
+
+static int qcs405_enable_and_get_mclk_cfg(void *private_data, uint32_t enable,
+			uint32_t mclk_freq,
+			struct afe_param_id_clock_set_v2_t *dyn_mclk_cfg)
+{
+	struct ext_mclk_cfg *mclk_cfg = NULL;
+	uint32_t mclk_cfg_entries = 0;
+	enum afe_mclk_freq freq = MCLK_FREQ_MIN;
+	int i = 0;
+	int ret = 0;
+
+	if (!dyn_mclk_cfg)
+		return -EINVAL;
+
+	for (freq = MCLK_FREQ_MIN; freq < MCLK_FREQ_MAX; freq++) {
+		if (msm_ext_mclk_cfg[freq].mclk_freq == mclk_freq)
+			break;
+	}
+
+	if (freq == MCLK_FREQ_MAX) {
+		pr_err("%s: Unsupported mclk freq: %u\n", __func__, mclk_freq);
+		return -EINVAL;
+	}
+
+	if (!msm_ext_mclk_cfg[freq].mclk_cfg ||
+	    !msm_ext_mclk_cfg[freq].num_mclk_cfg) {
+		pr_err("%s: Freq table unavailable for mclk: %u\n",
+						__func__, mclk_freq);
+		return -EINVAL;
+	}
+
+	mclk_cfg = msm_ext_mclk_cfg[freq].mclk_cfg;
+	mclk_cfg_entries = msm_ext_mclk_cfg[freq].num_mclk_cfg;
+
+	for (i = 0; i < mclk_cfg_entries; i++) {
+		if (mclk_cfg[i].clk_freq == dyn_mclk_cfg->clk_freq_in_hz) {
+			dyn_mclk_cfg->divider_2x = mclk_cfg[i].div2x;
+			dyn_mclk_cfg->m = mclk_cfg[i].m;
+			dyn_mclk_cfg->n = mclk_cfg[i].n;
+			dyn_mclk_cfg->d = mclk_cfg[i].d;
+			dyn_mclk_cfg->clk_root =
+				(uint16_t) (mclk_cfg[i].clk_root);
+			break;
+		}
+	}
+
+	if (i == mclk_cfg_entries) {
+		pr_err("%s: Requested BCLK freq is not supported\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = qcs405_start_stop_mclk(private_data, enable, mclk_freq);
+	if (ret) {
+		dyn_mclk_cfg->divider_2x = 0;
+		dyn_mclk_cfg->m = 0;
+		dyn_mclk_cfg->n = 0;
+		dyn_mclk_cfg->d = 0;
+		dyn_mclk_cfg->clk_root = 0;
+	}
+
+	return ret;
+}
 
 static int msm_island_vad_get_portid_from_beid(int32_t be_id, int *port_id)
 {
@@ -9905,6 +10056,132 @@ static int msm_detect_ep92_dev(struct platform_device *pdev,
 	return 0;
 }
 
+static int msm_parse_ext_mclk_cfg_one(struct snd_soc_card *card,
+					enum afe_mclk_freq freq)
+{
+	int ret = 0;
+	struct ext_mclk_cfg *mclk_cfg = NULL;
+	uint32_t len = 0;
+	uint32_t num_cfg = 0;
+	uint32_t cells = 0;
+	int i = 0;
+	struct device_node *np = NULL;
+	uint32_t *array = NULL;
+
+	if (!card || !card->dev || !card->dev->of_node)
+		return -EINVAL;
+
+	np = card->dev->of_node;
+
+	if (!of_get_property(np, msm_ext_mclk_cfg[freq].prop, &len)) {
+		pr_debug("External MCLK cfg not found in DT\n");
+		return 0;
+	}
+
+	ret = of_property_read_u32(np, "#ext-mclk-1-cfg-cells", &cells);
+	if (ret) {
+		pr_err("%s: External MCLK cfg cells not found in DT\n",
+			__func__);
+		return ret;
+	}
+
+	if (!len || (len % (cells * sizeof(uint32_t))) ||
+					(cells != MCLK_CFG_CELLS)) {
+		pr_err("%s: invalid mclk configuration in DT\n",
+			__func__);
+		return -EINVAL;
+	};
+
+	num_cfg = len / (cells * sizeof(uint32_t));
+	mclk_cfg = devm_kzalloc(card->dev,
+			num_cfg * sizeof(struct ext_mclk_cfg), GFP_KERNEL);
+	if (!mclk_cfg)
+		return -ENOMEM;
+
+	array = devm_kzalloc(card->dev,
+			cells * num_cfg * sizeof(uint32_t), GFP_KERNEL);
+	if (!array) {
+		ret = -ENOMEM;
+		goto free_mclk_cfg;
+	}
+
+	ret = of_property_read_u32_array(np, msm_ext_mclk_cfg[freq].prop,
+						array, cells * num_cfg);
+	if (ret)
+		goto free_array;
+
+	dev_dbg(card->dev, "table for %u freq\n",
+			msm_ext_mclk_cfg[freq].mclk_freq);
+	for (i = 0; i < num_cfg; i++) {
+		memcpy(&mclk_cfg[i], &array[i * cells],
+					sizeof(uint32_t) * cells);
+		dev_dbg(card->dev,
+			"clk:%u, div2x:%u, m:%u, n:%u, d:%u, clk_root:%u\n",
+			mclk_cfg[i].clk_freq, mclk_cfg[i].div2x, mclk_cfg[i].m,
+			mclk_cfg[i].n, mclk_cfg[i].d, mclk_cfg[i].clk_root);
+	}
+
+	msm_ext_mclk_cfg[freq].mclk_cfg = mclk_cfg;
+	msm_ext_mclk_cfg[freq].num_mclk_cfg = num_cfg;
+
+	devm_kfree(card->dev, array);
+	array = NULL;
+
+	return 0;
+free_array:
+	devm_kfree(card->dev, array);
+	array = NULL;
+free_mclk_cfg:
+	devm_kfree(card->dev, mclk_cfg);
+	mclk_cfg = NULL;
+
+	return ret;
+}
+
+static void qcs405_ext_mclk_cfg_deinit(struct snd_soc_card *card)
+{
+	enum afe_mclk_freq i = MCLK_FREQ_MIN;
+
+	if (!card || !card->dev)
+		return;
+
+	for (i = MCLK_FREQ_MIN; i < MCLK_FREQ_MAX; i++) {
+		if (msm_ext_mclk_cfg[i].mclk_cfg) {
+			devm_kfree(card->dev,
+				msm_ext_mclk_cfg[i].mclk_cfg);
+			msm_ext_mclk_cfg[i].mclk_cfg = NULL;
+			msm_ext_mclk_cfg[i].num_mclk_cfg = 0;
+		}
+	}
+
+	afe_unregister_ext_mclk_cb();
+}
+
+static int qcs405_ext_mclk_cfg_init(struct snd_soc_card *card)
+{
+	int ret = 0;
+	enum afe_mclk_freq i = MCLK_FREQ_MIN;
+
+	ret = afe_register_ext_mclk_cb(qcs405_enable_and_get_mclk_cfg,
+					(void *)card);
+	if (ret) {
+		pr_err("%s: Could not register afe ext mclk cb ret: %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	for (i = MCLK_FREQ_MIN; i < MCLK_FREQ_MAX; i++) {
+		ret = msm_parse_ext_mclk_cfg_one(card, i);
+		if (ret < 0)
+			goto err;
+	}
+
+	return 0;
+err:
+	qcs405_ext_mclk_cfg_deinit(card);
+	return ret;
+}
+
 static int msm_asoc_machine_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card;
@@ -10077,6 +10354,15 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 
+	ret = qcs405_ext_mclk_cfg_init(card);
+	if (ret) {
+		dev_err(&pdev->dev, "mclk cfg from DT failed: %d\n", ret);
+		qcs405_ext_mclk_cfg_deinit(card);
+	}
+
+	pdata->ext_mclk_gpio_p = of_parse_phandle(pdev->dev.of_node,
+					"qcom,ext-mclk-gpio", 0);
+
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret == -EPROBE_DEFER) {
 		if (codec_reg_done)
@@ -10107,6 +10393,11 @@ err:
 
 static int msm_asoc_machine_remove(struct platform_device *pdev)
 {
+	struct snd_soc_card *card = NULL;
+
+	card = (struct snd_soc_card *)platform_get_drvdata(pdev);
+	qcs405_ext_mclk_cfg_deinit(card);
+
 	audio_notifier_deregister("qcs405");
 	msm_i2s_auxpcm_deinit();
 	msm_mdf_mem_deinit();
