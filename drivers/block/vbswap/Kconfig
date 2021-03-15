@@ -2,3 +2,9 @@ config VBSWAP
 	tristate "Fake block device for swap based on vnswap"
 	depends on BLOCK && ZSWAP
 	default n
+
+config VBSWAP_DISKSIZE
+	int "vbswap disksize in gigabytes"
+	depends on VBSWAP
+	range 1 8
+	default 2
