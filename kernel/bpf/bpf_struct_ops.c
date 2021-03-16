@@ -433,7 +433,7 @@ static int bpf_struct_ops_map_update_elem(struct bpf_map *map, void *key,
 		tprogs[BPF_TRAMP_FENTRY].nr_progs = 1;
 		flags = st_ops->func_models[i].ret_size > 0 ?
 			BPF_TRAMP_F_RET_FENTRY_RET : 0;
-		err = arch_prepare_bpf_trampoline(image,
+		err = arch_prepare_bpf_trampoline(NULL, image,
 						  st_map->image + PAGE_SIZE,
 						  &st_ops->func_models[i],
 						  flags, tprogs, NULL);
