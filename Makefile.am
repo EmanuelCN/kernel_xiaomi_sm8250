@@ -43,7 +43,7 @@ obj-m += asoc/codecs/bolero/
 obj-m += asoc/codecs/wcd937x/
 endif
 
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qrb5165, sxr2130))
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qrb5165 sxr2130))
 obj-m += asoc/codecs/bolero/
 obj-m += asoc/codecs/wcd938x/
 endif
@@ -64,7 +64,7 @@ endif
 ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sa6155))
 KBUILD_OPTIONS += CONFIG_SND_SOC_SA6155=m
 endif
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qrb5165, sxr2130))
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qrb5165 sxr2130))
 KBUILD_OPTIONS += CONFIG_SND_SOC_KONA=m
 endif
 endif
