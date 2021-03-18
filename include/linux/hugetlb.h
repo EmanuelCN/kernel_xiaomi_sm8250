@@ -640,6 +640,8 @@ static inline bool hugetlb_pmd_shared(pte_t *pte)
 }
 #endif
 
+bool want_pmd_share(struct vm_area_struct *vma, unsigned long addr);
+
 #ifndef __HAVE_ARCH_FLUSH_HUGETLB_TLB_RANGE
 /*
  * ARCHes with special requirements for evicting HUGETLB backing TLB entries can
