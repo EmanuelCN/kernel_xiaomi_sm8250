@@ -247,7 +247,7 @@ static int create_device(void)
 	vbswap_disk->first_minor = 0;
 	vbswap_disk->fops = &vbswap_fops;
 	vbswap_disk->private_data = NULL;
-	snprintf(vbswap_disk->disk_name, 16, "vbswap%d", 0);
+	snprintf(vbswap_disk->disk_name, 16, "zram%d", 0);
 	set_disksize();
 
 	/*
@@ -280,7 +280,7 @@ static int __init vbswap_init(void)
 {
 	int ret;
 
-	vbswap_major = register_blkdev(0, "vbswap");
+	vbswap_major = register_blkdev(0, "zram");
 	if (vbswap_major <= 0) {
 		pr_err("%s %d: Unable to get major number\n",
 		       __func__, __LINE__);
@@ -298,7 +298,7 @@ static int __init vbswap_init(void)
 	return 0;
 
 free_devices:
-	unregister_blkdev(vbswap_major, "vbswap");
+	unregister_blkdev(vbswap_major, "zram");
 out:
 	return ret;
 }
