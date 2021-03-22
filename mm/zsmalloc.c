@@ -452,7 +452,7 @@ static unsigned long zs_zpool_get_compacted(void *pool)
 	struct zs_pool_stats stats;
 
 	zs_pool_stats(pool, &stats);
-	return stats.pages_compacted;
+	return atomic_long_read(&stats.pages_compacted);
 }
 
 static u64 zs_zpool_total_size(void *pool)
