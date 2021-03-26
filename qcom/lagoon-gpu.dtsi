@@ -103,6 +103,7 @@
 		qcom,gpu-qdss-stm = <0x161c0000 0x40000>;
 
 		#cooling-cells = <2>;
+		qcom,tzone-names = "gpuss-0-usr", "gpuss-1-usr";
 
 		/* Bus Scale Settings */
 		qcom,gpubw-dev = <&gpubw>;
@@ -220,7 +221,7 @@
 					qcom,gpu-freq = <650000000>;
 					qcom,bus-freq = <10>;
 					qcom,bus-min = <8>;
-					qcom,bus-max = <12>;
+					qcom,bus-max = <10>;
 				};
 
 				/* NOM */
@@ -229,7 +230,7 @@
 					qcom,gpu-freq = <565000000>;
 					qcom,bus-freq = <9>;
 					qcom,bus-min = <8>;
-					qcom,bus-max = <11>;
+					qcom,bus-max = <10>;
 				};
 
 				/* SVS_L1 */
@@ -300,7 +301,7 @@
 					qcom,gpu-freq = <650000000>;
 					qcom,bus-freq = <10>;
 					qcom,bus-min = <8>;
-					qcom,bus-max = <12>;
+					qcom,bus-max = <10>;
 				};
 
 				/* NOM */
@@ -309,7 +310,7 @@
 					qcom,gpu-freq = <565000000>;
 					qcom,bus-freq = <9>;
 					qcom,bus-min = <8>;
-					qcom,bus-max = <11>;
+					qcom,bus-max = <10>;
 				};
 
 				/* SVS_L1 */
@@ -371,7 +372,7 @@
 					qcom,gpu-freq = <650000000>;
 					qcom,bus-freq = <10>;
 					qcom,bus-min = <8>;
-					qcom,bus-max = <12>;
+					qcom,bus-max = <10>;
 				};
 
 				/* NOM */
@@ -380,7 +381,7 @@
 					qcom,gpu-freq = <565000000>;
 					qcom,bus-freq = <9>;
 					qcom,bus-min = <8>;
-					qcom,bus-max = <11>;
+					qcom,bus-max = <10>;
 				};
 
 				/* SVS_L1 */
