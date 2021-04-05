@@ -3660,9 +3660,10 @@ context_switch(struct rq *rq, struct task_struct *prev,
 		next->active_mm = oldmm;
 		mmgrab(oldmm);
 		enter_lazy_tlb(oldmm, next);
-	} else
+	} else {
 		switch_mm_irqs_off(oldmm, mm, next);
-
+		lru_gen_switch_mm(oldmm, mm);
+	}
 	if (!prev->mm) {
 		prev->active_mm = NULL;
 		rq->prev_mm = oldmm;
@@ -6738,6 +6739,7 @@ void idle_task_exit(void)
 
 	if (mm != &init_mm) {
 		switch_mm(mm, &init_mm, current);
+		lru_gen_switch_mm(mm, &init_mm);
 		finish_arch_post_lock_switch();
 	}
 
