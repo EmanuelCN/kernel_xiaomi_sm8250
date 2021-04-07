@@ -332,7 +332,7 @@ static int mi_drm_notifier_callback(struct notifier_block *self,
 	if (event != MI_DRM_EVENT_BLANK)
 		goto out;
 
-	if (!evdata || !evdata->data || evdata->id != MSM_DRM_PRIMARY_DISPLAY)
+	if (!evdata || !evdata->data)
 		goto out;
 
 	blank = evdata->data;
