@@ -75,13 +75,12 @@ void unmap_page_range(struct mmu_gather *tlb,
 
 void do_page_cache_ra(struct readahead_control *, unsigned long nr_to_read,
 		unsigned long lookahead_size);
-void force_page_cache_ra(struct readahead_control *, struct file_ra_state *,
-		unsigned long nr);
+void force_page_cache_ra(struct readahead_control *, unsigned long nr);
 static inline void force_page_cache_readahead(struct address_space *mapping,
 		struct file *file, pgoff_t index, unsigned long nr_to_read)
 {
-	DEFINE_READAHEAD(ractl, file, mapping, index);
-	force_page_cache_ra(&ractl, &file->f_ra, nr_to_read);
+	DEFINE_READAHEAD(ractl, file, &file->f_ra, mapping, index);
+	force_page_cache_ra(&ractl, nr_to_read);
 }
 
 /*
@@ -90,7 +89,7 @@ static inline void force_page_cache_readahead(struct address_space *mapping,
 static inline void ra_submit(struct file_ra_state *ra,
 		struct address_space *mapping, struct file *file)
 {
-	DEFINE_READAHEAD(ractl, file, mapping, ra->start);
+	DEFINE_READAHEAD(ractl, file, ra, mapping, ra->start);
 	do_page_cache_ra(&ractl, ra->size, ra->async_size);
 }
 
