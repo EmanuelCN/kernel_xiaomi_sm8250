@@ -29,7 +29,7 @@ static bool screen_on = true;
 static LIST_HEAD(gc_sbi_list);
 static DEFINE_MUTEX(gc_wakelock_mutex);
 static DEFINE_MUTEX(gc_sbi_mutex);
-static struct wakeup_source gc_wakelock;
+static struct wakeup_source *gc_wakelock;
 
 static inline void rapid_gc_set_wakelock(void)
 {
@@ -41,12 +41,12 @@ static inline void rapid_gc_set_wakelock(void)
 		set |= sbi->rapid_gc;
 	}
 
-	if (set && !gc_wakelock.active) {
+	if (set && !gc_wakelock->active) {
 		pr_info("F2FS-fs: Catching wakelock for rapid GC");
-		__pm_stay_awake(&gc_wakelock);
-	} else if (!set && gc_wakelock.active) {
+		__pm_stay_awake(gc_wakelock);
+	} else if (!set && gc_wakelock->active) {
 		pr_info("F2FS-fs: Unlocking wakelock for rapid GC");
-		__pm_relax(&gc_wakelock);
+		__pm_relax(gc_wakelock);
 	}
 	mutex_unlock(&gc_wakelock_mutex);
 }
@@ -342,14 +342,14 @@ static struct notifier_block fb_notifier_block = {
 void __init f2fs_init_rapid_gc(void)
 {
 	INIT_WORK(&rapid_gc_fb_worker, rapid_gc_fb_work);
-	wakeup_source_init(&gc_wakelock, "f2fs_rapid_gc_wakelock");
+	gc_wakelock = wakeup_source_register(NULL, "f2fs_rapid_gc_wakelock");
 	msm_drm_register_client(&fb_notifier_block);
 }
 
 void __exit f2fs_destroy_rapid_gc(void)
 {
 	msm_drm_unregister_client(&fb_notifier_block);
-	wakeup_source_trash(&gc_wakelock);
+	wakeup_source_unregister(gc_wakelock);
 }
 
 static int select_gc_type(struct f2fs_sb_info *sbi, int gc_type)
