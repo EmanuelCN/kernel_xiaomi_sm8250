@@ -2122,9 +2122,10 @@ static inline unsigned long __cpu_util(int cpu)
 
 static inline unsigned long cpu_util_cum(int cpu, int delta)
 {
-	u64 util = cpu_rq(cpu)->cfs.avg.util_avg;
 	unsigned long capacity = capacity_orig_of(cpu);
+	u64 util;
 
+	util = __cpu_util(cpu);
 	delta += util;
 	if (delta < 0)
 		return 0;
