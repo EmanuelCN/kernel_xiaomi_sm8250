@@ -256,7 +256,7 @@ config INPUT_BOOST_FREQ_PERF
 	help
 	  Input boost frequency for the performance CPU cluster.
 
-config INPUT_BOOST_FREQ_PERFP
+config INPUT_BOOST_FREQ_PRIME
 	int "Prime cluster boost freq"
 	default "0"
 	help
@@ -274,7 +274,7 @@ config MAX_BOOST_FREQ_PERF
 	help
 	  Max-boost frequency for the performance CPU cluster.
 
-config MAX_BOOST_FREQ_PERFP
+config MAX_BOOST_FREQ_PRIME
 	int "Prime cluster max-boost freq"
 	default "0"
 	help
@@ -298,7 +298,7 @@ config CPU_FREQ_MIN_PERF
 
 	  If in doubt, say 0 to use the hardware's minimum frequency.
 
-config CPU_FREQ_MIN_PERFP
+config CPU_FREQ_MIN_PRIME
 	int "Default minimum frequency for the prime cluster"
 	default 0
 	help
@@ -325,7 +325,7 @@ config CPU_FREQ_IDLE_PERF
 
 	  If in doubt, say 0 to use the hardware's minimum frequency.
 
-config CPU_FREQ_IDLE_PERFP
+config CPU_FREQ_IDLE_PRIME
 	int "Default idle frequency for the prime cluster"
 	default 0
 	help
