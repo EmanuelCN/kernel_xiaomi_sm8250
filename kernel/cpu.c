@@ -2412,12 +2412,12 @@ const struct cpumask *const cpu_perf_mask = cpu_possible_mask;
 EXPORT_SYMBOL(cpu_perf_mask);
 
 #if CONFIG_PRIME_CPU_MASK
-static const unsigned long perfp_cpu_bits = CONFIG_PRIME_CPU_MASK;
-const struct cpumask *const cpu_perfp_mask = to_cpumask(&perfp_cpu_bits);
+static const unsigned long prime_cpu_bits = CONFIG_PRIME_CPU_MASK;
+const struct cpumask *const cpu_prime_mask = to_cpumask(&prime_cpu_bits);
 #else
-const struct cpumask *const cpu_perfp_mask = cpu_possible_mask;
+const struct cpumask *const cpu_prime_mask = cpu_possible_mask;
 #endif
-EXPORT_SYMBOL(cpu_perfp_mask);
+EXPORT_SYMBOL(cpu_prime_mask);
 
 void init_cpu_present(const struct cpumask *src)
 {
