@@ -484,21 +484,6 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
 
 		switch (token) {
 		case Opt_gc_background:
-			name = match_strdup(&args[0]);
-
-			if (!name)
-				return -ENOMEM;
-			if (!strcmp(name, "on")) {
-				F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_ON;
-			} else if (!strcmp(name, "off")) {
-				F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_OFF;
-			} else if (!strcmp(name, "sync")) {
-				F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_SYNC;
-			} else {
-				kvfree(name);
-				return -EINVAL;
-			}
-			kvfree(name);
 			break;
 		case Opt_disable_roll_forward:
 			set_opt(sbi, DISABLE_ROLL_FORWARD);
