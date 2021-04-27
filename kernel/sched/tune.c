@@ -565,6 +565,7 @@ int schedtune_prefer_idle(struct task_struct *p)
 {
 	struct schedtune *st;
 	int prefer_idle;
+	int task_boost;
 
 	if (unlikely(!schedtune_initialized))
 		return 0;
