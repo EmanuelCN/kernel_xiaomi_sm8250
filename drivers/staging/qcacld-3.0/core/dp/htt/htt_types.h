@@ -452,6 +452,9 @@ struct htt_pdev_t {
 
 	/* Flag to indicate whether new htt format is supported */
 	bool new_htt_format_enabled;
+	
+	struct htt_htc_pkt_union *last_misc_pkt;
+	int last_misc_num;
 };
 
 #define HTT_EPID_GET(_htt_pdev_hdl)  \
