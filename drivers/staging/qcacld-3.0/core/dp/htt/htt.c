@@ -114,32 +114,28 @@ void htt_htc_pkt_pool_free(struct htt_pdev_t *pdev)
 
 #ifdef ATH_11AC_TXCOMPACT
 
-void
-htt_htc_misc_pkt_list_trim(struct htt_pdev_t *pdev, int level)
+void htt_htc_misc_pkt_list_trim(struct htt_pdev_t *pdev)
 {
-	struct htt_htc_pkt_union *pkt, *next, *prev = NULL;
-	int i = 0;
+	struct htt_htc_pkt_union *pkt, *next;
 	qdf_nbuf_t netbuf;
 
-	HTT_TX_MUTEX_ACQUIRE(&pdev->htt_tx_mutex);
-	pkt = pdev->htt_htc_pkt_misclist;
+	// skip if first come
+	if(!pdev->last_misc_pkt->u.next)
+		goto out;
+
+	pkt = pdev->last_misc_pkt->u.next;
+	pdev->last_misc_pkt->u.next = NULL;
 	while (pkt) {
 		next = pkt->u.next;
-		/* trim the out grown list*/
-		if (++i > level) {
-			netbuf =
-				(qdf_nbuf_t)(pkt->u.pkt.htc_pkt.pNetBufContext);
-			qdf_nbuf_unmap(pdev->osdev, netbuf, QDF_DMA_TO_DEVICE);
-			qdf_nbuf_free(netbuf);
-			qdf_mem_free(pkt);
-			pkt = NULL;
-			if (prev)
-				prev->u.next = NULL;
-		}
-		prev = pkt;
+		netbuf = (qdf_nbuf_t) (pkt->u.pkt.htc_pkt.pNetBufContext);
+		qdf_nbuf_unmap(pdev->osdev, netbuf, QDF_DMA_TO_DEVICE);
+		qdf_nbuf_free(netbuf);
+		qdf_mem_free(pkt);
 		pkt = next;
 	}
-	HTT_TX_MUTEX_RELEASE(&pdev->htt_tx_mutex);
+out:
+	pdev->last_misc_pkt = pdev->htt_htc_pkt_misclist;
+	pdev->last_misc_num = 1;
 }
 
 void htt_htc_misc_pkt_list_add(struct htt_pdev_t *pdev, struct htt_htc_pkt *pkt)
@@ -153,15 +149,16 @@ void htt_htc_misc_pkt_list_add(struct htt_pdev_t *pdev, struct htt_htc_pkt *pkt)
 	if (pdev->htt_htc_pkt_misclist) {
 		u_pkt->u.next = pdev->htt_htc_pkt_misclist;
 		pdev->htt_htc_pkt_misclist = u_pkt;
+		pdev->last_misc_num++;
 	} else {
 		pdev->htt_htc_pkt_misclist = u_pkt;
+		pdev->last_misc_pkt = u_pkt;
+		pdev->last_misc_num = 1;
 	}
-	HTT_TX_MUTEX_RELEASE(&pdev->htt_tx_mutex);
 
-	/* only ce pipe size + tx_queue_depth could possibly be in use
-	 * free older packets in the msiclist
-	 */
-	htt_htc_misc_pkt_list_trim(pdev, misclist_trim_level);
+	if (pdev->last_misc_num > misclist_trim_level)
+		htt_htc_misc_pkt_list_trim(pdev);
+	HTT_TX_MUTEX_RELEASE(&pdev->htt_tx_mutex);
 }
 
 void htt_htc_misc_pkt_pool_free(struct htt_pdev_t *pdev)
