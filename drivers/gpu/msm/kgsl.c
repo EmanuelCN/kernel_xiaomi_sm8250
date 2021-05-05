@@ -5002,6 +5002,15 @@ static int kgsl_mmap(struct file *file, struct vm_area_struct *vma)
 		atomic_long_add(entry->memdesc.size,
 				&entry->priv->gpumem_mapped);
 
+	/*
+	 * kgsl gets the entry id or the gpu address through vm_pgoff.
+	 * It is used during mmap and never needed again. But this vm_pgoff
+	 * has different meaning at other parts of kernel. Not setting to
+	 * zero will let way for wrong assumption when tried to unmap a page
+	 * from this vma.
+	 */
+	vma->vm_pgoff = 0;
+
 	trace_kgsl_mem_mmap(entry, vma->vm_start);
 	return 0;
 }
