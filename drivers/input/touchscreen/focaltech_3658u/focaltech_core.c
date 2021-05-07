@@ -43,6 +43,10 @@
 #include <linux/earlysuspend.h>
 #define FTS_SUSPEND_LEVEL 1 /* Early-suspend level */
 #endif
+#if defined(CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE) &&                         \
+	defined(CONFIG_TOUCHSCREEN_COMMON)
+#include <linux/input/tp_common.h>
+#endif
 #include "focaltech_core.h"
 
 /*****************************************************************************
@@ -2483,6 +2487,35 @@ static int fts_get_touch_super_resolution_factor(void)
 	return SUPER_RESOLUTION_FACOTR;
 }
 
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+static ssize_t double_tap_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n",
+		       fts_get_mode_value(Touch_Doubletap_Mode, GET_CUR_VALUE));
+}
+
+static ssize_t double_tap_store(struct kobject *kobj,
+				struct kobj_attribute *attr, const char *buf,
+				size_t count)
+{
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	fts_set_cur_value(Touch_Doubletap_Mode, !!val);
+
+	return count;
+}
+
+static struct tp_common_ops double_tap_ops = {
+	.show = double_tap_show,
+	.store = double_tap_store,
+};
+#endif
+
 #endif
 
 /*****************************************************************************
@@ -2544,6 +2577,11 @@ static int fts_ts_probe(struct spi_device *spi)
 
 	fts_init_touch_mode_data(ts_data);
 	xiaomitouch_register_modedata(&xiaomi_touch_interfaces);
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE) &&                         \
+	defined(CONFIG_TOUCHSCREEN_COMMON)
+	tp_common_set_double_tap_ops(&double_tap_ops);
 #endif
 
 	FTS_INFO("Touch Screen(SPI BUS) driver prboe successfully");
