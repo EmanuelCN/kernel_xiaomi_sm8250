@@ -4,66 +4,66 @@
  * them to run sooner, but does not allow tons of sleepers to
  * rip the spread apart.
  */
-SCHED_FEAT(GENTLE_FAIR_SLEEPERS, true)
+#define SCHED_FEAT_GENTLE_FAIR_SLEEPERS 1
 
 /*
  * Place new tasks ahead so that they do not starve already running
  * tasks
  */
-SCHED_FEAT(START_DEBIT, true)
+#define SCHED_FEAT_START_DEBIT 1
 
 /*
  * Prefer to schedule the task we woke last (assuming it failed
  * wakeup-preemption), since its likely going to consume data we
  * touched, increases cache locality.
  */
-SCHED_FEAT(NEXT_BUDDY, false)
+#define SCHED_FEAT_NEXT_BUDDY 0
 
 /*
  * Prefer to schedule the task that ran last (when we did
  * wake-preempt) as that likely will touch the same data, increases
  * cache locality.
  */
-SCHED_FEAT(LAST_BUDDY, true)
+#define SCHED_FEAT_LAST_BUDDY 1
 
 /*
  * Consider buddies to be cache hot, decreases the likelyness of a
  * cache buddy being migrated away, increases cache locality.
  */
-SCHED_FEAT(CACHE_HOT_BUDDY, true)
+#define SCHED_FEAT_CACHE_HOT_BUDDY 1
 
 /*
  * Allow wakeup-time preemption of the current task:
  */
-SCHED_FEAT(WAKEUP_PREEMPTION, true)
+#define SCHED_FEAT_WAKEUP_PREEMPTION 1
 
-SCHED_FEAT(HRTICK, false)
-SCHED_FEAT(DOUBLE_TICK, false)
-SCHED_FEAT(LB_BIAS, true)
+#define SCHED_FEAT_HRTICK 0
+#define SCHED_FEAT_DOUBLE_TICK 0
+#define SCHED_FEAT_LB_BIAS 1
 
 /*
  * Decrement CPU capacity based on time not spent running tasks
  */
-SCHED_FEAT(NONTASK_CAPACITY, true)
+#define SCHED_FEAT_NONTASK_CAPACITY 1
 
 /*
  * Queue remote wakeups on the target CPU and process them
  * using the scheduler IPI. Reduces rq->lock contention/bounces.
  */
-SCHED_FEAT(TTWU_QUEUE, false)
+#define SCHED_FEAT_TTWU_QUEUE 0
 
 /*
  * When doing wakeups, attempt to limit superfluous scans of the LLC domain.
  */
-SCHED_FEAT(SIS_AVG_CPU, false)
-SCHED_FEAT(SIS_PROP, true)
+#define SCHED_FEAT_SIS_AVG_CPU 0
+#define SCHED_FEAT_SIS_PROP 1
 
 /*
  * Issue a WARN when we do multiple update_rq_clock() calls
  * in a single rq->lock section. Default disabled because the
  * annotations are not complete.
  */
-SCHED_FEAT(WARN_DOUBLE_CLOCK, false)
+#define SCHED_FEAT_WARN_DOUBLE_CLOCK 0
 
 #ifdef HAVE_RT_PUSH_IPI
 /*
@@ -75,27 +75,29 @@ SCHED_FEAT(WARN_DOUBLE_CLOCK, false)
  * IPI to that CPU and let that CPU push the RT task to where
  * it should go may be a better scenario.
  */
-SCHED_FEAT(RT_PUSH_IPI, true)
+#define SCHED_FEAT_RT_PUSH_IPI 1
+#else
+#define SCHED_FEAT_RT_PUSH_IPI 0
 #endif
 
-SCHED_FEAT(RT_RUNTIME_SHARE, false)
-SCHED_FEAT(LB_MIN, false)
-SCHED_FEAT(ATTACH_AGE_LOAD, true)
+#define SCHED_FEAT_RT_RUNTIME_SHARE 0
+#define SCHED_FEAT_LB_MIN 0
+#define SCHED_FEAT_ATTACH_AGE_LOAD 1
 
-SCHED_FEAT(WA_IDLE, true)
-SCHED_FEAT(WA_WEIGHT, true)
-SCHED_FEAT(WA_BIAS, true)
+#define SCHED_FEAT_WA_IDLE 1
+#define SCHED_FEAT_WA_WEIGHT 1
+#define SCHED_FEAT_WA_BIAS 1
 
 /*
  * UtilEstimation. Use estimated CPU utilization.
  */
-SCHED_FEAT(UTIL_EST, true)
-SCHED_FEAT(UTIL_EST_FASTUP, true)
+#define SCHED_FEAT_UTIL_EST 1
+#define SCHED_FEAT_UTIL_EST_FASTUP 1
 
 /*
  * Fast pre-selection of CPU candidates for EAS.
  */
-SCHED_FEAT(FIND_BEST_TARGET, true)
+#define SCHED_FEAT_FIND_BEST_TARGET 1
 
 /*
  * Energy aware scheduling algorithm choices:
@@ -104,12 +106,12 @@ SCHED_FEAT(FIND_BEST_TARGET, true)
  *   the EAS path for wakeup task placement. Otherwise, put
  *   those tasks through the mainline slow path.
  */
-SCHED_FEAT(EAS_PREFER_IDLE, true)
+#define SCHED_FEAT_EAS_PREFER_IDLE 1
 
 /*
  * Request max frequency from schedutil whenever a RT task is running.
  */
-SCHED_FEAT(SUGOV_RT_MAX_FREQ, false)
+#define SCHED_FEAT_SUGOV_RT_MAX_FREQ 0
 
 /*
  * Apply schedtune boost hold to tasks of all sched classes.
@@ -120,11 +122,11 @@ SCHED_FEAT(SUGOV_RT_MAX_FREQ, false)
  * If disabled, this behaviour will only apply to tasks of the
  * RT class.
  */
-SCHED_FEAT(SCHEDTUNE_BOOST_HOLD_ALL, false)
+#define SCHED_FEAT_SCHEDTUNE_BOOST_HOLD_ALL 0
 
 /*
  * Inflate the effective utilization of SchedTune-boosted tasks, which
  * generally leads to usage of higher frequencies.
  * If disabled, boosts will only bias tasks to higher-capacity CPUs.
  */
-SCHED_FEAT(SCHEDTUNE_BOOST_UTIL, false)
+#define SCHED_FEAT_SCHEDTUNE_BOOST_UTIL 0
