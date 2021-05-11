@@ -187,6 +187,7 @@ static struct cpe_priv *cpe_get_private_data(
 	struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd;
+	struct snd_soc_component *component = NULL;
 
 	if (!substream || !substream->private_data) {
 		pr_err("%s: %s is invalid\n",
@@ -204,7 +205,12 @@ static struct cpe_priv *cpe_get_private_data(
 		goto err_ret;
 	}
 
-	return snd_soc_card_get_drvdata(rtd->card);
+	component = snd_soc_rtdcom_lookup(rtd, DRV_NAME);
+	if (!component) {
+		pr_err("%s: invalid component\n", __func__);
+		goto err_ret;
+	}
+        return snd_soc_component_get_drvdata(component);
 
 err_ret:
 	return NULL;
