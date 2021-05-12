@@ -232,7 +232,6 @@ static void notrace start_secondary(void *unused)
 	load_current_idt();
 	cpu_init();
 	x86_cpuinit.early_percpu_clock_init();
-	preempt_disable();
 	smp_callin();
 
 	enable_start_cpu0 = 0;

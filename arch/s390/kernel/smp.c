@@ -845,7 +845,6 @@ static void smp_start_secondary(void *cpuvoid)
 	set_cpu_flag(CIF_ASCE_SECONDARY);
 	cpu_init();
 	rcu_cpu_starting(cpu);
-	preempt_disable();
 	init_cpu_timer();
 	vtime_init();
 	pfault_init();

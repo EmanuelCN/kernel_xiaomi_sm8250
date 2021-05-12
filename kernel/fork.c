@@ -2344,7 +2344,7 @@ static inline void init_idle_pids(struct task_struct *idle)
 	}
 }
 
-struct task_struct *fork_idle(int cpu)
+struct task_struct * __init fork_idle(int cpu)
 {
 	struct task_struct *task;
 	task = copy_process(CLONE_VM, 0, 0, NULL, NULL, &init_struct_pid, 0, 0,
