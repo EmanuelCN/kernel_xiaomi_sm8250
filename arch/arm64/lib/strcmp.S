@@ -41,6 +41,12 @@
 	/* Start of performance-critical section  -- one 64B cache line.  */
 	.align 6
 SYM_FUNC_START_WEAK_PI(strcmp)
+	prfm    pldl1strm, [src1]
+	prfm    pldl1strm, [src2]
+	b	.Lperf_critical
+.align  6
+L(perf_critical):
+	/* Start of performance-critical section  -- one 64B cache line.  */
 	eor	tmp1, src1, src2
 	mov	zeroones, #REP8_01
 	tst	tmp1, #7
@@ -54,6 +60,8 @@ L(loop_aligned):
 	ldr	data1, [src1], #8
 	ldr	data2, [src2], #8
 L(start_realigned):
+	prfm    pldl1strm, [src1]
+	prfm    pldl1strm, [src2]
 	sub	tmp1, data1, zeroones
 	orr	tmp2, data1, #REP8_7f
 	eor	diff, data1, data2	/* Non-zero if differences found.  */
