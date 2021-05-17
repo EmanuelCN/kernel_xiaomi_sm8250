@@ -1577,10 +1577,10 @@ static bool rcu_future_gp_cleanup(struct rcu_node *rnp)
  */
 static void rcu_gp_kthread_wake(void)
 {
-	if ((current == rcu_state->gp_kthread &&
+	if ((current == rcu_state.gp_kthread &&
 	     !in_irq() && !in_serving_softirq()) ||
-	    !READ_ONCE(rcu_state->gp_flags) ||
-	    !rcu_state->gp_kthread)
+	    !READ_ONCE(rcu_state.gp_flags) ||
+	    !rcu_state.gp_kthread)
 		return;
 	WRITE_ONCE(rcu_state.gp_wake_time, jiffies);
 	WRITE_ONCE(rcu_state.gp_wake_seq, READ_ONCE(rcu_state.gp_seq));
