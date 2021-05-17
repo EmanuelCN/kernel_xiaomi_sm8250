@@ -1962,14 +1962,14 @@ rcu_check_quiescent_state(struct rcu_data *rdp)
  */
 int rcutree_dying_cpu(unsigned int cpu)
 {
-	bool blkd;
-	struct rcu_data *rdp = this_cpu_ptr(&rcu_data);
-	struct rcu_node *rnp = rdp->mynode;
+	RCU_TRACE(bool blkd;)
+	RCU_TRACE(struct rcu_data *rdp = this_cpu_ptr(&rcu_data);)
+	RCU_TRACE(struct rcu_node *rnp = rdp->mynode;)
 
 	if (!IS_ENABLED(CONFIG_HOTPLUG_CPU))
 		return 0;
 
-	blkd = !!(rnp->qsmask & rdp->grpmask);
+	RCU_TRACE(blkd = !!(rnp->qsmask & rdp->grpmask);)
 	trace_rcu_grace_period(rcu_state.name, rnp->gp_seq,
 			       blkd ? TPS("cpuofl") : TPS("cpuofl-bgp"));
 	return 0;
