@@ -103,7 +103,7 @@ int rcu_num_lvls __read_mostly = RCU_NUM_LVLS;
 int num_rcu_lvl[] = NUM_RCU_LVL_INIT;
 int rcu_num_nodes __read_mostly = NUM_RCU_NODES; /* Total # rcu_nodes in use. */
 /* panic() on RCU Stall sysctl. */
-int sysctl_panic_on_rcu_stall __read_mostly = CONFIG_RCU_PANIC_ON_STALL;
+int sysctl_panic_on_rcu_stall __read_mostly;
 /* Commandeer a sysrq key to dump RCU's tree. */
 static bool sysrq_rcu;
 module_param(sysrq_rcu, bool, 0444);
