@@ -597,12 +597,12 @@ int f2fs_try_convert_inline_dir(struct inode *dir, struct dentry *dentry)
 	ipage = f2fs_get_node_page(sbi, dir->i_ino);
 	if (IS_ERR(ipage)) {
 		err = PTR_ERR(ipage);
-		goto out_fname;
+		goto out;
 	}
 
 	if (f2fs_has_enough_room(dir, ipage, &fname)) {
 		f2fs_put_page(ipage, 1);
-		goto out_fname;
+		goto out;
 	}
 
 	inline_dentry = inline_data_addr(dir, ipage);
@@ -610,8 +610,6 @@ int f2fs_try_convert_inline_dir(struct inode *dir, struct dentry *dentry)
 	err = do_convert_inline_dir(dir, ipage, inline_dentry);
 	if (!err)
 		f2fs_put_page(ipage, 1);
-out_fname:
-	f2fs_free_filename(&fname);
 out:
 	f2fs_unlock_op(sbi);
 	return err;
