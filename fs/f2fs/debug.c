@@ -62,6 +62,7 @@ void f2fs_update_sit_info(struct f2fs_sb_info *sbi)
 		si->avg_vblocks = 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
 static void update_general_status(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_stat_info *si = F2FS_STAT(sbi);
@@ -582,7 +583,6 @@ static int stat_show(struct seq_file *s, void *v)
 #ifdef CONFIG_DEBUG_FS
 DEFINE_SHOW_ATTRIBUTE(stat);
 #endif
-
 int f2fs_build_stats(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *raw_super = F2FS_RAW_SUPER(sbi);
