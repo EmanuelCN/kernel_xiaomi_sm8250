@@ -812,6 +812,7 @@ static int icnss_driver_event_fw_ready_ind(struct icnss_priv *priv, void *data)
 
 	set_bit(ICNSS_FW_READY, &priv->state);
 	clear_bit(ICNSS_MODE_ON, &priv->state);
+	atomic_set(&priv->soc_wake_ref_count, 0);
 
 	icnss_pr_info("WLAN FW is ready: 0x%lx\n", priv->state);
 
@@ -1046,6 +1047,12 @@ static int icnss_event_soc_wake_request(struct icnss_priv *priv, void *data)
 
 	if (!priv)
 		return -ENODEV;
+
+	if (atomic_inc_not_zero(&priv->soc_wake_ref_count)) {
+		icnss_pr_dbg("SOC awake after posting work, Ref count: %d",
+			     atomic_read(&priv->soc_wake_ref_count));
+		return 0;
+	}
 
 	ret = wlfw_send_soc_wake_msg(priv, QMI_WLFW_WAKE_REQUEST_V01);
 	if (!ret)
