@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CPAS_API_H_
@@ -48,7 +48,17 @@ enum cam_cpas_hw_version {
 	CAM_CPAS_TITAN_480_V100 = 0x480100,
 	CAM_CPAS_TITAN_540_V100 = 0x540100,
 	CAM_CPAS_TITAN_520_V100 = 0x520100,
+	CAM_CPAS_TITAN_545_V110 = 0x545110,
 	CAM_CPAS_TITAN_MAX
+};
+
+/**
+ * enum cam_cpas_hw_soc_id - Enum for Titan soc id
+ */
+enum cam_cpas_hw_soc_id {
+	CAM_CPAS_TITAN_SOC_ID_507 = 507,
+	CAM_CPAS_TITAN_SOC_ID_518 = 518,
+	CAM_CPAS_TITAN_SOC_ID_MAX
 };
 
 /**
