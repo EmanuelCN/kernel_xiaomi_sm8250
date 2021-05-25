@@ -14,6 +14,10 @@
 #include <linux/vmpressure.h>
 #include <uapi/linux/sched/types.h>
 
+/* Needed to prevent Android from thinking there's no LMK and thus rebooting */
+#undef MODULE_PARAM_PREFIX
+#define MODULE_PARAM_PREFIX "lowmemorykiller."
+
 /* The minimum number of pages to free per reclaim */
 #define MIN_FREE_PAGES (CONFIG_ANDROID_SIMPLE_LMK_MINFREE * SZ_1M / PAGE_SIZE)
 
@@ -37,6 +41,11 @@ static __cacheline_aligned_in_smp DEFINE_RWLOCK(mm_free_lock);
 static int nr_victims;
 static atomic_t needs_reclaim = ATOMIC_INIT(0);
 static atomic_t nr_killed = ATOMIC_INIT(0);
+
+#define ADJ_MAX 1000
+#define ADJ_DIVISOR 50
+static int lmk_count[(ADJ_MAX / ADJ_DIVISOR) + 1];
+module_param_array(lmk_count, int, NULL, S_IRUGO);
 
 static int victim_cmp(const void *lhs_ptr, const void *rhs_ptr)
 {
@@ -228,10 +237,17 @@ static void scan_and_kill(void)
 		static const struct sched_param sched_zero_prio;
 		struct victim_info *victim = &victims[i];
 		struct task_struct *t, *vtsk = victim->tsk;
+		int adj_index;
 
 		pr_info("Killing %s with adj %d to free %lu KiB\n", vtsk->comm,
 			vtsk->signal->oom_score_adj,
 			victim->size << (PAGE_SHIFT - 10));
+
+		/* Count kills */
+		adj_index = vtsk->signal->oom_score_adj / ADJ_DIVISOR;
+		if (adj_index > (ADJ_MAX / ADJ_DIVISOR))
+			adj_index = (ADJ_MAX / ADJ_DIVISOR);
+		lmk_count[adj_index]++;
 
 		/* Accelerate the victim's death by forcing the kill signal */
 		do_send_sig_info(SIGKILL, SEND_SIG_FORCED, vtsk, PIDTYPE_TGID);
@@ -338,7 +354,4 @@ static const struct kernel_param_ops simple_lmk_init_ops = {
 	.set = simple_lmk_init_set
 };
 
-/* Needed to prevent Android from thinking there's no LMK and thus rebooting */
-#undef MODULE_PARAM_PREFIX
-#define MODULE_PARAM_PREFIX "lowmemorykiller."
 module_param_cb(minfree, &simple_lmk_init_ops, NULL, 0200);
