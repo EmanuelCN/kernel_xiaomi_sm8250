@@ -480,7 +480,7 @@ static void qos_cores_init(struct device *dev)
 		} else {
 			for (i = 0; i < gcdsprm.corecount; i++) {
 				err = of_property_read_u32_index(dev->of_node,
-					"qcom,qos-cores", i, &cpucores[i]);
+							"qcom,qos-cores", i, &cpucores[i]);
 				if (err) {
 					dev_err(dev,
 						"%s: failed to read QOS coree for core:%d\n",
@@ -492,7 +492,7 @@ static void qos_cores_init(struct device *dev)
 			gcdsprm.coreno = cpucores;
 
 			gcdsprm.dev_pm_qos_req = kcalloc(gcdsprm.corecount,
-				sizeof(struct dev_pm_qos_request), GFP_KERNEL);
+					sizeof(struct dev_pm_qos_request), GFP_KERNEL);
 
 			if (gcdsprm.dev_pm_qos_req == NULL) {
 				dev_err(dev,
