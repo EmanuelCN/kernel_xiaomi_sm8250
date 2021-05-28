@@ -10752,7 +10752,7 @@ static void adjust_insn_aux_data(struct bpf_verifier_env *env,
 {
 	struct bpf_insn_aux_data *old_data = env->insn_aux_data;
 	struct bpf_insn *insn = new_prog->insnsi;
-	bool old_seen = old_data[off].seen;
+	u32 old_seen = old_data[off].seen;
 	u32 prog_len;
 	int i;
 
