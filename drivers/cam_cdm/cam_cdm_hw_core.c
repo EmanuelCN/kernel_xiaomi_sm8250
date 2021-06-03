@@ -22,6 +22,7 @@
 #include "cam_cdm_hw_reg_1_1.h"
 #include "cam_cdm_hw_reg_1_2.h"
 #include "cam_cdm_hw_reg_2_0.h"
+#include "cam_cdm_hw_reg_2_1.h"
 #include "cam_trace.h"
 #include "cam_req_mgr_workq.h"
 
@@ -60,6 +61,18 @@ static const struct of_device_id msm_cam_hw_cdm_dt_match[] = {
 		.compatible = CAM_HW_CDM_OPE_NAME_2_0,
 		.data = &cam_cdm_2_0_reg_offset,
 	},
+	{
+		.compatible = CAM_HW_CDM_CPAS_NAME_2_1,
+		.data = &cam_cdm_2_1_reg_offset,
+	},
+	{
+		.compatible = CAM_HW_CDM_OPE_NAME_2_1,
+		.data = &cam_cdm_2_1_reg_offset,
+	},
+	{
+		.compatible = CAM_HW_CDM_IFE_NAME_2_1,
+		.data = &cam_cdm_2_1_reg_offset,
+	},
 	{},
 };
 
@@ -86,6 +99,15 @@ static enum cam_cdm_id cam_hw_cdm_get_id_by_name(char *name)
 	if (strnstr(name, CAM_HW_CDM_OPE_NAME_2_0,
 			strlen(CAM_HW_CDM_CPAS_NAME_2_0)))
 		return CAM_CDM_OPE;
+	if (strnstr(name, CAM_HW_CDM_CPAS_NAME_2_1,
+			strlen(CAM_HW_CDM_CPAS_NAME_2_1)))
+		return CAM_CDM_CPAS;
+	if (strnstr(name, CAM_HW_CDM_OPE_NAME_2_1,
+			strlen(CAM_HW_CDM_OPE_NAME_2_1)))
+		return CAM_CDM_OPE;
+	if (strnstr(name, CAM_HW_CDM_IFE_NAME_2_1,
+			strlen(CAM_HW_CDM_IFE_NAME_2_1)))
+		return CAM_CDM_IFE;
 
 	return CAM_CDM_MAX;
 }
@@ -1339,17 +1361,28 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 	struct cam_cdm_work_payload *payload[CAM_CDM_BL_FIFO_MAX] = {0};
 	uint32_t user_data = 0;
 	uint32_t irq_status[CAM_CDM_BL_FIFO_MAX] = {0};
+	uint32_t irq_context_summary = 0xF;
 	bool work_status;
 	int i;
 
-	CAM_DBG(CAM_CDM, "Got irq");
+	CAM_DBG(CAM_CDM, "Got irq hw_version 0x%x", cdm_core->hw_version);
 	spin_lock(&cdm_hw->hw_lock);
 	if (cdm_hw->hw_state == CAM_HW_STATE_POWER_DOWN) {
 		CAM_DBG(CAM_CDM, "CDM is in power down state");
 		spin_unlock(&cdm_hw->hw_lock);
 		return IRQ_HANDLED;
 	}
+	if (cdm_core->hw_version >= CAM_CDM_VERSION_2_1) {
+		if (cam_cdm_read_hw_reg(cdm_hw,
+			cdm_core->offsets->cmn_reg->irq_context_status,
+			&irq_context_summary)) {
+			CAM_ERR(CAM_CDM, "Failed to read CDM HW IRQ status");
+		}
+	}
 	for (i = 0; i < cdm_core->offsets->reg_data->num_bl_fifo_irq; i++) {
+		if (!(BIT(i) & irq_context_summary))
+			continue;
+
 		if (cam_cdm_read_hw_reg(cdm_hw,
 				cdm_core->offsets->irq_reg[i]->irq_status,
 				&irq_status[i])) {
