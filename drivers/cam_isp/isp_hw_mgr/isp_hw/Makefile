@@ -3,7 +3,7 @@
 obj-$(CONFIG_SPECTRA_CAMERA) += top_tpg/
 
 ifdef CONFIG_SPECTRA_CAMERA_TFE
-obj-$(CONFIG_SPECTRA_CAMERA) += tfe_csid_hw/ tfe_hw/
+obj-$(CONFIG_SPECTRA_CAMERA) += tfe_csid_hw/ tfe_hw/ ppi_hw/
 endif
 
 ifdef CONFIG_SPECTRA_CAMERA_IFE
