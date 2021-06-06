@@ -1509,7 +1509,16 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		val->intval = get_client_vote(chg->usb_icl_votable, PD_VOTER);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		rc = smblib_get_prop_input_current_max(chg, val);
+		if (smblib_get_fastcharge_mode(chg))
+    	#if defined(CONFIG_BOARD_CAS) || defined(CONFIG_BOARD_MUNCH)
+			val->intval = 12000000;
+	#elif defined CONFIG_BOARD_CMI
+			val->intval = 10000000;
+	#else
+			val->intval = 6000000;
+	#endif
+		else
+			rc = smblib_get_prop_input_current_max(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = POWER_SUPPLY_TYPE_USB_PD;
