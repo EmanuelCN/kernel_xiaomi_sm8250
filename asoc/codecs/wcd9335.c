@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2019, 2021, The Linux Foundation. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/init.h>
@@ -2430,9 +2430,9 @@ static int slim_tx_mixer_put(struct snd_kcontrol *kcontrol,
 	mutex_lock(&tasha_p->codec_mutex);
 
 	if (tasha_p->intf_type == WCD9XXX_INTERFACE_TYPE_SLIMBUS) {
-		if (dai_id != AIF1_CAP) {
-			dev_err(component->dev, "%s: invalid AIF for I2C mode\n",
-				__func__);
+		if (dai_id >= ARRAY_SIZE(vport_slim_check_table)) {
+			dev_err(component->dev, "%s: dai_id: %d, out of bounds\n",
+					__func__, dai_id);
 			mutex_unlock(&tasha_p->codec_mutex);
 			return -EINVAL;
 		}
@@ -2441,6 +2441,7 @@ static int slim_tx_mixer_put(struct snd_kcontrol *kcontrol,
 		if (dai_id >= ARRAY_SIZE(vport_i2s_check_table)) {
 			dev_err(component->dev, "%s: dai_id: %d, out of bounds\n",
 				__func__, dai_id);
+			mutex_unlock(&tasha_p->codec_mutex);
 			return -EINVAL;
 		}
 		vtable = vport_i2s_check_table[dai_id];
