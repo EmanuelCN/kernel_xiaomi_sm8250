@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_FLASH_DEV_H_
@@ -24,6 +24,7 @@
 #include "cam_subdev.h"
 #include "cam_mem_mgr.h"
 #include "cam_sensor_cmn_header.h"
+#include "cam_sensor_util.h"
 #include "cam_soc_util.h"
 #include "cam_debug_util.h"
 #include "cam_sensor_io.h"
@@ -130,6 +131,7 @@ struct cam_flash_frame_setting {
  * @torch_op_current    : Torch operational current
  * @torch_max_current   : Max supported current for LED in torch mode
  * @is_wled_flash       : Detection between WLED/LED flash
+ * @flash_type          : Flash type
  */
 
 struct cam_flash_private_soc {
@@ -142,6 +144,7 @@ struct cam_flash_private_soc {
 	uint32_t     torch_op_current[CAM_FLASH_MAX_LED_TRIGGERS];
 	uint32_t     torch_max_current[CAM_FLASH_MAX_LED_TRIGGERS];
 	bool         is_wled_flash;
+	uint32_t     flash_type;
 };
 
 struct cam_flash_func_tbl {
