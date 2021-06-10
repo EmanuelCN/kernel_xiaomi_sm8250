@@ -116,8 +116,6 @@ static void destroy_rt_bandwidth(struct rt_bandwidth *rt_b)
 	hrtimer_cancel(&rt_b->rt_period_timer);
 }
 
-#define rt_entity_is_task(rt_se) (!(rt_se)->my_q)
-
 static inline struct task_struct *rt_task_of(struct sched_rt_entity *rt_se)
 {
 #ifdef CONFIG_SCHED_DEBUG
@@ -229,8 +227,6 @@ err:
 }
 
 #else /* CONFIG_RT_GROUP_SCHED */
-
-#define rt_entity_is_task(rt_se) (1)
 
 static inline struct task_struct *rt_task_of(struct sched_rt_entity *rt_se)
 {
