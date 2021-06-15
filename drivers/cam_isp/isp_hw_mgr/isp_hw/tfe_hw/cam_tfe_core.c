@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -1902,6 +1902,7 @@ static int cam_tfe_camif_resource_start(
 	uint32_t                             epoch0_irq_mask;
 	uint32_t                             epoch1_irq_mask;
 	uint32_t                             computed_epoch_line_cfg;
+	uint32_t                             camera_hw_version = 0;
 
 	if (!camif_res || !core_info) {
 		CAM_ERR(CAM_ISP, "Error Invalid input arguments");
@@ -1947,13 +1948,18 @@ static int cam_tfe_camif_resource_start(
 	CAM_DBG(CAM_ISP, "TFE:%d core_cfg 0 val:0x%x", core_info->core_index,
 		val);
 
-	val = cam_io_r(rsrc_data->mem_base +
-		rsrc_data->common_reg->core_cfg_1);
-	val &= ~BIT(0);
-	cam_io_w_mb(val, rsrc_data->mem_base +
-		rsrc_data->common_reg->core_cfg_1);
-	CAM_DBG(CAM_ISP, "TFE:%d core_cfg 1 val:0x%x", core_info->core_index,
-		val);
+	if (cam_cpas_get_cpas_hw_version(&camera_hw_version))
+		CAM_ERR(CAM_ISP, "Failed to get HW version");
+
+	if (camera_hw_version == CAM_CPAS_TITAN_540_V100) {
+		val = cam_io_r(rsrc_data->mem_base +
+			rsrc_data->common_reg->core_cfg_1);
+		val &= ~BIT(0);
+		cam_io_w_mb(val, rsrc_data->mem_base +
+			rsrc_data->common_reg->core_cfg_1);
+		CAM_DBG(CAM_ISP, "TFE:%d core_cfg 1 val:0x%x",
+			core_info->core_index, val);
+	}
 
 	/* Epoch config */
 	epoch0_irq_mask = ((rsrc_data->last_line -
