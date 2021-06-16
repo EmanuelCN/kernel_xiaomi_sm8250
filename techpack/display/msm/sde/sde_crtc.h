@@ -384,6 +384,12 @@ struct sde_crtc {
 	struct drm_property_blob *dspp_blob_info;
 };
 
+#ifdef CONFIG_DRM_SDE_EXPO
+enum sde_crtc_dirty_flags {
+	SDE_CRTC_DIRTY_DIM_LAYER_EXPO,
+};
+#endif
+
 #define to_sde_crtc(x) container_of(x, struct sde_crtc, base)
 
 /**
@@ -495,6 +501,9 @@ struct sde_crtc_state {
 	/* Mi crtc state */
 	struct sde_crtc_mi_state mi_state;
 	uint32_t num_dim_layers_bank;
+#ifdef CONFIG_DRM_SDE_EXPO
+	struct sde_hw_dim_layer *exposure_dim_layer;
+#endif
 };
 
 enum sde_crtc_irq_state {
