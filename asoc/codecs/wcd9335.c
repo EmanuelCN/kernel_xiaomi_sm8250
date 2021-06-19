@@ -13288,9 +13288,11 @@ done:
 static struct wcd_cpe_core *tasha_codec_get_cpe_core(
 		struct snd_soc_component *component)
 {
-	struct tasha_priv *priv = snd_soc_component_get_drvdata(component);
-
-	return priv->cpe_core;
+	struct tasha_priv *priv = NULL;
+	priv = dev_get_drvdata(component->dev);
+	if (priv)
+		return priv->cpe_core;
+	return NULL;
 }
 
 static int tasha_codec_cpe_fll_update_divider(

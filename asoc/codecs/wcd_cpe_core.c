@@ -639,7 +639,7 @@ void *wcd_cpe_get_core_handle(
 		goto done;
 	}
 
-	core = wcd_get_cpe_core(component);
+	core = wcd_get_cpe_core(core_d->component);
 
 	if (!core)
 		dev_err(component->dev,
