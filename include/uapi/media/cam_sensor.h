@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, 2021 The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_CAM_SENSOR_H__
@@ -474,6 +474,7 @@ struct cam_flash_query_curr {
  * @max_current_flash   :  max supported current for flash
  * @max_duration_flash  :  max flash turn on duration
  * @max_current_torch   :  max supported current for torch
+ * @flash_type          :  Indicates about the flash type -I2C,GPIO,PMIC
  *
  */
 struct cam_flash_query_cap_info {
@@ -481,6 +482,7 @@ struct cam_flash_query_cap_info {
 	uint32_t    max_current_flash[CAM_FLASH_MAX_LED_TRIGGERS];
 	uint32_t    max_duration_flash[CAM_FLASH_MAX_LED_TRIGGERS];
 	uint32_t    max_current_torch[CAM_FLASH_MAX_LED_TRIGGERS];
+	uint32_t    flash_type;
 } __attribute__ ((packed));
 
 #endif
