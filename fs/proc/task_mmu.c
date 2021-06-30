@@ -551,9 +551,53 @@ static int show_map(struct seq_file *m, void *v)
 	return 0;
 }
 
+static void *m_start_pid(struct seq_file *m, loff_t *ppos)
+{
+	struct vm_area_struct *vma = m_start(m, ppos);
+
+	/*
+	 * Android only cares about the stack mapping, so we can optimize this
+	 * to only return the stack mapping. Processes that have several
+	 * thousands of mappings waste a lot of time in here when Android only
+	 * cares about finding the stack mapping. Android does this in Bionic to
+	 * determine the size of a process' stack when pthreads are used.
+	 */
+	if (vma) {
+		struct mm_struct *mm = vma->vm_mm;
+		struct vm_area_struct *tmp;
+
+		/* Optimistically check if the cached stack mapping is valid */
+		tmp = READ_ONCE(mm->stack_vma);
+		if (tmp && is_stack(tmp))
+			return tmp;
+
+		/* Look for the current stack mapping and update the cache */
+		tmp = vma;
+		do {
+			if (is_stack(tmp)) {
+				WRITE_ONCE(mm->stack_vma, vma);
+				return tmp;
+			}
+			tmp = tmp->vm_next;
+		} while (tmp);
+	}
+
+	return NULL;
+}
+
+static void *m_next_pid(struct seq_file *m, void *v, loff_t *pos)
+{
+	struct proc_maps_private *priv = m->private;
+
+	/* Terminate since the stack mapping has been printed */
+	vma_stop(priv);
+	(*pos)++;
+	return NULL;
+}
+
 static const struct seq_operations proc_pid_maps_op = {
-	.start	= m_start,
-	.next	= m_next,
+	.start	= m_start_pid,
+	.next	= m_next_pid,
 	.stop	= m_stop,
 	.show	= show_map
 };
