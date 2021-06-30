@@ -803,6 +803,8 @@ int setup_arg_pages(struct linux_binprm *bprm,
 	ret = expand_stack(vma, stack_base);
 	if (ret)
 		ret = -EFAULT;
+	else
+		current->mm->stack_vma = vma;
 
 out_unlock:
 	up_write(&mm->mmap_sem);
