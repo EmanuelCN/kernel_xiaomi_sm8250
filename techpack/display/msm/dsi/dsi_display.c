@@ -1093,8 +1093,11 @@ int dsi_display_set_power(struct drm_connector *connector,
 		mi_cfg->in_aod = true;
 		mi_drm_notifier_call_chain(MI_DRM_EARLY_EVENT_BLANK, &notify_data);
 		rc = dsi_panel_set_lp2(display->panel);
-		if (mi_cfg->unset_doze_brightness)
-			dsi_panel_set_doze_brightness(display->panel,
+		if (mi_cfg->last_bl_level>70)
+			mi_cfg->unset_doze_brightness=DOZE_BRIGHTNESS_HBM;
+		else
+			mi_cfg->unset_doze_brightness=DOZE_BRIGHTNESS_LBM;
+		dsi_panel_set_doze_brightness(display->panel,
 				mi_cfg->unset_doze_brightness, true);
 		mi_drm_notifier_call_chain(MI_DRM_EVENT_BLANK, &notify_data);
 		break;
