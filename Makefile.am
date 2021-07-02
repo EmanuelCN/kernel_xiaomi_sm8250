@@ -48,6 +48,10 @@ obj-m += asoc/codecs/bolero/
 obj-m += asoc/codecs/wcd938x/
 endif
 
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sxr2130))
+obj-m += asoc/codecs/wsa883x/
+endif
+
 ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), apq8053 sdm660 msm8953 msm8937))
 obj-m += asoc/codecs/sdm660_cdc/
 endif

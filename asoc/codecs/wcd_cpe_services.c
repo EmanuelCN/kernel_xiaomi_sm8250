@@ -319,7 +319,7 @@ static int cpe_register_write_repeat(u32 reg, u8 *ptr, u32 to_write)
 {
 	struct snd_soc_component *component = cpe_d.cdc_priv;
 	struct  wcd9xxx *wcd9xxx =
-			snd_soc_component_get_drvdata(component);
+			dev_get_drvdata(component->dev->parent);
 	int ret = 0;
 
 	ret = wcd9xxx_slim_write_repeat(wcd9xxx, reg, to_write, ptr);
