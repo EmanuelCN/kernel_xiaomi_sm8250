@@ -133,6 +133,8 @@ struct xiaomi_touch_pdata{
 	struct xiaomi_touch_interface *touch_data;
 	int palm_value;
 	bool palm_changed;
+	bool set_update;
+	bool bump_sample_rate;
 	int psensor_value;
 	bool psensor_changed;
 	const char *name;
