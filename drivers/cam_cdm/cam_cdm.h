@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CDM_H_
@@ -276,6 +276,7 @@ struct cam_cdm_common_reg_data {
  *                       wait, etc.
  * @core_en:             offset to pause/enable CDM
  * @fe_cfg:              offset to configure CDM fetch engine
+ * @irq_context_status   offset to read back irq context status
  * @bl_fifo_rb:          offset to set BL_FIFO read back
  * @bl_fifo_base_rb:     offset to read back base address on offset set by
  *                       bl_fifo_rb
@@ -319,6 +320,7 @@ struct cam_cdm_common_regs {
 	uint32_t core_cfg;
 	uint32_t core_en;
 	uint32_t fe_cfg;
+	uint32_t irq_context_status;
 	uint32_t bl_fifo_rb;
 	uint32_t bl_fifo_base_rb;
 	uint32_t bl_fifo_len_rb;
@@ -415,6 +417,7 @@ enum cam_cdm_hw_version {
 	CAM_CDM_VERSION_1_1 = 0x10010000,
 	CAM_CDM_VERSION_1_2 = 0x10020000,
 	CAM_CDM_VERSION_2_0 = 0x20000000,
+	CAM_CDM_VERSION_2_1 = 0x20010000,
 	CAM_CDM_VERSION_MAX,
 };
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
  */
 
 #include <linux/device.h>
@@ -529,6 +529,10 @@ int cam_cpas_get_custom_dt_info(struct cam_hw_info *cpas_hw,
 			(u32 *)&soc_private->camnoc_axi_min_ib_bw);
 	}
 
+	soc_private->custom_id = 0;
+	rc = of_property_read_u32(of_node,
+				"custom-id",
+				&soc_private->custom_id);
 	if (rc) {
 		CAM_DBG(CAM_CPAS,
 			"failed to read camnoc-axi-min-ib-bw rc:%d", rc);
