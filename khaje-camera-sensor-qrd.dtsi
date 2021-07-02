@@ -1,32 +1,7 @@
-#include <dt-bindings/clock/qcom,gcc-bengal.h>
+#include <dt-bindings/clock/qcom,gcc-khaje.h>
+#include <dt-bindings/msm/msm-camera.h>
+
 &soc {
-	led_flash_rear: qcom,camera-flash@0 {
-		cell-index = <0>;
-		compatible = "qcom,camera-flash";
-		flash-source  = <&pmi632_flash0 &pmi632_flash1>;
-		torch-source  = <&pmi632_torch0 &pmi632_torch1>;
-		switch-source = <&pmi632_switch0 &pmi632_switch0>;
-		status = "ok";
-	};
-
-	led_flash_rear_aux: qcom,camera-flash@1 {
-		cell-index = <1>;
-		compatible = "qcom,camera-flash";
-		flash-source  = <&pmi632_flash0 &pmi632_flash1>;
-		torch-source  = <&pmi632_torch0 &pmi632_torch1>;
-		switch-source = <&pmi632_switch0 &pmi632_switch0>;
-		status = "ok";
-	};
-
-	led_flash_rear_aux2: qcom,camera-flash@2 {
-		cell-index = <2>;
-		compatible = "qcom,camera-flash";
-		flash-source  = <&pmi632_flash0 &pmi632_flash1>;
-		torch-source  = <&pmi632_torch0 &pmi632_torch1>;
-		switch-source = <&pmi632_switch0 &pmi632_switch0>;
-		status = "ok";
-	};
-
 	qcom,cam-res-mgr {
 		compatible = "qcom,cam-res-mgr";
 		status = "ok";
@@ -72,8 +47,8 @@
 			"cam_clk", "cam_vaf";
 		rgltr-cntrl-support;
 		pwm-switch;
-		rgltr-min-voltage = <1800000 2800000 1050000 0 2800000>;
-		rgltr-max-voltage = <1800000 2800000 1050000 0 2800000>;
+		rgltr-min-voltage = <1800000 2800000 1056000 0 2800000>;
+		rgltr-max-voltage = <1800000 2800000 1056000 0 2800000>;
 		rgltr-load-current = <120000 80000 1200000 0 100000>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -145,8 +120,8 @@
 			"cam_clk";
 		rgltr-cntrl-support;
 		pwm-switch;
-		rgltr-min-voltage = <1800000 2800000 1050000 0>;
-		rgltr-max-voltage = <1800000 2800000 1050000 0>;
+		rgltr-min-voltage = <1800000 2800000 1056000 0>;
+		rgltr-max-voltage = <1800000 2800000 1056000 0>;
 		rgltr-load-current = <0 80000 105000 0>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -215,7 +190,6 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
 		actuator-src = <&actuator_rear>;
-		led-flash-src = <&led_flash_rear>;
 		eeprom-src = <&eeprom_rear>;
 		cam_vio-supply = <&L7P>;
 		cam_vana-supply = <&L4P>;
@@ -225,8 +199,8 @@
 			"cam_clk";
 		rgltr-cntrl-support;
 		pwm-switch;
-		rgltr-min-voltage = <1800000 2800000 1050000 0>;
-		rgltr-max-voltage = <1800000 2800000 1050000 0>;
+		rgltr-min-voltage = <1800000 2800000 1056000 0>;
+		rgltr-max-voltage = <1800000 2800000 1056000 0>;
 		rgltr-load-current = <120000 80000 1200000 0>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -259,7 +233,6 @@
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
 		actuator-src = <&actuator_rear_aux>;
-		led-flash-src = <&led_flash_rear_aux>;
 		eeprom-src = <&eeprom_rear_aux>;
 		cam_vio-supply = <&L7P>;
 		cam_vana-supply = <&L3P>;
@@ -311,8 +284,8 @@
 			"cam_clk";
 		rgltr-cntrl-support;
 		pwm-switch;
-		rgltr-min-voltage = <1800000 2800000 1050000 0>;
-		rgltr-max-voltage = <1800000 2800000 1050000 0>;
+		rgltr-min-voltage = <1800000 2800000 1056000 0>;
+		rgltr-max-voltage = <1800000 2800000 1056000 0>;
 		rgltr-load-current = <0 80000 105000 0>;
 		gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -354,7 +327,6 @@
 		sensor-position-roll = <270>;
 		sensor-position-pitch = <0>;
 		sensor-position-yaw = <180>;
-		led-flash-src = <&led_flash_rear_aux2>;
 		eeprom-src = <&eeprom_rear_aux2>;
 		cam_vio-supply = <&L7P>;
 		cam_vana-supply = <&L6P>;
@@ -394,75 +366,6 @@
 		cci-master = <0>;
 		status = "ok";
 		clocks = <&gcc GCC_CAMSS_MCLK3_CLK>;
-		clock-names = "cam_clk";
-		clock-cntl-level = "turbo";
-		clock-rates = <19200000>;
-	};
-
-	/*TPG0*/
-	qcom,cam-tpg0 {
-		cell-index = <4>;
-		compatible = "qcom,cam-sensor";
-		csiphy-sd-index = <4>;
-		sensor-position-roll = <270>;
-		sensor-position-pitch = <0>;
-		sensor-position-yaw = <180>;
-		gpios = <&tlmm 30 0>,
-			<&tlmm 35 0>;
-		gpio-reset = <1>;
-		gpio-req-tbl-num = <0 1>;
-		gpio-req-tbl-flags = <1 0>;
-		gpio-req-tbl-label = "CAMIF_MCLK1",
-					"CAM_RESET1";
-		sensor-mode = <0>;
-		status = "ok";
-		clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
-		clock-names = "cam_clk";
-		clock-cntl-level = "turbo";
-		clock-rates = <19200000>;
-	};
-
-	/*TPG1*/
-	qcom,cam-tpg1 {
-		cell-index = <5>;
-		compatible = "qcom,cam-sensor";
-		csiphy-sd-index = <5>;
-		sensor-position-roll = <270>;
-		sensor-position-pitch = <0>;
-		sensor-position-yaw = <180>;
-		gpios = <&tlmm 30 0>,
-			<&tlmm 35 0>;
-		gpio-reset = <1>;
-		gpio-req-tbl-num = <0 1>;
-		gpio-req-tbl-flags = <1 0>;
-		gpio-req-tbl-label = "CAMIF_MCLK1",
-					"CAM_RESET1";
-		sensor-mode = <0>;
-		status = "ok";
-		clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
-		clock-names = "cam_clk";
-		clock-cntl-level = "turbo";
-		clock-rates = <19200000>;
-	};
-
-	/*TPG2*/
-	qcom,cam-tpg2 {
-		cell-index = <6>;
-		compatible = "qcom,cam-sensor";
-		csiphy-sd-index = <6>;
-		sensor-position-roll = <270>;
-		sensor-position-pitch = <0>;
-		sensor-position-yaw = <180>;
-		gpios = <&tlmm 30 0>,
-			<&tlmm 35 0>;
-		gpio-reset = <1>;
-		gpio-req-tbl-num = <0 1>;
-		gpio-req-tbl-flags = <1 0>;
-		gpio-req-tbl-label = "CAMIF_MCLK1",
-					"CAM_RESET1";
-		sensor-mode = <0>;
-		status = "ok";
-		clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
 		clock-names = "cam_clk";
 		clock-cntl-level = "turbo";
 		clock-rates = <19200000>;
