@@ -421,7 +421,7 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 			if (!new_pud)
 				break;
 			if (move_pgt_entry(NORMAL_PUD, vma, old_addr, new_addr,
-					   old_pud, new_pud, need_rmap_locks))
+					   old_pud, new_pud, true))
 				continue;
 		}
 
@@ -448,7 +448,7 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 			 * moving at the PMD level if possible.
 			 */
 			if (move_pgt_entry(NORMAL_PMD, vma, old_addr, new_addr,
-					   old_pmd, new_pmd, need_rmap_locks))
+					   old_pmd, new_pmd, true))
 				continue;
 		}
 		if (pte_alloc(new_vma->vm_mm, new_pmd))
