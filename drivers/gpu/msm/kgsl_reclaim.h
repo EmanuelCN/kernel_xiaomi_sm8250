@@ -13,6 +13,7 @@
 /* Process foreground/background state. Set if process is in foreground */
 #define KGSL_PROC_STATE 1
 
+#ifdef CONFIG_PROCESS_RECLAIM
 int kgsl_reclaim_init(struct kgsl_device *device);
 void kgsl_reclaim_close(void);
 int kgsl_reclaim_to_pinned_state(struct kgsl_process_private *priv);
@@ -22,4 +23,11 @@ ssize_t kgsl_proc_max_reclaim_limit_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 ssize_t kgsl_proc_max_reclaim_limit_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
+#else
+static inline int kgsl_reclaim_init(struct kgsl_device *device){return 0;}
+static inline void kgsl_reclaim_close(void){}
+static inline int kgsl_reclaim_to_pinned_state(struct kgsl_process_private *priv){return 0;}
+static inline void kgsl_reclaim_proc_sysfs_init(struct kgsl_process_private *process){}
+static inline void kgsl_reclaim_proc_private_init(struct kgsl_process_private *process){}
+#endif
 #endif /* __KGSL_RECLAIM_H */
