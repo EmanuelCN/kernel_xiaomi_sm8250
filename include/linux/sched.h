@@ -827,6 +827,7 @@ struct task_struct {
 	atomic_t			usage;
 	/* Per task flags (PF_*), defined further below: */
 	unsigned int			flags;
+	unsigned int			pc_flags;
 	unsigned int			ptrace;
 
 #ifdef CONFIG_SMP
@@ -1705,13 +1706,19 @@ extern struct pid *cad_pid;
 #define PF_RANDOMIZE		0x00400000	/* Randomize virtual address space */
 #define PF_SWAPWRITE		0x00800000	/* Allowed to write to swap */
 #define PF_MEMSTALL		0x01000000	/* Stalled due to lack of memory */
-#define PF_PERF_CRITICAL	0x02000000	/* Thread is performance-critical */
 #define PF_NO_SETAFFINITY	0x04000000	/* Userland is not allowed to meddle with cpus_allowed */
 #define PF_MCE_EARLY		0x08000000      /* Early kill for mce process policy */
 #define PF_WAKE_UP_IDLE         0x10000000	/* TTWU on an idle CPU */
 #define PF_MUTEX_TESTER		0x20000000	/* Thread belongs to the rt mutex tester */
 #define PF_FREEZER_SKIP		0x40000000	/* Freezer should not count it as freezable */
 #define PF_SUSPEND_TASK		0x80000000      /* This thread called freeze_processes() and should not be frozen */
+
+/*
+ * Perf critical flags
+ */
+#define PC_LITTLE_AFFINE		0x00000001
+#define PC_PERF_AFFINE			0x00000002
+#define PC_PRIME_AFFINE		0x00000004
 
 /*
  * Only the _current_ task can read/write to tsk->flags, but other
