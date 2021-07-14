@@ -214,19 +214,12 @@ void inc_rq_walt_stats(struct rq *rq, struct task_struct *p)
 {
 	inc_nr_big_task(&rq->walt_stats, p);
 	walt_inc_cumulative_runnable_avg(rq, p);
-
-	p->rtg_high_prio = task_rtg_high_prio(p);
-	if (p->rtg_high_prio)
-		rq->walt_stats.nr_rtg_high_prio_tasks++;
-
 }
 
 void dec_rq_walt_stats(struct rq *rq, struct task_struct *p)
 {
 	dec_nr_big_task(&rq->walt_stats, p);
 	walt_dec_cumulative_runnable_avg(rq, p);
-	if (p->rtg_high_prio)
-		rq->walt_stats.nr_rtg_high_prio_tasks--;
 }
 
 void fixup_walt_sched_stats_common(struct rq *rq, struct task_struct *p,
@@ -1037,7 +1030,7 @@ unsigned int max_possible_efficiency = 1;
 unsigned int min_possible_efficiency = UINT_MAX;
 
 unsigned int sysctl_sched_conservative_pl;
-unsigned int sysctl_sched_many_wakeup_threshold = WALT_MANY_WAKEUP_DEFAULT;
+unsigned int sysctl_sched_many_wakeup_threshold = 1000;
 
 #define INC_STEP 8
 #define DEC_STEP 2

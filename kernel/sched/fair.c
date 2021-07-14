@@ -184,8 +184,6 @@ unsigned int sysctl_sched_min_task_util_for_boost = 51;
 /* 0.68ms default for 20ms window size scaled to 1024 */
 unsigned int sysctl_sched_min_task_util_for_colocation = 35;
 __read_mostly unsigned int sysctl_sched_prefer_spread;
-unsigned int sysctl_walt_rtg_cfs_boost_prio = 99; /* disabled by default */
-unsigned int sysctl_walt_low_latency_task_threshold; /* disabled by default */
 unsigned int sched_small_task_threshold = 102;
 __read_mostly unsigned int sysctl_sched_force_lb_enable = 1;
 
@@ -4112,11 +4110,6 @@ static inline void adjust_cpus_for_packing(struct task_struct *p,
 	if (prefer_spread_on_idle(*best_idle_cpu))
 		fbt_env->need_idle |= 2;
 
-	if (task_rtg_high_prio(p) && walt_nr_rtg_high_prio(*target_cpu) > 0) {
-		*target_cpu = -1;
-		return;
-	}
-
 	if (fbt_env->need_idle || task_placement_boost_enabled(p) || boosted ||
 		shallowest_idle_cstate <= 0) {
 		*target_cpu = -1;
@@ -4235,19 +4228,20 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 			thresh >>= 1;
 
 		vruntime -= thresh;
-#ifdef CONFIG_SCHED_WALT
 		if (entity_is_task(se)) {
-			if ((per_task_boost(task_of(se)) ==
-					TASK_BOOST_STRICT_MAX) ||
-					walt_low_latency_task(task_of(se)) ||
-					task_rtg_high_prio(task_of(se))) {
+			if (per_task_boost(task_of(se)) ==
+						TASK_BOOST_STRICT_MAX)
+				vruntime -= sysctl_sched_latency;
+#ifdef CONFIG_SCHED_WALT
+			else if (unlikely(task_of(se)->low_latency)) {
 				vruntime -= sysctl_sched_latency;
 				vruntime -= thresh;
-				se->vruntime = vruntime;
+				se->vruntime = min_vruntime(vruntime,
+							se->vruntime);
 				return;
 			}
-		}
 #endif
+		}
 	}
 
 	/* ensure we never gain time by being placed backwards. */
@@ -7067,8 +7061,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 	int prev_cpu = task_cpu(p);
 	bool next_group_higher_cap = false;
 	int isolated_candidate = -1;
-	unsigned int target_nr_rtg_high_prio = UINT_MAX;
-	bool rtg_high_prio_task = task_rtg_high_prio(p);
 	int mid_cap_orig_cpu = cpu_rq(smp_processor_id())->rd->mid_cap_orig_cpu;
 	struct task_struct *curr_tsk;
 	bool prioritized_task = prefer_high_cap && p->prio <= DEFAULT_PRIO;
@@ -7414,31 +7406,12 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 			 * capacity.
 			 */
 
-			/*
-			 * Try to spread the rtg high prio tasks so that they
-			 * don't preempt each other. This is a optimisitc
-			 * check assuming rtg high prio can actually preempt
-			 * the current running task with the given vruntime
-			 * boost.
-			 */
-			if (rtg_high_prio_task)  {
-				if (walt_nr_rtg_high_prio(i) > target_nr_rtg_high_prio)
-					continue;
-
-				/* Favor CPUs with maximum spare capacity */
-				if (walt_nr_rtg_high_prio(i) == target_nr_rtg_high_prio &&
-						spare_cap < target_max_spare_cap)
-					continue;
-
-			} else {
-				/* Favor CPUs with maximum spare capacity */
-				if (spare_cap < target_max_spare_cap)
-					continue;
-			}
+			/* Favor CPUs with maximum spare capacity */
+			if (spare_cap < target_max_spare_cap)
+				continue;
 
 			target_max_spare_cap = spare_cap;
 			target_capacity = capacity_orig;
-			target_nr_rtg_high_prio = walt_nr_rtg_high_prio(i);
 			target_cpu = i;
 		}
 
