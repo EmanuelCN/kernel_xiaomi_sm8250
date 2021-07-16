@@ -200,4 +200,3 @@ L(page_cross):
 	b	L(page_cross_entry)
 
 SYM_FUNC_END_PI(strlen)
-EXPORT_SYMBOL_NOKASAN(strlen)

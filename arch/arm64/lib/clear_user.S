@@ -46,7 +46,6 @@ USER(7f, sttrb	wzr, [x2, #-1])
 5:	mov	x0, #0
 	ret
 SYM_FUNC_END(__arch_clear_user)
-EXPORT_SYMBOL(__arch_clear_user)
 
 	.section .fixup,"ax"
 	.align	2

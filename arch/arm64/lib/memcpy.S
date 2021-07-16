@@ -243,10 +243,6 @@ L(copy64_from_start):
 	ret
 
 SYM_FUNC_END_PI(memcpy)
-EXPORT_SYMBOL(memcpy)
 SYM_FUNC_END_ALIAS(__memcpy)
-EXPORT_SYMBOL(__memcpy)
 SYM_FUNC_END_ALIAS_PI(memmove)
-EXPORT_SYMBOL(memmove)
 SYM_FUNC_END_ALIAS(__memmove)
-EXPORT_SYMBOL(__memmove)
