@@ -358,7 +358,7 @@ struct bias_config {
 	int	bias_kohms;
 };
 
-static int fg_gen4_debug_mask;
+static int fg_gen4_debug_mask = 0;
 
 static bool is_batt_vendor_gyb;
 static bool is_batt_vendor_nvt;
