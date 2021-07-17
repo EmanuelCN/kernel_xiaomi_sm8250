@@ -1972,6 +1972,7 @@ void sched_migrate_to_cpumask_end(const struct cpumask *old_mask,
 		struct rq *rq = this_rq();
 
 		raw_spin_lock(&rq->lock);
+		update_rq_clock(rq);
 		do_set_cpus_allowed(p, old_mask);
 		raw_spin_unlock(&rq->lock);
 	}
