@@ -484,19 +484,16 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
 		 * program uses newlines in its paths then it can kick rocks.
 		 */
 		if (size > 1) {
-			const int inlen = size - 1;
-			int outlen = inlen;
 			char *p;
 
-			p = d_path_outlen(&file->f_path, buf, &outlen);
+			p = d_path(&file->f_path, buf, size);
 			if (!IS_ERR(p)) {
 				size_t len;
 
-				if (outlen != inlen)
-					len = inlen - outlen - 1;
-				else
-					len = strlen(p);
-				memmove(buf, p, len);
+				/* Minus one to exclude the NUL character */
+				len = size - (p - buf) - 1;
+				if (likely(p > buf))
+					memmove(buf, p, len);
 				buf[len] = '\n';
 				seq_commit(m, len + 1);
 				return;
