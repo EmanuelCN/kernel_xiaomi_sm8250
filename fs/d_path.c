@@ -249,9 +249,9 @@ static void get_fs_root_rcu(struct fs_struct *fs, struct path *root)
  *
  * "buflen" should be positive.
  */
-char *d_path_outlen(const struct path *path, char *buf, int *buflen)
+char *d_path(const struct path *path, char *buf, int buflen)
 {
-	char *res = buf + *buflen;
+	char *res = buf + buflen;
 	struct path root;
 	int error;
 
@@ -268,21 +268,16 @@ char *d_path_outlen(const struct path *path, char *buf, int *buflen)
 	 */
 	if (path->dentry->d_op && path->dentry->d_op->d_dname &&
 	    (!IS_ROOT(path->dentry) || path->dentry != path->mnt->mnt_root))
-		return path->dentry->d_op->d_dname(path->dentry, buf, *buflen);
+		return path->dentry->d_op->d_dname(path->dentry, buf, buflen);
 
 	rcu_read_lock();
 	get_fs_root_rcu(current->fs, &root);
-	error = path_with_deleted(path, &root, &res, buflen);
+	error = path_with_deleted(path, &root, &res, &buflen);
 	rcu_read_unlock();
 
 	if (error < 0)
 		res = ERR_PTR(error);
 	return res;
-}
-
-char *d_path(const struct path *path, char *buf, int buflen)
-{
-	return d_path_outlen(path, buf, &buflen);
 }
 EXPORT_SYMBOL(d_path);
 
