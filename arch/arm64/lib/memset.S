@@ -203,6 +203,4 @@ SYM_FUNC_START_WEAK_PI(memset)
 	b.ne	.Ltail_maybe_long
 	ret
 SYM_FUNC_END_PI(memset)
-EXPORT_SYMBOL(memset)
 SYM_FUNC_END_ALIAS(__memset)
-EXPORT_SYMBOL(__memset)
