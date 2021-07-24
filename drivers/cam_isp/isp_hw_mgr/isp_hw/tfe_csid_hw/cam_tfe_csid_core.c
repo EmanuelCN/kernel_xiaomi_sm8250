@@ -3255,7 +3255,8 @@ int cam_tfe_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 	for (i = 0; i < CAM_CSID_PPI_HW_MAX; i++) {
 		rc = cam_csid_ppi_hw_init(&tfe_csid_hw->ppi_hw_intf[i], i);
 		if (rc < 0) {
-			CAM_ERR(CAM_ISP, "PPI init failed for PPI %d", i);
+			CAM_INFO(CAM_ISP, "PPI init failed for PPI %d", i);
+			rc = 0;
 			break;
 		}
 	}
