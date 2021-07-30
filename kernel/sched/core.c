@@ -2415,13 +2415,15 @@ static int __set_cpus_allowed_ptr_locked(struct task_struct *p,
 	__releases(rq->lock)
 	__releases(p->pi_lock)
 {
+	const struct cpumask *cpu_allowed_mask = task_cpu_possible_mask(p);
 	const struct cpumask *cpu_valid_mask = cpu_active_mask;
+        bool kthread = p->flags & PF_KTHREAD;
 	struct cpumask *user_mask = NULL;
 	unsigned int dest_cpu;
 	int ret = 0;
 	update_rq_clock(rq);
 
-	if (p->flags & PF_KTHREAD || is_migration_disabled(p)) {
+	if (kthread || is_migration_disabled(p)) {
 		/*
 		 * Kernel threads are allowed on online && !active CPUs.
 		 *
@@ -2431,6 +2433,11 @@ static int __set_cpus_allowed_ptr_locked(struct task_struct *p,
 		 * set_cpus_allowed_common() and actually reset p->cpus_ptr.
 		 */
 		cpu_valid_mask = cpu_online_mask;
+	}
+
+	if (!kthread && !cpumask_subset(new_mask, cpu_allowed_mask)) {
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/*
