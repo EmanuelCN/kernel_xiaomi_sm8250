@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -130,7 +130,8 @@ static int32_t cam_flash_driver_cmd(struct cam_flash_ctrl *fctrl,
 		struct cam_flash_query_cap_info flash_cap = {0};
 
 		CAM_DBG(CAM_FLASH, "CAM_QUERY_CAP");
-		flash_cap.slot_info = fctrl->soc_info.index;
+		flash_cap.slot_info  = fctrl->soc_info.index;
+		flash_cap.flash_type = soc_private->flash_type;
 		for (i = 0; i < fctrl->flash_num_sources; i++) {
 			flash_cap.max_current_flash[i] =
 				soc_private->flash_max_current[i];
@@ -401,8 +402,9 @@ static int cam_flash_init_subdev(struct cam_flash_ctrl *fctrl)
 static int32_t cam_flash_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0, i = 0;
-	struct cam_flash_ctrl *fctrl = NULL;
-	struct device_node *of_parent = NULL;
+	struct cam_flash_ctrl *fctrl     = NULL;
+	struct device_node *of_parent    = NULL;
+	struct cam_hw_soc_info *soc_info = NULL;
 
 	CAM_DBG(CAM_FLASH, "Enter");
 	if (!pdev->dev.of_node) {
@@ -457,6 +459,25 @@ static int32_t cam_flash_platform_probe(struct platform_device *pdev)
 
 		fctrl->io_master_info.cci_client->cci_device = fctrl->cci_num;
 		CAM_DBG(CAM_FLASH, "cci-index %d", fctrl->cci_num, rc);
+
+		soc_info = &fctrl->soc_info;
+		if (!soc_info->gpio_data) {
+			CAM_INFO(CAM_FLASH, "No GPIO found");
+			rc = 0;
+			return rc;
+		}
+
+		if (!soc_info->gpio_data->cam_gpio_common_tbl_size) {
+			CAM_INFO(CAM_FLASH, "No GPIO found");
+			return -EINVAL;
+		}
+
+		rc = cam_sensor_util_init_gpio_pin_tbl(soc_info,
+				&fctrl->power_info.gpio_num_info);
+		if ((rc < 0) || (!fctrl->power_info.gpio_num_info)) {
+			CAM_ERR(CAM_FLASH, "No/Error Flash GPIOs");
+			return -EINVAL;
+		}
 
 		fctrl->i2c_data.per_frame =
 			kzalloc(sizeof(struct i2c_settings_array) *
