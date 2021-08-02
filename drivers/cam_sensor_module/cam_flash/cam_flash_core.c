@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -600,6 +600,21 @@ static int cam_flash_i2c_delete_req(struct cam_flash_ctrl *fctrl,
 
 		CAM_DBG(CAM_FLASH, "top: %llu, del_req_id:%llu",
 			top, del_req_id);
+
+		for (i = 0; i < MAX_PER_FRAME_ARRAY; i++) {
+			if ((del_req_id >
+				 fctrl->i2c_data.per_frame[i].request_id) && (
+				 fctrl->i2c_data.per_frame[i].is_settings_valid
+					== 1)) {
+				fctrl->i2c_data.per_frame[i].request_id = 0;
+				rc = delete_request(
+					&(fctrl->i2c_data.per_frame[i]));
+				if (rc < 0)
+					CAM_ERR(CAM_SENSOR,
+						"Delete request Fail:%lld rc:%d",
+						del_req_id, rc);
+			}
+		}
 	}
 
 	cam_flash_i2c_flush_nrt(fctrl);
@@ -699,7 +714,7 @@ int cam_flash_i2c_apply_setting(struct cam_flash_ctrl *fctrl,
 	struct i2c_settings_list *i2c_list;
 	struct i2c_settings_array *i2c_set = NULL;
 	int frame_offset = 0, rc = 0;
-
+	CAM_DBG(CAM_FLASH, "req_id=%llu", req_id);
 	if (req_id == 0) {
 		/* NonRealTime Init settings*/
 		if (fctrl->i2c_data.init_settings.is_settings_valid == true) {
@@ -1196,6 +1211,7 @@ int cam_flash_i2c_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 		i2c_reg_settings =
 			&fctrl->i2c_data.per_frame[frm_offset];
 		if (i2c_reg_settings->is_settings_valid == true) {
+			CAM_DBG(CAM_FLASH, "settings already valid");
 			i2c_reg_settings->request_id = 0;
 			i2c_reg_settings->is_settings_valid = false;
 			goto update_req_mgr;
@@ -1250,17 +1266,21 @@ int cam_flash_i2c_pkt_parser(struct cam_flash_ctrl *fctrl, void *arg)
 		return rc;
 	}
 	case CAM_PKT_NOP_OPCODE: {
+		frm_offset = csl_packet->header.request_id %
+			MAX_PER_FRAME_ARRAY;
 		if ((fctrl->flash_state == CAM_FLASH_STATE_INIT) ||
 			(fctrl->flash_state == CAM_FLASH_STATE_ACQUIRE)) {
 			CAM_WARN(CAM_FLASH,
 				"Rxed NOP packets without linking");
-			frm_offset = csl_packet->header.request_id %
-				MAX_PER_FRAME_ARRAY;
 			fctrl->i2c_data.per_frame[frm_offset].is_settings_valid
 				= false;
 			return 0;
 		}
-
+		i2c_reg_settings =
+			&fctrl->i2c_data.per_frame[frm_offset];
+		i2c_reg_settings->is_settings_valid = true;
+		i2c_reg_settings->request_id =
+			csl_packet->header.request_id;
 		CAM_DBG(CAM_FLASH, "NOP Packet is Received: req_id: %u",
 			csl_packet->header.request_id);
 		goto update_req_mgr;
