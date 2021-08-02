@@ -2,13 +2,9 @@
 #include <dt-bindings/iio/qcom,spmi-vadc.h>
 #include <dt-bindings/input/input.h>
 #include "bengal-thermal-overlay.dtsi"
+#include "camera/khaje-camera-sensor-qrd.dtsi"
 #include "bengal-audio-overlay.dtsi"
 #include "khaje-sde-display.dtsi"
-
-&qupv3_se1_i2c {
-	status = "ok";
-	#include "smb1355.dtsi"
-};
 
 &pm6125_gpios {
 	key_vol_up {
@@ -188,21 +184,6 @@
 	status = "ok";
 };
 
-&tlmm {
-	smb_int_default: smb_int_default {
-		mux {
-			pins = "gpio105";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio105";
-			bias-pull-up;
-			input-enable;
-		};
-	};
-};
-
 &ufsphy_mem {
 	compatible = "qcom,ufs-phy-qmp-v4";
 
@@ -254,6 +235,12 @@
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
 	qcom,platform-te-gpio = <&tlmm 81 0>;
+	qcom,platform-reset-gpio = <&tlmm 82 0>;
+};
+
+&dsi_sim_vid {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,platform-reset-gpio = <&tlmm 82 0>;
 };
 
