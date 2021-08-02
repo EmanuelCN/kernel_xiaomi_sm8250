@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -33,6 +33,7 @@ enum {
 	AUDIO_EXT_CLK_LPASS8,
 	AUDIO_EXT_CLK_LPASS_AUDIO_HW_VOTE,
 	AUDIO_EXT_CLK_PM660_PMI,
+	AUDIO_EXT_CLK_DIV_CLK2,
 	AUDIO_EXT_CLK_LPASS_MAX,
 	AUDIO_EXT_CLK_EXTERNAL_PLL = AUDIO_EXT_CLK_LPASS_MAX,
 	AUDIO_EXT_CLK_MAX,
@@ -110,7 +111,7 @@ static void audio_ext_clk_unprepare(struct clk_hw *hw)
 		ret = pinctrl_select_state(pnctrl_info->pinctrl,
 					   pnctrl_info->sleep);
 		if (ret) {
-			pr_err("%s: active state select failed with %d\n",
+			pr_err("%s: sleep state select failed with %d\n",
 				__func__, ret);
 			return;
 		}
@@ -402,6 +403,19 @@ static struct audio_ext_clk audio_clk_array[] = {
 				.parent_names = (const char *[]){ "div_clk1" },
 				.num_parents = 1,
 				.ops = &audio_ext_clk_dummy_ops,
+			},
+		},
+	},
+	{
+		.pnctrl_info = {NULL},
+		.fact = {
+			.mult = 1,
+			.div = 1,
+			.hw.init = &(struct clk_init_data){
+				.name = "audio_ext_div_clk2",
+				.parent_names = (const char *[]){ "div_clk2" },
+				.num_parents = 1,
+				.ops = &audio_ext_clk_ops,
 			},
 		},
 	},
