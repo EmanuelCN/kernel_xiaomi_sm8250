@@ -1127,6 +1127,9 @@ static ssize_t available_governors_show(struct device *d,
 	struct devfreq *df = to_devfreq(d);
 	ssize_t count = 0;
 
+	if (strstr(dev_name(df->dev.parent), "kgsl"))
+		return sprintf(buf, "%s\n", "msm-adreno-tz powersave performance");
+
 	mutex_lock(&devfreq_list_lock);
 
 	/*
