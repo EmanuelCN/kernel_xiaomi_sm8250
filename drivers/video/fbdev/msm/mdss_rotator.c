@@ -841,6 +841,7 @@ static int mdss_rotator_init_queue(struct mdss_rot_mgr *mgr)
 {
 	int i, size, ret = 0;
 	char name[32];
+	struct sched_param param = { .sched_priority = 17 };
 
 	size = sizeof(struct mdss_rot_queue) * mgr->queue_count;
 	mgr->queues = devm_kzalloc(&mgr->pdev->dev, size, GFP_KERNEL);
