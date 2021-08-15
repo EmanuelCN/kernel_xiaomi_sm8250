@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -3066,6 +3066,7 @@ static int __cam_isp_ctx_rdi_only_sof_in_bubble_applied(
 			ctx_isp->frame_id,
 			ctx->ctx_id);
 		ctx->ctx_crm_intf->notify_err(&notify);
+		atomic_set(&ctx_isp->process_bubble, 1);
 	} else {
 		req_isp->bubble_report = 0;
 	}
@@ -3123,6 +3124,44 @@ static int __cam_isp_ctx_rdi_only_sof_in_bubble_state(
 	ctx_isp->boot_timestamp = sof_event_data->boot_time;
 	CAM_DBG(CAM_ISP, "frame id: %lld time stamp:0x%llx",
 		ctx_isp->frame_id, ctx_isp->sof_timestamp_val);
+
+
+	if (atomic_read(&ctx_isp->process_bubble)) {
+		if (list_empty(&ctx->active_req_list)) {
+			CAM_ERR(CAM_ISP, "No available active req in bubble");
+			atomic_set(&ctx_isp->process_bubble, 0);
+			return -EINVAL;
+		}
+
+		if (ctx_isp->last_sof_timestamp ==
+			ctx_isp->sof_timestamp_val) {
+			CAM_DBG(CAM_ISP,
+				"Tasklet delay detected! Bubble frame: %lld check skipped, sof_timestamp: %lld, ctx_id: %d",
+				ctx_isp->frame_id,
+				ctx_isp->sof_timestamp_val,
+				ctx->ctx_id);
+			goto end;
+		}
+
+		req = list_first_entry(&ctx->active_req_list,
+				struct cam_ctx_request, list);
+		req_isp = (struct cam_isp_ctx_req *) req->req_priv;
+
+		if (req_isp->bubble_detected) {
+			req_isp->num_acked = 0;
+			req_isp->bubble_detected = false;
+			list_del_init(&req->list);
+			list_add(&req->list, &ctx->pending_req_list);
+			atomic_set(&ctx_isp->process_bubble, 0);
+			ctx_isp->active_req_cnt--;
+			CAM_DBG(CAM_REQ,
+				"Move active req: %lld to pending list(cnt = %d) [bubble re-apply],ctx %u",
+				req->request_id,
+				ctx_isp->active_req_cnt, ctx->ctx_id);
+			goto end;
+		}
+	}
+
 	/*
 	 * Signal all active requests with error and move the  all the active
 	 * requests to free list
@@ -3144,6 +3183,7 @@ static int __cam_isp_ctx_rdi_only_sof_in_bubble_state(
 		ctx_isp->active_req_cnt--;
 	}
 
+end:
 	/* notify reqmgr with sof signal */
 	if (ctx->ctx_crm_intf && ctx->ctx_crm_intf->notify_trigger) {
 		notify.link_hdl = ctx->link_hdl;
@@ -3174,6 +3214,7 @@ static int __cam_isp_ctx_rdi_only_sof_in_bubble_state(
 		__cam_isp_ctx_substate_val_to_type(
 		ctx_isp->substate_activated));
 
+	ctx_isp->last_sof_timestamp = ctx_isp->sof_timestamp_val;
 	return 0;
 }
 
@@ -3426,6 +3467,7 @@ static int __cam_isp_ctx_release_hw_in_top_state(struct cam_context *ctx,
 	ctx_isp->hw_acquired = false;
 	ctx_isp->init_received = false;
 	ctx_isp->req_info.last_bufdone_req_id = 0;
+	ctx_isp->last_sof_timestamp = 0;
 
 	atomic64_set(&ctx_isp->state_monitor_head, -1);
 
@@ -3490,6 +3532,7 @@ static int __cam_isp_ctx_release_dev_in_top_state(struct cam_context *ctx,
 	ctx_isp->init_received = false;
 	ctx_isp->rdi_only_context = false;
 	ctx_isp->req_info.last_bufdone_req_id = 0;
+	ctx_isp->last_sof_timestamp = 0;
 
 	atomic64_set(&ctx_isp->state_monitor_head, -1);
 	for (i = 0; i < CAM_ISP_CTX_EVENT_MAX; i++)
@@ -3830,6 +3873,7 @@ static int __cam_isp_ctx_acquire_dev_in_available(struct cam_context *ctx,
 	ctx_isp->hw_acquired = true;
 	ctx_isp->split_acquire = false;
 	ctx->ctxt_to_hw_map = param.ctxt_to_hw_map;
+	ctx_isp->last_sof_timestamp = 0;
 
 	atomic64_set(&ctx_isp->state_monitor_head, -1);
 	for (i = 0; i < CAM_ISP_CTX_EVENT_MAX; i++)
@@ -3987,6 +4031,7 @@ static int __cam_isp_ctx_acquire_hw_v1(struct cam_context *ctx,
 	ctx_isp->hw_ctx = param.ctxt_to_hw_map;
 	ctx_isp->hw_acquired = true;
 	ctx->ctxt_to_hw_map = param.ctxt_to_hw_map;
+	ctx_isp->last_sof_timestamp = 0;
 
 	atomic64_set(&ctx_isp->state_monitor_head, -1);
 
@@ -4132,6 +4177,7 @@ static int __cam_isp_ctx_acquire_hw_v2(struct cam_context *ctx,
 	ctx_isp->hw_ctx = param.ctxt_to_hw_map;
 	ctx_isp->hw_acquired = true;
 	ctx->ctxt_to_hw_map = param.ctxt_to_hw_map;
+	ctx_isp->last_sof_timestamp = 0;
 
 	trace_cam_context_state("ISP", ctx);
 	CAM_DBG(CAM_ISP,
