@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2014-2018, 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
  */
 
 #define pr_fmt(fmt) "arm-memlat-mon: " fmt
@@ -124,6 +124,7 @@ struct memlat_mon {
  * @mons:			All of the memlat_mon structs representing
  *				the different voters who share this cpu_grp.
  * @mons_lock:		A lock used to protect the @mons.
+ * @init_mons_lock:	A lock used to protect the @mons in probe routine.
  */
 struct memlat_cpu_grp {
 	cpumask_t		cpus;
@@ -140,6 +141,7 @@ struct memlat_cpu_grp {
 	unsigned int		num_active_mons;
 	struct memlat_mon	*mons;
 	struct mutex		mons_lock;
+	struct mutex		init_mons_lock;
 };
 
 struct memlat_mon_spec {
@@ -621,6 +623,7 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	mutex_init(&cpu_grp->mons_lock);
+	mutex_init(&cpu_grp->init_mons_lock);
 	cpu_grp->update_ms = DEFAULT_UPDATE_MS;
 
 	dev_set_drvdata(dev, cpu_grp);
@@ -651,7 +654,7 @@ static int memlat_mon_probe(struct platform_device *pdev, bool is_compute)
 		return -ENODEV;
 	}
 
-	mutex_lock(&cpu_grp->mons_lock);
+	mutex_lock(&cpu_grp->init_mons_lock);
 	mon = &cpu_grp->mons[cpu_grp->num_inited_mons];
 	mon->is_active = false;
 	mon->requested_update_ms = 0;
@@ -765,7 +768,7 @@ static int memlat_mon_probe(struct platform_device *pdev, bool is_compute)
 		cpu_grp->num_inited_mons++;
 
 unlock_out:
-	mutex_unlock(&cpu_grp->mons_lock);
+	mutex_unlock(&cpu_grp->init_mons_lock);
 	return ret;
 }
 
