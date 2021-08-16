@@ -952,7 +952,7 @@ static int sde_hdcp_2x_main(void *data)
 	enum sde_hdcp_2x_wakeup_cmd cmd;
 
 	while (1) {
-		wait_event(hdcp->wait_q,
+		wait_event_interruptible(hdcp->wait_q,
 			!kfifo_is_empty(&hdcp->cmd_q) ||
 			kthread_should_stop() ||
 			kthread_should_park());
