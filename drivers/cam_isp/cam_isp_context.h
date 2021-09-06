@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_ISP_CONTEXT_H_
@@ -232,6 +232,7 @@ struct cam_isp_context_event_record {
  * @req_isp:                   ISP private request object storage
  * @hw_ctx:                    HW object returned by the acquire device command
  * @sof_timestamp_val:         Captured time stamp value at sof hw event
+ * @last_sof_timestamp:        Time stamp value for last SOF event
  * @boot_timestamp:            Boot time stamp for a given req_id
  * @active_req_cnt:            Counter for the active request
  * @reported_req_id:           Last reported request id
@@ -268,6 +269,7 @@ struct cam_isp_context {
 
 	void                            *hw_ctx;
 	uint64_t                         sof_timestamp_val;
+	uint64_t                         last_sof_timestamp;
 	uint64_t                         boot_timestamp;
 	int32_t                          active_req_cnt;
 	int64_t                          reported_req_id;
