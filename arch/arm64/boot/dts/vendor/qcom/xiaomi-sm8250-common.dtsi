@@ -19,7 +19,6 @@
 
 	qcom,cpufreq-table-1 =
 			< 710400>,
-			< 825600>,
 			<1478400>,
 			<1766400>,
 			<1862400>,
@@ -61,22 +60,22 @@
 };
 
 &CPU4 {
-	capacity-dmips-mhz = <1024>;
+	capacity-dmips-mhz = <1022>;
 	dynamic-power-coefficient = <340>;
 };
 
 &CPU5 {
-	capacity-dmips-mhz = <1024>;
+	capacity-dmips-mhz = <1022>;
 	dynamic-power-coefficient = <340>;
 };
 
 &CPU6 {
-	capacity-dmips-mhz = <1024>;
+	capacity-dmips-mhz = <1022>;
 	dynamic-power-coefficient = <340>;
 };
 
 &CPU7 {
-	capacity-dmips-mhz = <1024>;
+	capacity-dmips-mhz = <1022>;
 	dynamic-power-coefficient = <409>;
 };
 
