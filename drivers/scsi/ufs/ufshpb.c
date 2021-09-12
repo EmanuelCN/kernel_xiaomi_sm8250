@@ -750,9 +750,6 @@ int ufshpb_prepare_add_lrbp(struct ufsf_feature *ufsf, int add_tag)
 		goto hold_err;
 	}
 
-	/* Vote PM QoS for the pre_req */
-	ufshcd_vops_pm_qos_req_start(hba, pre_cmd->request);
-
 	err = ufshcd_comp_scsi_upiu(hba, add_lrbp);
 	if (err)
 		goto map_err;
@@ -763,7 +760,6 @@ int ufshpb_prepare_add_lrbp(struct ufsf_feature *ufsf, int add_tag)
 
 	return 0;
 map_err:
-	ufshcd_vops_pm_qos_req_end(hba, pre_cmd->request, true);
 	ufshcd_release_all(hba);
 hold_err:
 	add_lrbp->cmd = NULL;
