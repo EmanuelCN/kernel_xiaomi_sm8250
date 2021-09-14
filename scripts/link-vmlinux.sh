@@ -117,19 +117,6 @@ modpost_link()
 	${LD} ${KBUILD_LDFLAGS} -r -o ${1} $(lto_lds) ${objects}
 }
 
-# If CONFIG_LTO_CLANG is selected, we postpone running recordmcount until
-# we have compiled LLVM IR to an object file.
-recordmcount()
-{
-	if [ -z "${CONFIG_LTO_CLANG}" ]; then
-		return
-	fi
-
-	if [ -n "${CONFIG_FTRACE_MCOUNT_RECORD}" ]; then
-		scripts/recordmcount ${RECORDMCOUNT_FLAGS} $*
-	fi
-}
-
 # Link of vmlinux
 # ${1} - optional extra .o files
 # ${2} - output file
@@ -303,11 +290,6 @@ modpost_link vmlinux.o
 
 # modpost vmlinux.o to check for section mismatches
 ${MAKE} -f "${srctree}/scripts/Makefile.modpost" vmlinux.o
-
-if [ -n "${CONFIG_LTO_CLANG}" ]; then
-	# Call recordmcount if needed
-	recordmcount vmlinux.o
-fi
 
 # Generate RTIC MP placeholder compile unit of the correct size
 # and add it to the list of link objects
