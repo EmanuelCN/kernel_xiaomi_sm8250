@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TOP_TPG_V1_H_
@@ -48,6 +48,7 @@ static struct cam_top_tpg_reg_offset   cam_top_tpg_v1_reg_offset = {
 	.tpg_payload_mode_color = 0x8,
 	.tpg_split_en_shift = 5,
 	.top_mux_reg_offset = 0x1C,
+	.top_unicolor_bar_shift = 2,
 };
 
 #endif /*_CAM_TOP_TPG_V1_H_ */

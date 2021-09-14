@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TFE_HW_MGR_H_
@@ -30,6 +30,7 @@
  * @enable_recovery:           enable recovery
  * @enable_csid_recovery:      enable csid recovery
  * @camif_debug:               enable sensor diagnosis status
+ * @set_tpg_pattern:           tpg pattern information
  * @enable_reg_dump:           enable reg dump on error;
  * @per_req_reg_dump:          Enable per request reg dump
  *
@@ -40,6 +41,7 @@ struct cam_tfe_hw_mgr_debug {
 	uint32_t       enable_recovery;
 	uint32_t       enable_csid_recovery;
 	uint32_t       camif_debug;
+	uint32_t       set_tpg_pattern;
 	uint32_t       enable_reg_dump;
 	uint32_t       per_req_reg_dump;
 };
