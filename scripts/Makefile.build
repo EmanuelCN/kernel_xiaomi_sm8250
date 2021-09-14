@@ -553,23 +553,7 @@ targets += $(obj)/lib-ksyms.o
 
 endif
 
-#
-# Rule to link composite objects
-#
-#  Composite objects are specified in kbuild makefile as follows:
-#    <composite-object>-objs := <list of .o files>
-#  or
-#    <composite-object>-y    := <list of .o files>
-#  or
-#    <composite-object>-m    := <list of .o files>
-#  The -m syntax only works if <composite object> is a module
-link_multi_deps =                     \
-$(filter $(addprefix $(obj)/,         \
-$($(subst $(obj)/,,$(@:.o=-objs)))    \
-$($(subst $(obj)/,,$(@:.o=-y)))       \
-$($(subst $(obj)/,,$(@:.o=-m)))), $^)
-
-cmd_link_multi-link = $(LD) $(ld_flags) -r -o $@ $(link_multi_deps) $(cmd_secanalysis)
+cmd_link_multi-link = $(LD) $(ld_flags) -r -o $@ $(filter %.o,$^) $(cmd_secanalysis)
 
 quiet_cmd_link_multi-y = AR      $@
 cmd_link_multi-y = $(update_lto_symversions) \
@@ -590,7 +574,7 @@ $(multi-used-y): FORCE
 
 $(multi-used-m): FORCE
 	$(call if_changed,link_multi-m)
-	@{ echo $(@:.o=.ko); echo $(link_multi_deps); \
+	@{ echo $(@:.o=.ko); echo $(filter %.o,$^); \
 	   $(cmd_undef_syms); } > $(MODVERDIR)/$(@F:.o=.mod)
 
 $(call multi_depend, $(multi-used-y), .o, -objs -y)
