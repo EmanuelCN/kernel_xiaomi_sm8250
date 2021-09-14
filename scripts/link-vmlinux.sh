@@ -47,10 +47,18 @@ modpost_link()
 
 	objects="--whole-archive				\
 		${KBUILD_VMLINUX_OBJS}				\
-		--no-whole-archive				\
-		--start-group					\
+		--no-whole-archive					\
+		--start-group						\
 		${KBUILD_VMLINUX_LIBS}				\
 		--end-group"
+
+	if [ -n "${CONFIG_LTO_CLANG}" ]; then
+		# This might take a while, so indicate that we're doing
+		# an LTO link
+		info LTO ${1}
+	else
+		info LD ${1}
+	fi
 
 	${LD} ${KBUILD_LDFLAGS} -r -o ${1} ${objects}
 }
@@ -64,12 +72,22 @@ vmlinux_link()
 	local objects
 
 	if [ "${SRCARCH}" != "um" ]; then
-		objects="--whole-archive	\
-			${KBUILD_VMLINUX_OBJS}	\
-			--start-group			\
-			${KBUILD_VMLINUX_LIBS}	\
-			--end-group				\
-			${1}"
+		if [ -n "${CONFIG_LTO_CLANG}" ]; then
+			# Use vmlinux.o instead of performing the slow LTO
+			# link again.
+			objects="--whole-archive	\
+				vmlinux.o 				\
+				--no-whole-archive		\
+				${1}"
+		else
+			objects="--whole-archive	\
+				${KBUILD_VMLINUX_OBJS}	\
+				--no-whole-archive		\
+				--start-group			\
+				${KBUILD_VMLINUX_LIBS}	\
+				--end-group
+				${1}"
+		fi
 
 		${LD} ${KBUILD_LDFLAGS} ${LDFLAGS_vmlinux} -o ${2}	\
 			-T ${lds} ${objects}
@@ -82,9 +100,9 @@ vmlinux_link()
 			-Wl,--end-group				\
 			${1}"
 
-		${CC} ${CFLAGS_vmlinux} -o ${2}			\
+		${CC} ${CFLAGS_vmlinux} -o ${2}	\
 			-Wl,-T,${lds}				\
-			${objects}				\
+			${objects}					\
 			-lutil -lrt -lpthread
 		rm -f linux
 	fi
@@ -212,7 +230,6 @@ fi;
 ${MAKE} -f "${srctree}/scripts/Makefile.build" obj=init
 
 #link vmlinux.o
-info LD vmlinux.o
 modpost_link vmlinux.o
 
 # modpost vmlinux.o to check for section mismatches
