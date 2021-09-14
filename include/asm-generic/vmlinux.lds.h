@@ -482,13 +482,6 @@
 #define RODATA          RO_DATA_SECTION(4096)
 #define RO_DATA(align)  RO_DATA_SECTION(align)
 
-#define SECURITY_INIT							\
-	.security_initcall.init : AT(ADDR(.security_initcall.init) - LOAD_OFFSET) { \
-		__security_initcall_start = .;				\
-		KEEP(*(.security_initcall.init))			\
-		__security_initcall_end = .;				\
-	}
-
 /*
  * Non-instrumentable text section
  */
@@ -828,6 +821,12 @@
 		__security_initcall_start = .;				\
 		KEEP(*(.security_initcall.init))			\
 		__security_initcall_end = .;
+
+/* Older linker script style for security init. */
+#define SECURITY_INIT							\
+	.security_initcall.init : AT(ADDR(.security_initcall.init) - LOAD_OFFSET) { \
+		SECURITY_INITCALL					\
+	}
 
 #ifdef CONFIG_BLK_DEV_INITRD
 #define INIT_RAM_FS							\
