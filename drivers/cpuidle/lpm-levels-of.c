@@ -676,6 +676,12 @@ struct lpm_cluster *lpm_of_parse_cluster(struct platform_device *pdev)
 
 	lpm_pdev = pdev;
 	c = parse_cluster(top, NULL);
+
+	if (!c) {
+		pr_err("Failed to find cluster\n");
+		return ERR_PTR(-ENODEV);
+	}
+
 	of_node_put(top);
 	return c;
 }
