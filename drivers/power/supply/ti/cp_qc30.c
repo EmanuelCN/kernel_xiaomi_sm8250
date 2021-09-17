@@ -54,10 +54,10 @@
 
 #include "cp_qc30.h"
 
-#ifdef pr_debug
-#undef pr_debug
-#define pr_debug pr_err
-#endif
+#undef pr_info
+#undef pr_err
+#define pr_info pr_debug
+#define pr_err pr_debug
 
 #define BATT_MAX_CHG_VOLT		4400
 #define BATT_FAST_CHG_CURR		5400
