@@ -27,6 +27,11 @@
 
 #include "pd_policy_manager.h"
 
+#undef pr_info
+#undef pr_err
+#define pr_info pr_debug
+#define pr_err pr_debug
+
 #define PD_SRC_PDO_TYPE_FIXED 0
 #define PD_SRC_PDO_TYPE_BATTERY 1
 #define PD_SRC_PDO_TYPE_VARIABLE 2
