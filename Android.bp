@@ -27,19 +27,3 @@ cc_prebuilt_binary {
 kernel_headers_verbose = ""
 
 build = ["gen_headers_arm.bp", "gen_headers_arm64.bp"]
-
-cc_library_headers {
-    name: "qti_kernel_headers",
-    arch: {
-        arm: {
-            generated_headers: ["qti_generate_kernel_headers_arm"],
-            export_generated_headers: ["qti_generate_kernel_headers_arm"],
-        },
-        arm64: {
-            generated_headers: ["qti_generate_kernel_headers_arm64"],
-            export_generated_headers: ["qti_generate_kernel_headers_arm64"],
-        },
-    },
-    vendor: true,
-    recovery_available: true,
-}
