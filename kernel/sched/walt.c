@@ -2174,22 +2174,15 @@ void init_new_task_load(struct task_struct *p)
 void reset_task_stats(struct task_struct *p)
 {
 	u32 sum = 0;
-	u32 *curr_window_ptr = NULL;
-	u32 *prev_window_ptr = NULL;
 
 	if (exiting_task(p)) {
 		sum = EXITING_TASK_MARKER;
 	} else {
-		curr_window_ptr =  p->ravg.curr_window_cpu;
-		prev_window_ptr = p->ravg.prev_window_cpu;
-		memset(curr_window_ptr, 0, sizeof(u32) * nr_cpu_ids);
-		memset(prev_window_ptr, 0, sizeof(u32) * nr_cpu_ids);
+	memset(p->ravg.curr_window_cpu, 0, sizeof(u32) * nr_cpu_ids);
+	memset(p->ravg.curr_window_cpu, 0, sizeof(u32) * nr_cpu_ids);
 	}
 
 	memset(&p->ravg, 0, sizeof(struct ravg));
-
-	p->ravg.curr_window_cpu = curr_window_ptr;
-	p->ravg.prev_window_cpu = prev_window_ptr;
 
 	/* Retain EXITING_TASK marker */
 	p->ravg.sum_history[0] = sum;
