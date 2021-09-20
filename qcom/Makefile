@@ -190,7 +190,8 @@ dtb-$(CONFIG_ARCH_BENGAL) += bengal-rumi.dtb \
 		bengal-iot-idp-usbc.dtb \
 		bengalp-iot-idp-2gb.dtb \
 		bengalp-iot-idp-usbc-2gb.dtb \
-		bengalp-iot-idp-usbc.dtb
+		bengalp-iot-idp-usbc.dtb \
+		bengalp-iot-idp-2gb.dtb
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
@@ -242,6 +243,7 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 		khaje-qrd-nowcd9375-overlay.dtbo \
 		khaje-idp-nopmi-overlay.dtbo \
 		khaje-idp-usbc-overlay.dtbo \
+		khaje-idp-pm8010-overlay.dtbo \
 		khaje-qrd-nopmi-overlay.dtbo \
 		khaje-idps-display-90hz-overlay.dtbo \
 		khaje-atp-overlay.dtbo
@@ -252,6 +254,7 @@ khaje-qrd-hvdcp3p5-overlay.dtbo-base := khaje.dtb
 khaje-qrd-nowcd9375-overlay.dtbo-base := khaje.dtb
 khaje-idp-nopmi-overlay.dtbo-base := khaje.dtb
 khaje-idp-usbc-overlay.dtbo-base := khaje.dtb
+khaje-idp-pm8010-overlay.dtbo-base := khaje.dtb
 khaje-qrd-nopmi-overlay.dtbo-base := khaje.dtb
 khaje-idps-display-90hz-overlay.dtbo-base := khaje.dtb
 khaje-atp-overlay.dtbo-base := khaje.dtb
@@ -262,6 +265,7 @@ dtb-$(CONFIG_ARCH_KHAJE) += khaje-idp.dtb \
 		khaje-qrd-nowcd9375.dtb \
 		khaje-idp-nopmi.dtb \
 		khaje-idp-usbc.dtb \
+		khaje-idp-pm8010.dtb \
 		khaje-qrd-nopmi.dtb \
 		khaje-idps-display-90hz.dtb \
 		khaje-atp.dtb
