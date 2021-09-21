@@ -773,15 +773,15 @@ void wake_up_all_idle_cpus(void)
 {
 	int cpu;
 
-	preempt_disable();
+	cpus_read_lock();
 	for_each_online_cpu(cpu) {
-		if (cpu == smp_processor_id())
+		if (cpu == raw_smp_processor_id())
 			continue;
 		if (s2idle_state == S2IDLE_STATE_ENTER ||
 		    !cpu_isolated(cpu))
 			wake_up_if_idle(cpu);
 	}
-	preempt_enable();
+	cpus_read_unlock();
 }
 EXPORT_SYMBOL_GPL(wake_up_all_idle_cpus);
 
