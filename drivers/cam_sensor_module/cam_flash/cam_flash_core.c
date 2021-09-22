@@ -526,6 +526,7 @@ int cam_flash_off(struct cam_flash_ctrl *flash_ctrl)
 			CAM_ERR(CAM_SENSOR,
 			"cannot apply streamoff settings");
 		}
+		flash_ctrl->flash_state = CAM_FLASH_STATE_CONFIG;
 	}
 
 	return 0;
