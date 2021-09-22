@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/uaccess.h>
@@ -695,15 +695,14 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 		}
 
 		CAM_ERR(CAM_OPE,
-			"pending requests means, issue is with HW for ctx %d",
-			ctx_data->ctx_id);
-		CAM_ERR(CAM_OPE, "ctx: %d, lrt: %llu, lct: %llu",
+			"pending req at HW, ctx %d lrt %llu lct %llu",
 			ctx_data->ctx_id, ctx_data->last_req_time,
 			ope_hw_mgr->last_callback_time);
 		hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 				hw_mgr->ope_dev_intf[i]->hw_priv,
 				OPE_HW_DUMP_DEBUG,
 				NULL, 0);
+
 		task = cam_req_mgr_workq_get_task(ope_hw_mgr->msg_work);
 		if (!task) {
 			CAM_ERR(CAM_OPE, "no empty task");
@@ -1601,6 +1600,7 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 	struct timespec64 ts;
 	bool flag = false;
 	bool dump_flag = true;
+	int i;
 
 	if (!userdata) {
 		CAM_ERR(CAM_OPE, "Invalid ctx from CDM callback");
@@ -1660,9 +1660,17 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 			 ope_req->request_id, ctx->ctx_id);
 		CAM_INFO(CAM_OPE, "Rst of CDM and OPE for error reqid = %lld",
 			ope_req->request_id);
+
 		if (status != CAM_CDM_CB_STATUS_HW_FLUSH) {
 			cam_ope_dump_req_data(ope_req);
 			dump_flag = false;
+
+			CAM_INFO(CAM_OPE, "bach_size: %d",
+				ctx->req_list[cookie]->num_batch);
+			for (i = 0; i < ctx->req_list[cookie]->num_batch; i++)
+				CAM_INFO(CAM_OPE, "i: %d num_stripes: %d",
+					i,
+					ctx->req_list[cookie]->num_stripes[i]);
 		}
 		rc = cam_ope_mgr_reset_hw();
 		flag = true;
@@ -2740,6 +2748,10 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 	ctx->ctxt_event_cb = args->event_cb;
 	cam_ope_ctx_clk_info_init(ctx);
 	ctx->ctx_state = OPE_CTX_STATE_ACQUIRED;
+	kzfree(cdm_acquire);
+	cdm_acquire = NULL;
+	kzfree(bw_update);
+	bw_update = NULL;
 
 	mutex_unlock(&ctx->ctx_mutex);
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
