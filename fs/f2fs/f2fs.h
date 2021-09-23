@@ -3,6 +3,7 @@
  * fs/f2fs/f2fs.h
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *             http://www.samsung.com/
  */
 #ifndef _LINUX_F2FS_H
@@ -104,6 +105,8 @@ extern const char *f2fs_fault_name[FAULT_MAX];
 #define F2FS_MOUNT_MERGE_CHECKPOINT	0x10000000
 #define	F2FS_MOUNT_GC_MERGE		0x20000000
 #define F2FS_MOUNT_COMPRESS_CACHE	0x40000000
+
+#define F2FS_MOUNT_MERGE_CHECKPOINT    0x10000000
 
 #define F2FS_OPTION(sbi)	((sbi)->mount_opt)
 #define clear_opt(sbi, option)	(F2FS_OPTION(sbi).opt &= ~F2FS_MOUNT_##option)
@@ -771,6 +774,7 @@ struct f2fs_inode_info {
 	struct mutex inmem_lock;	/* lock for inmemory pages */
 	pgoff_t ra_offset;		/* ongoing readahead offset */
 	struct extent_tree *extent_tree;	/* cached extent_tree entry */
+	struct list_head xattr_dirty_list;	/* list for xattr changed inodes */
 
 	/* avoid racing between foreground op and gc */
 	struct rw_semaphore i_gc_rwsem[2];
@@ -1126,6 +1130,8 @@ enum cp_reason_type {
 	CP_FASTBOOT_MODE,
 	CP_SPEC_LOG_NUM,
 	CP_RECOVER_DIR,
+	CP_PARENT_XATTR_SET,
+	NR_CP_REASON_TYPE,
 };
 
 enum iostat_type {
@@ -1612,6 +1618,8 @@ struct f2fs_sb_info {
 	struct list_head fsync_node_list;	/* node list head */
 	unsigned int fsync_seg_id;		/* sequence id */
 	unsigned int fsync_node_num;		/* number of node entries */
+	spinlock_t xattr_set_dir_ilist_lock;	/* lock for dir inode list*/
+	struct list_head xattr_set_dir_ilist;	/* xattr changed dir inode list */
 
 	/* for orphan inode, use 0'th array */
 	unsigned int max_orphans;		/* max orphan inodes */
@@ -1684,6 +1692,7 @@ struct f2fs_sb_info {
 	struct atgc_management am;		/* atgc management */
 	unsigned int cur_victim_sec;		/* current victim section num */
 	unsigned int gc_mode;			/* current GC state */
+	bool gc_booster;			/* boost background gc */
 	unsigned int next_victim_seg[2];	/* next segment in victim section */
 
 	/* for skip statistic */
@@ -1714,6 +1723,7 @@ struct f2fs_sb_info {
 	atomic64_t read_hit_rbtree;		/* # of hit rbtree extent node */
 	atomic64_t read_hit_largest;		/* # of hit largest extent node */
 	atomic64_t read_hit_cached;		/* # of hit cached extent node */
+	atomic64_t sync_file_count;		/* # of f2fs_do_sync_file calls */
 	atomic_t inline_xattr;			/* # of inline_xattr inodes */
 	atomic_t inline_inode;			/* # of inline_data inodes */
 	atomic_t inline_dir;			/* # of inline_dentry inodes */
@@ -1725,6 +1735,7 @@ struct f2fs_sb_info {
 	unsigned int io_skip_bggc;		/* skip background gc for in-flight IO */
 	unsigned int other_skip_bggc;		/* skip background gc for other reasons */
 	unsigned int ndirty_inode[NR_INODE_TYPE];	/* # of dirty inodes */
+	atomic64_t cp_reason_count[NR_CP_REASON_TYPE];	/* # of checkpoint reason */
 #endif
 	spinlock_t stat_lock;			/* lock for stat operations */
 
@@ -3702,7 +3713,8 @@ struct f2fs_stat_info {
 	struct f2fs_sb_info *sbi;
 	int all_area_segs, sit_area_segs, nat_area_segs, ssa_area_segs;
 	int main_area_segs, main_area_sections, main_area_zones;
-	unsigned long long hit_largest, hit_cached, hit_rbtree;
+	unsigned long long hit_largest, hit_cached, hit_rbtree, sync_file_total;
+	unsigned long long cp_reason_total[NR_CP_REASON_TYPE];
 	unsigned long long hit_total, total_ext;
 	int ext_tree, zombie_tree, ext_node;
 	int ndirty_node, ndirty_dent, ndirty_meta, ndirty_imeta;
@@ -3712,7 +3724,7 @@ struct f2fs_stat_info {
 	int nats, dirty_nats, sits, dirty_sits;
 	int free_nids, avail_nids, alloc_nids;
 	int total_count, utilization;
-	int bg_gc, nr_wb_cp_data, nr_wb_data;
+	int gc_booster, bg_gc, nr_wb_cp_data, nr_wb_data;
 	int nr_rd_data, nr_rd_node, nr_rd_meta;
 	int nr_dio_read, nr_dio_write;
 	unsigned int io_skip_bggc, other_skip_bggc;
@@ -3769,6 +3781,9 @@ static inline struct f2fs_stat_info *F2FS_STAT(struct f2fs_sb_info *sbi)
 #define stat_inc_rbtree_node_hit(sbi)	(atomic64_inc(&(sbi)->read_hit_rbtree))
 #define stat_inc_largest_node_hit(sbi)	(atomic64_inc(&(sbi)->read_hit_largest))
 #define stat_inc_cached_node_hit(sbi)	(atomic64_inc(&(sbi)->read_hit_cached))
+#define stat_inc_sync_file_count(sbi)	(atomic64_inc(&(sbi)->sync_file_count))
+#define stat_inc_cp_reason(sbi, cp_reason)			\
+		(atomic64_inc(&(sbi)->cp_reason_count[cp_reason]))
 #define stat_inc_inline_xattr(inode)					\
 	do {								\
 		if (f2fs_has_inline_xattr(inode))			\
@@ -3898,6 +3913,8 @@ void f2fs_update_sit_info(struct f2fs_sb_info *sbi);
 #define stat_inc_rbtree_node_hit(sbi)			do { } while (0)
 #define stat_inc_largest_node_hit(sbi)			do { } while (0)
 #define stat_inc_cached_node_hit(sbi)			do { } while (0)
+#define stat_inc_sync_file_count(sbi)			do { } while (0)
+#define stat_inc_cp_reason(sbi, cp_reason)		do { } while (0)
 #define stat_inc_inline_xattr(inode)			do { } while (0)
 #define stat_dec_inline_xattr(inode)			do { } while (0)
 #define stat_inc_inline_inode(inode)			do { } while (0)
@@ -3928,6 +3945,7 @@ static inline void f2fs_destroy_root_stats(void) { }
 static inline void f2fs_update_sit_info(struct f2fs_sb_info *sbi) {}
 #endif
 
+extern const char *f2fs_cp_reasons[NR_CP_REASON_TYPE];
 extern const struct file_operations f2fs_dir_operations;
 extern const struct file_operations f2fs_file_operations;
 extern const struct inode_operations f2fs_file_inode_operations;
@@ -3970,6 +3988,14 @@ int f2fs_read_inline_dir(struct file *file, struct dir_context *ctx,
 int f2fs_inline_data_fiemap(struct inode *inode,
 			struct fiemap_extent_info *fieinfo,
 			__u64 start, __u64 len);
+
+/*
+ * xattr.c
+ */
+void f2fs_inode_xattr_set(struct inode *inode);
+void f2fs_remove_xattr_set_inode(struct inode *inode);
+void f2fs_clear_xattr_set_ilist(struct f2fs_sb_info *sbi);
+int f2fs_parent_inode_xattr_set(struct inode *inode);
 
 /*
  * shrinker.c

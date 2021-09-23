@@ -435,6 +435,7 @@
 		};
 	};
 
+/*
 	vbus_disable {
 		vbus_disable_active: usb_vbus_active {
 			mux {
@@ -464,6 +465,7 @@
 			};
 		};
 	};
+*/
 
 	onewire_gpio_active: onewire_gpio_active {
 		mux {

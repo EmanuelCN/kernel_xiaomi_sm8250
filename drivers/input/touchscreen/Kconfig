@@ -11,6 +11,8 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 
+source "drivers/input/touchscreen/nt36523/Kconfig"
+
 config TOUCHSCREEN_PROPERTIES
 	def_tristate INPUT
 	depends on INPUT
@@ -1321,6 +1323,15 @@ config TOUCHSCREEN_ST
 	  If unsure, say N.
 	  To compile this driver as a module, choose M here: the
 	  module will be called st.
+
+config SECURE_TOUCH
+	bool "Secure Touch support for Xiaomi Touchscreen"
+	help
+          Say Y here
+	  -Goodix touch driver is connected
+	  -To enable secure touch for Goodix touch driver
+
+	  If unsure, say N.
 
 source "drivers/input/touchscreen/st/Kconfig"
 

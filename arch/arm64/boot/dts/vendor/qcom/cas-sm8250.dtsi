@@ -40,6 +40,10 @@ And public attribution of xiaomi platforms(like cas and so and)
 	qcom,platform-reset-gpio = <&tlmm 12 0>;
 };
 
+&usb1 {
+        extcon = <&extcon_usb1>;
+};
+
 &sde_dsi {
 	/delete-property/ vdd-supply;
 	/delete-property/ avdd-supply;
@@ -90,8 +94,9 @@ And public attribution of xiaomi platforms(like cas and so and)
 		mi,cp-sec-enable;
 	};
 
-	cmi_batterydata: qcom,battery-data {
+	cas_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
+		#include "jeita-step-cfg-j1t.dtsi"
 	};
 
 	fingerprint_goodix {
@@ -353,7 +358,7 @@ And public attribution of xiaomi platforms(like cas and so and)
 	qcom,chg-cool-th= <150>;
 	//qcom,suspend-input-on-debug-batt;
 	qcom,usbpd-phandle = <&pm8150b_pdphy>;
-	qcom,battery-data = <&cmi_batterydata>;
+	qcom,battery-data = <&cas_batterydata>;
 	qcom,lpd-disable;
 	qcom,support-ext-fg;
 	qcom,support-ext-bbc;
@@ -833,6 +838,7 @@ And public attribution of xiaomi platforms(like cas and so and)
 		pinctrl-names = "idt_active", "idt_suspend";
 		pinctrl-0 = <&idt_int_active &txon_enable_active &rx_sleep_active_status &power_good_active &reverse_booset_enable_active>;
 		pinctrl-1 = <&idt_int_suspend &txon_enable_suspend &rx_sleep_suspend_status &power_good_suspend &reverse_booset_enable_suspend>;
+		mi,urd-device;
 	};
     rx1619@61 {
 		compatible = "nuvolta,wl_charger_rx1619";
@@ -846,6 +852,7 @@ And public attribution of xiaomi platforms(like cas and so and)
 		pinctrl-names = "nu_active", "nu_suspend";
 		pinctrl-0 = <&idt_int_active &txon_enable_active &rx_sleep_active_status &power_good_active &reverse_booset_enable_active>;
 		pinctrl-1 = <&idt_int_suspend &txon_enable_suspend &rx_sleep_suspend_status &power_good_suspend &reverse_booset_enable_suspend>;
+		mi,urd-device;
    };
 	rx1619@67 {
 		compatible = "nuvolta,wl_rx1619_trim";

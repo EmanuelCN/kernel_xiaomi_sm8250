@@ -375,9 +375,10 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_MI_GAMMA_B7,
 	DSI_CMD_SET_MI_BLACK_SETTING,
 	DSI_CMD_SET_MI_READ_LOCKDOWN_INFO,
+	DSI_CMD_SET_DISP_PEN_120HZ,
+	DSI_CMD_SET_DISP_PEN_60HZ,
+	DSI_CMD_SET_DISP_PEN_30HZ,
 	/* xiaomi add end */
-	DSI_CMD_SET_DISP_HBM_FOD_ON,
-	DSI_CMD_SET_DISP_HBM_FOD_OFF,
 	DSI_CMD_SET_MAX
 };
 
@@ -587,6 +588,7 @@ struct dsi_host_common_cfg {
 	struct dsi_split_link_config split_link;
 	u32 byte_intf_clk_div;
 	u32 clk_strength;
+	bool cphy_strength;
 };
 
 /**

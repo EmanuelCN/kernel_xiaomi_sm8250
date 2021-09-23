@@ -950,6 +950,7 @@ gen_headers_out_arm64 = [
     "linux/netfilter/ipset/ip_set_bitmap.h",
     "linux/netfilter/ipset/ip_set_hash.h",
     "linux/netfilter/ipset/ip_set_list.h",
+    "linux/millet.h",
     "linux/akm09970.h",
     "linux/drv8846.h",
 
@@ -1017,7 +1018,6 @@ gen_headers_out_arm64 = [
     "sound/audio_effects.h",
     "sound/audio_slimslave.h",
     "sound/cs35l41.h",
-    "sound/cs35l41_k81.h",
     "sound/devdep_params.h",
     "sound/lsm_params.h",
     "sound/msm-cirrus-playback.h",

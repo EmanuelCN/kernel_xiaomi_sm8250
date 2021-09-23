@@ -1479,9 +1479,11 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 			_sde_crtc_setup_dim_layer_cfg(crtc, sde_crtc,
 					mixer, &cstate->dim_layer[i]);
 
+#ifdef CONFIG_OSSFOD
 		if (cstate->fod_dim_layer)
 			_sde_crtc_setup_dim_layer_cfg(crtc, sde_crtc,
 					mixer, cstate->fod_dim_layer);
+#endif
 	}
 
 	_sde_crtc_program_lm_output_roi(crtc);
@@ -2169,12 +2171,12 @@ static void sde_crtc_frame_event_cb(void *data, u32 event)
 	SDE_DEBUG("crtc%d\n", crtc->base.id);
 	SDE_EVT32_VERBOSE(DRMID(crtc), event);
 
-	spin_lock_irqsave(&sde_crtc->spin_lock, flags);
+	spin_lock_irqsave(&sde_crtc->fevent_spin_lock, flags);
 	fevent = list_first_entry_or_null(&sde_crtc->frame_event_list,
 			struct sde_crtc_frame_event, list);
 	if (fevent)
 		list_del_init(&fevent->list);
-	spin_unlock_irqrestore(&sde_crtc->spin_lock, flags);
+	spin_unlock_irqrestore(&sde_crtc->fevent_spin_lock, flags);
 
 	if (!fevent) {
 		SDE_ERROR("crtc%d event %d overflow\n",
@@ -2465,9 +2467,9 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 		SDE_ERROR("crtc%d ts:%lld received panel dead event\n",
 				crtc->base.id, ktime_to_ns(fevent->ts));
 
-	spin_lock_irqsave(&sde_crtc->spin_lock, flags);
+	spin_lock_irqsave(&sde_crtc->fevent_spin_lock, flags);
 	list_add_tail(&fevent->list, &sde_crtc->frame_event_list);
-	spin_unlock_irqrestore(&sde_crtc->spin_lock, flags);
+	spin_unlock_irqrestore(&sde_crtc->fevent_spin_lock, flags);
 	SDE_ATRACE_END("crtc_frame_event");
 }
 
@@ -3383,7 +3385,8 @@ static void sde_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	/* schedule the idle notify delayed work */
-	if (idle_time && sde_encoder_check_curr_mode(
+	if (g_panel->mi_cfg.idle_mode_flag && idle_time
+		&& sde_encoder_check_curr_mode(
 						sde_crtc->mixers[0].encoder,
 						MSM_DISPLAY_VIDEO_MODE)) {
 		kthread_queue_delayed_work(&event_thread->worker,
@@ -4511,6 +4514,7 @@ sec_err:
 	return -EINVAL;
 }
 
+#ifdef CONFIG_OSSFOD
 static struct sde_hw_dim_layer* sde_crtc_setup_fod_dim_layer(
 		struct sde_crtc_state *cstate,
 		uint32_t stage)
@@ -4590,6 +4594,7 @@ static void sde_crtc_fod_atomic_check(struct sde_crtc_state *cstate,
 		if (pstates[plane_idx].stage >= dim_layer_stage)
 			pstates[plane_idx].stage++;
 }
+#endif
 
 static int _sde_crtc_check_secure_conn(struct drm_crtc *crtc,
 		struct drm_crtc_state *state, uint32_t fb_sec)
@@ -4943,7 +4948,9 @@ static int _sde_crtc_atomic_check_pstates(struct drm_crtc *crtc,
 		return rc;
 #endif
 
+#ifdef CONFIG_OSSFOD
 	sde_crtc_fod_atomic_check(cstate, pstates, cnt);
+#endif
 
 	/* assign mixer stages based on sorted zpos property */
 	rc = _sde_crtc_check_zpos(state, sde_crtc, pstates, cstate, mode, cnt);
@@ -6598,6 +6605,7 @@ struct drm_crtc *sde_crtc_init(struct drm_device *dev, struct drm_plane *plane)
 
 	mutex_init(&sde_crtc->crtc_lock);
 	spin_lock_init(&sde_crtc->spin_lock);
+	spin_lock_init(&sde_crtc->fevent_spin_lock);
 	atomic_set(&sde_crtc->frame_pending, 0);
 	mutex_init(&sde_crtc->vblank_modeset_ctrl_lock);
 

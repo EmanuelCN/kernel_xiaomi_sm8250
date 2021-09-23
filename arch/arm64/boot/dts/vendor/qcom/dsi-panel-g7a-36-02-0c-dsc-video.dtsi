@@ -43,8 +43,8 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-reset-sequence = <1 5>, <0 1>, <1 10>;
-		qcom,mdss-pan-physical-width-dimension = <71>;
-		qcom,mdss-pan-physical-height-dimension = <158>;
+		qcom,mdss-pan-physical-width-dimension = <70>;
+		qcom,mdss-pan-physical-height-dimension = <155>;
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,bl-update-flag = "delay_until_first_frame";
 		qcom,disp-panel-offon-mode-enabled;
@@ -56,6 +56,7 @@
 		qcom,mdss-dsi-qsync-min-refresh-rate = <60>;
 
 		qcom,mdss-dsi-pan-enable-dynamic-fps;
+		// qcom,mdss-dsi-pan-enable-smart-fps;
 		qcom,mdss-dsi-pan-fps-update =
 			"dfps_immediate_porch_mode_vfp";
 		qcom,dsi-supported-dfps-list = <120 90 60>;

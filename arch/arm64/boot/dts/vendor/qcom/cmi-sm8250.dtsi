@@ -1,6 +1,5 @@
 /*
-this file is for attribution only of umi
-And public attribution of xiaomi platforms(like J1 and so and)
+this file is for attribution only of cmi
 */
 
 #include "cmi-pinctrl.dtsi"
@@ -49,6 +48,10 @@ And public attribution of xiaomi platforms(like J1 and so and)
 &dsi_sim_vid {
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vci>;
 	qcom,platform-reset-gpio = <&tlmm 12 0>;
+};
+
+&usb1 {
+        extcon = <&extcon_usb1>;
 };
 
 &sde_dsi {

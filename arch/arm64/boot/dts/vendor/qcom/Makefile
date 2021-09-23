@@ -25,22 +25,34 @@ dtbo-$(CONFIG_BOARD_CMI) += \
 cmi-sm8250-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 endif
 
+ifeq ($(CONFIG_BOARD_ELISH),y)
+dtbo-$(CONFIG_BOARD_ELISH) += \
+                elish-sm8250-overlay.dtbo
+elish-sm8250-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
+endif
+
+ifeq ($(CONFIG_BOARD_ENUMA),y)
+dtbo-$(CONFIG_BOARD_ENUMA) += \
+                enuma-sm8250-overlay.dtbo
+enuma-sm8250-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
+endif
+
 ifeq ($(CONFIG_BOARD_LMI),y)
 dtbo-$(CONFIG_BOARD_LMI) += \
                 lmi-sm8250-overlay.dtbo
 lmi-sm8250-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 endif
 
-ifeq ($(CONFIG_BOARD_UMI),y)
-dtbo-$(CONFIG_BOARD_UMI) += \
-                umi-sm8250-overlay.dtbo
-umi-sm8250-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
-endif
-
 ifeq ($(CONFIG_BOARD_THYME),y)
 dtbo-$(CONFIG_BOARD_THYME) += \
                 thyme-sm8250-overlay.dtbo
 thyme-sm8250-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
+endif
+
+ifeq ($(CONFIG_BOARD_UMI),y)
+dtbo-$(CONFIG_BOARD_UMI) += \
+                umi-sm8250-overlay.dtbo
+umi-sm8250-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 endif
 
 endif
@@ -52,18 +64,24 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 ifeq ($(CONFIG_BOARD_MONET),y)
 dtbo-$(CONFIG_BOARD_MONET) += \
                 moent-sm7250-overlay.dtbo
+dtb-$(CONFIG_BOARD_MONET) += \
+                moent-sm7250.dtb
 monet-sm7250-overlay.dtbo-base := lito.dtb lito-v2.dtb
 endif
 
 ifeq ($(CONFIG_BOARD_PICASSO),y)
 dtbo-$(CONFIG_BOARD_PICASSO) += \
                 picasso-sm7250-overlay.dtbo
+dtb-$(CONFIG_BOARD_PICASSO) += \
+                picasso-sm7250.dtb
 picasso-sm7250-overlay.dtbo-base := lito.dtb lito-v2.dtb
 endif
 
 ifeq ($(CONFIG_BOARD_VANGOGH),y)
 dtbo-$(CONFIG_BOARD_VANGOGH) += \
                 vangogh-sm7250-overlay.dtbo
+dtb-$(CONFIG_BOARD_VANGOGH) += \
+                vangogh-sm7250.dtb
 vangogh-sm7250-overlay.dtbo-base := lito.dtb lito-v2.dtb
 endif
 
@@ -79,8 +97,9 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
                 kona-xr-overlay.dtbo \
                 kona-rumi-overlay.dtbo \
                 kona-qrd-overlay.dtbo \
-		kona-xrfusion-overlay.dtbo \
-		kona-xrfusion-ult-overlay.dtbo \
+                kona-xrfusion-overlay.dtbo \
+                kona-xrfusion-ult-overlay.dtbo \
+                kona-arglass-overlay.dtbo \
                 kona-hdk-overlay.dtbo
 
 kona-cdp-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
@@ -89,11 +108,11 @@ kona-mtp-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-mtp-ws-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-sa-mtp-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-xr-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
-kona-xr-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-rumi-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-qrd-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-xrfusion-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-xrfusion-ult-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
+kona-arglass-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 kona-hdk-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 else
 dtb-$(CONFIG_ARCH_KONA) += kona-rumi.dtb \
@@ -101,8 +120,9 @@ dtb-$(CONFIG_ARCH_KONA) += kona-rumi.dtb \
         kona-mtp-ws.dtb \
         kona-mtp-sa.dtb \
         kona-xr.dtb \
-	kona-xrfusion.dtb \
-	kona-xrfusion-ult.dtb \
+        kona-xrfusion.dtb \
+        kona-xrfusion-ult.dtb \
+        kona-arglass.dtb \
         kona-cdp.dtb \
         kona-cdp-lcd.dtb \
         kona-qrd.dtb \
@@ -112,8 +132,9 @@ dtb-$(CONFIG_ARCH_KONA) += kona-rumi.dtb \
         kona-v2-mtp-sa.dtb \
         kona-v2-cdp.dtb \
         kona-v2-qrd.dtb \
-	kona-v2-xrfusion.dtb \
-	kona-v2-xrfusion-ult.dtb \
+        kona-v2-xrfusion.dtb \
+        kona-v2-xrfusion-ult.dtb \
+        kona-v2-arglass.dtb \
         kona-hdk.dtb \
         kona-v2.1-mtp.dtb \
         kona-v2.1-mtp-ws.dtb \
@@ -121,8 +142,9 @@ dtb-$(CONFIG_ARCH_KONA) += kona-rumi.dtb \
         kona-v2.1-cdp.dtb \
         kona-v2.1-qrd.dtb \
         kona-v2.1-hdk.dtb \
-	kona-v2.1-xrfusion.dtb \
-	kona-v2.1-xrfusion-ult.dtb \
+        kona-v2.1-xrfusion.dtb \
+        kona-v2.1-xrfusion-ult.dtb \
+        kona-v2.1-arglass.dtb \
         qrb5165-iot-rb5.dtb \
         kona-v2.1-iot-rb5.dtb \
         kona-v2.1-hdk.dtb
@@ -161,9 +183,6 @@ orchid-cdp-overlay.dtbo-base := orchid.dtb
 else
 dtb-$(CONFIG_ARCH_LITO) += lito-rumi.dtb \
                 lito-mtp.dtb \
-                vangogh-sm7250.dtb \
-                picasso-sm7250.dtb \
-                monet-sm7250.dtb \
                 lito-cdp.dtb \
                 lito-atp.dtb \
                 lito-qrd.dtb \
@@ -308,15 +327,30 @@ ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
         dtbo-$(CONFIG_ARCH_KHAJE) += \
 		khaje-idp-overlay.dtbo \
 		khaje-qrd-overlay.dtbo \
-		khaje-idp-nopmi-overlay.dtbo
+		khaje-qrd-hvdcp3p5-overlay.dtbo \
+		khaje-qrd-wcd9368-overlay.dtbo \
+		khaje-idp-nopmi-overlay.dtbo \
+		khaje-qrd-nopmi-overlay.dtbo \
+		khaje-idps-display-90hz-overlay.dtbo \
+		khaje-atp-overlay.dtbo
 
 khaje-idp-overlay.dtbo-base := khaje.dtb
 khaje-qrd-overlay.dtbo-base := khaje.dtb
+khaje-qrd-hvdcp3p5-overlay.dtbo-base := khaje.dtb
+khaje-qrd-wcd9368-overlay.dtbo-base := khaje.dtb
 khaje-idp-nopmi-overlay.dtbo-base := khaje.dtb
+khaje-qrd-nopmi-overlay.dtbo-base := khaje.dtb
+khaje-idps-display-90hz-overlay.dtbo-base := khaje.dtb
+khaje-atp-overlay.dtbo-base := khaje.dtb
 else
 dtb-$(CONFIG_ARCH_KHAJE) += khaje-idp.dtb \
 		khaje-qrd.dtb \
-		khaje-idp-nopmi.dtb
+		khaje-qrd-hvdcp3p5.dtb \
+		khaje-qrd-wcd9368.dtb \
+		khaje-idp-nopmi.dtb \
+		khaje-qrd-nopmi.dtb \
+		khaje-idps-display-90hz.dtb \
+		khaje-atp.dtb
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
@@ -382,7 +416,6 @@ sdm660-internal-codec-cdp.dtb \
         sdm660-usbc-audio-mtp.dtb \
         sdm660-usbc-audio-rcm.dtb
 endif
-endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 
@@ -430,6 +463,7 @@ qm215-qrd-overlay.dtbo-base := qm215.dtb
 qcm2150-qrd-overlay.dtbo-base := qcm2150.dtb
 qm215-qrd-smb1360-overlay.dtbo-base := qm215.dtb
 else
+
 dtb-$(CONFIG_ARCH_SDM439) += sdm439-mtp.dtb \
 	sdm439-cdp.dtb \
 	sdm439-qrd.dtb \
@@ -446,6 +480,7 @@ dtb-$(CONFIG_ARCH_SDM429) += sdm429-mtp.dtb \
 	sdm429-qrd.dtb \
 	sda429-mtp.dtb \
 	sda429-cdp.dtb
+endif
 endif
 
 always		:= $(dtb-y)

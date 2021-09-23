@@ -1,6 +1,5 @@
 /*
-this file is for attribution only of umi
-And public attribution of xiaomi platforms(like apollo and so and)
+this file is for attribution only of apollo
 */
 
 #include "apollo-pinctrl.dtsi"
@@ -42,7 +41,7 @@ And public attribution of xiaomi platforms(like apollo and so and)
 		compatible = "xiaomi,spi-for-tp";
 		reg = <0>;
 		status = "ok";
-		spi-max-frequency = <10000000>;  //10M
+		spi-max-frequency = <15000000>;  //15M
 	};
 };
 
@@ -241,6 +240,7 @@ And public attribution of xiaomi platforms(like apollo and so and)
 
 &pm8150l_lcdb {
 	status = "ok";
+	/delete-property/ qcom,voltage-step-ramp;
 };
 
 &pm8150l_wled {
@@ -250,7 +250,7 @@ And public attribution of xiaomi platforms(like apollo and so and)
 	qcom,fs-current-limit = <22500>;
 	qcom,cabc-sel = <1>;
 	mi,cabcoff-dbv = <200>;
-	mi,cabc-pwm = <3276 4095>;
+	mi,cabc-pwm = <4095 4095>;
 };
 
 &dsi_panel_pwr_supply_lab_ibb {
@@ -285,7 +285,13 @@ And public attribution of xiaomi platforms(like apollo and so and)
 	};
 };
 
+&usb1 {
+        extcon = <&extcon_usb1>;
+};
+
 &sde_dsi {
+	/delete-property/ vdd-supply;
+	/delete-property/ avdd-supply;
 	lab-supply = <&lcdb_ldo_vreg>;
 	ibb-supply = <&lcdb_ncp_vreg>;
 	qcom,dsi-default-panel = <&dsi_sim_vid>;
@@ -538,7 +544,7 @@ And public attribution of xiaomi platforms(like apollo and so and)
 	qcom,chg-cool-th= <150>;
 	//qcom,suspend-input-on-debug-batt;
 	qcom,usbpd-phandle = <&pm8150b_pdphy>;
-	qcom,battery-data = <&umi_batterydata>;
+	qcom,battery-data = <&apollo_batterydata>;
 	mi,six-pin-step-chg-params = <4250000  6000000
 				4450000  5400000
 				4480000  3680000>;
@@ -611,7 +617,7 @@ And public attribution of xiaomi platforms(like apollo and so and)
 };
 
 &pm8150b_fg {
-	qcom,battery-data = <&umi_batterydata>;
+	qcom,battery-data = <&apollo_batterydata>;
 	qcom,rapid-soc-dec-en;
 	qcom,five-pin-battery;
 	qcom,soc-hi-res;
@@ -678,7 +684,7 @@ And public attribution of xiaomi platforms(like apollo and so and)
 		mi,therm-level-threshold = <12>;
 	};
 
-	umi_batterydata: qcom,battery-data {
+	apollo_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
 		#include "fg-gen4-batterydata-apollo-sun-5000mah.dtsi"
 	};

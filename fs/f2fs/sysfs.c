@@ -3,6 +3,7 @@
  * f2fs sysfs interface
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *             http://www.samsung.com/
  * Copyright (c) 2017 Chao Yu <chao@kernel.org>
  */
@@ -20,7 +21,7 @@
 #include "iostat.h"
 #include <trace/events/f2fs.h>
 
-static struct proc_dir_entry *f2fs_proc_root;
+struct proc_dir_entry *f2fs_proc_root;
 
 /* Sysfs support for f2fs */
 enum {
@@ -466,6 +467,12 @@ out:
 		}
 		return count;
 	}
+
+	if (!strcmp(a->attr.name, "gc_urgent_sleep_time")) {
+		*ui = t ? (unsigned int)t : DEF_GC_THREAD_URGENT_SLEEP_TIME;
+		return count;
+	}
+
 	if (!strcmp(a->attr.name, "gc_idle")) {
 		if (t == GC_IDLE_CB) {
 			sbi->gc_mode = GC_IDLE_CB;
@@ -478,6 +485,11 @@ out:
 		} else {
 			sbi->gc_mode = GC_NORMAL;
 		}
+		return count;
+	}
+
+	if (!strcmp(a->attr.name, "gc_booster")) {
+		sbi->gc_booster = !!t;
 		return count;
 	}
 
@@ -674,6 +686,7 @@ F2FS_RW_ATTR(GC_THREAD, f2fs_gc_kthread, gc_max_sleep_time, max_sleep_time);
 F2FS_RW_ATTR(GC_THREAD, f2fs_gc_kthread, gc_no_gc_sleep_time, no_gc_sleep_time);
 F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, gc_idle, gc_mode);
 F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, gc_urgent, gc_mode);
+F2FS_RW_ATTR(F2FS_SBI, f2fs_sb_info, gc_booster, gc_booster);
 F2FS_RW_ATTR(SM_INFO, f2fs_sm_info, reclaim_segments, rec_prefree_segments);
 F2FS_RW_ATTR(DCC_INFO, discard_cmd_control, max_small_discards, max_discards);
 F2FS_RW_ATTR(DCC_INFO, discard_cmd_control, discard_granularity, discard_granularity);
@@ -784,6 +797,7 @@ static struct attribute *f2fs_attrs[] = {
 	ATTR_LIST(gc_no_gc_sleep_time),
 	ATTR_LIST(gc_idle),
 	ATTR_LIST(gc_urgent),
+	ATTR_LIST(gc_booster),
 	ATTR_LIST(reclaim_segments),
 	ATTR_LIST(main_blkaddr),
 	ATTR_LIST(max_small_discards),

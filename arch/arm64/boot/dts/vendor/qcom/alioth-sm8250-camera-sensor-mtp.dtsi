@@ -72,7 +72,8 @@
 		cam_v_custom1-supply =<&L6P>;//AVDD1.8
 		cam_vdig-supply = <&L2P>;
 		cam_clk-supply = <&titan_top_gdsc>;
-		regulator-names = "cam_vio", "cam_vana", "cam_v_custom1", "cam_vdig", "cam_clk";
+		regulator-names = "cam_vio", "cam_vana", "cam_v_custom1", "cam_vdig",
+			"cam_clk";
 		rgltr-cntrl-support;
 		rgltr-min-voltage = <1800000 2900000 1800000 1100000 0>;
 		rgltr-max-voltage = <1800000 2900000 1800000 1100000 0>;
@@ -83,7 +84,8 @@
 		gpio-reset = <1>;
 		gpio-req-tbl-num = <0 1>;
 		gpio-req-tbl-flags = <1 0>;
-		gpio-req-tbl-label = "CAMIF_MCLK0", "CAM_RESET0";
+		gpio-req-tbl-label = "CAMIF_MCLK0",
+							"CAM_RESET0";
 		cci-master = <0>;
 		status = "ok";
 		use-shared-clk;
@@ -296,3 +298,4 @@
 		clock-rates = <19200000>;
 	};
 };
+
