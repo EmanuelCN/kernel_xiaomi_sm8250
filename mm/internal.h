@@ -188,6 +188,7 @@ extern void post_alloc_hook(struct page *page, unsigned int order,
 					gfp_t gfp_flags);
 extern int user_min_free_kbytes;
 extern atomic_long_t kswapd_waiters;
+extern atomic_long_t kshrinkd_waiters;
 
 #if defined CONFIG_COMPACTION || defined CONFIG_CMA
 
