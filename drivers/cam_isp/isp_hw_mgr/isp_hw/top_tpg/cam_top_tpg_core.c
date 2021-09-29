@@ -400,6 +400,7 @@ static int cam_top_tpg_start(void *hw_priv, void *start_args,
 	const struct cam_top_tpg_reg_offset    *tpg_reg;
 	struct cam_top_tpg_cfg                 *tpg_data;
 	uint32_t i, val;
+	uint32_t in_format = 0;
 
 	if (!hw_priv || !start_args ||
 		(arg_size != sizeof(struct cam_isp_resource_node))) {
@@ -455,6 +456,56 @@ static int cam_top_tpg_start(void *hw_priv, void *start_args,
 	else
 		cam_io_w_mb(0x2581F4,
 		soc_info->reg_map[0].mem_base + tpg_reg->tpg_vc_cfg1);
+
+	/* configure tpg pattern */
+	in_format = tpg_data->dt_cfg[0].encode_format & 0xF;
+	val = in_format << tpg_reg->tpg_dt_encode_format_shift;
+
+	switch (tpg_hw->tpg_pattern) {
+	case 0x0:
+		val = val | tpg_hw->tpg_pattern;
+		break;
+	case 0x1:
+		val = val | tpg_hw->tpg_pattern;
+		break;
+	case 0x2:
+		val = val | tpg_hw->tpg_pattern;
+		break;
+	case 0x3:
+		val = val | tpg_hw->tpg_pattern;
+		break;
+	case 0x4:
+		val = val | tpg_hw->tpg_pattern;
+		break;
+	case 0x5:
+		val = val | tpg_hw->tpg_pattern;
+		break;
+	case 0x6:
+		val = val | tpg_hw->tpg_pattern;
+		break;
+	case 0x7:
+		val = val | tpg_hw->tpg_pattern;
+		break;
+	case 0x8:
+		/* unicolor bar selection */
+		val = 0x1 | (1 << tpg_reg->top_unicolor_bar_shift);
+		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
+			tpg_reg->tpg_color_bar_cfg);
+		val = (in_format << tpg_reg->tpg_dt_encode_format_shift) |
+			tpg_hw->tpg_pattern;
+		break;
+	default:
+		/* frame with split color bar */
+		val =  1 << tpg_reg->tpg_split_en_shift;
+		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
+			tpg_reg->tpg_color_bar_cfg);
+		val = (in_format << tpg_reg->tpg_dt_encode_format_shift) |
+			CAM_TOP_TPG_DEFAULT_PATTERN;
+		break;
+	}
+
+	cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
+		tpg_reg->tpg_dt_0_cfg_2);
 
 	val = (1 << tpg_reg->tpg_split_en_shift);
 	cam_io_w_mb(tpg_data->pix_pattern, soc_info->reg_map[0].mem_base +
@@ -580,6 +631,19 @@ static int cam_top_tpg_set_phy_clock(
 	return 0;
 }
 
+static int cam_top_tpg_set_top_tpg_pattern(struct cam_top_tpg_hw *tpg_hw,
+	void *cmd_args)
+{
+	uint32_t *top_tpg_pattern;
+
+	top_tpg_pattern = (uint32_t  *) cmd_args;
+	tpg_hw->tpg_pattern = *top_tpg_pattern;
+	CAM_DBG(CAM_ISP, "TPG:%d set tpg debug value:%d",
+		tpg_hw->hw_intf->hw_idx, tpg_hw->tpg_pattern);
+
+	return 0;
+}
+
 static int cam_top_tpg_process_cmd(void *hw_priv,
 	uint32_t cmd_type, void *cmd_args, uint32_t arg_size)
 {
@@ -598,6 +662,9 @@ static int cam_top_tpg_process_cmd(void *hw_priv,
 	switch (cmd_type) {
 	case CAM_ISP_HW_CMD_TPG_PHY_CLOCK_UPDATE:
 		rc = cam_top_tpg_set_phy_clock(tpg_hw, cmd_args);
+		break;
+	case CAM_ISP_HW_CMD_TPG_SET_PATTERN:
+		rc = cam_top_tpg_set_top_tpg_pattern(tpg_hw, cmd_args);
 		break;
 	default:
 		CAM_ERR(CAM_ISP, "TPG:%d unsupported cmd:%d",
