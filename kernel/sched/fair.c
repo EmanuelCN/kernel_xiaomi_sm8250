@@ -8487,7 +8487,7 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 			unsigned int best_nr = UINT_MAX;
 
 			for_each_cpu(i, cpu_active_mask) {
-				if (!cpumask_test_cpu(i, &p->cpus_allowed))
+				if (!cpumask_test_cpu(i, &p->cpus_allowed) || is_reserved(cpu))
 					continue;
 				if (cpu_rq(i)->nr_running < best_nr) {
 					best_nr = cpu_rq(i)->nr_running;
@@ -11461,6 +11461,12 @@ no_move:
 
 			raw_spin_lock_irqsave(&busiest->lock, flags);
 
+			if (is_reserved(this_cpu) ||
+				is_reserved(cpu_of(busiest))) {
+				raw_spin_unlock_irqrestore(&busiest->lock, flags);
+				*continue_balancing = 0;
+				goto out;
+			}
 			/*
 			 * The CPUs are marked as reserved if tasks
 			 * are pushed/pulled from other CPUs. In that case,

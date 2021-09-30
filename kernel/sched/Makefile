@@ -33,3 +33,4 @@ obj-$(CONFIG_MEMBARRIER) += membarrier.o
 obj-$(CONFIG_CPU_ISOLATION) += isolation.o
 obj-$(CONFIG_SCHED_CORE_CTL) += core_ctl.o
 obj-$(CONFIG_PSI) += psi.o
+obj-$(CONFIG_SPRD_ROTATION_TASK) += sprd_rotation.o

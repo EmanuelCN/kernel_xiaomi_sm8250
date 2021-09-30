@@ -1620,6 +1620,9 @@ static inline void enqueue_task(struct rq *rq, struct task_struct *p, int flags)
 	p->sched_class->enqueue_task(rq, p, flags);
 	walt_update_last_enqueue(p);
 	trace_sched_enq_deq_task(p, 1, cpumask_bits(&p->cpus_allowed)[0]);
+#ifdef CONFIG_SPRD_ROTATION_TASK
+	p->last_enqueue_ts = sched_ktime_clock();
+#endif
 }
 
 static inline void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
@@ -4310,6 +4313,10 @@ unsigned long long task_sched_runtime(struct task_struct *p)
 
 unsigned int capacity_margin_freq = 1280; /* ~20% margin */
 
+#ifdef CONFIG_SPRD_ROTATION_TASK
+static DEFINE_RAW_SPINLOCK(rotation_lock);
+#endif
+
 /*
  * This function gets called by the timer code, with HZ frequency.
  * We call it with interrupts disabled.
@@ -4368,6 +4375,16 @@ void scheduler_tick(void)
 	if (curr->sched_class == &fair_sched_class)
 		check_for_migration(rq, curr);
 #endif
+#ifdef CONFIG_SPRD_ROTATION_TASK
+	if (curr->sched_class == &fair_sched_class) {
+		if (rq->misfit_task_load && curr->state == TASK_RUNNING) {
+			raw_spin_lock(&rotation_lock);
+			check_for_task_rotation(rq);
+			raw_spin_unlock(&rotation_lock);
+		}
+	}
+#endif
+
 }
 
 #ifdef CONFIG_NO_HZ_FULL
