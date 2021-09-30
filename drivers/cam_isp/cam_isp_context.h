@@ -110,13 +110,15 @@ enum cam_isp_state_change_trigger {
 /**
  * struct cam_isp_ctx_debug -  Contains debug parameters
  *
- * @dentry:                    Debugfs entry
- * @enable_state_monitor_dump: Enable isp state monitor dump
+ * @dentry:                     Debugfs entry
+ * @enable_state_monitor_dump:  Enable isp state monitor dump
+ * @enable_cdm_cmd_buff_dump: Enable CDM Command buffer dump
  *
  */
 struct cam_isp_ctx_debug {
 	struct dentry  *dentry;
 	uint32_t        enable_state_monitor_dump;
+	uint32_t        enable_cdm_cmd_buff_dump;
 };
 
 /**

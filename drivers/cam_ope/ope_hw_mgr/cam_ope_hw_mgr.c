@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/uaccess.h>
@@ -695,15 +695,14 @@ static int32_t cam_ope_process_request_timer(void *priv, void *data)
 		}
 
 		CAM_ERR(CAM_OPE,
-			"pending requests means, issue is with HW for ctx %d",
-			ctx_data->ctx_id);
-		CAM_ERR(CAM_OPE, "ctx: %d, lrt: %llu, lct: %llu",
+			"pending req at HW, ctx %d lrt %llu lct %llu",
 			ctx_data->ctx_id, ctx_data->last_req_time,
 			ope_hw_mgr->last_callback_time);
 		hw_mgr->ope_dev_intf[i]->hw_ops.process_cmd(
 				hw_mgr->ope_dev_intf[i]->hw_priv,
 				OPE_HW_DUMP_DEBUG,
 				NULL, 0);
+
 		task = cam_req_mgr_workq_get_task(ope_hw_mgr->msg_work);
 		if (!task) {
 			CAM_ERR(CAM_OPE, "no empty task");
@@ -1601,6 +1600,7 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 	struct timespec64 ts;
 	bool flag = false;
 	bool dump_flag = true;
+	int i;
 
 	if (!userdata) {
 		CAM_ERR(CAM_OPE, "Invalid ctx from CDM callback");
@@ -1660,9 +1660,17 @@ static void cam_ope_ctx_cdm_callback(uint32_t handle, void *userdata,
 			 ope_req->request_id, ctx->ctx_id);
 		CAM_INFO(CAM_OPE, "Rst of CDM and OPE for error reqid = %lld",
 			ope_req->request_id);
+
 		if (status != CAM_CDM_CB_STATUS_HW_FLUSH) {
 			cam_ope_dump_req_data(ope_req);
 			dump_flag = false;
+
+			CAM_INFO(CAM_OPE, "bach_size: %d",
+				ctx->req_list[cookie]->num_batch);
+			for (i = 0; i < ctx->req_list[cookie]->num_batch; i++)
+				CAM_INFO(CAM_OPE, "i: %d num_stripes: %d",
+					i,
+					ctx->req_list[cookie]->num_stripes[i]);
 		}
 		rc = cam_ope_mgr_reset_hw();
 		flag = true;
@@ -1753,7 +1761,7 @@ end:
 
 static int cam_ope_mgr_process_io_cfg(struct cam_ope_hw_mgr *hw_mgr,
 	struct cam_packet *packet,
-	struct cam_hw_prepare_update_args *prep_args,
+	struct cam_hw_prepare_update_args *prep_arg,
 	struct cam_ope_ctx *ctx_data, uint32_t req_idx)
 {
 
@@ -1764,8 +1772,8 @@ static int cam_ope_mgr_process_io_cfg(struct cam_ope_hw_mgr *hw_mgr,
 	struct cam_ope_request *ope_request;
 
 	ope_request = ctx_data->req_list[req_idx];
-	prep_args->num_out_map_entries = 0;
-	prep_args->num_in_map_entries = 0;
+	prep_arg->num_out_map_entries = 0;
+	prep_arg->num_in_map_entries = 0;
 
 	ope_request = ctx_data->req_list[req_idx];
 	CAM_DBG(CAM_OPE, "E: req_idx = %u %x", req_idx, packet);
@@ -1775,8 +1783,16 @@ static int cam_ope_mgr_process_io_cfg(struct cam_ope_hw_mgr *hw_mgr,
 			io_buf = ope_request->io_buf[i][l];
 			if (io_buf->direction == CAM_BUF_INPUT) {
 				if (io_buf->fence != -1) {
-					sync_in_obj[j++] = io_buf->fence;
-					prep_args->num_in_map_entries++;
+					if (j < CAM_MAX_IN_RES) {
+						sync_in_obj[j++] =
+							io_buf->fence;
+						prep_arg->num_in_map_entries++;
+					} else {
+						CAM_ERR(CAM_OPE,
+						"reached max in_res %d %d",
+						io_buf->resource_type,
+						ope_request->request_id);
+					}
 				} else {
 					CAM_ERR(CAM_OPE, "Invalid fence %d %d",
 						io_buf->resource_type,
@@ -1784,10 +1800,10 @@ static int cam_ope_mgr_process_io_cfg(struct cam_ope_hw_mgr *hw_mgr,
 				}
 			} else {
 				if (io_buf->fence != -1) {
-					prep_args->out_map_entries[k].sync_id =
+					prep_arg->out_map_entries[k].sync_id =
 						io_buf->fence;
 					k++;
-					prep_args->num_out_map_entries++;
+					prep_arg->num_out_map_entries++;
 				} else {
 					if (io_buf->resource_type
 						!= OPE_OUT_RES_STATS_LTM) {
@@ -1808,38 +1824,38 @@ static int cam_ope_mgr_process_io_cfg(struct cam_ope_hw_mgr *hw_mgr,
 		}
 	}
 
-	if (prep_args->num_in_map_entries > 1 &&
-		prep_args->num_in_map_entries <= CAM_MAX_IN_RES)
-		prep_args->num_in_map_entries =
+	if (prep_arg->num_in_map_entries > 1 &&
+		prep_arg->num_in_map_entries <= CAM_MAX_IN_RES)
+		prep_arg->num_in_map_entries =
 			cam_common_util_remove_duplicate_arr(
-			sync_in_obj, prep_args->num_in_map_entries);
+			sync_in_obj, prep_arg->num_in_map_entries);
 
-	if (prep_args->num_in_map_entries > 1 &&
-		prep_args->num_in_map_entries <= CAM_MAX_IN_RES) {
+	if (prep_arg->num_in_map_entries > 1 &&
+		prep_arg->num_in_map_entries <= CAM_MAX_IN_RES) {
 		rc = cam_sync_merge(&sync_in_obj[0],
-			prep_args->num_in_map_entries, &merged_sync_in_obj);
+			prep_arg->num_in_map_entries, &merged_sync_in_obj);
 		if (rc) {
-			prep_args->num_out_map_entries = 0;
-			prep_args->num_in_map_entries = 0;
+			prep_arg->num_out_map_entries = 0;
+			prep_arg->num_in_map_entries = 0;
 			return rc;
 		}
 
 		ope_request->in_resource = merged_sync_in_obj;
 
-		prep_args->in_map_entries[0].sync_id = merged_sync_in_obj;
-		prep_args->num_in_map_entries = 1;
+		prep_arg->in_map_entries[0].sync_id = merged_sync_in_obj;
+		prep_arg->num_in_map_entries = 1;
 		CAM_DBG(CAM_REQ, "ctx_id: %u req_id: %llu Merged Sync obj: %d",
 			ctx_data->ctx_id, packet->header.request_id,
 			merged_sync_in_obj);
-	} else if (prep_args->num_in_map_entries == 1) {
-		prep_args->in_map_entries[0].sync_id = sync_in_obj[0];
-		prep_args->num_in_map_entries = 1;
+	} else if (prep_arg->num_in_map_entries == 1) {
+		prep_arg->in_map_entries[0].sync_id = sync_in_obj[0];
+		prep_arg->num_in_map_entries = 1;
 		ope_request->in_resource = 0;
 		CAM_DBG(CAM_OPE, "fence = %d", sync_in_obj[0]);
 	} else {
 		CAM_DBG(CAM_OPE, "Invalid count of input fences, count: %d",
-			prep_args->num_in_map_entries);
-		prep_args->num_in_map_entries = 0;
+			prep_arg->num_in_map_entries);
+		prep_arg->num_in_map_entries = 0;
 		ope_request->in_resource = 0;
 		rc = -EINVAL;
 	}
@@ -2740,6 +2756,10 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 	ctx->ctxt_event_cb = args->event_cb;
 	cam_ope_ctx_clk_info_init(ctx);
 	ctx->ctx_state = OPE_CTX_STATE_ACQUIRED;
+	kzfree(cdm_acquire);
+	cdm_acquire = NULL;
+	kzfree(bw_update);
+	bw_update = NULL;
 
 	mutex_unlock(&ctx->ctx_mutex);
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);

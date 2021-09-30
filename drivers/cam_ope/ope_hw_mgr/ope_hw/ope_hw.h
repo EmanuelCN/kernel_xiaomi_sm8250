@@ -73,6 +73,7 @@ struct cam_ope_top_reg {
 	uint32_t violation_status;
 	uint32_t throttle_cnt_cfg;
 	uint32_t debug_cfg;
+	uint32_t scratch_reg;
 	uint32_t num_debug_registers;
 	struct cam_ope_debug_register *debug_regs;
 };
