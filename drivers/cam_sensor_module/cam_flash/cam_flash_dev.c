@@ -423,6 +423,7 @@ static int32_t cam_flash_platform_probe(struct platform_device *pdev)
 	fctrl->soc_info.pdev = pdev;
 	fctrl->soc_info.dev = &pdev->dev;
 	fctrl->soc_info.dev_name = pdev->name;
+	fctrl->of_node = pdev->dev.of_node;
 
 	platform_set_drvdata(pdev, fctrl);
 
@@ -465,21 +466,21 @@ static int32_t cam_flash_platform_probe(struct platform_device *pdev)
 
 		soc_info = &fctrl->soc_info;
 		if (!soc_info->gpio_data) {
-			CAM_INFO(CAM_FLASH, "No GPIO found");
-			rc = 0;
-			return rc;
-		}
+			CAM_DBG(CAM_FLASH, "No GPIO found");
+		} else {
+			if (!soc_info->gpio_data->cam_gpio_common_tbl_size) {
+				CAM_ERR(CAM_FLASH, "Invalid gpio table size");
+				rc = -EINVAL;
+				goto free_cci_resource;
+			}
 
-		if (!soc_info->gpio_data->cam_gpio_common_tbl_size) {
-			CAM_INFO(CAM_FLASH, "No GPIO found");
-			return -EINVAL;
-		}
-
-		rc = cam_sensor_util_init_gpio_pin_tbl(soc_info,
+			rc = cam_sensor_util_init_gpio_pin_tbl(soc_info,
 				&fctrl->power_info.gpio_num_info);
-		if ((rc < 0) || (!fctrl->power_info.gpio_num_info)) {
-			CAM_ERR(CAM_FLASH, "No/Error Flash GPIOs");
-			return -EINVAL;
+			if ((rc < 0) || (!fctrl->power_info.gpio_num_info)) {
+				CAM_ERR(CAM_FLASH, "No/Error Flash GPIOs");
+				rc = -EINVAL;
+				goto free_cci_resource;
+			}
 		}
 
 		fctrl->i2c_data.per_frame =
@@ -551,11 +552,15 @@ static int32_t cam_flash_i2c_driver_probe(struct i2c_client *client,
 {
 	int32_t rc = 0, i = 0;
 	struct cam_flash_ctrl *fctrl;
+	struct cam_hw_soc_info *soc_info = NULL;
 
-	if (client == NULL || id == NULL) {
-		CAM_ERR(CAM_FLASH, "Invalid Args client: %pK id: %pK",
-			client, id);
+	if (client == NULL) {
+		CAM_ERR(CAM_FLASH, "Invalid Args client: %pK", client);
 		return -EINVAL;
+	}
+
+	if (id == NULL) {
+		CAM_DBG(CAM_FLASH, "device id is Null");
 	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -566,20 +571,49 @@ static int32_t cam_flash_i2c_driver_probe(struct i2c_client *client,
 
 	/* Create sensor control structure */
 	fctrl = kzalloc(sizeof(*fctrl), GFP_KERNEL);
-	if (!fctrl)
+	if (!fctrl) {
+		CAM_ERR(CAM_FLASH, "Failed to allocate memory for fctrl");
 		return -ENOMEM;
+	}
 
 	i2c_set_clientdata(client, fctrl);
 
 	fctrl->io_master_info.client = client;
+	fctrl->of_node = client->dev.of_node;
 	fctrl->soc_info.dev = &client->dev;
 	fctrl->soc_info.dev_name = client->name;
 	fctrl->io_master_info.master_type = I2C_MASTER;
+
+	rc = cam_flash_init_default_params(fctrl);
+	if (rc) {
+		CAM_ERR(CAM_FLASH,
+			"failed: cam_flash_init_default_params rc %d", rc);
+		goto free_ctrl;
+	}
 
 	rc = cam_flash_get_dt_data(fctrl, &fctrl->soc_info);
 	if (rc) {
 		CAM_ERR(CAM_FLASH, "failed: cam_sensor_parse_dt rc %d", rc);
 		goto free_ctrl;
+	}
+
+	soc_info = &fctrl->soc_info;
+	if (!soc_info->gpio_data) {
+		CAM_DBG(CAM_FLASH, "No GPIO found");
+	} else {
+		if (!soc_info->gpio_data->cam_gpio_common_tbl_size) {
+			CAM_ERR(CAM_FLASH, "Invalid gpio table size");
+			rc = -EINVAL;
+			goto free_ctrl;
+		}
+
+		rc = cam_sensor_util_init_gpio_pin_tbl(soc_info,
+			&fctrl->power_info.gpio_num_info);
+		if ((rc < 0) || (!fctrl->power_info.gpio_num_info)) {
+			CAM_ERR(CAM_FLASH, "No/Error Flash GPIOs");
+			rc = -EINVAL;
+			goto free_ctrl;
+		}
 	}
 
 	rc = cam_flash_init_subdev(fctrl);
@@ -650,6 +684,7 @@ static struct i2c_driver cam_flash_i2c_driver = {
 	.remove = cam_flash_i2c_driver_remove,
 	.driver = {
 		.name = FLASH_DRIVER_I2C,
+		.of_match_table = cam_flash_dt_match,
 	},
 };
 
@@ -658,14 +693,13 @@ static int32_t __init cam_flash_init_module(void)
 	int32_t rc = 0;
 
 	rc = platform_driver_register(&cam_flash_platform_driver);
-	if (rc == 0) {
-		CAM_DBG(CAM_FLASH, "platform probe success");
-		return 0;
-	}
+	if (rc < 0)
+		CAM_ERR(CAM_FLASH, "platform probe failed rc: %d", rc);
 
 	rc = i2c_add_driver(&cam_flash_i2c_driver);
-	if (rc)
+	if (rc < 0)
 		CAM_ERR(CAM_FLASH, "i2c_add_driver failed rc: %d", rc);
+
 	return rc;
 }
 

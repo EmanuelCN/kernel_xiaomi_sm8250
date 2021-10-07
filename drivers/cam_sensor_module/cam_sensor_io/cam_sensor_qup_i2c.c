@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_sensor_cmn_header.h"
@@ -32,9 +32,14 @@ static int32_t cam_qup_i2c_rxdata(
 		},
 	};
 	rc = i2c_transfer(dev_client->adapter, msgs, 2);
-	if (rc < 0)
+	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "failed 0x%x", saddr);
-	return rc;
+		return rc;
+	}
+	/* Returns negative errno */
+	/* else the number of messages executed. */
+	/* So positive values are not errors. */
+	return 0;
 }
 
 
@@ -53,9 +58,14 @@ static int32_t cam_qup_i2c_txdata(
 		 },
 	};
 	rc = i2c_transfer(dev_client->client->adapter, msg, 1);
-	if (rc < 0)
+	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "failed 0x%x", saddr);
-	return rc;
+		return rc;
+	}
+	/* Returns negative errno, */
+	/* else the number of messages executed. */
+	/* So positive values are not errors. */
+	return 0;
 }
 
 int32_t cam_qup_i2c_read(struct i2c_client *client,
