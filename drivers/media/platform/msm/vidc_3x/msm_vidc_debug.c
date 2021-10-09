@@ -21,7 +21,7 @@
 int msm_vidc_debug = VIDC_ERR | VIDC_WARN;
 int msm_vidc_debug_out = VIDC_OUT_PRINTK;
 int msm_vidc_fw_debug = 0x18;
-int msm_vidc_fw_debug_mode = 1;
+int msm_vidc_fw_debug_mode = 0;
 int msm_vidc_fw_low_power_mode = 1;
 int msm_vidc_hw_rsp_timeout = 1000;
 bool msm_vidc_fw_coverage = true;
