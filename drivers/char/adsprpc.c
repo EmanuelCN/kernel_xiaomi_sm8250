@@ -37,9 +37,7 @@
 #include <soc/qcom/ramdump.h>
 #include <linux/delay.h>
 #include <linux/debugfs.h>
-#include <linux/pm_qos.h>
 #include <linux/stat.h>
-#include <linux/cpumask.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/fastrpc.h>
@@ -232,11 +230,6 @@ struct secure_vm {
 	int vmcount;
 };
 
-struct qos_cores {
-	int *coreno;
-	int corecount;
-};
-
 struct fastrpc_file;
 
 struct fastrpc_buf {
@@ -390,7 +383,6 @@ struct fastrpc_apps {
 	struct wakeup_source *wake_source_secure;
 	/* Non-secure subsystem like CDSP will use regular client */
 	struct wakeup_source *wake_source;
-	struct qos_cores silvercores;
 	uint32_t max_size_limit;
 	void *ramdump_handle;
 	bool enable_ramdump;
@@ -470,7 +462,6 @@ struct fastrpc_file {
 	struct hlist_head perf;
 	struct dentry *debugfs_file;
 	struct mutex perf_mutex;
-	struct pm_qos_request pm_qos_req;
 	int qos_request;
 	struct mutex map_mutex;
 	struct mutex internal_map_mutex;
@@ -3768,8 +3759,6 @@ static int fastrpc_device_release(struct inode *inode, struct file *file)
 	struct fastrpc_file *fl = (struct fastrpc_file *)file->private_data;
 
 	if (fl) {
-		if (fl->qos_request && pm_qos_request_active(&fl->pm_qos_req))
-			pm_qos_remove_request(&fl->pm_qos_req);
 		if (fl->debugfs_file != NULL)
 			debugfs_remove(fl->debugfs_file);
 		fastrpc_file_free(fl);
@@ -4233,9 +4222,6 @@ static int fastrpc_internal_control(struct fastrpc_file *fl,
 					struct fastrpc_ioctl_control *cp)
 {
 	int err = 0;
-	unsigned int latency;
-	struct fastrpc_apps *me = &gfa;
-	u32 len = me->silvercores.corecount, i = 0;
 
 	VERIFY(err, !IS_ERR_OR_NULL(fl) && !IS_ERR_OR_NULL(fl->apps));
 	if (err)
@@ -4246,24 +4232,6 @@ static int fastrpc_internal_control(struct fastrpc_file *fl,
 
 	switch (cp->req) {
 	case FASTRPC_CONTROL_LATENCY:
-		latency = cp->lp.enable == FASTRPC_LATENCY_CTRL_ENB ?
-			fl->apps->latency : PM_QOS_DEFAULT_VALUE;
-		VERIFY(err, latency != 0);
-		if (err)
-			goto bail;
-		atomic_set(&fl->pm_qos_req.cpus_affine, 0);
-		for (i = 0; i < len; i++)
-			atomic_or(BIT(me->silvercores.coreno[i]),
-				  &fl->pm_qos_req.cpus_affine);
-		fl->pm_qos_req.type = PM_QOS_REQ_AFFINE_CORES;
-
-		if (!fl->qos_request) {
-			pm_qos_add_request(&fl->pm_qos_req,
-				PM_QOS_CPU_DMA_LATENCY, latency);
-			fl->qos_request = 1;
-		} else
-			pm_qos_update_request(&fl->pm_qos_req, latency);
-
 		/* Ensure CPU feature map updated to DSP for early WakeUp */
 		fastrpc_send_cpuinfo_to_dsp(fl);
 		break;
@@ -4996,39 +4964,6 @@ bail:
 	}
 }
 
-static void init_qos_cores_list(struct device *dev, char *prop_name,
-						struct qos_cores *silvercores)
-{
-	int err = 0;
-	u32 len = 0, i = 0;
-	u32 *coreslist = NULL;
-
-	if (!of_find_property(dev->of_node, prop_name, &len))
-		goto bail;
-	if (len == 0)
-		goto bail;
-	len /= sizeof(u32);
-	VERIFY(err, NULL != (coreslist = kcalloc(len, sizeof(u32),
-						 GFP_KERNEL)));
-	if (err)
-		goto bail;
-	for (i = 0; i < len; i++) {
-		err = of_property_read_u32_index(dev->of_node, prop_name, i,
-								&coreslist[i]);
-		if (err) {
-			pr_err("adsprpc: %s: failed to read QOS cores list\n",
-								 __func__);
-			goto bail;
-		}
-	}
-	silvercores->coreno = coreslist;
-	silvercores->corecount = len;
-bail:
-	if (err) {
-		kfree(coreslist);
-	}
-}
-
 static void configure_secure_channels(uint32_t secure_domains)
 {
 	struct fastrpc_apps *me = &gfa;
@@ -5066,8 +5001,6 @@ static int fastrpc_probe(struct platform_device *pdev)
 					"qcom,msm-fastrpc-compute")) {
 		init_secure_vmid_list(dev, "qcom,adsp-remoteheap-vmid",
 							&gcinfo[0].rhvm);
-		init_qos_cores_list(dev, "qcom,qos-cores",
-							&me->silvercores);
 
 		of_property_read_u32(dev->of_node, "qcom,rpc-latency-us",
 			&me->latency);
