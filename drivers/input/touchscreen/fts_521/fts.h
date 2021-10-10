@@ -36,6 +36,7 @@
 #include <linux/sysfs.h>
 #include <linux/notifier.h>
 #include <linux/mutex.h>
+#include <linux/pm_qos.h>
 #include "fts_lib/ftsSoftware.h"
 #include "fts_lib/ftsHardware.h"
 #include <linux/completion.h>
@@ -323,6 +324,7 @@ struct fts_ts_info {
 	struct workqueue_struct *event_wq;
 	struct workqueue_struct *irq_wq;
 	struct workqueue_struct *touch_feature_wq;
+	struct pm_qos_request pm_qos_req;
 
 #ifndef FW_UPDATE_ON_PROBE
 	struct delayed_work fwu_work;
@@ -342,9 +344,6 @@ struct fts_ts_info {
 	struct fts_hw_platform_data *board;
 	struct regulator *vdd_reg;
 	struct regulator *avdd_reg;
-
-	spinlock_t fts_int;	/* Spinlock to protect interrupt toggling */
-	bool irq_enabled;	/* Interrupt state */
 
 	int resume_bit;
 	int fwupdate_stat;
