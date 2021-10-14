@@ -119,8 +119,9 @@ static int erofs_map_blocks(struct inode *inode,
 	erofs_off_t pos;
 	void *kaddr;
 	int err = 0;
-	
+
 	trace_erofs_map_blocks_enter(inode, map, flags);
+	map->m_deviceid = 0;
 	if (map->m_la >= inode->i_size) {
 		/* leave out-of-bound access unmapped */
 		map->m_flags = 0;
@@ -170,14 +171,8 @@ static int erofs_map_blocks(struct inode *inode,
 		map->m_flags = 0;
 		break;
 	default:
-		/* only one device is supported for now */
-		if (idx->device_id) {
-			erofs_err(sb, "invalid device id %u @ %llu for nid %llu",
-				  le16_to_cpu(idx->device_id),
-				  chunknr, vi->nid);
-			err = -EFSCORRUPTED;
-			goto out_unlock;
-		}
+		map->m_deviceid = le16_to_cpu(idx->device_id) &
+			EROFS_SB(sb)->device_id_mask;
 		map->m_pa = blknr_to_addr(le32_to_cpu(idx->blkaddr));
 		map->m_flags = EROFS_MAP_MAPPED;
 		break;
@@ -191,11 +186,52 @@ out:
 	return err;
 }
 
+int erofs_map_dev(struct super_block *sb, struct erofs_map_dev *map)
+{
+	struct erofs_dev_context *devs = EROFS_SB(sb)->devs;
+	struct erofs_device_info *dif;
+	int id;
+
+	/* primary device by default */
+	map->m_bdev = sb->s_bdev;
+
+	if (map->m_deviceid) {
+		down_read(&devs->rwsem);
+		dif = idr_find(&devs->tree, map->m_deviceid - 1);
+		if (!dif) {
+			up_read(&devs->rwsem);
+			return -ENODEV;
+		}
+		map->m_bdev = dif->bdev;
+		up_read(&devs->rwsem);
+	} else if (devs->extra_devices) {
+		down_read(&devs->rwsem);
+		idr_for_each_entry(&devs->tree, dif, id) {
+			erofs_off_t startoff, length;
+
+			if (!dif->mapped_blkaddr)
+				continue;
+			startoff = blknr_to_addr(dif->mapped_blkaddr);
+			length = blknr_to_addr(dif->blocks);
+
+			if (map->m_pa >= startoff &&
+			    map->m_pa < startoff + length) {
+				map->m_pa -= startoff;
+				map->m_bdev = dif->bdev;
+				break;
+			}
+		}
+		up_read(&devs->rwsem);
+	}
+	return 0;
+}
+
 static int erofs_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
 		unsigned int flags, struct iomap *iomap)
 {
 	int ret;
 	struct erofs_map_blocks map;
+	struct erofs_map_dev mdev;
 
 	map.m_la = offset;
 	map.m_llen = length;
@@ -204,7 +240,15 @@ static int erofs_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
 	if (ret < 0)
 		return ret;
 
-	iomap->bdev = inode->i_sb->s_bdev;
+	mdev = (struct erofs_map_dev) {
+		.m_deviceid = map.m_deviceid,
+		.m_pa = map.m_pa,
+	};
+	ret = erofs_map_dev(inode->i_sb, &mdev);
+	if (ret)
+		return ret;
+
+	iomap->bdev = mdev.m_bdev;
 	iomap->offset = map.m_la;
 	iomap->length = map.m_llen;
 	iomap->flags = 0;
@@ -224,14 +268,14 @@ static int erofs_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
 
 		iomap->type = IOMAP_INLINE;
 		ptr = erofs_read_metabuf(&buf, inode->i_sb,
-					 erofs_blknr(map.m_pa), EROFS_KMAP);
+					 erofs_blknr(mdev.m_pa), EROFS_KMAP);
 		if (IS_ERR(ptr))
 			return PTR_ERR(ptr);
-		iomap->inline_data = ptr + erofs_blkoff(map.m_pa);
+		iomap->inline_data = ptr + erofs_blkoff(mdev.m_pa);
 		iomap->private = buf.base;
 	} else {
 		iomap->type = IOMAP_MAPPED;
-		iomap->addr = map.m_pa;
+		iomap->addr = mdev.m_pa;
 	}
 	return 0;
 }
