@@ -25,7 +25,7 @@
 /*
  * Select the PHY (CPHY set '1' or DPHY set '0')
  */
-#define PPI_CFG_CPHY_DLX_SEL(X)            ((X < 2) ? BIT(X) : 0)
+#define PPI_CFG_CPHY_DLX_SEL(X)            BIT(X)
 
 #define PPI_CFG_CPHY_DLX_EN(X)             BIT(4+X)
 
