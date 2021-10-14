@@ -2367,6 +2367,10 @@ long _do_fork(unsigned long clone_flags,
 	int trace = 0;
 	long nr;
 
+	if (task_is_zygote(current)) {
+		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW_BOOST_FREQ, 50);
+	}
+
 	/*
 	 * Determine whether and which event to report to ptracer.  When
 	 * called from kernel_thread or CLONE_UNTRACED is explicitly
