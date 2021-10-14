@@ -185,6 +185,7 @@ struct cam_tfe_csid_csi2_rx_reg_offset {
 	uint32_t csid_csi2_rx_total_crc_err_addr;
 
 	/*configurations */
+	uint32_t phy_sel_base;
 	uint32_t csi2_rst_srb_all;
 	uint32_t csi2_rst_done_shift_val;
 	uint32_t csi2_irq_mask_all;
