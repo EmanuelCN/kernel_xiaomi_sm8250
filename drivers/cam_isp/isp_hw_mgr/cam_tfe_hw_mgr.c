@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -2971,6 +2971,17 @@ static int cam_tfe_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 				sizeof(g_tfe_hw_mgr.debug_cfg.csid_debug));
 	}
 
+	/* set tpg debug information for top tpg */
+	for (i = 0; i < CAM_TOP_TPG_HW_NUM_MAX; i++) {
+		if (g_tfe_hw_mgr.tpg_devices[i]) {
+			rc = g_tfe_hw_mgr.tpg_devices[i]->hw_ops.process_cmd(
+				g_tfe_hw_mgr.tpg_devices[i]->hw_priv,
+				CAM_ISP_HW_CMD_TPG_SET_PATTERN,
+				&g_tfe_hw_mgr.debug_cfg.set_tpg_pattern,
+				sizeof(g_tfe_hw_mgr.debug_cfg.set_tpg_pattern));
+		}
+	}
+
 	camif_debug = g_tfe_hw_mgr.debug_cfg.camif_debug;
 	list_for_each_entry(hw_mgr_res, &ctx->res_list_tfe_in, list) {
 		for (i = 0; i < CAM_ISP_HW_SPLIT_MAX; i++) {
@@ -5450,6 +5461,7 @@ DEFINE_DEBUGFS_ATTRIBUTE(cam_tfe_camif_debug,
 
 static int cam_tfe_hw_mgr_debug_register(void)
 {
+	g_tfe_hw_mgr.debug_cfg.set_tpg_pattern = CAM_TOP_TPG_DEFAULT_PATTERN;
 	g_tfe_hw_mgr.debug_cfg.dentry = debugfs_create_dir("camera_tfe",
 		NULL);
 
@@ -5479,6 +5491,14 @@ static int cam_tfe_hw_mgr_debug_register(void)
 		g_tfe_hw_mgr.debug_cfg.dentry,
 		&g_tfe_hw_mgr.debug_cfg.enable_csid_recovery)) {
 		CAM_ERR(CAM_ISP, "failed to create enable_csid_recovery");
+		goto err;
+	}
+
+	if (!debugfs_create_u32("set_tpg_pattern",
+		0644,
+		g_tfe_hw_mgr.debug_cfg.dentry,
+		&g_tfe_hw_mgr.debug_cfg.set_tpg_pattern)) {
+		CAM_ERR(CAM_ISP, "failed to create set_tpg_pattern");
 		goto err;
 	}
 

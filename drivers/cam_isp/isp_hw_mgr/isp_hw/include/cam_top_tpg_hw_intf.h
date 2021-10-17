@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TOP_TPG_HW_INTF_H_
@@ -13,7 +13,8 @@
 #define CAM_TOP_TPG_HW_NUM_MAX                        2
 /* Max supported number of DT for TPG */
 #define CAM_TOP_TPG_MAX_SUPPORTED_DT                  4
-
+/* TPG default pattern should be color bar */
+#define CAM_TOP_TPG_DEFAULT_PATTERN                   0x8
 /**
  * enum cam_top_tpg_id - top tpg hw instance id
  */

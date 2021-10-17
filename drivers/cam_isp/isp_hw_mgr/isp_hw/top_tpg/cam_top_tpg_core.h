@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TOP_TPG_HW_H_
@@ -60,6 +60,7 @@ struct cam_top_tpg_reg_offset {
 	uint32_t tpg_payload_mode_color;
 	uint32_t tpg_split_en_shift;
 	uint32_t top_mux_reg_offset;
+	uint32_t top_unicolor_bar_shift;
 };
 
 /**
@@ -129,7 +130,7 @@ struct cam_top_tpg_cfg {
  * @hw_info:                  tpg hw device information
  * @tpg_info:                 tpg hw specific information
  * @tpg_res:                  tpg resource
- * @tpg_cfg:                  tpg configuration
+ * @tpg_pattern:              tpg pattern configuration
  * @clk_rate                  clock rate
  * @lock_state                lock state
  * @tpg_complete              tpg completion
@@ -140,6 +141,7 @@ struct cam_top_tpg_hw {
 	struct cam_hw_info              *hw_info;
 	struct cam_top_tpg_hw_info      *tpg_info;
 	struct cam_isp_resource_node     tpg_res;
+	uint32_t                         tpg_pattern;
 	uint64_t                         clk_rate;
 	spinlock_t                       lock_state;
 	struct completion                tpg_complete;
