@@ -277,35 +277,31 @@ static noinline bool rwsem_spin_on_owner(struct rw_semaphore *sem)
 {
 	struct task_struct *owner = READ_ONCE(sem->owner);
 
-	if (!owner || !is_rwsem_owner_spinnable(owner))
+	if (!is_rwsem_owner_spinnable(owner))
 		return false;
 
-	while (true) {
-		bool on_cpu, same_owner;
-
+	rcu_read_lock();
+	while (owner && (READ_ONCE(sem->owner) == owner)) {
 		/*
-		 * Ensure sem->owner still matches owner. If that fails,
+		 * Ensure we emit the owner->on_cpu, dereference _after_
+		 * checking sem->owner still matches owner, if that fails,
 		 * owner might point to free()d memory, if it still matches,
 		 * the rcu_read_lock() ensures the memory stays valid.
 		 */
-		rcu_read_lock();
-		same_owner = sem->owner == owner;
-		if (same_owner)
-			on_cpu = owner_on_cpu(owner);
-		rcu_read_unlock();
-
-		if (!same_owner)
-			break;
+		barrier();
 
 		/*
 		 * abort spinning when need_resched or owner is not running or
 		 * owner's cpu is preempted.
 		 */
-		if (!on_cpu || need_resched())
+		if (need_resched() || !owner_on_cpu(owner)) {
+			rcu_read_unlock();
 			return false;
+		}
 
 		cpu_relax();
 	}
+	rcu_read_unlock();
 
 	/*
 	 * If there is a new owner or the owner is not set, we continue
