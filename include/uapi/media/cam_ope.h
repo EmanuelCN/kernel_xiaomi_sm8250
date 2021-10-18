@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, 2022, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_OPE_H__
@@ -73,7 +73,7 @@
 #define OPE_MAX_IO_BUFS                     (OPE_OUT_RES_MAX + OPE_IN_RES_MAX)
 #define OPE_MAX_PASS                        1
 #define OPE_MAX_PLANES                      2
-#define OPE_MAX_STRIPES                     48
+#define OPE_MAX_STRIPES                     64
 #define OPE_MAX_BATCH_SIZE                  16
 
 /**

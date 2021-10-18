@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2020, 2022, The Linux Foundation. All rights reserved.
  */
 
 #ifndef CAM_OPE_HW_MGR_H
@@ -50,7 +50,7 @@
 #define OPE_CMDS                  OPE_MAX_CMD_BUFS
 #define CAM_MAX_IN_RES            8
 
-#define OPE_MAX_CDM_BLS           24
+#define OPE_MAX_CDM_BLS           32
 
 #define CAM_OPE_MAX_PER_PATH_VOTES 6
 #define CAM_OPE_BW_CONFIG_UNKNOWN  0
