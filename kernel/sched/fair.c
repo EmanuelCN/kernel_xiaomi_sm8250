@@ -12088,9 +12088,9 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 {
 	unsigned long next_balance = jiffies + HZ;
 	int this_cpu = this_rq->cpu;
+	u64 t0, t1, curr_cost = 0;
 	struct sched_domain *sd;
 	int pulled_task = 0;
-	u64 curr_cost = 0;
 	u64 avg_idle = this_rq->avg_idle;
 #ifdef CONFIG_SCHED_WALT
 	bool prefer_spread = prefer_spread_on_idle(this_cpu);
@@ -12141,11 +12141,13 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 
 	raw_spin_unlock(&this_rq->lock);
 
+	t0 = sched_clock_cpu(this_cpu);
 	update_blocked_averages(this_cpu);
+
 	rcu_read_lock();
 	for_each_domain(this_cpu, sd) {
 		int continue_balancing = 1;
-		u64 t0, domain_cost;
+		u64 domain_cost;
 
 		if (!(sd->flags & SD_LOAD_BALANCE))
 			continue;
@@ -12163,17 +12165,18 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 		}
 
 		if (sd->flags & SD_BALANCE_NEWIDLE) {
-			t0 = sched_clock_cpu(this_cpu);
 
 			pulled_task = load_balance(this_cpu, this_rq,
 						   sd, CPU_NEWLY_IDLE,
 						   &continue_balancing);
 
-			domain_cost = sched_clock_cpu(this_cpu) - t0;
+			t1 = sched_clock_cpu(this_cpu);
+			domain_cost = t1 - t0;
 			if (domain_cost > sd->max_newidle_lb_cost)
 				sd->max_newidle_lb_cost = domain_cost;
 
 			curr_cost += domain_cost;
+			t0 = t1;
 		}
 
 		update_next_balance(sd, &next_balance);
