@@ -11964,17 +11964,20 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 	 */
 	rq_unpin_lock(this_rq, rf);
 
-	if (avg_idle < sysctl_sched_migration_cost ||
-	    !READ_ONCE(this_rq->rd->overload)) {
+	rcu_read_lock();
+	sd = rcu_dereference_check_sched_domain(this_rq->sd);
 
-		rcu_read_lock();
-		sd = rcu_dereference_check_sched_domain(this_rq->sd);
+	if (avg_idle < sysctl_sched_migration_cost ||
+	    !READ_ONCE(this_rq->rd->overload) ||
+	    (sd && avg_idle < sd->max_newidle_lb_cost)) {
+
 		if (sd)
 			update_next_balance(sd, &next_balance);
 		rcu_read_unlock();
 
 		goto out;
 	}
+	rcu_read_unlock();
 
 	raw_spin_unlock(&this_rq->lock);
 
