@@ -1471,11 +1471,8 @@ again:
 	if (force_flush) {
 		force_flush = 0;
 		tlb_flush_mmu_free(tlb);
-	}
-
-	if (addr != end) {
-		cond_resched();
-		goto again;
+		if (addr != end)
+			goto again;
 	}
 
 	return addr;
