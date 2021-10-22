@@ -95,7 +95,6 @@ static void s2idle_enter(void)
 	raw_spin_unlock_irq(&s2idle_lock);
 
 	get_online_cpus();
-	cpuidle_resume();
 
 	/* Push all the CPUs into the idle loop. */
 	wake_up_all_idle_cpus();
@@ -103,7 +102,6 @@ static void s2idle_enter(void)
 	swait_event_exclusive(s2idle_wait_head,
 		    s2idle_state == S2IDLE_STATE_WAKE);
 
-	cpuidle_pause();
 	put_online_cpus();
 
 	raw_spin_lock_irq(&s2idle_lock);
@@ -401,6 +399,9 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 	if (error)
 		goto Devices_early_resume;
 
+	if (state != PM_SUSPEND_TO_IDLE)
+		cpuidle_pause();
+
 	error = dpm_suspend_noirq(PMSG_SUSPEND);
 	if (error) {
 		last_dev = suspend_stats.last_failed_dev + REC_FAILED_NUM - 1;
@@ -463,6 +464,9 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 	dpm_resume_noirq(PMSG_RESUME);
 
  Platform_early_resume:
+	if (state != PM_SUSPEND_TO_IDLE)
+		cpuidle_resume();
+
 	platform_resume_early(state);
 
  Devices_early_resume:

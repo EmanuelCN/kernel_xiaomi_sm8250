@@ -807,8 +807,6 @@ void dpm_resume_noirq(pm_message_t state)
 
 	resume_device_irqs();
 	device_wakeup_disarm_wake_irqs();
-
-	cpuidle_resume();
 }
 
 static pm_callback_t dpm_subsys_resume_early_cb(struct device *dev,
@@ -955,6 +953,7 @@ void dpm_resume_early(pm_message_t state)
 void dpm_resume_start(pm_message_t state)
 {
 	dpm_resume_noirq(state);
+	cpuidle_resume();
 	dpm_resume_early(state);
 }
 EXPORT_SYMBOL_GPL(dpm_resume_start);
@@ -1463,8 +1462,6 @@ int dpm_suspend_noirq(pm_message_t state)
 {
 	int ret;
 
-	cpuidle_pause();
-
 	device_wakeup_arm_wake_irqs();
 	suspend_device_irqs();
 
@@ -1670,8 +1667,11 @@ int dpm_suspend_end(pm_message_t state)
 	if (error)
 		return error;
 
+	cpuidle_pause();
+
 	error = dpm_suspend_noirq(state);
 	if (error) {
+		cpuidle_resume();
 		dpm_resume_early(resume_event(state));
 		return error;
 	}
