@@ -65,7 +65,7 @@ int z_erofs_load_lz4_config(struct super_block *sb,
  * all physical pages are consecutive, which can be seen for moderate CR.
  */
 static int z_erofs_lz4_prepare_dstpages(struct z_erofs_lz4_decompress_ctx *ctx,
-					struct list_head *pagepool)
+					struct page **pagepool)
 {
 	struct z_erofs_decompress_req *rq = ctx->rq;
 	struct page *availables[LZ4_MAX_DISTANCE_PAGES] = { NULL };
@@ -272,7 +272,7 @@ static int z_erofs_lz4_decompress_mem(struct z_erofs_lz4_decompress_ctx *ctx,
 }
 
 static int z_erofs_lz4_decompress(struct z_erofs_decompress_req *rq,
-				  struct list_head *pagepool)
+				  struct page **pagepool)
 {
 	struct z_erofs_lz4_decompress_ctx ctx;
 	unsigned int dst_maptype;
@@ -316,7 +316,7 @@ dstmap_out:
 }
 
 static int z_erofs_shifted_transform(struct z_erofs_decompress_req *rq,
-				     struct list_head *pagepool)
+				     struct page **pagepool)
 {
 	const unsigned int nrpages_out =
 		PAGE_ALIGN(rq->pageofs_out + rq->outputsize) >> PAGE_SHIFT;
@@ -373,7 +373,7 @@ static struct z_erofs_decompressor decompressors[] = {
 };
 
 int z_erofs_decompress(struct z_erofs_decompress_req *rq,
-		       struct list_head *pagepool)
+		       struct page **pagepool)
 {
 	return decompressors[rq->alg].decompress(rq, pagepool);
 }
