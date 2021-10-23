@@ -546,7 +546,7 @@ static void _msm_drm_commit_work_cb(struct kthread_work *work)
 
 	struct pm_qos_request req = {
 		.type = PM_QOS_REQ_AFFINE_CORES,
-		.cpus_affine = ATOMIC_INIT(BIT(raw_smp_processor_id()))
+		.cpus_affine = BIT(raw_smp_processor_id())
 	};
 
         ktime_t start, end;
