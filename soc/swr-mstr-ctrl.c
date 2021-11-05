@@ -2490,9 +2490,6 @@ static int swrm_master_init(struct swr_mstr_ctrl *swrm)
 	reg[len] = SWRM_COMP_CFG_ADDR;
 	value[len++] = 0x02;
 
-	reg[len] = SWRM_COMP_CFG_ADDR;
-	value[len++] = 0x03;
-
 	reg[len] = SWRM_INTERRUPT_CLEAR;
 	value[len++] = 0xFFFFFFFF;
 
@@ -2503,6 +2500,9 @@ static int swrm_master_init(struct swr_mstr_ctrl *swrm)
 
 	reg[len] = SWR_MSTR_RX_SWRM_CPU_INTERRUPT_EN;
 	value[len++] = swrm->intr_mask;
+
+	reg[len] = SWRM_COMP_CFG_ADDR;
+	value[len++] = 0x03;
 
 	swr_master_bulk_write(swrm, reg, value, len);
 
