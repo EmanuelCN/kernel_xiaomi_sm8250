@@ -244,7 +244,7 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 	}
 
 #ifdef CONFIG_DRM_SDE_EXPO
-	if (bl_lvl && !panel->spec_pdata->aod_mode) {
+	if(panel->dimlayer_exposure) {
 		bl_temp = expo_map_dim_level((u32)bl_temp, dsi_display);
 	}
 #endif
@@ -5226,6 +5226,9 @@ static DEVICE_ATTR(fod_ui, 0444,
 static struct attribute *display_fs_attrs[] = {
 	&dev_attr_fod_ui.attr,
 	&dev_attr_hbm.attr,
+#ifdef CONFIG_DRM_SDE_EXPO
+	&dev_attr_dimlayer_exposure.attr,
+#endif
 	NULL,
 };
 
@@ -5234,8 +5237,70 @@ static struct attribute_group display_fs_attrs_group = {
 };
 #else
 
+#ifdef CONFIG_DRM_SDE_EXPO
+static ssize_t sysfs_dimlayer_exposure_read(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct dsi_display *display;
+	struct dsi_panel *panel;
+	bool status;
+
+	display = dev_get_drvdata(dev);
+	if (!display) {
+		pr_err("Invalid display\n");
+		return -EINVAL;
+	}
+
+	panel = display->panel;
+
+	mutex_lock(&panel->panel_lock);
+	status = panel->dimlayer_exposure;
+	mutex_unlock(&panel->panel_lock);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", status);
+}
+
+static ssize_t sysfs_dimlayer_exposure_write(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dsi_display *display;
+	struct dsi_panel *panel;
+	struct drm_connector *connector = NULL;
+	bool status;
+	int rc = 0;
+
+	display = dev_get_drvdata(dev);
+	if (!display) {
+		pr_err("Invalid display\n");
+		return -EINVAL;
+	}
+
+	rc = kstrtobool(buf, &status);
+	if (rc) {
+		pr_err("%s: kstrtobool failed. rc=%d\n", __func__, rc);
+		return rc;
+	}
+
+	panel = display->panel;
+
+	panel->dimlayer_exposure = status;
+	dsi_display_set_backlight(connector, display, panel->bl_config.bl_level);
+
+	return count;
+}
+#endif
+
+#ifdef CONFIG_DRM_SDE_EXPO
+static DEVICE_ATTR(dimlayer_exposure, 0644,
+			sysfs_dimlayer_exposure_read,
+			sysfs_dimlayer_exposure_write);
+#endif
+
 static struct attribute *display_fs_attrs[] = {
         &dev_attr_hbm.attr,
+#ifdef CONFIG_DRM_SDE_EXPO
+	&dev_attr_dimlayer_exposure.attr,
+#endif
         NULL,
 };
 
