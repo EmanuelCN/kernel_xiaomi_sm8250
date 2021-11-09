@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_TFE_CSID_530_H_
@@ -134,6 +134,7 @@ static struct cam_tfe_csid_csi2_rx_reg_offset
 	.csid_csi2_rx_irq_set_addr                    = 0x2c,
 
 	/*CSI2 rx control */
+	.phy_sel_base                                 = 1,
 	.csid_csi2_rx_cfg0_addr                       = 0x100,
 	.csid_csi2_rx_cfg1_addr                       = 0x104,
 	.csid_csi2_rx_capture_ctrl_addr               = 0x108,
