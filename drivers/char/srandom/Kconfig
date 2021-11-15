@@ -1,0 +1,13 @@
+config SRANDOM
+	tristate "Seed Random Number Generator by josenk"
+	default n
+	depends on !HW_RANDOM
+
+	---help---
+	  This driver provides kernel-side support for
+	  Seed Random Number Generator.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called srandom.
+
+	  If unsure, say N.
