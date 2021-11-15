@@ -13,7 +13,14 @@
 #include <linux/types.h>
 #include <linux/uidgid.h>
 #include <uapi/linux/android/binderfs.h>
+#include <uapi/linux/eventpoll.h>
 #include "binder_alloc.h"
+
+#define ida_alloc_max(a, b, c) ida_simple_get(a, 0, b + 1, c)
+#define ida_free ida_remove
+
+typedef unsigned int __poll_t;
+typedef __bitwise int vm_fault_t;
 
 struct binder_context {
 	struct binder_node *binder_context_mgr_node;
@@ -592,7 +599,6 @@ struct binder_transaction {
 	 * during thread teardown
 	 */
 	spinlock_t lock;
-	ANDROID_VENDOR_DATA(1);
 };
 
 /**
