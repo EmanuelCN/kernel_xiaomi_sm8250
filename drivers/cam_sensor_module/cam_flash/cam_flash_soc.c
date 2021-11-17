@@ -240,7 +240,14 @@ int cam_flash_get_dt_data(struct cam_flash_ctrl *fctrl,
 		rc = -ENOMEM;
 		goto release_soc_res;
 	}
-	of_node = fctrl->pdev->dev.of_node;
+
+	if (fctrl->of_node == NULL) {
+		CAM_ERR(CAM_FLASH, "device node is NULL");
+		rc = -EINVAL;
+		goto free_soc_private;
+	}
+
+	of_node = fctrl->of_node;
 
 	rc = cam_soc_util_get_dt_properties(soc_info);
 	if (rc) {
