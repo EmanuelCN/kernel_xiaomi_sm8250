@@ -19,6 +19,7 @@
 #include <media/cam_defs.h>
 #include <media/cam_ope.h>
 #include <media/cam_cpas.h>
+#include <linux/math64.h>
 
 #include "cam_sync_api.h"
 #include "cam_packet_util.h"
@@ -621,8 +622,8 @@ static bool cam_ope_check_req_delay(struct cam_ope_ctx *ctx_data,
 		ts.tv_nsec);
 
 	if (ts_ns - req_time <
-		((OPE_REQUEST_TIMEOUT -
-			OPE_REQUEST_TIMEOUT / 10) * 1000000)) {
+		((ctx_data->req_timer_timeout -
+			div_u64(ctx_data->req_timer_timeout, 10)) * 1000000)) {
 		CAM_INFO(CAM_OPE, "ctx: %d, ts_ns : %llu",
 		ctx_data->ctx_id, ts_ns);
 		cam_ope_req_timer_reset(ctx_data);
@@ -845,7 +846,7 @@ static int cam_ope_start_req_timer(struct cam_ope_ctx *ctx_data)
 	int rc = 0;
 
 	rc = crm_timer_init(&ctx_data->req_watch_dog,
-		OPE_REQUEST_TIMEOUT, ctx_data, &cam_ope_req_timer_cb);
+		ctx_data->req_timer_timeout, ctx_data, &cam_ope_req_timer_cb);
 	if (rc)
 		CAM_ERR(CAM_OPE, "Failed to start timer");
 
@@ -2615,11 +2616,15 @@ static int cam_ope_mgr_acquire_hw(void *hw_priv, void *hw_acquire_args)
 		goto end;
 	}
 	strlcpy(cdm_acquire->identifier, "ope", sizeof("ope"));
-	if (ctx->ope_acquire.dev_type == OPE_DEV_TYPE_OPE_RT)
+	if (ctx->ope_acquire.dev_type == OPE_DEV_TYPE_OPE_RT) {
 		cdm_acquire->priority = CAM_CDM_BL_FIFO_3;
+		ctx->req_timer_timeout = OPE_REQUEST_RT_TIMEOUT;
+	}
 	else if (ctx->ope_acquire.dev_type ==
-		OPE_DEV_TYPE_OPE_NRT)
+		OPE_DEV_TYPE_OPE_NRT) {
 		cdm_acquire->priority = CAM_CDM_BL_FIFO_0;
+		ctx->req_timer_timeout = OPE_REQUEST_NRT_TIMEOUT;
+	}
 	else
 		goto free_cdm_acquire;
 
@@ -3217,7 +3222,6 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 		CAM_ERR(CAM_OPE, "Invalid ctx req slot = %d", request_idx);
 		return -EINVAL;
 	}
-
 	ctx_data->req_list[request_idx] =
 		kzalloc(sizeof(struct cam_ope_request), GFP_KERNEL);
 	if (!ctx_data->req_list[request_idx]) {
@@ -3287,7 +3291,7 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 	CAM_DBG(CAM_REQ, "req_id= %llu ctx_id= %d lrt=%llu",
 		packet->header.request_id, ctx_data->ctx_id,
 		ctx_data->last_req_time);
-	cam_ope_req_timer_modify(ctx_data, OPE_REQUEST_TIMEOUT);
+	cam_ope_req_timer_modify(ctx_data, ctx_data->req_timer_timeout);
 	set_bit(request_idx, ctx_data->bitmap);
 	mutex_unlock(&ctx_data->ctx_mutex);
 
@@ -3688,7 +3692,7 @@ static int cam_ope_mgr_hw_dump(void *hw_priv, void *hw_dump_args)
 	cur_ts = ktime_to_timespec64(cur_time);
 	req_ts = ktime_to_timespec64(ctx_data->req_list[idx]->submit_timestamp);
 
-	if (diff < (OPE_REQUEST_TIMEOUT * 1000)) {
+	if (diff < (ctx_data->req_timer_timeout * 1000)) {
 		CAM_INFO(CAM_OPE, "No Error req %llu %ld:%06ld %ld:%06ld",
 			dump_args->request_id,
 			req_ts.tv_sec,
