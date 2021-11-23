@@ -61,15 +61,6 @@ walt_dec_cfs_rq_stats(struct cfs_rq *cfs_rq, struct task_struct *p) {}
 
 #endif
 
-#ifdef CONFIG_MIHW
-unsigned int super_big_cpu = 7;
-#endif
-
-#ifdef CONFIG_KPERFEVENTS
-#include <linux/kperfevents.h>
-#include <trace/events/kperfevents_sched.h>
-#endif
-
 /*
  * Targeted preemption latency for CPU-bound tasks:
  *
@@ -607,41 +598,12 @@ static void update_min_vruntime(struct cfs_rq *cfs_rq)
 
 	/* ensure we never gain time by being placed backwards. */
 	cfs_rq->min_vruntime = max_vruntime(cfs_rq->min_vruntime, vruntime);
-#ifdef CONFIG_PERF_HUMANTASK
-	cfs_rq->min_vruntimex = min_vruntime(cfs_rq->min_vruntime, vruntime);
-#endif
 #ifndef CONFIG_64BIT
 	smp_wmb();
 	cfs_rq->min_vruntime_copy = cfs_rq->min_vruntime;
 #endif
 }
 
-#ifdef CONFIG_PERF_HUMANTASK
-static inline bool jump_queue(struct task_struct *tsk, struct rb_node *root)
-{
-	bool jump = false;
-
-	if (tsk && tsk->human_task && root) {
-		if (tsk->human_task > MAX_LEVER ||
-			sched_mi_boost() == MI_BOOST) {
-			jump = true;
-			goto out;
-		}
-
-		if (tsk->human_task < MAX_LEVER)
-			jump = true;//66%
-
-		tsk->human_task = jump ? ++tsk->human_task : 1;
-	}
-out:
-	if (jump) {
-		trace_sched_debug_einfo(tsk, "jumper", "boostx", tsk->human_task,
-			sched_boost(), sched_mi_boost(), sched_boost_top_app(), 0);
-	}
-
-	return jump;
-}
-#endif
 /*
  * Enqueue an entity into the rb-tree:
  */
@@ -651,20 +613,6 @@ static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
 	struct rb_node *parent = NULL;
 	struct sched_entity *entry;
 	bool leftmost = true;
-#ifdef CONFIG_MIHW
-	int left = 0;
-	int right = 0;
-#endif
-#ifdef CONFIG_PERF_HUMANTASK
-	bool speed = false;
-	struct task_struct *tsk = NULL;
-	if (entity_is_task(se)) {
-		tsk = task_of(se);
-		speed = jump_queue(tsk, *link);
-	}
-	if (speed)
-		se->vruntime =  tsk->human_task * 1000000;
-#endif
 
 	/*
 	 * Find the right place in the rbtree:
@@ -678,21 +626,11 @@ static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
 		 */
 		if (entity_before(se, entry)) {
 			link = &parent->rb_left;
-#ifdef CONFIG_MIHW
-			left++;
-#endif
 		} else {
 			link = &parent->rb_right;
 			leftmost = false;
-#ifdef CONFIG_MIHW
-			right++;
-#endif
 		}
 	}
-#ifdef CONFIG_PERF_HUMANTASK
-	if (speed)
-		se->vruntime = entry->vruntime-1;
-#endif
 
 	rb_link_node(&se->run_node, parent, link);
 	rb_insert_color_cached(&se->run_node,
@@ -1060,10 +998,6 @@ update_stats_enqueue_sleeper(struct cfs_rq *cfs_rq, struct sched_entity *se)
 		if (tsk) {
 			account_scheduler_latency(tsk, delta >> 10, 1);
 			trace_sched_stat_sleep(tsk, delta);
-#ifdef CONFIG_KPERFEVENTS
-			if (unlikely(is_above_kperfevents_threshold_nanos(delta)))
-				trace_kperfevents_sched_wait(tsk, delta, true);
-#endif
 		}
 	}
 	if (block_start) {
@@ -1087,10 +1021,6 @@ update_stats_enqueue_sleeper(struct cfs_rq *cfs_rq, struct sched_entity *se)
 
 			trace_sched_stat_blocked(tsk, delta);
 			trace_sched_blocked_reason(tsk);
-#ifdef CONFIG_KPERFEVENTS
-			if (unlikely(is_above_kperfevents_threshold_nanos(delta)))
-				trace_kperfevents_sched_wait(tsk, delta, false);
-#endif
 
 			/*
 			 * Blocking time is in units of nanosecs, so shift by
@@ -6984,9 +6914,6 @@ enum fastpaths {
 	NONE = 0,
 	SYNC_WAKEUP,
 	PREV_CPU_FASTPATH,
-#ifdef CONFIG_MIHW
-	SCHED_BIG_TOP,
-#endif
 };
 
 static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
@@ -7018,9 +6945,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 	int isolated_candidate = -1;
 	unsigned int target_nr_rtg_high_prio = UINT_MAX;
 	bool rtg_high_prio_task = task_rtg_high_prio(p);
-#ifdef CONFIG_MIHW
-	struct root_domain *rd;
-#endif
 
 	/*
 	 * In most cases, target_capacity tracks capacity_orig of the most
@@ -7041,9 +6965,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 
 	/* Find start CPU based on boost value */
 	start_cpu = fbt_env->start_cpu;
-#ifdef CONFIG_MIHW
-	rd = cpu_rq(start_cpu)->rd;
-#endif
 	/* Find SD for the start CPU */
 	start_sd = rcu_dereference(per_cpu(sd_asym_cpucapacity, start_cpu));
 	if (!start_sd)
@@ -7094,15 +7015,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 
 			if (fbt_env->skip_cpu == i)
 				continue;
-
-#ifdef CONFIG_MIHW
-			if (sched_boost_top_app() && rd->mid_cap_orig_cpu != -1
-				&& ((i < rd->mid_cap_orig_cpu
-				&& MAX_USER_RT_PRIO <= p->prio
-				&& p->prio < DEFAULT_PRIO) ||
-				(i >= rd->mid_cap_orig_cpu && p->prio > DEFAULT_PRIO)))
-				break;
-#endif
 
 			/*
 			 * p's blocked utilization is still accounted for on prev_cpu
@@ -7855,15 +7767,6 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		goto done;
 	}
 
-#ifdef CONFIG_MIHW
-	if (sched_boost_top_app() && is_top_app(p) && cpu_online(super_big_cpu) &&
-		!cpu_isolated(super_big_cpu) && cpumask_test_cpu(super_big_cpu, &p->cpus_allowed)) {
-		best_energy_cpu = super_big_cpu;
-		fbt_env.fastpath = SCHED_BIG_TOP;
-		goto done;
-	}
-#endif
-
 	rcu_read_lock();
 	pd = rcu_dereference(rd->pd);
 	if (!pd)
@@ -7983,9 +7886,6 @@ done:
 			sync, fbt_env.need_idle, fbt_env.fastpath,
 			placement_boost, start_t, boosted, is_rtg,
 			get_rtg_status(p), start_cpu);
-#ifdef CONFIG_PERF_HUMANTASK
-	p->cpux = best_energy_cpu;
-#endif
 
 	return best_energy_cpu;
 
@@ -9032,13 +8932,6 @@ redo:
 			env->flags |= LBF_NEED_BREAK;
 			break;
 		}
-
-#ifdef CONFIG_MIHW
-		if (sched_boost_top_app()
-				&& super_big_cpu == env->src_cpu
-				&& is_top_app(p))
-			goto next;
-#endif
 
 		if (!can_migrate_task(p, env))
 			goto next;
