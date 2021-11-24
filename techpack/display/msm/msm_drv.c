@@ -758,11 +758,13 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 		goto power_init_fail;
 	}
 
+#ifdef CONFIG_DEBUG_FS
 	ret = sde_dbg_init(&pdev->dev);
 	if (ret) {
 		dev_err(dev, "failed to init sde dbg: %d\n", ret);
 		goto dbg_init_fail;
 	}
+#endif
 
 	/* Bind all our sub-components: */
 	ret = msm_component_bind_all(dev, ddev);
@@ -827,11 +829,13 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 		priv->fbdev = msm_fbdev_init(ddev);
 #endif
 
+#ifdef CONFIG_DEBUG_FS
 	ret = sde_dbg_debugfs_register(dev);
 	if (ret) {
 		dev_err(dev, "failed to reg sde dbg debugfs: %d\n", ret);
 		goto fail;
 	}
+#endif
 
 	/* perform subdriver post initialization */
 	if (kms && kms->funcs && kms->funcs->postinit) {
@@ -851,8 +855,10 @@ fail:
 	return ret;
 bind_fail:
 	sde_dbg_destroy();
+#ifdef CONFIG_DEBUG_FS
 dbg_init_fail:
 	sde_power_resource_deinit(pdev, &priv->phandle);
+#endif
 power_init_fail:
 	msm_mdss_destroy(ddev);
 mdss_init_fail:
