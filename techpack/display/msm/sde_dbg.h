@@ -249,6 +249,7 @@ extern struct sde_dbg_reglog *sde_dbg_base_reglog;
 		SDE_DBG_DUMP_DATA_LIMITER)
 
 
+#ifdef CONFIG_DEBUG_FS
 /**
  * sde_evtlog_init - allocate a new event log object
  * Returns:	evtlog or -ERROR
@@ -464,5 +465,50 @@ void sde_rsc_debug_dump(u32 mux_sel);
  * @size:	size of the debug bus control array
  */
 void dsi_ctrl_debug_dump(u32 *entries, u32 size);
-
+#else
+static inline void sde_evtlog_log(struct sde_dbg_evtlog *evtlog, const char *name, int line,
+		int flag, ...)
+{
+	return;
+}
+static inline void sde_reglog_log(u8 blk_id, u32 val, u32 addr)
+{
+	return;
+}
+static inline void sde_dbg_ctrl(const char *name, ...)
+{
+	return;
+}
+static inline void sde_dbg_dump(enum sde_dbg_dump_context mode, const char *name, ...)
+{
+	return;
+}
+static inline void sde_dbg_reg_register_dump_range(const char *base_name,
+		const char *range_name, u32 offset_start, u32 offset_end,
+		uint32_t xin_id)
+{
+	return;
+}
+static inline void sde_dbg_set_sde_top_offset(u32 blk_off)
+{
+	return;
+}
+static inline int sde_dbg_reg_register_base(const char *name, void __iomem *base,
+		size_t max_offset)
+{
+	return 0;
+}
+static inline int sde_dbg_init(struct device *dev) {
+	return 0;
+}
+static inline void sde_dbg_destroy(void) {
+	return;
+}
+static inline int sde_dbg_debugfs_register(struct device *dev) {
+	return 0;
+}
+static inline void sde_dbg_init_dbg_buses(u32 hwversion) {
+	return;
+}
+#endif /* CONFIG_DEBUG_FS */
 #endif /* SDE_DBG_H_ */
