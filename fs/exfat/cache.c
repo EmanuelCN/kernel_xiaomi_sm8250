@@ -242,7 +242,7 @@ int exfat_get_cluster(struct inode *inode, unsigned int cluster,
 	unsigned int limit = sbi->num_clusters;
 	struct exfat_inode_info *ei = EXFAT_I(inode);
 	struct exfat_cache_id cid;
-	unsigned int content;
+	unsigned int content = 0;
 
 	if (ei->start_clu == EXFAT_FREE_CLUSTER) {
 		exfat_fs_error(sb,

@@ -3,9 +3,13 @@
  * Copyright (C) 2012-2013 Samsung Electronics Co., Ltd.
  */
 
+#include <linux/version.h>
 #include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/buffer_head.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
+#include <linux/vmalloc.h>
+#endif
 #include <asm/unaligned.h>
 
 #include "exfat_raw.h"
@@ -509,7 +513,7 @@ static int exfat_utf8_to_utf16(struct super_block *sb,
 	}
 
 	if (unilen > MAX_NAME_LENGTH) {
-		exfat_err(sb, "failed to %s (estr:ENAMETOOLONG) nls len : %d, unilen : %d > %d",
+		exfat_debug(sb, "failed to %s (estr:ENAMETOOLONG) nls len : %d, unilen : %d > %d",
 			  __func__, len, unilen, MAX_NAME_LENGTH);
 		return -ENAMETOOLONG;
 	}
@@ -659,7 +663,11 @@ static int exfat_load_upcase_table(struct super_block *sb,
 	unsigned char skip = false;
 	unsigned short *upcase_table;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 	upcase_table = kvcalloc(UTBL_COUNT, sizeof(unsigned short), GFP_KERNEL);
+#else
+	upcase_table = vzalloc(UTBL_COUNT * sizeof(unsigned short));
+#endif
 	if (!upcase_table)
 		return -ENOMEM;
 
@@ -671,7 +679,7 @@ static int exfat_load_upcase_table(struct super_block *sb,
 
 		bh = sb_bread(sb, sector);
 		if (!bh) {
-			exfat_err(sb, "failed to read sector(0x%llx)\n",
+			exfat_err(sb, "failed to read sector(0x%llx)",
 				  (unsigned long long)sector);
 			ret = -EIO;
 			goto free_table;
@@ -715,7 +723,11 @@ static int exfat_load_default_upcase_table(struct super_block *sb)
 	unsigned short uni = 0, *upcase_table;
 	unsigned int index = 0;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 	upcase_table = kvcalloc(UTBL_COUNT, sizeof(unsigned short), GFP_KERNEL);
+#else
+	upcase_table = vzalloc(UTBL_COUNT * sizeof(unsigned short));
+#endif
 	if (!upcase_table)
 		return -ENOMEM;
 
@@ -761,7 +773,7 @@ int exfat_create_upcase_table(struct super_block *sb)
 
 	while (clu.dir != EXFAT_EOF_CLUSTER) {
 		for (i = 0; i < sbi->dentries_per_clu; i++) {
-			ep = exfat_get_dentry(sb, &clu, i, &bh, NULL);
+			ep = exfat_get_dentry(sb, &clu, i, &bh);
 			if (!ep)
 				return -EIO;
 
@@ -803,5 +815,9 @@ load_default:
 
 void exfat_free_upcase_table(struct exfat_sb_info *sbi)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
 	kvfree(sbi->vol_utbl);
+#else
+	vfree(sbi->vol_utbl);
+#endif
 }

@@ -41,4 +41,9 @@ struct kstatfs {
 #define ST_NODIRATIME	0x0800	/* do not update directory access times */
 #define ST_RELATIME	0x1000	/* update atime relative to mtime/ctime */
 
+static inline __kernel_fsid_t u64_to_fsid(u64 v)
+{
+	return (__kernel_fsid_t){.val = {(u32)v, (u32)(v>>32)}};
+}
+
 #endif
