@@ -41,7 +41,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/pm_wakeup.h>
 #include <linux/fb.h>
+#include <drm/drm_bridge.h>
 #include <linux/pinctrl/qcom-pinctrl.h>
+#include <drm/drm_notifier_mi.h>
 
 #define FPC_GPIO_NO_DEFAULT -1
 #define FPC_GPIO_NO_DEFINED -2
@@ -113,6 +115,8 @@ struct fpc1020_data {
 
 	atomic_t wakeup_enabled;	/* Used both in ISR and non-ISR */
 	int irqf;
+	struct notifier_block fb_notifier;
+	bool fb_black;
 };
 
 static int reset_gpio_res(struct fpc1020_data *fpc1020);
@@ -818,6 +822,44 @@ static int fpc1020_request_named_gpio(struct fpc1020_data *fpc1020,
 
 	return 0;
 }
+
+static int fpc_fb_notif_callback(struct notifier_block *nb,
+		unsigned long val, void *data)
+{
+	struct fpc1020_data *fpc1020 = container_of(nb, struct fpc1020_data,
+			fb_notifier);
+	struct fb_event *evdata = data;
+	unsigned int blank;
+
+	if (!fpc1020)
+		return 0;
+
+	if (val != MI_DRM_EVENT_BLANK )
+		return 0;
+
+	printk("hml [info] %s value = %d\n", __func__, (int)val);
+
+	if (evdata && evdata->data && val == MI_DRM_EVENT_BLANK) {
+		blank = *(int *)(evdata->data);
+		switch (blank) {
+		case MI_DRM_BLANK_POWERDOWN:
+			fpc1020->fb_black = true;
+			break;
+		case MI_DRM_BLANK_UNBLANK:
+			fpc1020->fb_black = false;
+			break;
+		default:
+			printk("%s defalut\n", __func__);
+			break;
+		}
+	}
+	return NOTIFY_OK;
+}
+
+
+static struct notifier_block fpc_notif_block = {
+	.notifier_call = fpc_fb_notif_callback,
+};
 
 static int fpc1020_probe(struct platform_device *pdev)
 {
