@@ -1327,10 +1327,10 @@ static int usb_icl_vote_callback(struct votable *votable, void *data,
 	 */
 	if (icl_ua <= 1400000)
 		vote(chip->pl_enable_votable_indirect, USBIN_I_VOTER, false, 0);
-	else
+	else {
 		schedule_delayed_work(&chip->status_change_work,
 						msecs_to_jiffies(PL_DELAY_MS));
-
+	}
 	/* rerun AICL */
 	/* get the settled current */
 	rc = power_supply_get_property(chip->main_psy,
@@ -1941,9 +1941,9 @@ static int pl_notifier_call(struct notifier_block *nb,
 
 	if ((strcmp(psy->desc->name, "parallel") == 0)
 	    || (strcmp(psy->desc->name, "battery") == 0)
-	    || (strcmp(psy->desc->name, "main") == 0))
+	    || (strcmp(psy->desc->name, "main") == 0)) {
 		schedule_delayed_work(&chip->status_change_work, 0);
-
+	}
 	return NOTIFY_OK;
 }
 
