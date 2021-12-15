@@ -794,7 +794,7 @@ static ssize_t ipa3_read_rt(struct file *file, char __user *ubuf, size_t count,
 	struct ipa3_rt_tbl *tbl;
 	struct ipa3_rt_entry *entry;
 	struct ipa3_rt_tbl_set *set;
-	enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+	enum ipa_ip_type ip = (enum ipa_ip_type)(long)file->private_data;
 	u32 ofst;
 	u32 ofst_words;
 
@@ -891,7 +891,7 @@ static ssize_t ipa3_read_rt(struct file *file, char __user *ubuf, size_t count,
 static ssize_t ipa3_read_rt_hw(struct file *file, char __user *ubuf,
 	size_t count, loff_t *ppos)
 {
-	enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+	enum ipa_ip_type ip = (enum ipa_ip_type)(long)file->private_data;
 	int tbls_num;
 	int rules_num;
 	int tbl;
@@ -1059,7 +1059,7 @@ static ssize_t ipa3_read_flt(struct file *file, char __user *ubuf, size_t count,
 	int j;
 	struct ipa3_flt_tbl *tbl;
 	struct ipa3_flt_entry *entry;
-	enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+	enum ipa_ip_type ip = (enum ipa_ip_type)(long)file->private_data;
 	struct ipa3_rt_tbl *rt_tbl;
 	u32 rt_tbl_idx;
 	u32 bitmap;
@@ -1130,7 +1130,7 @@ static ssize_t ipa3_read_flt_hw(struct file *file, char __user *ubuf,
 	int rl;
 	int rules_num;
 	struct ipahal_flt_rule_entry *rules;
-	enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
+	enum ipa_ip_type ip = (enum ipa_ip_type)(long)file->private_data;
 	u32 rt_tbl_idx;
 	u32 bitmap;
 	int res = 0;

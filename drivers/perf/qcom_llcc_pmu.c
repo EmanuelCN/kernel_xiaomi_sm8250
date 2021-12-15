@@ -255,7 +255,7 @@ static int qcom_llcc_pmu_probe(struct platform_device *pdev)
 	if (!llccpmu)
 		return -ENOMEM;
 
-	llccpmu->ver = (enum llcc_pmu_version)
+	llccpmu->ver = (enum llcc_pmu_version)(long)
 			of_device_get_match_data(&pdev->dev);
 	if (!llccpmu->ver) {
 		pr_err("Unknown device type!\n");
