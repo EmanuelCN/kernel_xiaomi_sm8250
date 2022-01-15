@@ -6968,7 +6968,7 @@ static int fg_gen4_parse_dt(struct fg_gen4_chip *chip)
 	rc = of_property_read_u32(node, "qcom,fg-esr-meas-curr-ma", &temp);
 	if (!rc) {
 		/* ESR measurement current range is 60-240 mA */
-		if (temp >= 60 && temp <= 240)
+		if (temp >= 60 || temp <= 240)
 			chip->dt.esr_meas_curr_ma = temp;
 	}
 
