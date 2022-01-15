@@ -95,6 +95,7 @@
 #include <linux/thread_info.h>
 #include <linux/cpufreq_times.h>
 #include <linux/scs.h>
+#include <linux/devfreq_boost.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -2368,7 +2369,7 @@ long _do_fork(unsigned long clone_flags,
 	long nr;
 
 	if (task_is_zygote(current)) {
-		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW_BOOST_FREQ, 50);
+		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
 	}
 
 	/*

@@ -497,7 +497,7 @@ extern struct device *connector_kdev;
 void complete_time_generate_event(struct drm_device *dev)
 {
 	sysfs_notify(&connector_kdev->kobj, NULL, "complete_commit_time");
-
+}
 static void complete_commit_cleanup(struct work_struct *work)
 {
 	struct msm_commit *c = container_of(work, typeof(*c), clean_work);

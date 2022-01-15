@@ -3325,7 +3325,7 @@ static int __ioctl_transition_dyn_mode_state(struct msm_fb_data_type *mfd,
 	mutex_lock(&mfd->switch_lock);
 	switch (cmd) {
 	case MSMFB_ATOMIC_COMMIT:
-		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW_BOOST_FREQ);
+		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
 		if ((mfd->switch_state == MDSS_MDP_WAIT_FOR_VALIDATE)
 				&& validate) {
 			if (mfd->switch_new_mode != SWITCH_RESOLUTION)
