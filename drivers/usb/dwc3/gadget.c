@@ -1293,13 +1293,9 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
 	unsigned		short_not_ok = req->request.short_not_ok;
 	unsigned		no_interrupt = req->request.no_interrupt;
 
-	if (req->request.num_sgs > 0) {
-		if (req->start_sg == NULL) {
-			dev_err(dep->dwc->dev, "req->start_sg == NULL\n");
-			return;
-		}
+	if (req->request.num_sgs > 0)
 		dma = sg_dma_address(req->start_sg);
-	} else
+	else
 		dma = req->request.dma;
 
 	trb = &dep->trb_pool[dep->trb_enqueue];
