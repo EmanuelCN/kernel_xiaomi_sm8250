@@ -1,4 +1,4 @@
-w/*
+/*
  * Copyright (C) 2014 Red Hat
  * Copyright (C) 2014 Intel Corp.
  *
