@@ -271,6 +271,9 @@ static inline int pm_qos_set_value_for_cpus(struct pm_qos_request *new_req,
 					    struct pm_qos_constraints *c,
 					    unsigned long *cpus, bool dev_req)
 {
+	s32 qos_val[NR_CPUS] = {
+		[0 ... (NR_CPUS - 1)] = PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE
+	};
 	struct pm_qos_request *req;
 	unsigned long new_req_cpus;
 	bool changed = false;
@@ -315,19 +318,14 @@ static inline int pm_qos_set_value_for_cpus(struct pm_qos_request *new_req,
 			continue;
 
 		for_each_cpu(cpu, to_cpumask(&affected_cpus)) {
-			if (c->target_per_cpu[cpu] != req->node.prio) {
-				c->target_per_cpu[cpu] = req->node.prio;
-				*cpus |= BIT(cpu);
-			}
+			if (qos_val[cpu] > req->node.prio)
+				qos_val[cpu] = req->node.prio;
 		}
-
-		if (!(new_req_cpus &= ~affected_cpus))
-			return 0;
 	}
 
 	for_each_cpu(cpu, to_cpumask(&new_req_cpus)) {
-		if (c->target_per_cpu[cpu] != PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE) {
-			c->target_per_cpu[cpu] = PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE;
+		if (c->target_per_cpu[cpu] != qos_val[cpu]) {
+			c->target_per_cpu[cpu] = qos_val[cpu];
 			*cpus |= BIT(cpu);
 		}
 	}
