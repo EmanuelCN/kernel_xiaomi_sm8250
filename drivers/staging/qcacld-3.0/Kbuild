@@ -2298,6 +2298,9 @@ endif
 
 ccflags-y += $(INCS)
 
+# LTO does way too much here
+ccflags-y += $(DISABLE_LTO)
+
 cppflags-y +=	-DANI_OS_TYPE_ANDROID=6 \
 		-Wall\
 		-Werror\
