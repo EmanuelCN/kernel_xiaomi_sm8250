@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2022, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/uaccess.h>
@@ -3217,21 +3217,13 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 		CAM_ERR(CAM_OPE, "Invalid ctx req slot = %d", request_idx);
 		return -EINVAL;
 	}
-	get_monotonic_boottime64(&ts);
-	ctx_data->last_req_time = (uint64_t)((ts.tv_sec * 1000000000) +
-		ts.tv_nsec);
-	CAM_DBG(CAM_REQ, "req_id= %llu ctx_id= %d lrt=%llu",
-		packet->header.request_id, ctx_data->ctx_id,
-		ctx_data->last_req_time);
-	cam_ope_req_timer_modify(ctx_data, OPE_REQUEST_TIMEOUT);
-	set_bit(request_idx, ctx_data->bitmap);
+
 	ctx_data->req_list[request_idx] =
 		kzalloc(sizeof(struct cam_ope_request), GFP_KERNEL);
 	if (!ctx_data->req_list[request_idx]) {
 		CAM_ERR(CAM_OPE, "mem allocation failed ctx:%d req_idx:%d",
 			ctx_data->ctx_id, request_idx);
 		rc = -ENOMEM;
-		mutex_unlock(&ctx_data->ctx_mutex);
 		goto req_mem_alloc_failed;
 	}
 
@@ -3245,14 +3237,12 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 		CAM_ERR(CAM_OPE, "Cdm mem alloc failed ctx:%d req_idx:%d",
 			ctx_data->ctx_id, request_idx);
 		rc = -ENOMEM;
-		mutex_unlock(&ctx_data->ctx_mutex);
 		goto req_cdm_mem_alloc_failed;
 	}
 
 	rc = cam_ope_mgr_process_cmd_desc(hw_mgr, packet,
 		ctx_data, &ope_cmd_buf_addr, request_idx);
 	if (rc) {
-		mutex_unlock(&ctx_data->ctx_mutex);
 		CAM_ERR(CAM_OPE,
 			"cmd desc processing failed :%d ctx: %d req_id:%d",
 			rc, ctx_data->ctx_id, packet->header.request_id);
@@ -3262,7 +3252,6 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 	rc = cam_ope_mgr_process_io_cfg(hw_mgr, packet, prepare_args,
 		ctx_data, request_idx);
 	if (rc) {
-		mutex_unlock(&ctx_data->ctx_mutex);
 		CAM_ERR(CAM_OPE,
 			"IO cfg processing failed: %d ctx: %d req_id:%d",
 			rc, ctx_data->ctx_id, packet->header.request_id);
@@ -3272,7 +3261,6 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 	rc = cam_ope_mgr_create_kmd_buf(hw_mgr, packet, prepare_args,
 		ctx_data, request_idx, ope_cmd_buf_addr);
 	if (rc) {
-		mutex_unlock(&ctx_data->ctx_mutex);
 		CAM_ERR(CAM_OPE,
 			"create kmd buf failed: %d ctx: %d request_id:%d",
 			rc, ctx_data->ctx_id, packet->header.request_id);
@@ -3282,7 +3270,6 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 	rc = cam_ope_process_generic_cmd_buffer(packet, ctx_data,
 		request_idx, NULL);
 	if (rc) {
-		mutex_unlock(&ctx_data->ctx_mutex);
 		CAM_ERR(CAM_OPE, "Failed: %d ctx: %d req_id: %d req_idx: %d",
 			rc, ctx_data->ctx_id, packet->header.request_id,
 			request_idx);
@@ -3294,6 +3281,14 @@ static int cam_ope_mgr_prepare_hw_update(void *hw_priv,
 	prepare_args->priv = ctx_data->req_list[request_idx];
 	prepare_args->pf_data->packet = packet;
 	ope_req->hang_data.packet = packet;
+	get_monotonic_boottime64(&ts);
+	ctx_data->last_req_time = (uint64_t)((ts.tv_sec * 1000000000) +
+		ts.tv_nsec);
+	CAM_DBG(CAM_REQ, "req_id= %llu ctx_id= %d lrt=%llu",
+		packet->header.request_id, ctx_data->ctx_id,
+		ctx_data->last_req_time);
+	cam_ope_req_timer_modify(ctx_data, OPE_REQUEST_TIMEOUT);
+	set_bit(request_idx, ctx_data->bitmap);
 	mutex_unlock(&ctx_data->ctx_mutex);
 
 	CAM_DBG(CAM_REQ, "Prepare Hw update Successful request_id: %d  ctx: %d",
@@ -3308,6 +3303,7 @@ req_cdm_mem_alloc_failed:
 	ctx_data->req_list[request_idx] = NULL;
 req_mem_alloc_failed:
 	clear_bit(request_idx, ctx_data->bitmap);
+	mutex_unlock(&ctx_data->ctx_mutex);
 	return rc;
 }
 
