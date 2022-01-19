@@ -60,7 +60,8 @@
 #define CLK_HW_MAX                 0x1
 
 #define OPE_DEVICE_IDLE_TIMEOUT    400
-#define OPE_REQUEST_TIMEOUT        200
+#define OPE_REQUEST_RT_TIMEOUT        200
+#define OPE_REQUEST_NRT_TIMEOUT        400
 
 /**
  * struct cam_ope_clk_bw_request_v2
@@ -447,6 +448,7 @@ struct cam_ope_cdm {
  * @clk_watch_dog:   Clock watchdog
  * @clk_watch_dog_reset_counter: Reset counter
  * @last_flush_req: last flush req for this ctx
+ * @req_timer_timeout: req timer timeout value
  */
 struct cam_ope_ctx {
 	void *context_priv;
@@ -469,6 +471,7 @@ struct cam_ope_ctx {
 	struct cam_req_mgr_timer *clk_watch_dog;
 	uint32_t clk_watch_dog_reset_counter;
 	uint64_t last_flush_req;
+	uint64_t req_timer_timeout;
 };
 
 /**
