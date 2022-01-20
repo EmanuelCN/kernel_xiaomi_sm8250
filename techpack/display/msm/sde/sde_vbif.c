@@ -454,36 +454,6 @@ void sde_vbif_set_qos_remap(struct sde_kms *sde_kms,
 	mutex_unlock(&vbif->mutex);
 }
 
-void sde_vbif_clear_errors(struct sde_kms *sde_kms)
-{
-	struct sde_hw_vbif *vbif;
-	u32 i, pnd, src;
-
-	if (!sde_kms) {
-		SDE_ERROR("invalid argument\n");
-		return;
-	}
-
-	if (!sde_kms_is_vbif_operation_allowed(sde_kms)) {
-		SDE_DEBUG("vbif operations not permitted\n");
-		return;
-	}
-
-	for (i = 0; i < ARRAY_SIZE(sde_kms->hw_vbif); i++) {
-		vbif = sde_kms->hw_vbif[i];
-		if (vbif && vbif->ops.clear_errors) {
-			mutex_lock(&vbif->mutex);
-			vbif->ops.clear_errors(vbif, &pnd, &src);
-			if (pnd || src) {
-				SDE_EVT32(i, pnd, src);
-				SDE_DEBUG("VBIF %d: pnd 0x%X, src 0x%X\n",
-						vbif->idx - VBIF_0, pnd, src);
-			}
-			mutex_unlock(&vbif->mutex);
-		}
-	}
-}
-
 void sde_vbif_init_memtypes(struct sde_kms *sde_kms)
 {
 	struct sde_hw_vbif *vbif;
