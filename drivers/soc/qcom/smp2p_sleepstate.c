@@ -15,7 +15,7 @@
 #define PROC_AWAKE_ID 12 /* 12th bit */
 #define SMP2P_SLEEPSTATE_TIME CONFIG_SMP2P_SLEEPSTATE_TIME
 #define AWAKE_BIT BIT(PROC_AWAKE_ID)
-static struct qcom_smem_state *state;
+struct qcom_smem_state *qstate;
 static struct wakeup_source *notify_ws;
 
 /**
@@ -32,11 +32,11 @@ static int sleepstate_pm_notifier(struct notifier_block *nb,
 {
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
-		qcom_smem_state_update_bits(state, AWAKE_BIT, 0);
+		qcom_smem_state_update_bits(qstate, AWAKE_BIT, 0);
 		break;
 
 	case PM_POST_SUSPEND:
-		qcom_smem_state_update_bits(state, AWAKE_BIT, AWAKE_BIT);
+		qcom_smem_state_update_bits(qstate, AWAKE_BIT, AWAKE_BIT);
 		break;
 	}
 
@@ -61,10 +61,10 @@ static int smp2p_sleepstate_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node;
 
-	state = qcom_smem_state_get(&pdev->dev, 0, &ret);
-	if (IS_ERR(state))
-		return PTR_ERR(state);
-	qcom_smem_state_update_bits(state, AWAKE_BIT, AWAKE_BIT);
+	qstate = qcom_smem_state_get(&pdev->dev, 0, &ret);
+	if (IS_ERR(qstate))
+		return PTR_ERR(qstate);
+	qcom_smem_state_update_bits(qstate, AWAKE_BIT, AWAKE_BIT);
 
 	ret = register_pm_notifier(&sleepstate_pm_nb);
 	if (ret) {
