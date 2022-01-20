@@ -1,15 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015, Sony Mobile Communications AB.
  * Copyright (c) 2012-2013, 2018-2020 The Linux Foundation. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
 #include <linux/interrupt.h>
@@ -262,11 +254,17 @@ static void qcom_smp2p_notify_in(struct qcom_smp2p *smp2p)
 	}
 	smp2p->valid_entries = i;
 
+	SMP2P_INFO("%d: smp2p_num:%d in_num:%d\n",
+		   smp2p->remote_pid, smp2p->valid_entries, in->valid_entries);
+
 	/* Fire interrupts based on any value changes */
 	list_for_each_entry(entry, &smp2p->inbound, node) {
 		/* Ignore entries not yet allocated by the remote side */
-		if (!entry->value)
+		if (!entry->value) {
+			SMP2P_INFO("%d:\t%s: skipping not ready\n",
+				   smp2p->remote_pid, entry->name);
 			continue;
+		}
 
 		val = readl(entry->value);
 
@@ -277,12 +275,12 @@ static void qcom_smp2p_notify_in(struct qcom_smp2p *smp2p)
 		mb();
 		status |= *entry->irq_pending;
 
+		SMP2P_INFO("%d:\t%s: status:%0lx val:%0x\n",
+			   smp2p->remote_pid, entry->name, status, val);
+
 		/* No changes of this entry? */
 		if (!status)
 			continue;
-
-		SMP2P_INFO("%d: %s: status:%0lx val:%0x\n",
-			   smp2p->remote_pid, entry->name, status, val);
 
 		for_each_set_bit(i, &status, 32) {
 			if ((val & BIT(i) && test_bit(i, entry->irq_rising)) ||
@@ -576,6 +574,7 @@ static int smp2p_parse_ipc(struct qcom_smp2p *smp2p)
 static int qcom_smp2p_probe(struct platform_device *pdev)
 {
 	struct smp2p_entry *entry;
+	struct smp2p_entry *next_entry;
 	struct device_node *node;
 	struct qcom_smp2p *smp2p;
 	const char *key;
@@ -635,7 +634,7 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 		goto release_mbox;
 
 	for_each_available_child_of_node(pdev->dev.of_node, node) {
-		entry = devm_kzalloc(&pdev->dev, sizeof(*entry), GFP_KERNEL);
+		entry = kzalloc(sizeof(*entry), GFP_KERNEL);
 		if (!entry) {
 			ret = -ENOMEM;
 			goto unwind_interfaces;
@@ -674,12 +673,14 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 
 	ret = devm_request_threaded_irq(&pdev->dev, smp2p->irq,
 					qcom_smp2p_isr, qcom_smp2p_intr,
-					IRQF_NO_SUSPEND | IRQF_ONESHOT,
+					IRQF_ONESHOT,
 					"smp2p", (void *)smp2p);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to request interrupt\n");
 		goto unreg_ws;
 	}
+	enable_irq_wake(smp2p->irq);
+
 	enable_irq_wake(smp2p->irq);
 
 	return 0;
@@ -688,11 +689,15 @@ unreg_ws:
 	wakeup_source_unregister(smp2p->ws);
 
 unwind_interfaces:
-	list_for_each_entry(entry, &smp2p->inbound, node)
+	list_for_each_entry_safe(entry, next_entry, &smp2p->inbound, node) {
 		irq_domain_remove(entry->domain);
+		kfree(entry);
+	}
 
-	list_for_each_entry(entry, &smp2p->outbound, node)
+	list_for_each_entry_safe(entry, next_entry, &smp2p->outbound, node) {
 		qcom_smem_state_unregister(entry->state);
+		kfree(entry);
+	}
 
 	smp2p->out->valid_entries = 0;
 
@@ -710,14 +715,19 @@ static int qcom_smp2p_remove(struct platform_device *pdev)
 {
 	struct qcom_smp2p *smp2p = platform_get_drvdata(pdev);
 	struct smp2p_entry *entry;
+	struct smp2p_entry *next_entry;
 
 	wakeup_source_unregister(smp2p->ws);
 
-	list_for_each_entry(entry, &smp2p->inbound, node)
+	list_for_each_entry_safe(entry, next_entry, &smp2p->inbound, node) {
 		irq_domain_remove(entry->domain);
+		kfree(entry);
+	}
 
-	list_for_each_entry(entry, &smp2p->outbound, node)
+	list_for_each_entry_safe(entry, next_entry, &smp2p->outbound, node) {
 		qcom_smem_state_unregister(entry->state);
+		kfree(entry);
+	}
 
 	mbox_free_channel(smp2p->mbox_chan);
 
