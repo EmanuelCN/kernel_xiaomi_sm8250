@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1415,7 +1416,8 @@ static void sap_compute_spect_weight(tSapChSelSpectInfo *pSpectInfoParams,
 
 		chan_freq = pSpectCh->chan_freq;
 
-		if (wlan_reg_is_dfs_for_freq(mac->pdev, chan_freq)) {
+		if (wlan_reg_is_dfs_for_freq(mac->pdev, chan_freq) ||
+		    wlan_reg_is_freq_indoor(mac->pdev, chan_freq)) {
 			normalize_factor =
 				MLME_GET_DFS_CHAN_WEIGHT(
 				mac->mlme_cfg->acs.np_chan_weightage);
