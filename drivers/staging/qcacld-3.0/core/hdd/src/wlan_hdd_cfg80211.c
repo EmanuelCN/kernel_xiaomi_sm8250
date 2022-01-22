@@ -3243,6 +3243,10 @@ static int __wlan_hdd_cfg80211_do_acs(struct wiphy *wiphy,
 				sap_config->acs_cfg.master_ch_list_count);
 		/* if it is only one channel, send ACS event to upper layer */
 		if (sap_config->acs_cfg.ch_list_count == 1) {
+			sap_config->acs_cfg.start_ch_freq =
+				sap_config->acs_cfg.freq_list[0];
+			sap_config->acs_cfg.end_ch_freq =
+				sap_config->acs_cfg.freq_list[0];
 			sap_config->acs_cfg.pri_ch_freq =
 					      sap_config->acs_cfg.freq_list[0];
 			wlan_sap_set_sap_ctx_acs_cfg(
@@ -3301,12 +3305,19 @@ static int __wlan_hdd_cfg80211_do_acs(struct wiphy *wiphy,
 		sap_config->acs_cfg.ch_width = ch_width;
 	}
 
-	/* No VHT80 in 2.4G so perform ACS accordingly */
+	/* Check 2.4ghz cbmode and update BW if only 2.4 channels are present */
 	if (sap_config->acs_cfg.end_ch_freq <=
-		WLAN_REG_CH_TO_FREQ(CHAN_ENUM_2484) &&
-	    sap_config->acs_cfg.ch_width == eHT_CHANNEL_WIDTH_80MHZ) {
-		sap_config->acs_cfg.ch_width = eHT_CHANNEL_WIDTH_40MHZ;
-		hdd_debug("resetting to 40Mhz in 2.4Ghz");
+	    WLAN_REG_CH_TO_FREQ(CHAN_ENUM_2484) &&
+	    sap_config->acs_cfg.ch_width >= eHT_CHANNEL_WIDTH_40MHZ) {
+		uint32_t channel_bonding_mode;
+
+		ucfg_mlme_get_channel_bonding_24ghz(hdd_ctx->psoc,
+						    &channel_bonding_mode);
+		sap_config->acs_cfg.ch_width = channel_bonding_mode ?
+			eHT_CHANNEL_WIDTH_40MHZ : eHT_CHANNEL_WIDTH_20MHZ;
+
+		hdd_debug("Only 2.4ghz channels, resetting BW to %d 2.4 cbmode %d",
+			  sap_config->acs_cfg.ch_width, channel_bonding_mode);
 	}
 
 	hdd_nofl_debug("ACS Config country %s ch_width %d hw_mode %d ACS_BW: %d HT: %d VHT: %d START_CH: %d END_CH: %d band %d",
@@ -8034,7 +8045,7 @@ static int hdd_config_latency_level(struct hdd_adapter *adapter,
 	QDF_STATUS status;
 
 	if (!hdd_is_wlm_latency_manager_supported(hdd_ctx))
-		return -EINVAL;
+		return -ENOTSUPP;
 
 	latency_level = nla_get_u16(attr);
 	switch (latency_level) {
