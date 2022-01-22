@@ -1077,7 +1077,7 @@ static struct msm_vidc_common_data lito_common_data_v1[] = {
 	},
 	{
 		.key = "qcom,decode-batching",
-		.value = 0,
+		.value = 1,
 	},
 	{
 		.key = "qcom,batch-timeout",
