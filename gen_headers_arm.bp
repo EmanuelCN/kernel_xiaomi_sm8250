@@ -710,6 +710,7 @@ gen_headers_out_arm = [
     "scsi/scsi_netlink.h",
     "scsi/scsi_netlink_fc.h",
     "scsi/sg.h",
+    "sound/cs35l41_v2.h",
     "sound/asequencer.h",
     "sound/asoc.h",
     "sound/asound.h",
