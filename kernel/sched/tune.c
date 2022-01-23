@@ -99,6 +99,7 @@ struct schedtune {
 	 * flag above.
 	 */
 	bool sched_boost_enabled;
+#ifdef CONFIG_SCHED_WALT
 
 	/*
 	 * Controls whether tasks of this cgroup should be colocated with each
@@ -148,6 +149,7 @@ root_schedtune = {
 	.boost	= 0,
 	.sched_boost_no_override = false,
 	.sched_boost_enabled = true,
+#ifdef CONFIG_SCHED_WALT
 	.colocate = false,
 	.colocate_update_disabled = false,
 #endif
@@ -207,8 +209,10 @@ static inline void init_sched_boost(struct schedtune *st)
 {
 	st->sched_boost_no_override = false;
 	st->sched_boost_enabled = true;
+#ifdef CONFIG_SCHED_WALT
 	st->colocate = false;
 	st->colocate_update_disabled = false;
+#endif /* CONFIG_SCHED_WALT */
 }
 
 void update_cgroup_boost_settings(void)
