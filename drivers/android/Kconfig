@@ -75,6 +75,16 @@ config ANDROID_STRUCT_PADDING
 	  NOT be supported by the Google Android kernel team.
 	  If even slightly unsure, say Y.
 
+config ANDROID_BINDER_LOGS
+	bool "Android Binder Logging"
+	depends on ANDROID_BINDERFS
+	help
+	  Enables binder_logs directory in binderfs and debug_mask for dmesg
+	  logging. Needed for DEBUG_FS.
+	  This option impacts performance.
+
+	  Say N on production builds.
+
 config ANDROID_SIMPLE_LMK
 	bool "Simple Android Low Memory Killer"
 	depends on !ANDROID_LOW_MEMORY_KILLER && !MEMCG && !PSI

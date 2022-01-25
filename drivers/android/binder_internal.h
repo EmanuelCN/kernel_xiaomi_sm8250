@@ -64,7 +64,9 @@ struct binderfs_info {
 	kgid_t root_gid;
 	struct binderfs_mount_opts mount_opts;
 	int device_count;
+#ifdef CONFIG_ANDROID_BINDER_LOGS
 	struct dentry *proc_log_dir;
+#endif
 };
 extern const struct file_operations binder_fops;
 extern char *binder_devices_param;
@@ -96,6 +98,19 @@ static inline int __init init_binderfs(void)
 	return 0;
 }
 #endif
+
+enum binder_stat_types {
+	BINDER_STAT_PROC,
+	BINDER_STAT_THREAD,
+	BINDER_STAT_NODE,
+	BINDER_STAT_REF,
+	BINDER_STAT_DEATH,
+	BINDER_STAT_TRANSACTION,
+	BINDER_STAT_TRANSACTION_COMPLETE,
+	BINDER_STAT_COUNT
+};
+
+#ifdef CONFIG_ANDROID_BINDER_LOGS
 int binder_stats_show(struct seq_file *m, void *unused);
 DEFINE_SHOW_ATTRIBUTE(binder_stats);
 int binder_state_show(struct seq_file *m, void *unused);
@@ -126,22 +141,14 @@ struct binder_transaction_log {
 	bool full;
 	struct binder_transaction_log_entry entry[32];
 };
-enum binder_stat_types {
-	BINDER_STAT_PROC,
-	BINDER_STAT_THREAD,
-	BINDER_STAT_NODE,
-	BINDER_STAT_REF,
-	BINDER_STAT_DEATH,
-	BINDER_STAT_TRANSACTION,
-	BINDER_STAT_TRANSACTION_COMPLETE,
-	BINDER_STAT_COUNT
-};
 struct binder_stats {
 	atomic_t br[_IOC_NR(BR_ONEWAY_SPAM_SUSPECT) + 1];
 	atomic_t bc[_IOC_NR(BC_REPLY_SG) + 1];
 	atomic_t obj_created[BINDER_STAT_COUNT];
 	atomic_t obj_deleted[BINDER_STAT_COUNT];
 };
+#endif
+
 /**
  * struct binder_work - work enqueued on a worklist
  * @entry:             node enqueued on list
@@ -436,7 +443,9 @@ struct binder_proc {
 	bool async_recv;
 	wait_queue_head_t freeze_wait;
 	struct list_head todo;
+#ifdef CONFIG_ANDROID_BINDER_LOGS
 	struct binder_stats stats;
+#endif
 	struct list_head delivered_death;
 	int max_threads;
 	int requested_threads;
@@ -527,7 +536,9 @@ struct binder_thread {
 	struct binder_error return_error;
 	struct binder_error reply_error;
 	wait_queue_head_t wait;
+#ifdef CONFIG_ANDROID_BINDER_LOGS
 	struct binder_stats stats;
+#endif
 	atomic_t tmp_ref;
 	bool is_dead;
 	struct task_struct *task;
@@ -598,6 +609,9 @@ struct binder_object {
 		struct binder_fd_array_object fdao;
 	};
 };
+
+#ifdef CONFIG_ANDROID_BINDER_LOGS
 extern struct binder_transaction_log binder_transaction_log;
 extern struct binder_transaction_log binder_transaction_log_failed;
+#endif
 #endif /* _LINUX_BINDER_INTERNAL_H */
