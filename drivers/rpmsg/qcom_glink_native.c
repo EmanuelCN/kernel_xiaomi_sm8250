@@ -2125,7 +2125,7 @@ struct qcom_glink *qcom_glink_native_probe(struct device *dev,
 	irq = of_irq_get(dev->of_node, 0);
 	ret = devm_request_irq(dev, irq,
 			       qcom_glink_native_intr,
-			       IRQF_NO_SUSPEND | IRQF_SHARED,
+			       IRQF_SHARED,
 			       glink->irqname, glink);
 	if (ret) {
 		dev_err(dev, "failed to request IRQ\n");
