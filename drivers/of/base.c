@@ -232,17 +232,20 @@ static struct property *__of_find_property(const struct device_node *np,
 	struct property *pp;
 
 	if (!np)
-		return NULL;
+		goto notfound;
 
 	for (pp = np->properties; pp; pp = pp->next) {
 		if (of_prop_cmp(pp->name, name) == 0) {
 			if (lenp)
 				*lenp = pp->length;
-			break;
+			return pp;
 		}
 	}
 
-	return pp;
+notfound:
+	if (lenp)
+		*lenp = 0;
+	return NULL;
 }
 
 struct property *of_find_property(const struct device_node *np,
