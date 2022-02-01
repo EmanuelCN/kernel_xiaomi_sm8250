@@ -1836,6 +1836,9 @@ static int __do_execve_file(int fd, struct filename *filename,
 		goto out_unmark;
 
 	bprm.argc = count(argv, MAX_ARG_STRINGS);
+	if (bprm.argc == 0)
+		pr_warn_once("process '%s' launched '%s' with NULL argv: empty string added\n",
+			     current->comm, bprm.filename);
 	if ((retval = bprm.argc) < 0)
 		goto out;
 
@@ -1860,16 +1863,30 @@ static int __do_execve_file(int fd, struct filename *filename,
 	if (retval < 0)
 		goto out;
 
-	// Super nasty hack to disable lmkd reloading props
-	if (unlikely(strcmp(bprm.filename, "/system/bin/lmkd") == 0)) {
-		if (is_lmkd_reinit(&argv)) {
-			pr_info("sys_execve(): prevented /system/bin/lmkd --reinit\n");
-			retval = -ENOENT;
+	/*
+	 * When argv is empty, add an empty string ("") as argv[0] to
+	 * ensure confused userspace programs that start processing
+	 * from argv[1] won't end up walking envp. See also
+	 * bprm_stack_limits().
+	 */
+	if (bprm.argc == 0) {
+		const char *argv[] = { "", NULL };
+		retval = copy_strings_kernel(1, argv, &bprm);
+		if (retval < 0)
 			goto out;
-		}
+		bprm.argc = 1;
 	}
 
-	retval = exec_binprm(&bprm);
+        // Super nasty hack to disable lmkd reloading props
+        if (unlikely(strcmp(bprm.filename, "/system/bin/lmkd") == 0)) {
+                if (is_lmkd_reinit(&argv)) {
+                        pr_info("sys_execve(): prevented /system/bin/lmkd --reinit\n");
+                        retval = -ENOENT;
+                        goto out;
+                }
+        }
+
+        retval = exec_binprm(&bprm);
 	if (retval < 0)
 		goto out;
 
