@@ -70,6 +70,8 @@ static int cam_ope_subdev_open(struct v4l2_subdev *sd,
 	struct cam_node *node = v4l2_get_subdevdata(sd);
 	int rc = 0;
 
+	cam_req_mgr_rwsem_read_op(CAM_SUBDEV_LOCK);
+
 	mutex_lock(&g_ope_dev.ope_lock);
 	if (g_ope_dev.open_cnt >= 1) {
 		CAM_ERR(CAM_OPE, "OPE subdev is already opened");
@@ -93,6 +95,7 @@ static int cam_ope_subdev_open(struct v4l2_subdev *sd,
 	CAM_DBG(CAM_OPE, "OPE HW open success: %d", rc);
 end:
 	mutex_unlock(&g_ope_dev.ope_lock);
+	cam_req_mgr_rwsem_read_op(CAM_SUBDEV_UNLOCK);
 	return rc;
 }
 

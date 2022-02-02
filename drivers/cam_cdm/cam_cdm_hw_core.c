@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2022, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -1236,8 +1236,8 @@ static void cam_hw_cdm_work(struct work_struct *work)
 			return;
 		}
 
-		mutex_lock(&core->bl_fifo[fifo_idx]
-			.fifo_lock);
+		mutex_lock(&cdm_hw->hw_mutex);
+		mutex_lock(&core->bl_fifo[fifo_idx].fifo_lock);
 
 		if (atomic_read(&core->bl_fifo[fifo_idx].work_record))
 			atomic_dec(
@@ -1251,6 +1251,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 				core->arbitration);
 			mutex_unlock(&core->bl_fifo[fifo_idx]
 					.fifo_lock);
+			mutex_unlock(&cdm_hw->hw_mutex);
 			return;
 		}
 
@@ -1292,6 +1293,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 		}
 		mutex_unlock(&core->bl_fifo[payload->fifo_idx]
 			.fifo_lock);
+		mutex_unlock(&cdm_hw->hw_mutex);
 	}
 
 	if (payload->irq_status &
@@ -1387,11 +1389,12 @@ static void cam_hw_cdm_iommu_fault_handler(struct iommu_domain *domain,
 			CAM_INFO(CAM_CDM, "CDM hw is power in off state");
 		for (i = 0; i < core->offsets->reg_data->num_bl_fifo; i++)
 			mutex_unlock(&core->bl_fifo[i].fifo_lock);
-		mutex_unlock(&cdm_hw->hw_mutex);
+
 		CAM_ERR_RATE_LIMIT(CAM_CDM, "Page fault iova addr %pK",
 			(void *)iova);
 		cam_cdm_notify_clients(cdm_hw, CAM_CDM_CB_STATUS_PAGEFAULT,
 			(void *)iova);
+		mutex_unlock(&cdm_hw->hw_mutex);
 		clear_bit(CAM_CDM_ERROR_HW_STATUS, &core->cdm_status);
 	} else {
 		CAM_ERR(CAM_CDM, "Invalid token");
