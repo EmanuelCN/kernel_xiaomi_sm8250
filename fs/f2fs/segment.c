@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+_// SPDX-License-Identifier: GPL-2.0
 /*
  * fs/f2fs/segment.c
  *
@@ -1782,7 +1782,7 @@ static int issue_discard_thread(void *data)
 		wait_event_interruptible_timeout(*q,
 				kthread_should_stop() || freezing(current) ||
 				dcc->discard_wake,
-				msecs_to_jiffies((sbi->gc_mode == GC_URGENT) ?
+				msecs_to_jiffies((sbi->gc_mode == GC_URGENT_LOW) ?
 						 1 : wait_ms));
 
 		if (dcc->discard_wake)

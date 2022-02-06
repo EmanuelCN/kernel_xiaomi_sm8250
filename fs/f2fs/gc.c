@@ -15,7 +15,7 @@
 #include <linux/freezer.h>
 #include <linux/sched/signal.h>
 #include <uapi/linux/sched/types.h>
-#include <linux/msm_drm_notify.h>
+#include <drm/drm_notifier_mi.h>
 #include <linux/power_supply.h>
 
 #include "f2fs.h"
@@ -82,7 +82,7 @@ static int gc_thread_func(void *data)
 			rapid_gc_set_wakelock();
 			// Use 1 instead of 0 to allow thread interrupts
 			wait_ms = 1;
-			sbi->gc_mode = GC_URGENT;
+			sbi->gc_mode = GC_URGENT_HIGH;
 		} else {
 			rapid_gc_set_wakelock();
 			wait_ms = gc_th->min_sleep_time;
@@ -131,7 +131,7 @@ static int gc_thread_func(void *data)
 		 * invalidated soon after by user update or deletion.
 		 * So, I'd like to wait some time to collect dirty segments.
 		 */
-		if (sbi->gc_mode == GC_URGENT || sbi->rapid_gc) {
+		if (sbi->gc_mode == GC_URGENT_HIGH || sbi->rapid_gc) {
 			if (!sbi->rapid_gc)
 				wait_ms = gc_th->urgent_sleep_time;
 			down_write(&sbi->gc_lock);
@@ -168,7 +168,7 @@ do_gc:
 			sync_mode = false;
 
 		/* if return value is not zero, no victim was selected */
-		if (f2fs_gc(sbi, sbi->rapid_gc || sync_mode, true, NULL_SEGNO)) {
+		if (f2fs_gc(sbi, sbi->rapid_gc || sync_mode, !foreground, false, NULL_SEGNO)) {
 			wait_ms = gc_th->no_gc_sleep_time;
 			sbi->rapid_gc = false;
 			rapid_gc_set_wakelock();
@@ -323,13 +323,13 @@ static void rapid_gc_fb_work(struct work_struct *work)
 	}
 }
 
-static int msm_drm_notifier_callback(struct notifier_block *self,
+static int mi_drm_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data)
 {
-	struct msm_drm_notifier *evdata = data;
+	struct mi_drm_notifier *evdata = data;
 	int *blank;
 
-	if (event != MSM_DRM_EVENT_BLANK)
+	if (event != MI_DRM_EVENT_BLANK)
 		goto out;
 
 	if (!evdata || !evdata->data || evdata->id != MSM_DRM_PRIMARY_DISPLAY)
@@ -337,13 +337,13 @@ static int msm_drm_notifier_callback(struct notifier_block *self,
 
 	blank = evdata->data;
 	switch (*blank) {
-	case MSM_DRM_BLANK_POWERDOWN:
+	case MI_DRM_BLANK_POWERDOWN:
 		if (!screen_on)
 			goto out;
 		screen_on = false;
 		queue_work(system_power_efficient_wq, &rapid_gc_fb_worker);
 		break;
-	case MSM_DRM_BLANK_UNBLANK:
+	case MI_DRM_BLANK_UNBLANK:
 		if (screen_on)
 			goto out;
 		screen_on = true;
@@ -356,19 +356,19 @@ out:
 }
 
 static struct notifier_block fb_notifier_block = {
-	.notifier_call = msm_drm_notifier_callback,
+	.notifier_call = mi_drm_notifier_callback,
 };
 
 void __init f2fs_init_rapid_gc(void)
 {
 	INIT_WORK(&rapid_gc_fb_worker, rapid_gc_fb_work);
 	wakeup_source_init(&gc_wakelock, "f2fs_rapid_gc_wakelock");
-	msm_drm_register_client(&fb_notifier_block);
+	mi_drm_register_client(&fb_notifier_block);
 }
 
 void __exit f2fs_destroy_rapid_gc(void)
 {
-	msm_drm_unregister_client(&fb_notifier_block);
+	mi_drm_unregister_client(&fb_notifier_block);
 	wakeup_source_trash(&gc_wakelock);
 }
 
