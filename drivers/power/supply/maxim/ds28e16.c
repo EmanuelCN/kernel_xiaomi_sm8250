@@ -1628,7 +1628,7 @@ static void battery_verify(struct work_struct *work)
 	} else {
 		data->batt_verified = 0;
 		if (count < VERIFY_MAX_COUNT) {
-			schedule_delayed_work(&data->battery_verify_work,
+			queue_delayed_work(system_power_efficient_wq, &data->battery_verify_work,
 						msecs_to_jiffies(VERIFY_PERIOD_S));
 			ds_info("%s battery verify failed times[%d]", __func__, count);
 			count++;
@@ -1678,7 +1678,7 @@ static int ds28e16_probe(struct platform_device *pdev)
 	ds28e16_data->pdev = pdev;
 	platform_set_drvdata(pdev, ds28e16_data);
 	INIT_DELAYED_WORK(&ds28e16_data->battery_verify_work, battery_verify);
-	schedule_delayed_work(&ds28e16_data->battery_verify_work, msecs_to_jiffies(0));
+	queue_delayed_work(system_power_efficient_wq, &ds28e16_data->battery_verify_work, msecs_to_jiffies(0));
 	retval = verify_psy_register(ds28e16_data);
 	if (retval) {
 		ds_err("Failed to verify_psy_register, err:%d\n", retval);
