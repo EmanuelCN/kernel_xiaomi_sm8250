@@ -114,7 +114,7 @@ static void sbs_delayed_work(struct work_struct *work)
 
 	sbs_check_state(chip);
 
-	schedule_delayed_work(&chip->work,
+	queue_delayed_work(system_power_efficient_wq, &chip->work,
 			      msecs_to_jiffies(SBS_CHARGER_POLL_TIME));
 }
 
@@ -222,7 +222,7 @@ static int sbs_probe(struct i2c_client *client,
 		}
 	} else {
 		INIT_DELAYED_WORK(&chip->work, sbs_delayed_work);
-		schedule_delayed_work(&chip->work,
+		queue_delayed_work(system_power_efficient_wq, &chip->work,
 				      msecs_to_jiffies(SBS_CHARGER_POLL_TIME));
 	}
 

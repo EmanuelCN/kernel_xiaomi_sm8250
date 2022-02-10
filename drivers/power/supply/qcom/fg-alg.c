@@ -1487,7 +1487,7 @@ static void ttf_work(struct work_struct *work)
 		/* keep the wake lock and prime the IBATT and VBATT buffers */
 		if (ttf_now < 0 || ttf->clear_ibatt) {
 			/* delay for one FG cycle */
-			schedule_delayed_work(&ttf->ttf_work,
+			queue_delayed_work(system_power_efficient_wq, &ttf->ttf_work,
 					msecs_to_jiffies(1000));
 			mutex_unlock(&ttf->lock);
 			return;
@@ -1504,7 +1504,7 @@ static void ttf_work(struct work_struct *work)
 	}
 
 	/* recurse every 10 seconds */
-	schedule_delayed_work(&ttf->ttf_work, msecs_to_jiffies(ttf->period_ms));
+	queue_delayed_work(system_power_efficient_wq, &ttf->ttf_work, msecs_to_jiffies(ttf->period_ms));
 end_work:
 	ttf->awake_voter(ttf->data, false);
 	mutex_unlock(&ttf->lock);
@@ -1617,7 +1617,7 @@ void ttf_update(struct ttf *ttf, bool input_present)
 	ttf->last_ttf = 0;
 	ttf->last_ms = 0;
 	mutex_unlock(&ttf->lock);
-	schedule_delayed_work(&ttf->ttf_work, msecs_to_jiffies(delay_ms));
+	queue_delayed_work(system_power_efficient_wq, &ttf->ttf_work, msecs_to_jiffies(delay_ms));
 }
 
 /**

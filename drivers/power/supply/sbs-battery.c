@@ -776,7 +776,7 @@ static void sbs_external_power_changed(struct power_supply *psy)
 	/* cancel outstanding work */
 	cancel_delayed_work_sync(&chip->work);
 
-	schedule_delayed_work(&chip->work, HZ);
+	queue_delayed_work(system_power_efficient_wq, &chip->work, HZ);
 	chip->poll_time = chip->poll_retry_count;
 }
 
@@ -809,7 +809,7 @@ static void sbs_delayed_work(struct work_struct *work)
 		return;
 	}
 	if (chip->poll_time > 0) {
-		schedule_delayed_work(&chip->work, HZ);
+		queue_delayed_work(system_power_efficient_wq, &chip->work, HZ);
 		chip->poll_time--;
 		return;
 	}
