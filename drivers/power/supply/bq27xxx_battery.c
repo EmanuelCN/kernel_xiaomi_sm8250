@@ -879,7 +879,7 @@ static int poll_interval_param_set(const char *val, const struct kernel_param *k
 	mutex_lock(&bq27xxx_list_lock);
 	list_for_each_entry(di, &bq27xxx_battery_devices, list) {
 		cancel_delayed_work_sync(&di->work);
-		schedule_delayed_work(&di->work, 0);
+		queue_delayed_work(system_power_efficient_wq, &di->work, 0);
 	}
 	mutex_unlock(&bq27xxx_list_lock);
 
@@ -1611,7 +1611,7 @@ static void bq27xxx_battery_poll(struct work_struct *work)
 	bq27xxx_battery_update(di);
 
 	if (poll_interval > 0)
-		schedule_delayed_work(&di->work, poll_interval * HZ);
+		queue_delayed_work(system_power_efficient_wq, &di->work, poll_interval * HZ);
 }
 
 /*
@@ -1860,7 +1860,7 @@ static void bq27xxx_external_power_changed(struct power_supply *psy)
 	struct bq27xxx_device_info *di = power_supply_get_drvdata(psy);
 
 	cancel_delayed_work_sync(&di->work);
-	schedule_delayed_work(&di->work, 0);
+	queue_delayed_work(system_power_efficient_wq, &di->work, 0);
 }
 
 int bq27xxx_battery_setup(struct bq27xxx_device_info *di)
