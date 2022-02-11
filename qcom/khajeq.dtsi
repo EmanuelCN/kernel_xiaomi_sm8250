@@ -1,0 +1,32 @@
+/dts-v1/;
+
+#include "khaje.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. Khajeq SoC";
+	compatible = "qcom,khajeq";
+	qcom,msm-id = <562 0x10000>;
+
+	cpumap {
+		cluster1 {
+			status = "disabled";
+		};
+	};
+};
+
+&CPU4 {
+	status = "disabled";
+};
+
+&CPU5 {
+	status = "disabled";
+};
+
+&CPU6 {
+	status = "disabled";
+};
+
+&CPU7 {
+	status = "disabled";
+};
+
