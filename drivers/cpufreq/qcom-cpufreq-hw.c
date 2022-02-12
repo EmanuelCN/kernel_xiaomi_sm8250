@@ -473,6 +473,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 	int ret, of_len;
 	u32 *of_table = NULL;
 	char tbl_name[] = "qcom,cpufreq-table-##";
+	bool invalidate_freq;
 
 	c->table = devm_kcalloc(dev, lut_max_entries + 1,
 				sizeof(*c->table), GFP_KERNEL);
@@ -526,6 +527,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 		if (!of_find_freq(of_table, of_len, c->table[i].frequency)) {
 			c->table[i].frequency = CPUFREQ_ENTRY_INVALID;
 			cur_freq = CPUFREQ_ENTRY_INVALID;
+			invalidate_freq = true;
 		} else {
 			if (core_count != c->max_cores) {
 				if (core_count == (c->max_cores - 1)) {
@@ -560,6 +562,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 				}
 				break;
 			}
+			invalidate_freq = false;
 		}
 
 		prev_cc = core_count;
@@ -569,8 +572,9 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 			cpu_dev = get_cpu_device(cpu);
 			if (!cpu_dev)
 				continue;
-			dev_pm_opp_add(cpu_dev, c->table[i].frequency * 1000,
-							volt);
+			if (!invalidate_freq)
+				dev_pm_opp_add(cpu_dev, c->table[i].frequency * 1000,
+								volt);
 		}
 	}
 
