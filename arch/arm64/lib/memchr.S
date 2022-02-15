@@ -72,3 +72,4 @@ L(not_found):
 	mov	result, #0
 	ret
 SYM_FUNC_END_PI(memchr)
+EXPORT_SYMBOL_NOKASAN(memchr)
