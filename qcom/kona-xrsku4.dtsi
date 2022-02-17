@@ -242,7 +242,8 @@
 };
 
 &kona_snd {
-	qcom,model = "kona-xrfusionult-snd-card";
+	/* temporary WA for QMMI App to work, revert before ult port*/
+	qcom,model = "kona-xrfusion-ult-snd-card";
 	qcom,mi2s-audio-intf = <0>;
 	qcom,audio-routing =
 		"AMIC1", "MIC BIAS1",
@@ -1164,3 +1165,14 @@
 	qcom,target-link-speed = <0x2>;
 };
 
+/* Disable FT and enable Nordic GPIO50 */
+&cam_cci1 {
+	qcom,cam-sensor6 {
+		status = "disabled";
+	};
+};
+
+/* Disable ET IRLED */
+/*&led_flash_eye_track {*/
+/*	status = "disabled";*/
+/*};*/
