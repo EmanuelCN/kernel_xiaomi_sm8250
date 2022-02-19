@@ -207,14 +207,12 @@ static DECLARE_WAIT_QUEUE_HEAD(cdsprm_wq);
  */
 void cdsprm_register_cdspl3gov(struct cdsprm_l3 *arg)
 {
-	unsigned long flags;
-
 	if (!arg)
 		return;
 
-	spin_lock_irqsave(&gcdsprm.l3_lock, flags);
+	spin_lock(&gcdsprm.l3_lock);
 	gcdsprm.set_l3_freq = arg->set_l3_freq;
-	spin_unlock_irqrestore(&gcdsprm.l3_lock, flags);
+	spin_unlock(&gcdsprm.l3_lock);
 }
 EXPORT_SYMBOL(cdsprm_register_cdspl3gov);
 
@@ -451,11 +449,9 @@ static int cdsprm_thermal_hvx_instruction_limit(unsigned int level)
  */
 void cdsprm_unregister_cdspl3gov(void)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&gcdsprm.l3_lock, flags);
+	spin_lock(&gcdsprm.l3_lock);
 	gcdsprm.set_l3_freq = NULL;
-	spin_unlock_irqrestore(&gcdsprm.l3_lock, flags);
+	spin_unlock(&gcdsprm.l3_lock);
 }
 EXPORT_SYMBOL(cdsprm_unregister_cdspl3gov);
 
@@ -699,13 +695,11 @@ static void cdsprm_rpmsg_send_details(void)
 static struct cdsprm_request *get_next_request(void)
 {
 	struct cdsprm_request *req = NULL;
-	unsigned long flags;
 
-	spin_lock_irqsave(&gcdsprm.list_lock, flags);
+	spin_lock(&gcdsprm.list_lock);
 	req = list_first_entry_or_null(&cdsprm_list,
 				struct cdsprm_request, node);
-	spin_unlock_irqrestore(&gcdsprm.list_lock,
-					flags);
+	spin_unlock(&gcdsprm.list_lock);
 
 	return req;
 }
@@ -715,7 +709,6 @@ static int process_cdsp_request_thread(void *data)
 	struct cdsprm_request *req = NULL;
 	struct sysmon_msg *msg = NULL;
 	unsigned int l3_clock_khz;
-	unsigned long flags;
 	int result = 0;
 	struct sysmon_msg_tx rpmsg_msg_tx;
 
@@ -741,9 +734,9 @@ static int process_cdsp_request_thread(void *data)
 			SYSMON_CDSP_FEATURE_L3_RX)) {
 			l3_clock_khz = msg->fs.l3_struct.l3_clock_khz;
 
-			spin_lock_irqsave(&gcdsprm.l3_lock, flags);
+			spin_lock(&gcdsprm.l3_lock);
 			gcdsprm.set_l3_freq_cached = gcdsprm.set_l3_freq;
-			spin_unlock_irqrestore(&gcdsprm.l3_lock, flags);
+			spin_unlock(&gcdsprm.l3_lock);
 
 			if (gcdsprm.set_l3_freq_cached) {
 				gcdsprm.set_l3_freq_cached(l3_clock_khz);
@@ -801,10 +794,10 @@ static int process_cdsp_request_thread(void *data)
 			pr_debug("Sent preserved data to DSP\n");
 		}
 
-		spin_lock_irqsave(&gcdsprm.list_lock, flags);
+		spin_lock(&gcdsprm.list_lock);
 		list_del(&req->node);
 		req->busy = false;
-		spin_unlock_irqrestore(&gcdsprm.list_lock, flags);
+		spin_unlock(&gcdsprm.list_lock);
 	}
 
 	do_exit(0);
@@ -845,7 +838,6 @@ static int cdsprm_rpmsg_callback(struct rpmsg_device *dev, void *data,
 	struct sysmon_msg *msg = (struct sysmon_msg *)data;
 	bool b_valid = false;
 	struct cdsprm_request *req;
-	unsigned long flags;
 
 	if (!data || (len < sizeof(*msg))) {
 		dev_err(&dev->dev,
@@ -860,9 +852,9 @@ static int cdsprm_rpmsg_callback(struct rpmsg_device *dev, void *data,
 		b_valid = true;
 	} else if (msg->feature_id == SYSMON_CDSP_FEATURE_L3_RX) {
 		dev_dbg(&dev->dev, "Processing L3 request\n");
-		spin_lock_irqsave(&gcdsprm.l3_lock, flags);
+		spin_lock(&gcdsprm.l3_lock);
 		gcdsprm.set_l3_freq_cached = gcdsprm.set_l3_freq;
-		spin_unlock_irqrestore(&gcdsprm.l3_lock, flags);
+		spin_unlock(&gcdsprm.l3_lock);
 		if (gcdsprm.set_l3_freq_cached)
 			b_valid = true;
 	} else if ((msg->feature_id == SYSMON_CDSP_FEATURE_NPU_CORNER_RX) &&
@@ -894,7 +886,7 @@ static int cdsprm_rpmsg_callback(struct rpmsg_device *dev, void *data,
 	}
 
 	if (b_valid) {
-		spin_lock_irqsave(&gcdsprm.list_lock, flags);
+		spin_lock(&gcdsprm.list_lock);
 
 		if (!gcdsprm.msg_queue[gcdsprm.msg_queue_idx].busy) {
 			req = &gcdsprm.msg_queue[gcdsprm.msg_queue_idx];
@@ -906,14 +898,14 @@ static int cdsprm_rpmsg_callback(struct rpmsg_device *dev, void *data,
 			else
 				gcdsprm.msg_queue_idx = 0;
 		} else {
-			spin_unlock_irqrestore(&gcdsprm.list_lock, flags);
+			spin_unlock(&gcdsprm.list_lock);
 			dev_dbg(&dev->dev,
 				"Unable to queue cdsp request, no memory\n");
 			return -ENOMEM;
 		}
 
 		list_add_tail(&req->node, &cdsprm_list);
-		spin_unlock_irqrestore(&gcdsprm.list_lock, flags);
+		spin_unlock(&gcdsprm.list_lock);
 		wake_up_interruptible(&cdsprm_wq);
 	}
 
