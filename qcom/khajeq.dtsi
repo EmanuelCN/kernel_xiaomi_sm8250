@@ -30,3 +30,19 @@
 	status = "disabled";
 };
 
+&soc {
+	/delete-node/ l2cache_pmu;
+	l2cache_pmu {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "qcom,l2cache-pmu";
+		ranges;
+
+		cluster0@f111000 {
+			cluster-id = <0>;
+			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
+			reg = <0xf111000 0x1000>;
+		};
+
+	};
+};
