@@ -12,6 +12,11 @@
 			status = "disabled";
 		};
 	};
+
+	/delete-node/ chosen;
+	chosen {
+		bootargs = "rcupdate.rcu_expedited=1 rcu_nocbs=0-3 kpti=off nr_cpus=4";
+	};
 };
 
 &CPU4 {
@@ -45,4 +50,6 @@
 		};
 
 	};
+
+	/delete-node/ qcom,chd_gold;
 };
