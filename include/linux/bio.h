@@ -40,6 +40,13 @@
 #define BIO_BUG_ON
 #endif
 
+#define UPSTREAM_BIO_MAX_PAGES		256U
+
+static inline unsigned int bio_max_segs(unsigned int nr_segs)
+{
+	return min(nr_segs, UPSTREAM_BIO_MAX_PAGES);
+}
+
 #ifdef CONFIG_THP_SWAP
 #if HPAGE_PMD_NR > 256
 #define BIO_MAX_PAGES		HPAGE_PMD_NR
