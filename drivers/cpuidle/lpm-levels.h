@@ -106,7 +106,7 @@ struct lpm_cluster {
 	uint32_t tmr_add;
 	bool lpm_prediction;
 	struct list_head cpu;
-	spinlock_t sync_lock;
+	raw_spinlock_t sync_lock;
 	struct cpumask child_cpus;
 	struct cpumask num_children_in_sync;
 	struct lpm_cluster *parent;
