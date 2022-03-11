@@ -136,3 +136,4 @@ L(byte_loop):
 	ret
 
 SYM_FUNC_END_PI(memcmp)
+EXPORT_SYMBOL_NOKASAN(memcmp)
