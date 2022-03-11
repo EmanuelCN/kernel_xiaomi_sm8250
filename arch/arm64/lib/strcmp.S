@@ -41,7 +41,6 @@
 	/* Start of performance-critical section  -- one 64B cache line.  */
 	.align 6
 SYM_FUNC_START_WEAK_PI(strcmp)
->>>>>>> d767f79bf720d (arm64: Import latest version of Cortex Strings' strcmp)
 	eor	tmp1, src1, src2
 	mov	zeroones, #REP8_01
 	tst	tmp1, #7
