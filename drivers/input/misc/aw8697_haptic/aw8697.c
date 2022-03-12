@@ -1181,6 +1181,7 @@ static int aw8697_haptic_read_f0(struct aw8697 *aw8697)
 		aw8697->f0_cali_status = false;
 		return 0;
 	}
+	aw8697->f0_cali_status = true;
 	f0_tmp = 1000000000 / (f0_reg * aw8697->info.f0_coeff);
 	aw8697->f0 = (unsigned int)f0_tmp;
 	pr_info("%s f0=%d\n", __func__, aw8697->f0);
@@ -1918,6 +1919,16 @@ static int aw8697_haptic_cont(struct aw8697 *aw8697)
 }
 
 #ifndef USE_CONT_F0_CALI
+static int aw8697_get_glb_state(struct aw8697 *aw8697)
+{
+	unsigned char glb_state_val = 0;
+
+	aw8697_i2c_read(aw8697, AW8697_REG_GLB_STATE, &glb_state_val);
+	return glb_state_val;
+}
+#endif
+
+#ifndef USE_CONT_F0_CALI
 /*****************************************************
  *
  * haptic f0 cali
@@ -1926,7 +1937,7 @@ static int aw8697_haptic_cont(struct aw8697 *aw8697)
 static int aw8697_haptic_get_f0(struct aw8697 *aw8697)
 {
 	int ret = 0;
-	/*unsigned char i = 0; */
+	unsigned char i = 0;
 	unsigned char reg_val = 0;
 	unsigned char f0_pre_num = 0;
 	unsigned char f0_wait_num = 0;
@@ -1934,7 +1945,7 @@ static int aw8697_haptic_get_f0(struct aw8697 *aw8697)
 	unsigned char f0_trace_num = 0;
 	unsigned int t_f0_ms = 0;
 	unsigned int t_f0_trace_ms = 0;
-	/*unsigned int f0_cali_cnt = 50; */
+	unsigned int f0_cali_cnt = 50;
 
 	pr_info("%s enter\n", __func__);
 
@@ -1942,6 +1953,7 @@ static int aw8697_haptic_get_f0(struct aw8697 *aw8697)
 
 	/* f0 calibrate work mode */
 	aw8697_haptic_stop(aw8697);
+	aw8697_i2c_write(aw8697, AW8697_REG_TRIM_LRA, 0x00);
 	aw8697_haptic_play_mode(aw8697, AW8697_HAPTIC_CONT_MODE);
 
 	aw8697_i2c_write_bits(aw8697, AW8697_REG_CONT_CTRL,
@@ -2415,6 +2427,7 @@ static int aw8697_haptic_init(struct aw8697 *aw8697)
 	/* haptic audio */
 	aw8697->haptic_audio.delay_val = 1;
 	aw8697->haptic_audio.timer_val = 21318;
+	aw8697->f0_cali_status = true;
 
 	hrtimer_init(&aw8697->haptic_audio.timer, CLOCK_MONOTONIC,
 		     HRTIMER_MODE_REL);
@@ -4572,6 +4585,7 @@ static struct attribute *aw8697_vibrator_attributes[] = {
 	&dev_attr_trig.attr,
 	&dev_attr_ram_vbat_comp.attr,
 	&dev_attr_osc_cali.attr,
+	&dev_attr_f0_check.attr,
 	&dev_attr_osc_save.attr,
 	&dev_attr_f0_save.attr,
         &dev_attr_f0_value.attr,
