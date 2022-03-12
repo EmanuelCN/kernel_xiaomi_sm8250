@@ -9,7 +9,6 @@
 
 enum df_device {
 	DEVFREQ_CPU_LLCC_DDR_BW,
-	DEVFREQ_MSM_CPU_LLCCBW,
 	DEVFREQ_MAX
 };
 

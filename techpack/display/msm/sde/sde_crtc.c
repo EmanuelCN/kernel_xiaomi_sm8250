@@ -3673,7 +3673,6 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 
 	cpu_input_boost_kick();
 	devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
-	devfreq_boost_kick(DEVFREQ_MSM_CPU_LLCCBW);
 
 	idle_pc_state = sde_crtc_get_property(cstate, CRTC_PROP_IDLE_PC_STATE);
 
