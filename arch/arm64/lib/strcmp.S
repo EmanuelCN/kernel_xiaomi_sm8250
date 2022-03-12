@@ -171,4 +171,3 @@ L(done):
 	sub	result, data1, data2
 	ret
 SYM_FUNC_END_PI(strcmp)
-EXPORT_SYMBOL_NOKASAN(strcmp)

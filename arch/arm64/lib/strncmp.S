@@ -295,4 +295,3 @@ CPU_BE( orr	syndrome, diff, has_nul )
 	mov	result, #0
 	ret
 SYM_FUNC_END_PI(strncmp)
-EXPORT_SYMBOL_NOKASAN(strncmp)
