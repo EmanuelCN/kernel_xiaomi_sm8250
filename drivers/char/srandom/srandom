@@ -1,0 +1,111 @@
+#!/bin/bash
+
+#  Copyright (C) 2015 Jonathan Senkerik
+
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+PATH=/usr/sbin:/usr/bin:/bin:/sbin
+export PATH
+
+
+
+is_mod_loaded(){
+    lsmod |grep -q srandom 
+    return $?
+}
+
+is_srandom_OK(){
+    if [ `dd if=/dev/srandom count=4 bs=2k 2>/dev/null|hexdump -ve '4/2 "%02X " "\n"'|sort|uniq|wc -l` -eq 1024 ];then
+      return 0
+    else
+      return 1
+    fi
+}
+
+is_linked(){
+    S=`ls -i /dev/srandom|awk '{print $1}'`
+    U=`ls -i /dev/urandom|awk '{print $1}'`
+    if [[ $S -eq $U ]];then
+      return 0
+    else
+      return 1
+    fi
+
+}
+
+
+
+case "$1" in
+  set)
+    if is_mod_loaded >/dev/null; then
+      if is_linked >/dev/null; then
+        restorecon /dev/urandom >/dev/null 2>1
+        exit 0
+      else
+	if [ ! -f /dev/urandom.orig ];then
+          mv /dev/urandom /dev/urandom.orig
+	fi
+        ln /dev/srandom /dev/urandom
+        chcon system_u:object_r:urandom_device_t:s0 /dev/srandom >/dev/null 2>1
+      fi
+    else
+      echo "Module not loaded"
+    fi
+    ;;
+
+  default)
+    rm -f /dev/urandom 
+    mknod -m 444 /dev/urandom c 1 9 
+    restorecon /dev/urandom >/dev/null 2>1
+    ;;
+  status)
+    if is_mod_loaded >/dev/null; then
+      echo "Module loaded"
+    else
+      echo "Module not loaded" 
+    fi
+    if [ -c /dev/srandom ];then
+      if is_srandom_OK >/dev/null; then
+        echo "srandom is functioning correctly"
+      else
+        echo "srandom FAILED to generate random numbers"
+      fi
+      if is_linked >/dev/null; then
+        echo "/dev/urandom is LINKED to /dev/srandom (system is using srandom)"
+      else
+        echo "/dev/urandom is NOT LINKED to /dev/srandom (system is using built-in generator)"
+      fi
+      cat /proc/srandom
+    fi
+    ;;
+  *)
+    echo "NAME"
+    echo
+    echo "    /usr/bin/srandom -  /dev/srandom device configuration tool"
+    echo
+    echo "Usage"
+    echo
+    echo "/usr/bin/srandom [set|default|status]"
+    echo
+    echo "   set - Set /dev/srandom as the system PRNG (/dev/urandom)."
+    echo
+    echo "   default - Use the built-in PRNG as the system /dev/urandom."
+    echo
+    echo "   status - Display status of srandom module."
+    echo
+    echo "   help - Display this message"
+    echo
+    ;;
+esac
