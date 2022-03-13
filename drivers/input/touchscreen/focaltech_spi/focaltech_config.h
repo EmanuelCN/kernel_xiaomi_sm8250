@@ -192,12 +192,6 @@
 #define FTS_GESTURE_EN                          0
 
 /*
- * ESD check & protection
- * default: disable
- */
-#define FTS_ESDCHECK_EN                         0
-
-/*
  * Production test enable
  * 1: enable, 0:disable(default)
  */

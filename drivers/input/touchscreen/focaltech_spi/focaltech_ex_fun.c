@@ -117,19 +117,6 @@ static ssize_t fts_debug_write(
 
 	proc->opmode = writebuf[0];
 	switch (proc->opmode) {
-	case PROC_SET_TEST_FLAG:
-		FTS_DEBUG("[APK]: PROC_SET_TEST_FLAG = %x", writebuf[1]);
-		if (writebuf[1] == 0) {
-#if FTS_ESDCHECK_EN
-			fts_esdcheck_switch(ENABLE);
-#endif
-		} else {
-#if FTS_ESDCHECK_EN
-			fts_esdcheck_switch(DISABLE);
-#endif
-		}
-		break;
-
 	case PROC_READ_REGISTER:
 		proc->cmd[0] = writebuf[1];
 		break;
@@ -229,10 +216,6 @@ static ssize_t fts_debug_read(
 		readbuf = tmpbuf;
 	}
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(1);
-#endif
-
 	switch (proc->opmode) {
 	case PROC_READ_REGISTER:
 		num_read_chars = 1;
@@ -260,10 +243,6 @@ static ssize_t fts_debug_read(
 	default:
 		break;
 	}
-
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(0);
-#endif
 
 	ret = num_read_chars;
 proc_read_err:
@@ -320,19 +299,6 @@ static int fts_debug_write(
 
 	proc->opmode = writebuf[0];
 	switch (proc->opmode) {
-	case PROC_SET_TEST_FLAG:
-		FTS_DEBUG("[APK]: PROC_SET_TEST_FLAG = %x", writebuf[1]);
-		if (writebuf[1] == 0) {
-#if FTS_ESDCHECK_EN
-			fts_esdcheck_switch(ENABLE);
-#endif
-		} else {
-#if FTS_ESDCHECK_EN
-			fts_esdcheck_switch(DISABLE);
-#endif
-		}
-		break;
-
 	case PROC_READ_REGISTER:
 		proc->cmd[0] = writebuf[1];
 		break;
@@ -432,10 +398,6 @@ static int fts_debug_read(
 		readbuf = tmpbuf;
 	}
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(1);
-#endif
-
 	switch (proc->opmode) {
 	case PROC_READ_REGISTER:
 		num_read_chars = 1;
@@ -463,10 +425,6 @@ static int fts_debug_read(
 	default:
 		break;
 	}
-
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(0);
-#endif
 
 	ret = num_read_chars;
 proc_read_err:
@@ -496,13 +454,7 @@ static ssize_t fts_fw_version_read(struct file *filp,
 
 	mutex_lock(&ts_data->input_dev->mutex);
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(1);
-#endif
 	ret = fts_read_reg(FTS_REG_FW_VER, &fwver);
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(0);
-#endif
 	if ((ret < 0) || (fwver == 0xFF) || (fwver == 0x00))
 		cnt = snprintf(tmp, PROC_BUF_SIZE, "get tp fw version fail!\n");
 	else
@@ -703,13 +655,7 @@ static ssize_t fts_tpfwver_show(
 
 	mutex_lock(&input_dev->mutex);
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(1);
-#endif
 	ret = fts_read_reg(FTS_REG_FW_VER, &fwver);
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(0);
-#endif
 	if ((ret < 0) || (fwver == 0xFF) || (fwver == 0x00))
 		num_read_chars = snprintf(buf, PAGE_SIZE, "get tp fw version fail!\n");
 	else
@@ -910,9 +856,6 @@ static ssize_t fts_tprwreg_store(
 		rw_op.len = fts_parse_buf(buf, cmd_length);
 	}
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(1);
-#endif
 	if (rw_op.len < 0) {
 		FTS_ERROR("cmd buffer error!");
 
@@ -956,9 +899,6 @@ static ssize_t fts_tprwreg_store(
 		}
 	}
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(0);
-#endif
 	mutex_unlock(&input_dev->mutex);
 
 	return count;
@@ -1080,9 +1020,6 @@ static ssize_t fts_dumpreg_show(
 	struct input_dev *input_dev = fts_data->input_dev;
 
 	mutex_lock(&input_dev->mutex);
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(1);
-#endif
 	fts_read_reg(FTS_REG_POWER_MODE, &val);
 	count += snprintf(buf + count, PAGE_SIZE, "Power Mode:0x%02x\n", val);
 
@@ -1112,9 +1049,6 @@ static ssize_t fts_dumpreg_show(
 
 	fts_read_reg(FTS_REG_FLOW_WORK_CNT, &val);
 	count += snprintf(buf + count, PAGE_SIZE, "ESD count:0x%02x\n", val);
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_proc_busy(0);
-#endif
 
 	mutex_unlock(&input_dev->mutex);
 

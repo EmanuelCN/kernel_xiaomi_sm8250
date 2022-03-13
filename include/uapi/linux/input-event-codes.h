@@ -58,8 +58,11 @@
 #define SYN_CONFIG		1
 #define SYN_MT_REPORT		2
 #define SYN_DROPPED		3
+#define SYN_TIME_SEC		4
+#define SYN_TIME_NSEC		5
 #define SYN_MAX			0xf
 #define SYN_CNT			(SYN_MAX+1)
+
 
 /*
  * Keys and buttons

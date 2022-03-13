@@ -38,22 +38,17 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
-#if defined(CONFIG_DRM)
 #include <drm/drm_notifier_mi.h>
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-#define FTS_SUSPEND_LEVEL 1     /* Early-suspend level */
-#endif
 #include "focaltech_core.h"
 
 /*****************************************************************************
 * Private constant and macro definitions using #define
 *****************************************************************************/
 #define FTS_DRIVER_NAME                     "fts_ts"
-#define INTERVAL_READ_REG                   200  /* unit:ms */
+#define INTERVAL_READ_REG                   50  /* unit:ms */
 #define TIMEOUT_READ_REG                    1000 /* unit:ms */
 #if FTS_POWER_SOURCE_CUST_EN
-#define FTS_VTG_MIN_UV                      3200000
+#define FTS_VTG_MIN_UV                      3000000
 #define FTS_VTG_MAX_UV                      3200000
 #define FTS_VTG_MAX_UA                      250000
 #define FTS_I2C_VTG_MIN_UV                  1800000
@@ -468,6 +463,11 @@ static int fts_input_report_b(struct fts_ts_data *data)
 	u32 max_touch_num = data->pdata->max_touch_number;
 	struct ts_event *events = data->events;
 
+        input_event(data->input_dev, EV_SYN, SYN_TIME_SEC,
+            ktime_to_timespec(data->timestamp).tv_sec);
+        input_event(data->input_dev, EV_SYN, SYN_TIME_NSEC,
+            ktime_to_timespec(data->timestamp).tv_nsec);
+
 	for (i = 0; i < data->touch_point; i++) {
 		if (fts_input_report_key(data, i) == 0) {
 			continue;
@@ -545,6 +545,11 @@ static int fts_input_report_a(struct fts_ts_data *data)
 	int touchs = 0;
 	bool va_reported = false;
 	struct ts_event *events = data->events;
+
+        input_event(data->input_dev, EV_SYN, SYN_TIME_SEC,
+            ktime_to_timespec(data->timestamp).tv_sec);
+        input_event(data->input_dev, EV_SYN, SYN_TIME_NSEC,
+            ktime_to_timespec(data->timestamp).tv_nsec);
 
 	for (i = 0; i < data->touch_point; i++) {
 		if (fts_input_report_key(data, i) == 0) {
@@ -710,14 +715,11 @@ static void fts_irq_read_report(void)
 	int ret = 0;
 	struct fts_ts_data *ts_data = fts_data;
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_set_intr(1);
-#endif
-
 #if FTS_POINT_REPORT_CHECK_EN
 	fts_prc_queue_work(ts_data);
 #endif
 
+        ts_data->timestamp = ktime_get();
 	ret = fts_read_parse_touchdata(ts_data);
 	if (ret == 0) {
 		mutex_lock(&ts_data->report_mutex);
@@ -729,9 +731,6 @@ static void fts_irq_read_report(void)
 		mutex_unlock(&ts_data->report_mutex);
 	}
 
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_set_intr(0);
-#endif
 }
 
 static irqreturn_t fts_irq_handler(int irq, void *data)
@@ -1339,7 +1338,6 @@ static void fts_resume_work(struct work_struct *work)
 	fts_ts_resume(ts_data->dev);
 }
 
-#if defined(CONFIG_DRM)
 static int drm_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data)
 {
@@ -1373,25 +1371,6 @@ static int drm_notifier_callback(struct notifier_block *self,
 exit:
 	return NOTIFY_OK;
 }
-
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
-static void fts_ts_early_suspend(struct early_suspend *handler)
-{
-	struct fts_ts_data *ts_data = container_of(handler, struct fts_ts_data,
-								  early_suspend);
-
-	cancel_work_sync(&fts_data->resume_work);
-	fts_ts_suspend(ts_data->dev);
-}
-
-static void fts_ts_late_resume(struct early_suspend *handler)
-{
-	struct fts_ts_data *ts_data = container_of(handler, struct fts_ts_data,
-								  early_suspend);
-
-	queue_work(fts_data->ts_workqueue, &fts_data->resume_work);
-}
-#endif
 
 static void tpdbg_shutdown(struct fts_ts_data *ts_data, bool enable)
 {
@@ -1567,7 +1546,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 		}
 	}
 
-	ts_data->ts_workqueue = create_singlethread_workqueue("fts_wq");
+        ts_data->ts_workqueue = alloc_workqueue("fts_wq", WQ_FREEZABLE | WQ_HIGHPRI | WQ_UNBOUND, 0);
 	if (!ts_data->ts_workqueue) {
 		FTS_ERROR("create fts workqueue fail");
 	}
@@ -1629,15 +1608,6 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 		FTS_ERROR("create sysfs node fail");
 	}
 
-	ts_data->tpdbg_dentry = debugfs_create_dir("tp_debug", NULL);
-	if (IS_ERR_OR_NULL(ts_data->tpdbg_dentry)) {
-		FTS_ERROR("create tp_debug dir fail");
-	}
-	if (IS_ERR_OR_NULL(debugfs_create_file("switch_state", 0660,
-				ts_data->tpdbg_dentry, ts_data, &tpdbg_operations))) {
-		FTS_ERROR("create switch_state fail");
-	}
-
 #if FTS_POINT_REPORT_CHECK_EN
 	ret = fts_point_report_check_init(ts_data);
 	if (ret) {
@@ -1659,13 +1629,6 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	ret = fts_test_init(ts_data);
 	if (ret) {
 		FTS_ERROR("init production test fail");
-	}
-#endif
-
-#if FTS_ESDCHECK_EN
-	ret = fts_esdcheck_init(ts_data);
-	if (ret) {
-		FTS_ERROR("init esd check fail");
 	}
 #endif
 
@@ -1691,19 +1654,11 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	ts_data->pm_suspend = false;
 #endif
 
-#if defined(CONFIG_DRM)
 	ts_data->fb_notif.notifier_call = drm_notifier_callback;
 	ret = mi_drm_register_client(&ts_data->fb_notif);
 	if (ret) {
 		FTS_ERROR("[DRM]Unable to register fb_notifier: %d\n", ret);
 	}
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
-	ts_data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + FTS_SUSPEND_LEVEL;
-	ts_data->early_suspend.suspend = fts_ts_early_suspend;
-	ts_data->early_suspend.resume = fts_ts_late_resume;
-	register_early_suspend(&ts_data->early_suspend);
-#endif
-
 	ts_data->charger_mode = -1;
 	mutex_init(&ts_data->power_supply_lock);
 	INIT_WORK(&ts_data->power_supply_work, fts_power_supply_work);
@@ -1747,7 +1702,6 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 	fts_point_report_check_exit(ts_data);
 #endif
 
-	debugfs_remove_recursive(ts_data->tpdbg_dentry);
 	fts_remove_proc(ts_data);
 	fts_remove_sysfs(ts_data);
 	fts_ex_mode_exit(ts_data);
@@ -1756,10 +1710,6 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 
 #if FTS_TEST_EN
 	fts_test_exit(ts_data);
-#endif
-
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_exit(ts_data);
 #endif
 
 	fts_gesture_exit(ts_data);
@@ -1774,12 +1724,8 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 	if (ts_data->ts_workqueue)
 		destroy_workqueue(ts_data->ts_workqueue);
 
-#if defined(CONFIG_DRM)
 	if (mi_drm_unregister_client(&ts_data->fb_notif))
 		FTS_ERROR("[DRM]Error occurred while unregistering fb_notifier.\n");
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
-	unregister_early_suspend(&ts_data->early_suspend);
-#endif
 
 	if (gpio_is_valid(ts_data->pdata->reset_gpio))
 		gpio_free(ts_data->pdata->reset_gpio);
@@ -1824,10 +1770,6 @@ static int fts_ts_suspend(struct device *dev)
 		update_palm_sensor_value(0);
 		fts_palm_sensor_cmd(0);
 	}
-#endif
-
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_suspend();
 #endif
 
 	if (ts_data->gesture_mode && !ts_data->poweroff_on_sleep) {
@@ -1877,10 +1819,6 @@ static int fts_ts_resume(struct device *dev)
 
 	fts_wait_tp_to_valid();
 	fts_ex_mode_recovery(ts_data);
-
-#if FTS_ESDCHECK_EN
-	fts_esdcheck_resume();
-#endif
 
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	if (ts_data->palm_sensor_switch) {
@@ -2428,6 +2366,7 @@ static struct spi_driver fts_ts_driver = {
 		.pm = &fts_dev_pm_ops,
 #endif
 		.of_match_table = of_match_ptr(fts_dt_match),
+ 		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 	.id_table = fts_ts_id,
 };
@@ -2450,7 +2389,7 @@ static void __exit fts_ts_exit(void)
 	spi_unregister_driver(&fts_ts_driver);
 }
 
-module_init(fts_ts_init);
+device_initcall_sync(fts_ts_init);
 module_exit(fts_ts_exit);
 
 MODULE_AUTHOR("FocalTech Driver Team");

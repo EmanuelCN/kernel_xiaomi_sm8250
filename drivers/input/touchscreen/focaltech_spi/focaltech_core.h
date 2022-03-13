@@ -225,18 +225,13 @@ struct fts_ts_data {
 	struct pinctrl_state *pins_suspend;
 	struct pinctrl_state *pins_release;
 #endif
-#if defined(CONFIG_DRM)
 	struct notifier_block fb_notif;
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
-	struct early_suspend early_suspend;
-#endif
 	struct dentry *tpdbg_dentry;
 	bool poweroff_on_sleep;
 	/* power supply */
 	struct mutex power_supply_lock;
 	struct work_struct power_supply_work;
 	struct notifier_block power_supply_notifier;
-
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	u8 gesture_status;
 	bool gamemode_enabled;
@@ -245,7 +240,7 @@ struct fts_ts_data {
 	bool power_status;
 	bool is_expert_mode;
 #endif
-
+        ktime_t timestamp;
 };
 
 enum GESTURE_MODE_TYPE {
@@ -292,17 +287,6 @@ void fts_remove_proc(struct fts_ts_data *ts_data);
 /* ADB functions */
 int fts_create_sysfs(struct fts_ts_data *ts_data);
 int fts_remove_sysfs(struct fts_ts_data *ts_data);
-
-/* ESD */
-#if FTS_ESDCHECK_EN
-int fts_esdcheck_init(struct fts_ts_data *ts_data);
-int fts_esdcheck_exit(struct fts_ts_data *ts_data);
-int fts_esdcheck_switch(bool enable);
-int fts_esdcheck_proc_busy(bool proc_debug);
-int fts_esdcheck_set_intr(bool intr);
-int fts_esdcheck_suspend(void);
-int fts_esdcheck_resume(void);
-#endif
 
 /* Production test */
 #if FTS_TEST_EN
