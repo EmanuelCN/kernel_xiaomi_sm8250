@@ -15,8 +15,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -53,6 +51,7 @@
  */
 #define THREAD_SLEEP_VALUE 7
 #define PAID 0
+// #define DEBUG 0
 #define COPY_TO_USER raw_copy_to_user
 #define COPY_FROM_USER raw_copy_from_user
 #define KTIME_GET_NS ktime_get_real_ts64
@@ -163,24 +162,40 @@ int mod_init(void)
 	 */
 	ret = misc_register(&srandom_dev);
 	if (ret)
-		pr_info("/dev/srandom registration failed..\n");
+		printk(KERN_INFO "[srandom] mod_init /dev/srandom driver registion failed..\n");
 	else
-		pr_info("/dev/srandom registered..\n");
+		printk(KERN_INFO "[srandom] mod_init /dev/srandom driver registered..\n");
 
 	/*
 	 * Create /proc/srandom
 	 */
 	if (!proc_create("srandom", 0, NULL, &proc_fops))
-		pr_info("/proc/srandom registration failed..\n");
+		printk(KERN_INFO "[srandom] mod_init /proc/srandom registion failed..\n");
 	else
-		pr_info("/proc/srandom registration registered..\n");
+		printk(KERN_INFO "[srandom] mod_init /proc/srandom registion regisered..\n");
 
-	pr_info("Module version: "AppVERSION"\n");
+	printk(KERN_INFO "[srandom] mod_init Module version		 : "AppVERSION"\n");
+	if (PAID == 0) {
+		printk(KERN_INFO "-----------------------:----------------------\n");
+		printk(KERN_INFO "Please support my work and efforts contributing\n");
+		printk(KERN_INFO "to the Linux community.  A $25 payment per\n");
+		printk(KERN_INFO "server would be highly appreciated.\n");
+	}
+	printk(KERN_INFO "-----------------------:----------------------\n");
+	printk(KERN_INFO "Author				 : Jonathan Senkerik\n");
+	printk(KERN_INFO "Website				: http://www.jintegrate.co\n");
+	printk(KERN_INFO "github				 : http://github.com/josenk/srandom\n");
+	if (PAID == 0) {
+		printk(KERN_INFO "Paypal				 : josenk@jintegrate.co\n");
+		printk(KERN_INFO "Bitcoin				: 1MTNg7SqcEWs5uwLKwNiAfYqBfnKFJu65p\n");
+		printk(KERN_INFO "Commercial Invoice	 : Avail on request.\n");
+	}
+
 
 	sarr_RND = kmalloc((num_arr_RND + 1) * arr_RND_SIZE * sizeof(uint64_t),
 	GFP_KERNEL);
 	while (!sarr_RND) {
-		pr_info("kmalloc failed to allocate initial memory. retrying...\n");
+		printk(KERN_INFO "[srandom] mod_init kmalloc failed to allocate initial memory.  retrying...\n");
 		sarr_RND = kmalloc((num_arr_RND + 1) *
 			arr_RND_SIZE * sizeof(uint64_t), GFP_KERNEL);
 	}
@@ -215,7 +230,7 @@ void mod_exit(void)
 	kthread_stop(kthread);
 	misc_deregister(&srandom_dev);
 	remove_proc_entry("srandom", NULL);
-	pr_info("srandom deregistered..\n");
+	printk(KERN_INFO "[srandom] mod_exit srandom deregisered..\n");
 }
 
 
@@ -232,8 +247,10 @@ static int device_open(struct inode *inode, struct file *file)
 	sdev_openCount++;
 	mutex_unlock(&Open_mutex);
 
-	pr_info("(current open) :%d\n", sdev_open);
-	pr_info("(total open)   :%d\n", sdev_openCount);
+	#ifdef DEBUG
+	printk(KERN_INFO "[srandom] device_open (current open) :%d\n", sdev_open);
+	printk(KERN_INFO "[srandom] device_open (total open)   :%d\n", sdev_openCount);
+	#endif
 
 	return 0;
 }
@@ -250,7 +267,9 @@ static int device_release(struct inode *inode, struct file *file)
 	sdev_open--;
 	mutex_unlock(&Open_mutex);
 
-	pr_info("(current open) :%d\n", sdev_open);
+	#ifdef DEBUG
+	printk(KERN_INFO "[srandom] device_release (current open) :%d\n", sdev_open);
+	#endif
 
 	return 0;
 }
@@ -267,7 +286,9 @@ size_t count, loff_t *ppos)
 	int CC;
 	size_t src_counter;
 
-	pr_info("count:%zu\n", count);
+	#ifdef DEBUG
+	printk(KERN_INFO "[srandom] sdevice_read count:%zu\n", count);
+	#endif
 
 	/*
 	 * if requested count is small (<512), then select an array and send it
@@ -300,7 +321,9 @@ size_t count, loff_t *ppos)
 		 */
 		update_sarray(CC);
 
-		pr_info("small CC_Busy_Flags:%d CC:%d\n", CC_Busy_Flags, CC);
+		#ifdef DEBUG
+		printk(KERN_INFO "[srandom] small CC_Busy_Flags:%d CC:%d\n", CC_Busy_Flags, CC);
+		#endif
 
 		/*
 		 * Clear CC_Busy_Flag
@@ -315,19 +338,19 @@ size_t count, loff_t *ppos)
 		 * Allocate memory for new_buf
 		 */
 		long count_remaining = count;
-
-		pr_info("count_remaining:%ld count:%ld\n",
-			count_remaining, count);
+		#ifdef DEBUG
+		printk(KERN_INFO "[srandom] count_remaining:%ld count:%ld\n", count_remaining, count);
+		#endif
 
 		while (count_remaining > 0) {
-			pr_info("count_remaining:%ld count:%ld\n",
-				count_remaining, count);
+			#ifdef DEBUG
+			printk(KERN_INFO "[srandom] count_remaining:%ld count:%ld\n", count_remaining, count);
+			#endif
 
 			new_buf = kmalloc((count_remaining + 512) *
 				sizeof(uint8_t), GFP_KERNEL);
 			while (!new_buf) {
-				pr_info("buffered kmalloc failed to allocate buffer.",
-					"retrying...\n");
+				printk(KERN_INFO "[srandom] buffered kmalloc failed to allocate buffer.  retrying...\n");
 				new_buf = kmalloc((count_remaining + 512) *
 					sizeof(uint8_t), GFP_KERNEL);
 			}
@@ -345,8 +368,9 @@ size_t count, loff_t *ppos)
 			CC = nextbuffer();
 			while ((CC_Busy_Flags & 1 << CC) == (1 << CC)) {
 				CC = xorshft128() & (num_arr_RND - 1);
-				pr_info("buffered CC_Busy_Flags:%d CC:%d\n",
-					CC_Busy_Flags, CC);
+				#ifdef DEBUG
+				printk(KERN_INFO "[srandom] buffered CC_Busy_Flags:%d CC:%d\n", CC_Busy_Flags, CC);
+				#endif
 			}
 
 			/*
@@ -366,8 +390,9 @@ size_t count, loff_t *ppos)
 					src_counter);
 				update_sarray(CC);
 
-				pr_info("buffered COPT_TO_USER counter:%d count_remaining:%zu\n",
-					counter, count_remaining);
+				#ifdef DEBUG
+				printk(KERN_INFO "[srandom] buffered COPT_TO_USER counter:%d count_remaining:%zu\n", counter, count_remaining);
+				#endif
 
 				counter += 512;
 			}
@@ -409,7 +434,9 @@ const char __user *buf, size_t count, loff_t *ppos)
 	char *newdata;
 	int  ret;
 
-	pr_info("count:%zu\n", count);
+	#ifdef DEBUG
+	printk(KERN_INFO "[srandom] sdevice_write count:%zu\n", count);
+	#endif
 
 	/*
 	 * Allocate memory to read from device
@@ -425,7 +452,9 @@ const char __user *buf, size_t count, loff_t *ppos)
 	 */
 	kfree(newdata);
 
-	pr_info("COPT_FROM_USER count:%zu\n", count);
+	#ifdef DEBUG
+	printk(KERN_INFO "[srandom] sdevice_write COPT_FROM_USER count:%zu\n", count);
+	#endif
 
 	return count;
 }
@@ -452,7 +481,10 @@ void update_sarray(int CC)
 	Z2 = xorshft64();
 	Z3 = xorshft64();
 	if ((Z1 & 1) == 0) {
-		pr_info("0\n");
+		#ifdef DEBUG
+		printk(KERN_INFO "[srandom] update_sarray 0\n");
+		#endif
+
 		for (C = 0; C < (arr_RND_SIZE - 4) ; C = C + 4) {
 			X = xorshft128();
 			Y = xorshft128();
@@ -462,7 +494,10 @@ void update_sarray(int CC)
 			sarr_RND[CC][C + 3] = X ^ Y ^ Z3;
 		}
 	} else {
-		pr_info("1\n");
+		#ifdef DEBUG
+		printk(KERN_INFO "[srandom] update_sarray 1\n");
+		#endif
+
 		for (C = 0; C < (arr_RND_SIZE - 4) ; C = C + 4) {
 			X = xorshft128();
 			Y = xorshft128();
@@ -475,8 +510,9 @@ void update_sarray(int CC)
 
 	mutex_unlock(&UpArr_mutex);
 
-	pr_info("CC:%d, X:%llu, Y:%llu, Z1:%llu, Z2:%llu, Z3:%llu,\n",
-		CC, X, Y, Z1, Z2, Z3);
+	#ifdef DEBUG
+	printk(KERN_INFO "[srandom] update_sarray CC:%d, X:%llu, Y:%llu, Z1:%llu, Z2:%llu, Z3:%llu,\n", CC, X, Y, Z1, Z2, Z3);
+	#endif
 }
 
 
@@ -487,24 +523,27 @@ void seed_PRND_s0(void)
 {
 	 KTIME_GET_NS(&ts);
 	 s[0] = (s[0] << 31) ^ (uint64_t)ts.tv_nsec;
-	 pr_info("x:%llu, s[0]:%llu, s[1]:%llu\n",
-		x, s[0], s[1]);
+	 #ifdef DEBUG
+	 printk(KERN_INFO "[srandom] seed_PRNG_s0 x:%llu, s[0]:%llu, s[1]:%llu\n", x, s[0], s[1]);
+	 #endif
 }
 
 void seed_PRND_s1(void)
 {
 	KTIME_GET_NS(&ts);
 	s[1] = (s[1] << 24) ^ (uint64_t)ts.tv_nsec;
-	pr_info("x:%llu, s[0]:%llu, s[1]:%llu\n",
-		x, s[0], s[1]);
+	#ifdef DEBUG
+	printk(KERN_INFO "[srandom] seed_PRNG_s1 x:%llu, s[0]:%llu, s[1]:%llu\n", x, s[0], s[1]);
+	#endif
 }
 
 void seed_PRND_x(void)
 {
 	KTIME_GET_NS(&ts);
 	x = (x << 32) ^ (uint64_t)ts.tv_nsec;
-	pr_info("x:%llu, s[0]:%llu, s[1]:%llu\n",
-		x, s[0], s[1]);
+	#ifdef DEBUG
+	printk(KERN_INFO "[srandom] seed_PRNG_x x:%llu, s[0]:%llu, s[1]:%llu\n", x, s[0], s[1]);
+	#endif
 }
 
 /*
@@ -539,17 +578,9 @@ int nextbuffer(void)
 	uint8_t nextbuffer = (sarr_RND[num_arr_RND][position] >> (roll * 4))
 		& (num_arr_RND - 1);
 
-	pr_info("raw:%lld",
-			"position:%d",
-			"roll:%d",
-			"%s:%d",
-			"CC_buffer_position:%d\n",
-			sarr_RND[num_arr_RND][position],
-			position,
-			roll,
-			__func__,
-			nextbuffer,
-			CC_buffer_position);
+	#ifdef DEBUG
+	printk(KERN_INFO "[srandom] nextbuffer raw:%lld, position:%d, roll:%d, nextbuffer:%d,  CC_buffer_position:%d\n", sarr_RND[num_arr_RND][position], position, roll, nextbuffer, CC_buffer_position);
+	#endif
 
 	while (mutex_lock_interruptible(&UpPos_mutex))
 		;
