@@ -441,7 +441,7 @@ struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
 	}
 
 	/* create the callback */
-	kcb = kzalloc(sizeof(*kcb), GFP_ATOMIC);
+	kcb = kzalloc(sizeof(*kcb), GFP_KERNEL);
 	if (kcb == NULL) {
 		dma_fence_put(fence);
 		return ERR_PTR(-ENOMEM);
