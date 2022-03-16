@@ -98,17 +98,6 @@ static inline void idr_set_cursor(struct idr *idr, unsigned int val)
  * period).
  */
 
-#define idr_lock(idr)		xa_lock(&(idr)->idr_rt)
-#define idr_unlock(idr)		xa_unlock(&(idr)->idr_rt)
-#define idr_lock_bh(idr)	xa_lock_bh(&(idr)->idr_rt)
-#define idr_unlock_bh(idr)	xa_unlock_bh(&(idr)->idr_rt)
-#define idr_lock_irq(idr)	xa_lock_irq(&(idr)->idr_rt)
-#define idr_unlock_irq(idr)	xa_unlock_irq(&(idr)->idr_rt)
-#define idr_lock_irqsave(idr, flags) \
-				xa_lock_irqsave(&(idr)->idr_rt, flags)
-#define idr_unlock_irqrestore(idr, flags) \
-				xa_unlock_irqrestore(&(idr)->idr_rt, flags)
-
 void idr_preload(gfp_t gfp_mask);
 
 int idr_alloc(struct idr *, void *ptr, int start, int end, gfp_t);
@@ -185,7 +174,7 @@ static inline void idr_preload_end(void)
  * is convenient for a "not found" value.
  */
 #define idr_for_each_entry(idr, entry, id)			\
-	for (id = 0; ((entry) = idr_get_next(idr, &(id))) != NULL; id += 1U)
+	for (id = 0; ((entry) = idr_get_next(idr, &(id))) != NULL; ++id)
 
 /**
  * idr_for_each_entry_ul() - Iterate over an IDR's elements of a given type.
@@ -236,9 +225,13 @@ struct ida {
 }
 #define DEFINE_IDA(name)	struct ida name = IDA_INIT(name)
 
+int ida_pre_get(struct ida *ida, gfp_t gfp_mask);
+int ida_get_new_above(struct ida *ida, int starting_id, int *p_id);
+void ida_remove(struct ida *ida, int id);
+void ida_destroy(struct ida *ida);
+
 int ida_alloc_range(struct ida *, unsigned int min, unsigned int max, gfp_t);
 void ida_free(struct ida *, unsigned int id);
-void ida_destroy(struct ida *ida);
 
 /**
  * ida_alloc() - Allocate an unused ID.
@@ -299,11 +292,20 @@ static inline void ida_init(struct ida *ida)
 			ida_alloc_range(ida, start, (end) - 1, gfp)
 #define ida_simple_remove(ida, id)	ida_free(ida, id)
 
+/**
+ * ida_get_new - allocate new ID
+ * @ida:	idr handle
+ * @p_id:	pointer to the allocated handle
+ *
+ * Simple wrapper around ida_get_new_above() w/ @starting_id of zero.
+ */
+static inline int ida_get_new(struct ida *ida, int *p_id)
+{
+	return ida_get_new_above(ida, 0, p_id);
+}
+
 static inline bool ida_is_empty(const struct ida *ida)
 {
 	return radix_tree_empty(&ida->ida_rt);
 }
-
-/* in lib/radix-tree.c */
-int ida_pre_get(struct ida *ida, gfp_t gfp_mask);
 #endif /* __IDR_H__ */

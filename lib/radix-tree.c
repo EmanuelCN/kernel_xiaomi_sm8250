@@ -2106,6 +2106,14 @@ void idr_preload(gfp_t gfp_mask)
 }
 EXPORT_SYMBOL(idr_preload);
 
+/**
+ * ida_pre_get - reserve resources for ida allocation
+ * @ida: ida handle
+ * @gfp: memory allocation flags
+ *
+ * This function should be called before calling ida_get_new_above().  If it
+ * is unable to allocate memory, it will return %0.  On success, it returns %1.
+ */
 int ida_pre_get(struct ida *ida, gfp_t gfp)
 {
 	/*
@@ -2126,6 +2134,7 @@ int ida_pre_get(struct ida *ida, gfp_t gfp)
 
 	return 1;
 }
+EXPORT_SYMBOL(ida_pre_get);
 
 void __rcu **idr_get_free(struct radix_tree_root *root,
 			      struct radix_tree_iter *iter, gfp_t gfp,
@@ -2172,7 +2181,7 @@ void __rcu **idr_get_free(struct radix_tree_root *root,
 			offset = radix_tree_find_next_bit(node, IDR_FREE,
 							offset + 1);
 			start = next_index(start, node, offset);
-			if (start > max || start == 0)
+			if (start > max)
 				return ERR_PTR(-ENOSPC);
 			while (offset == RADIX_TREE_MAP_SIZE) {
 				offset = node->offset + 1;
