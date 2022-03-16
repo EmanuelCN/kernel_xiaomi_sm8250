@@ -1,7 +1,5 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved. */
 
 #ifndef __RPM_INTERNAL_H__
 #define __RPM_INTERNAL_H__
@@ -27,6 +25,7 @@ struct rsc_drv;
  * @offset:    start of the TCS group relative to the TCSes in the RSC
  * @num_tcs:   number of TCSes in this type
  * @ncpt:      number of commands in each TCS
+ * @lock:      lock for synchronizing this TCS writes
  * @req:       requests that are sent from the TCS
  * @cmd_cache: flattened cache of cmds in sleep/wake TCS
  * @slots:     indicates which of @cmd_addr are occupied
@@ -38,6 +37,7 @@ struct tcs_group {
 	u32 offset;
 	int num_tcs;
 	int ncpt;
+	spinlock_t lock;
 	const struct tcs_request *req[MAX_TCS_PER_TYPE];
 	u32 *cmd_cache;
 	DECLARE_BITMAP(slots, MAX_TCS_SLOTS);
@@ -117,9 +117,9 @@ int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg);
 int rpmh_rsc_write_ctrl_data(struct rsc_drv *drv,
 			     const struct tcs_request *msg);
 int rpmh_rsc_invalidate(struct rsc_drv *drv);
+void rpmh_rsc_mode_solver_set(struct rsc_drv *drv, bool enable);
 bool rpmh_rsc_ctrlr_is_idle(struct rsc_drv *drv);
 int rpmh_rsc_write_pdc_data(struct rsc_drv *drv, const struct tcs_request *msg);
-void rpmh_rsc_mode_solver_set(struct rsc_drv *drv, bool enable);
 
 void rpmh_tx_done(const struct tcs_request *msg, int r);
 

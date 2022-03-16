@@ -11,12 +11,10 @@
 #include <linux/of_irq.h>
 #include <linux/of.h>
 #include <linux/pm_wakeup.h>
-#include <linux/delay.h>
 
 #define PROC_AWAKE_ID 12 /* 12th bit */
-#define SMP2P_SLEEPSTATE_TIME CONFIG_SMP2P_SLEEPSTATE_TIME
 #define AWAKE_BIT BIT(PROC_AWAKE_ID)
-struct qcom_smem_state *qstate;
+static struct qcom_smem_state *state;
 static struct wakeup_source *notify_ws;
 
 /**
@@ -33,12 +31,11 @@ static int sleepstate_pm_notifier(struct notifier_block *nb,
 {
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
-		qcom_smem_state_update_bits(qstate, AWAKE_BIT, 0);
-		usleep_range(10000, 10500); /* Tuned based on SMP2P latencies */
+		qcom_smem_state_update_bits(state, AWAKE_BIT, 0);
 		break;
 
 	case PM_POST_SUSPEND:
-		qcom_smem_state_update_bits(qstate, AWAKE_BIT, AWAKE_BIT);
+		qcom_smem_state_update_bits(state, AWAKE_BIT, AWAKE_BIT);
 		break;
 	}
 
@@ -52,7 +49,7 @@ static struct notifier_block sleepstate_pm_nb = {
 
 static irqreturn_t smp2p_sleepstate_handler(int irq, void *ctxt)
 {
-	__pm_wakeup_event(notify_ws, SMP2P_SLEEPSTATE_TIME);
+	__pm_wakeup_event(notify_ws, 200);
 	return IRQ_HANDLED;
 }
 
@@ -63,10 +60,10 @@ static int smp2p_sleepstate_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node;
 
-	qstate = qcom_smem_state_get(&pdev->dev, 0, &ret);
-	if (IS_ERR(qstate))
-		return PTR_ERR(qstate);
-	qcom_smem_state_update_bits(qstate, AWAKE_BIT, AWAKE_BIT);
+	state = qcom_smem_state_get(&pdev->dev, 0, &ret);
+	if (IS_ERR(state))
+		return PTR_ERR(state);
+	qcom_smem_state_update_bits(state, AWAKE_BIT, AWAKE_BIT);
 
 	ret = register_pm_notifier(&sleepstate_pm_nb);
 	if (ret) {
