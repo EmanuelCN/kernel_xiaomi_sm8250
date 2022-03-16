@@ -1,5 +1,0 @@
-config MILLET
-	bool "frozen framework"
-	depends on MIHW
-	---help---
-	  Mi frozen function
