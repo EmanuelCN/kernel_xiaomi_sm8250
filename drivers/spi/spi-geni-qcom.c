@@ -1850,7 +1850,6 @@ static int spi_geni_resume(struct device *dev)
 static int spi_geni_suspend(struct device *dev)
 {
 	int ret = 0;
-#if 0
 
 	if (!pm_runtime_status_suspended(dev)) {
 		struct spi_master *spi = get_spi_master(dev);
@@ -1872,10 +1871,6 @@ static int spi_geni_suspend(struct device *dev)
 			ret = -EBUSY;
 		}
 	}
-#else
-	if (!pm_runtime_status_suspended(dev))
-		ret = -EBUSY;
-#endif
 	return ret;
 }
 #else
