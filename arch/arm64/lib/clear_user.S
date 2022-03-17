@@ -20,7 +20,7 @@
 	.p2align 4
 	// Alignment is for the loop, but since the prologue (including BTI)
 	// is also 16 bytes we can keep any padding outside the function
-SYM_FUNC_START(__arch_clear_user)
+ENTRY(__arch_clear_user)
 	add	x2, x0, x1
 	subs	x1, x1, #8
 	b.mi	2f
@@ -45,7 +45,7 @@ USER(9f, sttrh	wzr, [x0])
 USER(7f, sttrb	wzr, [x2, #-1])
 5:	mov	x0, #0
 	ret
-SYM_FUNC_END(__arch_clear_user)
+ENDPROC(__arch_clear_user)
 
 	.section .fixup,"ax"
 	.align	2
