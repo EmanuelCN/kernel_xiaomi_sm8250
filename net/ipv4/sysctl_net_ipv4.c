@@ -1021,7 +1021,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.procname	= "tcp_timestamps",
 		.data		= &init_net.ipv4.sysctl_tcp_timestamps,
 		.maxlen		= sizeof(int),
-		.mode		= 0444,
+		.mode		= 0644,
 		.proc_handler	= proc_dointvec
 	},
 	{
