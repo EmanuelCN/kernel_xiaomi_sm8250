@@ -531,7 +531,7 @@ static int z_erofs_get_extent_compressedlen(struct z_erofs_maprecorder *m,
 			goto err_bonus_cblkcnt;
 		if (m->compressedlcs)
 			break;
-		/* fallthrough */
+		fallthrough;
 	default:
 		erofs_err(m->inode->i_sb,
 			  "cannot found CBLKCNT @ lcn %lu of nid %llu",
@@ -650,7 +650,7 @@ static int z_erofs_do_map_blocks(struct inode *inode,
 		end = (m.lcn << lclusterbits) | m.clusterofs;
 		map->m_flags |= EROFS_MAP_FULL_MAPPED;
 		m.delta[0] = 1;
-		/* fallthrough */
+		fallthrough;
 	case Z_EROFS_VLE_CLUSTER_TYPE_NONHEAD:
 		/* get the corresponding first chunk */
 		err = z_erofs_extent_lookback(&m, m.delta[0]);

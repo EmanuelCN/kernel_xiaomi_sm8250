@@ -9,6 +9,8 @@
 #ifndef __EROFS_FS_H
 #define __EROFS_FS_H
 
+#define fallthrough
+
 #define EROFS_SUPER_MAGIC_V1	0xE0F5E1E2
 #define EROFS_SUPER_OFFSET      1024
 
