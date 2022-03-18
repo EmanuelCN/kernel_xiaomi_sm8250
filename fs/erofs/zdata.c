@@ -329,11 +329,8 @@ int erofs_try_to_free_all_cached_pages(struct erofs_sb_info *sbi,
 
 		/* barrier is implied in the following 'unlock_page' */
 		WRITE_ONCE(pcl->compressed_pages[i], NULL);
-
-		set_page_private(page, 0);
-		ClearPagePrivate(page);
+		detach_page_private(page);
 		unlock_page(page);
-		put_page(page);
 	}
 	return 0;
 }
@@ -356,11 +353,8 @@ int erofs_try_to_free_cached_page(struct page *page)
 		}
 		erofs_workgroup_unfreeze(&pcl->obj, 1);
 
-		if (ret) {
-			set_page_private(page, 0);
-			ClearPagePrivate(page);
-			put_page(page);
-		}
+		if (ret)
+			detach_page_private(page);
 	}
 	return ret;
 }
@@ -1218,8 +1212,9 @@ out_tocache:
 		set_page_private(page, Z_EROFS_SHORTLIVED_PAGE);
 		goto out;
 	}
-	set_page_private(page, (unsigned long)pcl);
-	SetPagePrivate(page);
+	attach_page_private(page, pcl);
+	/* drop a refcount added by allocpage (then we have 2 refs here) */
+	put_page(page);
 
 out:	/* the only exit (for tracing and debugging) */
 	return page;
