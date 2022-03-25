@@ -51,7 +51,6 @@ struct lpm_cluster *lpm_root_node;
 
 static DEFINE_PER_CPU(struct lpm_cpu*, cpu_lpm);
 static bool suspend_in_progress;
-static struct hrtimer lpm_hrtimer;
 
 static void cluster_unprepare(struct lpm_cluster *cluster,
 		const struct cpumask *cpu, int child_idx, bool from_idle,
@@ -62,9 +61,6 @@ static void cluster_prepare(struct lpm_cluster *cluster,
 
 static bool print_parsed_dt;
 module_param_named(print_parsed_dt, print_parsed_dt, bool, 0664);
-
-static bool sleep_disabled;
-module_param_named(sleep_disabled, sleep_disabled, bool, 0664);
 
 /**
  * msm_cpuidle_get_deep_idle_latency - Get deep idle latency value
@@ -240,35 +236,6 @@ static int lpm_starting_cpu(unsigned int cpu)
 	return 0;
 }
 
-static enum hrtimer_restart lpm_hrtimer_cb(struct hrtimer *h)
-{
-	return HRTIMER_NORESTART;
-}
-
-static void msm_pm_set_timer(uint32_t modified_time_us)
-{
-	u64 modified_time_ns = modified_time_us * NSEC_PER_USEC;
-	ktime_t modified_ktime = ns_to_ktime(modified_time_ns);
-
-	lpm_hrtimer.function = lpm_hrtimer_cb;
-	hrtimer_start(&lpm_hrtimer, modified_ktime, HRTIMER_MODE_REL_PINNED);
-}
-
-static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
-{
-	if (cpu_isolated(cpu))
-		goto out;
-
-	if (sleep_disabled)
-		return true;
-
-out:
-	if (sleep_us < 0)
-		return true;
-
-	return false;
-}
-
 static void calculate_next_wakeup(uint32_t *next_wakeup_us,
 				  uint32_t next_event_us,
 				  uint32_t lvl_latency_us,
@@ -282,65 +249,6 @@ static void calculate_next_wakeup(uint32_t *next_wakeup_us,
 
 	if (next_event_us < sleep_us)
 		*next_wakeup_us = next_event_us - lvl_latency_us;
-}
-
-static int cpu_power_select(struct cpuidle_device *dev,
-		struct lpm_cpu *cpu)
-{
-	ktime_t delta_next;
-	int best_level = 0;
-	uint32_t latency_us = pm_qos_request_for_cpu(PM_QOS_CPU_DMA_LATENCY,
-							dev->cpu);
-	s64 sleep_us = ktime_to_us(tick_nohz_get_sleep_length(&delta_next));
-	uint32_t modified_time_us = 0;
-	uint32_t next_event_us = 0;
-	int i, idx_restrict;
-	uint32_t lvl_latency_us = 0;
-	uint32_t next_wakeup_us = (uint32_t)sleep_us;
-	uint32_t max_residency;
-	struct power_params *pwr_params;
-
-	if (lpm_disallowed(sleep_us, dev->cpu, cpu))
-		goto done_select;
-
-	idx_restrict = cpu->nlevels + 1;
-	next_event_us = (uint32_t)(ktime_to_us(get_next_event_time(dev->cpu)));
-
-	for (i = 0; i < cpu->nlevels; i++) {
-		if (!lpm_cpu_mode_allow(dev->cpu, i, true))
-			continue;
-
-		pwr_params = &cpu->levels[i].pwr;
-		lvl_latency_us = pwr_params->exit_latency;
-		max_residency = pwr_params->max_residency;
-
-		if (latency_us < lvl_latency_us)
-			break;
-
-		calculate_next_wakeup(&next_wakeup_us, next_event_us,
-				      lvl_latency_us, sleep_us);
-
-		if (i >= idx_restrict)
-			break;
-
-		best_level = i;
-
-		if (next_event_us && next_event_us < sleep_us && !i)
-			modified_time_us = next_event_us - lvl_latency_us;
-		else
-			modified_time_us = 0;
-
-		if (next_wakeup_us <= max_residency)
-			break;
-	}
-
-	if (modified_time_us)
-		msm_pm_set_timer(modified_time_us);
-
-done_select:
-	trace_cpu_power_select(best_level, sleep_us, latency_us, next_event_us);
-
-	return best_level;
 }
 
 static unsigned int get_next_online_cpu(bool from_idle)
@@ -694,40 +602,28 @@ static bool psci_enter_sleep(struct lpm_cpu *cpu, int idx, bool from_idle)
 static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 		struct cpuidle_device *dev, bool *stop_tick)
 {
-	struct lpm_cpu *cpu = per_cpu(cpu_lpm, dev->cpu);
-
-	if (!cpu)
-		return 0;
-
-	return cpu_power_select(dev, cpu);
+	return 0;
 }
 
 static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int idx)
 {
-	struct lpm_cpu *cpu = per_cpu(cpu_lpm, dev->cpu);
 	bool success = false;
-	const struct cpumask *cpumask = get_cpu_mask(dev->cpu);
 	ktime_t start = ktime_get();
 	uint64_t start_time = ktime_to_ns(start), end_time;
 
-	cpu_prepare(cpu, idx, true);
-	cluster_prepare(cpu->parent, cpumask, idx, true, start_time);
-
-	trace_cpu_idle_enter(idx);
 	lpm_stats_cpu_enter(idx, start_time);
 
 	if (need_resched())
 		goto exit;
 
-	success = psci_enter_sleep(cpu, idx, true);
+	cpu_do_idle();
+	success = true;
 
 exit:
 	end_time = ktime_to_ns(ktime_get());
 	lpm_stats_cpu_exit(idx, end_time, success);
 
-	cluster_unprepare(cpu->parent, cpumask, idx, true, end_time, success);
-	cpu_unprepare(cpu, idx, true);
 	return idx;
 }
 
@@ -1034,7 +930,6 @@ static int lpm_probe(struct platform_device *pdev)
 	 */
 	suspend_set_ops(&lpm_suspend_ops);
 	s2idle_set_ops(&lpm_s2idle_ops);
-	hrtimer_init(&lpm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
 	register_cluster_lpm_stats(lpm_root_node, NULL);
 
