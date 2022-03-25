@@ -614,7 +614,7 @@ static struct sugov_policy *sugov_policy_alloc(struct cpufreq_policy *policy)
 	return sg_policy;
 }
 
-static void sugov_policy_free(struct sugov_policy *sg_policy)
+static inline void sugov_policy_free(struct sugov_policy *sg_policy)
 {
 	kfree(sg_policy);
 }
