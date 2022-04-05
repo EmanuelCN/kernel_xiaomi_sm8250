@@ -948,6 +948,7 @@ void pm_system_irq_wakeup(unsigned int irq_number)
 
 		pm_wakeup_irq = irq_number;
 		pm_system_wakeup();
+		log_irq_wakeup_reason(irq_number);
 	}
 }
 

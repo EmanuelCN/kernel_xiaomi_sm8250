@@ -19,21 +19,15 @@
 #include <linux/of.h>
 #include <linux/uaccess.h>
 
-
 #define RPM_MASTERS_BUF_LEN 400
 
 #define SNPRINTF(buf, size, format, ...) \
 	do { \
 		if (size > 0) { \
 			int ret; \
-			ret = snprintf(buf, size, format, ## __VA_ARGS__); \
-			if (ret > size) { \
-				buf += size; \
-				size = 0; \
-			} else { \
-				buf += ret; \
-				size -= ret; \
-			} \
+			ret = scnprintf(buf, size, format, ## __VA_ARGS__); \
+			buf += ret; \
+			size -= ret; \
 		} \
 	} while (0)
 
@@ -42,6 +36,15 @@
 	 prvdata->master_names[a])
 
 #define GET_FIELD(a) ((strnstr(#a, ".", 80) + 1))
+
+#ifdef CONFIG_ARM
+#define readq_relaxed(a) ({			\
+	u64 val = readl_relaxed((a) + 4);	\
+	val <<= 32;				\
+	val |=  readl_relaxed((a));		\
+	val;					\
+})
+#endif
 
 struct msm_rpm_master_stats_platform_data {
 	phys_addr_t phys_addr_base;
@@ -278,25 +281,19 @@ static ssize_t msm_rpm_master_stats_file_read(struct file *file,
 {
 	struct msm_rpm_master_stats_private_data *prvdata;
 	struct msm_rpm_master_stats_platform_data *pdata;
-	ssize_t ret;
+	ssize_t ret = -EINVAL;
 
 	mutex_lock(&msm_rpm_master_stats_mutex);
 	prvdata = file->private_data;
-	if (!prvdata) {
-		ret = -EINVAL;
+	if (!prvdata)
 		goto exit;
-	}
 
 	pdata = prvdata->platform_data;
-	if (!pdata) {
-		ret = -EINVAL;
+	if (!pdata)
 		goto exit;
-	}
 
-	if (!bufu || count == 0) {
-		ret = -EINVAL;
+	if (!bufu || count == 0)
 		goto exit;
-	}
 
 	if (*ppos <= pdata->phys_size) {
 		prvdata->len = msm_rpm_master_copy_stats(prvdata);
@@ -339,7 +336,7 @@ static int msm_rpm_master_stats_file_open(struct inode *inode,
 		pr_err("%s: ERROR could not ioremap start=%pa, len=%u\n",
 			__func__, &pdata->phys_addr_base,
 			pdata->phys_size);
-		ret = -EBUSY;
+		ret = -ENOMEM;
 		goto exit;
 	}
 
@@ -402,17 +399,12 @@ static struct msm_rpm_master_stats_platform_data
 	 */
 	for (i = 0; i < pdata->num_masters; i++) {
 		const char *master_name;
-		size_t master_name_len;
 
 		of_property_read_string_index(node, "qcom,masters",
 							i, &master_name);
-		master_name_len = strlen(master_name);
-		pdata->masters[i] = devm_kzalloc(dev, sizeof(char) *
-				master_name_len + 1, GFP_KERNEL);
+		pdata->masters[i] = devm_kstrdup(dev, master_name, GFP_KERNEL);
 		if (!pdata->masters[i])
 			goto err;
-		strlcpy(pdata->masters[i], master_name,
-					master_name_len + 1);
 	}
 	return pdata;
 err:
@@ -425,18 +417,9 @@ static  int msm_rpm_master_stats_probe(struct platform_device *pdev)
 	struct msm_rpm_master_stats_platform_data *pdata;
 	struct resource *res = NULL;
 
-	if (!pdev)
-		return -EINVAL;
-
-	if (pdev->dev.of_node)
-		pdata = msm_rpm_master_populate_pdata(&pdev->dev);
-	else
-		pdata = pdev->dev.platform_data;
-
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s: Unable to get pdata\n", __func__);
+	pdata = msm_rpm_master_populate_pdata(&pdev->dev);
+	if (!pdata)
 		return -ENOMEM;
-	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 

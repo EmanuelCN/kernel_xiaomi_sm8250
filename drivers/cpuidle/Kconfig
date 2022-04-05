@@ -21,6 +21,15 @@ config CPU_IDLE_GOV_LADDER
 config CPU_IDLE_GOV_MENU
 	bool "Menu governor (for tickless system)"
 
+config CPU_IDLE_GOV_TEO
+	bool "Timer events oriented (TEO) governor (for tickless systems)"
+	help
+	  This governor implements a simplified idle state selection method
+	  focused on timer events and does not do any interactivity boosting.
+
+	  Some workloads benefit from using it and it generally should be safe
+	  to use.  Say Y here if you are not happy with the alternatives.
+
 config DT_IDLE_STATES
 	bool
 
