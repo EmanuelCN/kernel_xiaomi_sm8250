@@ -41,6 +41,13 @@ struct wakeup_irq_node {
 	const char *irq_name;
 };
 
+enum wakeup_reason_flag {
+	RESUME_NONE = 0,
+	RESUME_IRQ,
+	RESUME_ABORT,
+	RESUME_ABNORMAL,
+};
+
 static DEFINE_SPINLOCK(wakeup_reason_lock);
 
 static LIST_HEAD(leaf_irqs);   /* kept in ascending IRQ sorted order */
@@ -53,8 +60,7 @@ static const char *default_irq_name = "(unnamed)";
 static struct kobject *kobj;
 
 static bool capture_reasons;
-static bool suspend_abort;
-static bool abnormal_wake;
+static int wakeup_reason;
 static char non_irq_wake_reason[MAX_SUSPEND_ABORT_LEN];
 
 static ktime_t last_monotime; /* monotonic time before last suspend */
@@ -102,7 +108,7 @@ static void delete_list(struct list_head *head)
 
 static bool add_sibling_node_sorted(struct list_head *head, int irq)
 {
-	struct wakeup_irq_node *n = NULL;
+	struct wakeup_irq_node *n;
 	struct list_head *predecessor = head;
 
 	if (unlikely(WARN_ON(!head)))
@@ -147,6 +153,10 @@ void log_irq_wakeup_reason(int irq)
 	unsigned long flags;
 
 	spin_lock_irqsave(&wakeup_reason_lock, flags);
+	if (wakeup_reason == RESUME_ABNORMAL || wakeup_reason == RESUME_ABORT) {
+		spin_unlock_irqrestore(&wakeup_reason_lock, flags);
+		return;
+	}
 
 	if (!capture_reasons) {
 		spin_unlock_irqrestore(&wakeup_reason_lock, flags);
@@ -156,6 +166,7 @@ void log_irq_wakeup_reason(int irq)
 	if (find_node_in_list(&parent_irqs, irq) == NULL)
 		add_sibling_node_sorted(&leaf_irqs, irq);
 
+	wakeup_reason = RESUME_IRQ;
 	spin_unlock_irqrestore(&wakeup_reason_lock, flags);
 }
 
@@ -176,6 +187,11 @@ void log_threaded_irq_wakeup_reason(int irq, int parent_irq)
 
 	spin_lock_irqsave(&wakeup_reason_lock, flags);
 
+	if (wakeup_reason == RESUME_ABNORMAL || wakeup_reason == RESUME_ABORT) {
+		spin_unlock_irqrestore(&wakeup_reason_lock, flags);
+		return;
+	}
+
 	if (!capture_reasons || (find_node_in_list(&leaf_irqs, irq) != NULL)) {
 		spin_unlock_irqrestore(&wakeup_reason_lock, flags);
 		return;
@@ -195,22 +211,25 @@ void log_threaded_irq_wakeup_reason(int irq, int parent_irq)
 
 	spin_unlock_irqrestore(&wakeup_reason_lock, flags);
 }
+EXPORT_SYMBOL_GPL(log_threaded_irq_wakeup_reason);
 
-static void __log_abort_or_abnormal_wake(bool abort, const char *fmt,
-					 va_list args)
+void __log_abort_or_abnormal_wake(bool abort, const char *fmt, va_list args)
 {
 	unsigned long flags;
 
 	spin_lock_irqsave(&wakeup_reason_lock, flags);
 
 	/* Suspend abort or abnormal wake reason has already been logged. */
-	if (suspend_abort || abnormal_wake) {
+	if (wakeup_reason != RESUME_NONE) {
 		spin_unlock_irqrestore(&wakeup_reason_lock, flags);
 		return;
 	}
 
-	suspend_abort = abort;
-	abnormal_wake = !abort;
+	if (abort)
+		wakeup_reason = RESUME_ABORT;
+	else
+		wakeup_reason = RESUME_ABNORMAL;
+
 	vsnprintf(non_irq_wake_reason, MAX_SUSPEND_ABORT_LEN, fmt, args);
 
 	spin_unlock_irqrestore(&wakeup_reason_lock, flags);
@@ -224,6 +243,7 @@ void log_suspend_abort_reason(const char *fmt, ...)
 	__log_abort_or_abnormal_wake(true, fmt, args);
 	va_end(args);
 }
+EXPORT_SYMBOL_GPL(log_suspend_abort_reason);
 
 void log_abnormal_wakeup_reason(const char *fmt, ...)
 {
@@ -233,6 +253,7 @@ void log_abnormal_wakeup_reason(const char *fmt, ...)
 	__log_abort_or_abnormal_wake(false, fmt, args);
 	va_end(args);
 }
+EXPORT_SYMBOL_GPL(log_abnormal_wakeup_reason);
 
 void clear_wakeup_reasons(void)
 {
@@ -242,8 +263,7 @@ void clear_wakeup_reasons(void)
 
 	delete_list(&leaf_irqs);
 	delete_list(&parent_irqs);
-	suspend_abort = false;
-	abnormal_wake = false;
+	wakeup_reason = RESUME_NONE;
 	capture_reasons = true;
 
 	spin_unlock_irqrestore(&wakeup_reason_lock, flags);
@@ -258,17 +278,17 @@ static void print_wakeup_sources(void)
 
 	capture_reasons = false;
 
-	if (suspend_abort) {
+	if (wakeup_reason == RESUME_ABORT) {
 		pr_info("Abort: %s\n", non_irq_wake_reason);
 		spin_unlock_irqrestore(&wakeup_reason_lock, flags);
 		return;
 	}
 
-	if (!list_empty(&leaf_irqs))
+	if (wakeup_reason == RESUME_IRQ && !list_empty(&leaf_irqs))
 		list_for_each_entry(n, &leaf_irqs, siblings)
 			pr_info("Resume caused by IRQ %d, %s\n", n->irq,
 				n->irq_name);
-	else if (abnormal_wake)
+	else if (wakeup_reason == RESUME_ABNORMAL)
 		pr_info("Resume caused by %s\n", non_irq_wake_reason);
 	else
 		pr_info("Resume cause unknown\n");
@@ -285,19 +305,19 @@ static ssize_t last_resume_reason_show(struct kobject *kobj,
 
 	spin_lock_irqsave(&wakeup_reason_lock, flags);
 
-	if (suspend_abort) {
+	if (wakeup_reason == RESUME_ABORT) {
 		buf_offset = scnprintf(buf, PAGE_SIZE, "Abort: %s",
 				       non_irq_wake_reason);
 		spin_unlock_irqrestore(&wakeup_reason_lock, flags);
 		return buf_offset;
 	}
 
-	if (!list_empty(&leaf_irqs))
+	if (wakeup_reason == RESUME_IRQ && !list_empty(&leaf_irqs))
 		list_for_each_entry(n, &leaf_irqs, siblings)
 			buf_offset += scnprintf(buf + buf_offset,
 						PAGE_SIZE - buf_offset,
 						"%d %s\n", n->irq, n->irq_name);
-	else if (abnormal_wake)
+	else if (wakeup_reason == RESUME_ABNORMAL)
 		buf_offset = scnprintf(buf, PAGE_SIZE, "-1 %s",
 				       non_irq_wake_reason);
 
@@ -331,10 +351,8 @@ static ssize_t last_suspend_time_show(struct kobject *kobj,
 
 	/* Export suspend_resume_time and sleep_time in pair here. */
 	return sprintf(buf, "%llu.%09lu %llu.%09lu\n",
-		       (unsigned long long)suspend_resume_time.tv_sec,
-		       suspend_resume_time.tv_nsec,
-		       (unsigned long long)sleep_time.tv_sec,
-		       sleep_time.tv_nsec);
+		       suspend_resume_time.tv_sec, suspend_resume_time.tv_nsec,
+		       sleep_time.tv_sec, sleep_time.tv_nsec);
 }
 
 static struct kobj_attribute resume_reason = __ATTR_RO(last_resume_reason);
@@ -378,7 +396,7 @@ static struct notifier_block wakeup_reason_pm_notifier_block = {
 	.notifier_call = wakeup_reason_pm_event,
 };
 
-static int __init wakeup_reason_init(void)
+int __init wakeup_reason_init(void)
 {
 	if (register_pm_notifier(&wakeup_reason_pm_notifier_block)) {
 		pr_warn("[%s] failed to register PM notifier\n", __func__);

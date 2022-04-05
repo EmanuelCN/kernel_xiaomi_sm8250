@@ -1,15 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015, Sony Mobile Communications Inc.
- * Copyright (c) 2012-2013,2019,2021 The Linux Foundation. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/interrupt.h>
@@ -96,7 +88,6 @@ struct qcom_smsm {
 
 	struct smsm_entry *entries;
 	struct smsm_host *hosts;
-	int irq;
 };
 
 /**
@@ -337,9 +328,6 @@ static int smsm_irq_map(struct irq_domain *d,
 	irq_set_chip_and_handler(irq, &smsm_irq_chip, handle_level_irq);
 	irq_set_chip_data(irq, entry);
 	irq_set_nested_thread(irq, 1);
-	irq_set_noprobe(irq);
-	irq_set_parent(irq, entry->smsm->irq);
-	irq_set_status_flags(irq, IRQ_DISABLE_UNLAZY);
 
 	return 0;
 }
@@ -400,16 +388,17 @@ static int smsm_inbound_entry(struct qcom_smsm *smsm,
 			      struct device_node *node)
 {
 	int ret;
+	int irq;
 
-	smsm->irq = irq_of_parse_and_map(node, 0);
-	if (!smsm->irq) {
+	irq = irq_of_parse_and_map(node, 0);
+	if (!irq) {
 		dev_err(smsm->dev, "failed to parse smsm interrupt\n");
 		return -EINVAL;
 	}
 
-	ret = devm_request_threaded_irq(smsm->dev, smsm->irq,
+	ret = devm_request_threaded_irq(smsm->dev, irq,
 					NULL, smsm_intr,
-					IRQF_NO_SUSPEND | IRQF_ONESHOT,
+					IRQF_ONESHOT,
 					"smsm", (void *)entry);
 	if (ret) {
 		dev_err(smsm->dev, "failed to request interrupt\n");
@@ -635,3 +624,4 @@ module_platform_driver(qcom_smsm_driver);
 
 MODULE_DESCRIPTION("Qualcomm Shared Memory State Machine driver");
 MODULE_LICENSE("GPL v2");
+
