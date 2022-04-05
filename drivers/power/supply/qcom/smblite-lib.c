@@ -2108,7 +2108,7 @@ irqreturn_t smblite_icl_change_irq_handler(int irq, void *data)
 			delay = 0;
 
 		cancel_delayed_work_sync(&chg->icl_change_work);
-		queue_delayed_work(system_power_efficient_wq, &chg->icl_change_work,
+		schedule_delayed_work(&chg->icl_change_work,
 						msecs_to_jiffies(delay));
 	}
 
@@ -2253,7 +2253,7 @@ void smblite_lib_usb_plugin_locked(struct smb_charger *chg)
 
 		/* Schedule work to enable parallel charger */
 		vote(chg->awake_votable, PL_DELAY_VOTER, true, 0);
-		queue_delayed_work(system_power_efficient_wq, &chg->pl_enable_work,
+		schedule_delayed_work(&chg->pl_enable_work,
 					msecs_to_jiffies(PL_DELAY_MS));
 	} else {
 		smblite_lib_update_usb_type(chg, POWER_SUPPLY_TYPE_UNKNOWN);
@@ -2487,7 +2487,7 @@ int smblite_lib_typec_port_type_set(const struct typec_capability *cap,
 	 */
 	if (!(delayed_work_pending(&chg->role_reversal_check))) {
 		cancel_delayed_work_sync(&chg->role_reversal_check);
-		queue_delayed_work(system_power_efficient_wq, &chg->role_reversal_check,
+		schedule_delayed_work(&chg->role_reversal_check,
 			msecs_to_jiffies(ROLE_REVERSAL_DELAY_MS));
 		vote(chg->awake_votable, TYPEC_SWAP_VOTER, true, 0);
 	}
@@ -2744,7 +2744,7 @@ irqreturn_t smblite_typec_attach_detach_irq_handler(int irq, void *data)
 			 */
 			cancel_delayed_work(&chg->pr_swap_detach_work);
 			vote(chg->awake_votable, DETACH_DETECT_VOTER, true, 0);
-			queue_delayed_work(system_power_efficient_wq, &chg->pr_swap_detach_work,
+			schedule_delayed_work(&chg->pr_swap_detach_work,
 				msecs_to_jiffies(TYPEC_DETACH_DETECT_DELAY_MS));
 			smblite_lib_force_dr_mode(chg, TYPEC_PORT_DRP);
 
@@ -2827,7 +2827,7 @@ irqreturn_t smblite_switcher_power_ok_irq_handler(int irq, void *data)
 			 * permanently suspending the input if the boost-back
 			 * condition is unintentionally hit.
 			 */
-			queue_delayed_work(system_power_efficient_wq, &chg->bb_removal_work,
+			schedule_delayed_work(&chg->bb_removal_work,
 				msecs_to_jiffies(BOOST_BACK_UNVOTE_DELAY_MS));
 		}
 	}
@@ -2868,7 +2868,7 @@ irqreturn_t smblite_temp_change_irq_handler(int irq, void *data)
 
 	vote(chg->awake_votable, SW_THERM_REGULATION_VOTER, true, 0);
 	cancel_delayed_work_sync(&chg->thermal_regulation_work);
-	queue_delayed_work(system_power_efficient_wq, &chg->thermal_regulation_work,
+	schedule_delayed_work(&chg->thermal_regulation_work,
 				msecs_to_jiffies(THERM_REGULATION_DELAY_MS));
 
 	return IRQ_HANDLED;
@@ -3060,7 +3060,7 @@ reschedule:
 	smblite_lib_dbg(chg, PR_MISC,
 			"rescheduling DIE_TEMP regulation work DIE_TEMP_STATUS=%x icl=%duA\n",
 				stat, icl_ua);
-	queue_delayed_work(system_power_efficient_wq, &chg->thermal_regulation_work,
+	schedule_delayed_work(&chg->thermal_regulation_work,
 				msecs_to_jiffies(THERM_REGULATION_DELAY_MS));
 }
 

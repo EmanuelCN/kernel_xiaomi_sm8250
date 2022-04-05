@@ -236,7 +236,7 @@ static void jz_battery_work(struct work_struct *work)
 					    work.work);
 
 	jz_battery_update(jz_battery);
-	queue_delayed_work(system_power_efficient_wq, &jz_battery->work, interval);
+	schedule_delayed_work(&jz_battery->work, interval);
 }
 
 static int jz_battery_probe(struct platform_device *pdev)
@@ -344,7 +344,7 @@ static int jz_battery_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, jz_battery);
-	queue_delayed_work(system_power_efficient_wq, &jz_battery->work, 0);
+	schedule_delayed_work(&jz_battery->work, 0);
 
 	return 0;
 
@@ -393,7 +393,7 @@ static int jz_battery_resume(struct device *dev)
 {
 	struct jz_battery *jz_battery = dev_get_drvdata(dev);
 
-	queue_delayed_work(system_power_efficient_wq, &jz_battery->work, 0);
+	schedule_delayed_work(&jz_battery->work, 0);
 
 	return 0;
 }

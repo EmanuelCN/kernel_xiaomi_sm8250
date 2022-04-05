@@ -251,7 +251,7 @@ static irqreturn_t lp8727_isr_func(int irq, void *ptr)
 {
 	struct lp8727_chg *pchg = ptr;
 
-	queue_delayed_work(system_power_efficient_wq, &pchg->work, pchg->debounce_jiffies);
+	schedule_delayed_work(&pchg->work, pchg->debounce_jiffies);
 	return IRQ_HANDLED;
 }
 

@@ -2478,7 +2478,7 @@ static void fg_monitor_workfunc(struct work_struct *work)
 	interval = fg_check_full_status(bq);
 	fg_check_recharge_status(bq);
 
-	queue_delayed_work(system_power_efficient_wq, &bq->monitor_work, interval * HZ);
+	schedule_delayed_work(&bq->monitor_work, interval * HZ);
 }
 
 static int bq_parse_dt(struct bq_fg_chip *bq)
@@ -2727,7 +2727,7 @@ static int bq_fg_probe(struct i2c_client *client,
 		bq_dbg(PR_OEM, "Failed to register sysfs:%d\n", ret);
 
 	INIT_DELAYED_WORK(&bq->monitor_work, fg_monitor_workfunc);
-	queue_delayed_work(system_power_efficient_wq, &bq->monitor_work, 10 * HZ);
+	schedule_delayed_work(&bq->monitor_work, 10 * HZ);
 
 	bq_dbg(PR_OEM, "bq fuel gauge probe successfully, %s\n",
 			device2str[bq->chip]);
@@ -2764,7 +2764,7 @@ static int bq_fg_resume(struct device *dev)
 		bq->update_now = true;
 	}
 
-	queue_delayed_work(system_power_efficient_wq, &bq->monitor_work, HZ);
+	schedule_delayed_work(&bq->monitor_work, HZ);
 
 	return 0;
 }

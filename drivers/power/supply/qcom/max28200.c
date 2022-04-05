@@ -94,7 +94,7 @@ static bool max28200_set_watchdog_enable(struct max28200_chip *max, bool enable)
 			max_dbg(PR_OEM, "unable to update p00 reg");
 			return rc;
 		}
-		queue_delayed_work(system_power_efficient_wq, &max->monitor_work, 10 * HZ);
+		schedule_delayed_work(&max->monitor_work, 10 * HZ);
 	}
 
 	max->enabled = enable;
@@ -229,7 +229,7 @@ static void max28200_monitor_workfunc(struct work_struct *work)
 	struct max28200_chip *max = container_of(work,
 			struct max28200_chip, monitor_work.work);
 
-	queue_delayed_work(system_power_efficient_wq, &max->monitor_work, 10 * HZ);
+	schedule_delayed_work(&max->monitor_work, 10 * HZ);
 }
 
 static int max_parse_dt(struct max28200_chip *max)

@@ -641,7 +641,7 @@ static void bq24257_handle_state_change(struct bq24257_device *bq,
 
 		if (bq->iilimit_autoset_enable)
 			/* configure input current limit */
-			queue_delayed_work(system_power_efficient_wq, &bq->iilimit_setup_work,
+			schedule_delayed_work(&bq->iilimit_setup_work,
 				      msecs_to_jiffies(BQ24257_ILIM_SET_DELAY));
 	} else if (new_state->fault == FAULT_NO_BAT) {
 		dev_warn(bq->dev, "Battery removed\n");

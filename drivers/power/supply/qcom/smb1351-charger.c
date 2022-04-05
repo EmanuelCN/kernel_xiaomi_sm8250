@@ -1953,7 +1953,7 @@ static int smb1351_apsd_complete_handler(struct smb1351_charger *chip,
 		} else if (type == POWER_SUPPLY_TYPE_USB_DCP) {
 			pr_debug("schedule hvdcp detection worker\n");
 			pm_stay_awake(chip->dev);
-			queue_delayed_work(system_power_efficient_wq, &chip->hvdcp_det_work,
+			schedule_delayed_work(&chip->hvdcp_det_work,
 					msecs_to_jiffies(HVDCP_NOTIFY_MS));
 		}
 
@@ -2031,7 +2031,7 @@ end:
 
 reschedule:
 	pr_debug("reschedule after 1s\n");
-	queue_delayed_work(system_power_efficient_wq, &chip->chg_remove_work,
+	schedule_delayed_work(&chip->chg_remove_work,
 				msecs_to_jiffies(SECOND_CHECK_DELAY));
 }
 
@@ -2043,7 +2043,7 @@ static int smb1351_usbin_uv_handler(struct smb1351_charger *chip, u8 status)
 		cancel_delayed_work_sync(&chip->hvdcp_det_work);
 		pm_relax(chip->dev);
 		pr_debug("schedule charger remove worker\n");
-		queue_delayed_work(system_power_efficient_wq, &chip->chg_remove_work,
+		schedule_delayed_work(&chip->chg_remove_work,
 					msecs_to_jiffies(FIRST_CHECK_DELAY));
 		pm_stay_awake(chip->dev);
 	}

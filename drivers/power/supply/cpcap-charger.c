@@ -388,7 +388,7 @@ static int cpcap_charger_set_vbus(struct phy_companion *comparator,
 			     comparator);
 
 	ddata->vbus_enabled = enabled;
-	queue_delayed_work(system_power_efficient_wq, &ddata->vbus_work, 0);
+	schedule_delayed_work(&ddata->vbus_work, 0);
 
 	return 0;
 }
@@ -472,7 +472,7 @@ static irqreturn_t cpcap_charger_irq_thread(int irq, void *data)
 	if (!atomic_read(&ddata->active))
 		return IRQ_NONE;
 
-	queue_delayed_work(system_power_efficient_wq, &ddata->detect_work, 0);
+	schedule_delayed_work(&ddata->detect_work, 0);
 
 	return IRQ_HANDLED;
 }
@@ -658,7 +658,7 @@ static int cpcap_charger_probe(struct platform_device *pdev)
 
 	cpcap_charger_init_optional_gpios(ddata);
 
-	queue_delayed_work(system_power_efficient_wq, &ddata->detect_work, 0);
+	schedule_delayed_work(&ddata->detect_work, 0);
 
 	return 0;
 }

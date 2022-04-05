@@ -245,7 +245,7 @@ static void bq24735_poll(struct work_struct *work)
 
 	bq24735_update(charger);
 
-	queue_delayed_work(system_power_efficient_wq, &charger->poll,
+	schedule_delayed_work(&charger->poll,
 			      msecs_to_jiffies(charger->poll_interval));
 }
 
@@ -475,7 +475,7 @@ static int bq24735_charger_probe(struct i2c_client *client,
 			return 0;
 
 		INIT_DELAYED_WORK(&charger->poll, bq24735_poll);
-		queue_delayed_work(system_power_efficient_wq, &charger->poll,
+		schedule_delayed_work(&charger->poll,
 				      msecs_to_jiffies(charger->poll_interval));
 	}
 
