@@ -885,7 +885,6 @@ static void __hdd_soc_recovery_shutdown(void)
 
 	/* recovery starts via firmware down indication; ensure we got one */
 	QDF_BUG(cds_is_driver_recovering());
-	hdd_init_start_completion();
 
 	hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
 	if (!hdd_ctx) {
@@ -1911,6 +1910,7 @@ wlan_hdd_pld_uevent(struct device *dev, struct pld_uevent_data *event_data)
 
 		cds_set_target_ready(false);
 		cds_set_recovery_in_progress(true);
+		hdd_init_start_completion();
 
 		/* Notify external threads currently waiting on firmware
 		 * by forcefully completing waiting events with a "reset"
