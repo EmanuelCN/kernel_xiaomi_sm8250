@@ -240,6 +240,13 @@ struct bfq_queue {
 	/* next ioprio and ioprio class if a change is in progress */
 	unsigned short new_ioprio, new_ioprio_class;
 
+	/* last total-service-time sample, see bfq_update_inject_limit() */
+	u64 last_serv_time_ns;
+	/* limit for request injection */
+	unsigned int inject_limit;
+	/* last time the inject limit has been decreased, in jiffies */
+	unsigned long decrease_time_jif;
+
 	/*
 	 * Shared bfq_queue if queue is cooperating with one or more
 	 * other queues.
@@ -472,7 +479,7 @@ struct bfq_data {
 	 * weight-raised @bfq_queue (see the comments to the functions
 	 * bfq_weights_tree_[add|remove] for further details).
 	 */
-	struct rb_root queue_weights_tree;
+	struct rb_root_cached queue_weights_tree;
 
 	/*
 	 * Number of groups with at least one descendant process that
@@ -522,17 +529,22 @@ struct bfq_data {
 	 */
 	unsigned int num_groups_with_pending_reqs;
 
+	int busy_queue;
 	/*
-	 * Number of bfq_queues containing requests (including the
-	 * queue in service, even if it is idling).
+	 * Per-class (RT, BE, IDLE) number of bfq_queues containing
+	 * requests (including the queue in service, even if it is
+	 * idling).
 	 */
-	int busy_queues;
+	unsigned int busy_queues[3];
 	/* number of weight-raised busy @bfq_queues */
 	int wr_busy_queues;
 	/* number of queued requests */
 	int queued;
 	/* number of requests dispatched and waiting for completion */
 	int rq_in_driver;
+
+	/* true if the device is non rotational and performs queueing */
+	bool nonrot_with_queueing;
 
 	/*
 	 * Maximum number of requests in driver in the last
@@ -597,6 +609,7 @@ struct bfq_data {
 	ktime_t last_budget_start;
 	/* beginning of the last idle slice */
 	ktime_t last_idling_start;
+	unsigned long last_idling_start_jiffies;
 
 	/* number of samples in current observation interval */
 	int peak_rate_samples;
@@ -947,10 +960,10 @@ void bic_set_bfqq(struct bfq_io_cq *bic, struct bfq_queue *bfqq, bool is_sync);
 struct bfq_data *bic_to_bfqd(struct bfq_io_cq *bic);
 void bfq_pos_tree_add_move(struct bfq_data *bfqd, struct bfq_queue *bfqq);
 void bfq_weights_tree_add(struct bfq_data *bfqd, struct bfq_queue *bfqq,
-			  struct rb_root *root);
+			  struct rb_root_cached *root);
 void __bfq_weights_tree_remove(struct bfq_data *bfqd,
 			       struct bfq_queue *bfqq,
-			       struct rb_root *root);
+			       struct rb_root_cached *root);
 void bfq_weights_tree_remove(struct bfq_data *bfqd,
 			     struct bfq_queue *bfqq);
 void bfq_bfqq_expire(struct bfq_data *bfqd, struct bfq_queue *bfqq,
@@ -1028,6 +1041,7 @@ extern struct blkcg_policy blkcg_policy_bfq;
 
 struct bfq_group *bfq_bfqq_to_bfqg(struct bfq_queue *bfqq);
 struct bfq_queue *bfq_entity_to_bfqq(struct bfq_entity *entity);
+unsigned int bfq_tot_busy_queues(struct bfq_data *bfqd);
 struct bfq_service_tree *bfq_entity_service_tree(struct bfq_entity *entity);
 struct bfq_entity *bfq_entity_of(struct rb_node *node);
 unsigned short bfq_ioprio_to_weight(int ioprio);

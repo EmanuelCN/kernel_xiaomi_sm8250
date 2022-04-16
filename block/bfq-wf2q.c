@@ -44,6 +44,12 @@ static unsigned int bfq_class_idx(struct bfq_entity *entity)
 		BFQ_DEFAULT_GRP_CLASS - 1;
 }
 
+unsigned int bfq_tot_busy_queues(struct bfq_data *bfqd)
+{
+	return bfqd->busy_queues[0] + bfqd->busy_queues[1] +
+		bfqd->busy_queues[2];
+}
+
 static struct bfq_entity *bfq_lookup_next_entity(struct bfq_sched_data *sd,
 						 bool expiration);
 
@@ -851,7 +857,7 @@ __bfq_entity_update_weight_prio(struct bfq_service_tree *old_st,
 		struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
 		unsigned int prev_weight, new_weight;
 		struct bfq_data *bfqd = NULL;
-		struct rb_root *root;
+		struct rb_root_cached *root;
 #ifdef CONFIG_BFQ_GROUP_IOSCHED
 		struct bfq_sched_data *sd;
 		struct bfq_group *bfqg;
@@ -868,6 +874,9 @@ __bfq_entity_update_weight_prio(struct bfq_service_tree *old_st,
 			BFQ_BUG_ON(!bfqd);
 		}
 #endif
+
+		/* Matches the smp_wmb() in bfq_group_set_weight. */
+		smp_rmb();
 
 		BFQ_BUG_ON(entity->tree && update_class_too);
 		BFQ_BUG_ON(old_st->wsum < entity->weight);
@@ -2085,7 +2094,7 @@ void bfq_add_bfqq_busy(struct bfq_data *bfqd, struct bfq_queue *bfqq)
 	bfq_activate_bfqq(bfqd, bfqq);
 
 	bfq_mark_bfqq_busy(bfqq);
-	bfqd->busy_queues++;
+	bfqd->busy_queues[bfqq->ioprio_class - 1]++;
 
 	if (!bfqq->dispatched)
 		if (bfqq->wr_coeff == 1)
