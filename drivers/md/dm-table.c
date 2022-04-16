@@ -2154,24 +2154,11 @@ EXPORT_SYMBOL(dm_table_get_md);
 
 void dm_table_run_md_queue_async(struct dm_table *t)
 {
-	struct mapped_device *md;
-	struct request_queue *queue;
-	unsigned long flags;
-
 	if (!dm_table_request_based(t))
 		return;
 
-	md = dm_table_get_md(t);
-	queue = dm_get_md_queue(md);
-	if (queue) {
-		if (queue->mq_ops)
-			blk_mq_run_hw_queues(queue, true);
-		else {
-			spin_lock_irqsave(queue->queue_lock, flags);
-			blk_run_queue_async(queue);
-			spin_unlock_irqrestore(queue->queue_lock, flags);
-		}
-	}
+	if (t->md->queue)
+		blk_mq_run_hw_queues(t->md->queue, true);
 }
 EXPORT_SYMBOL(dm_table_run_md_queue_async);
 

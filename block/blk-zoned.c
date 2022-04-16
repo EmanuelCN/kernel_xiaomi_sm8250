@@ -386,3 +386,11 @@ int blkdev_reset_zones_ioctl(struct block_device *bdev, fmode_t mode,
 	return blkdev_reset_zones(bdev, zrange.sector, zrange.nr_sectors,
 				  GFP_KERNEL);
 }
+
+void blk_queue_free_zone_bitmaps(struct request_queue *q)
+{
+	kfree(q->seq_zones_bitmap);
+	q->seq_zones_bitmap = NULL;
+	kfree(q->seq_zones_wlock);
+	q->seq_zones_wlock = NULL;
+}

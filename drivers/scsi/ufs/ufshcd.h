@@ -1116,6 +1116,8 @@ struct ufs_hba {
 	enum bkops_status urgent_bkops_lvl;
 	bool is_urgent_bkops_lvl_checked;
 
+	struct rw_semaphore clk_scaling_lock;
+
 	/* sync b/w diff contexts */
 	struct rw_semaphore lock;
 	unsigned long shutdown_in_prog;
