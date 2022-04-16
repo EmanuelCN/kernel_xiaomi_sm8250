@@ -997,7 +997,7 @@ static void ufshcd_print_tmrs(struct ufs_hba *hba, unsigned long bitmap)
 		struct utp_task_req_desc *tmrdp = &hba->utmrdl_base_addr[tag];
 
 		dev_err(hba->dev, "TM[%d] - Task Management Header\n", tag);
-		ufshcd_hex_dump("", tmrdp, sizeof(*tmrdp));
+		ufshcd_hex_dump(hba, "", tmrdp, sizeof(*tmrdp));
 	}
 }
 
