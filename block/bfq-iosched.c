@@ -1972,7 +1972,6 @@ static void bfq_bfqq_handle_idle_busy_switch(struct bfq_data *bfqd,
 	    next_queue_may_preempt(bfqd))
 		bfq_bfqq_expire(bfqd, bfqd->in_service_queue,
 				false, BFQQE_PREEMPTED);
-	}
 }
 
 static void bfq_reset_inject_limit(struct bfq_data *bfqd,
@@ -2658,7 +2657,7 @@ static void bfq_bfqq_end_wr(struct bfq_queue *bfqq)
 	    bfqq->bfqd->bfq_wr_rt_max_time)
 		bfqq->soft_rt_next_start = jiffies;
 
-	if (bfq_bfqq_busy(bfqq))
+	if (bfq_bfqq_busy(bfqq)) {
 		bfqq->bfqd->wr_busy_queues--;
 		BFQ_BUG_ON(bfqq->bfqd->wr_busy_queues < 0);
 	}
@@ -4392,7 +4391,7 @@ void bfq_bfqq_expire(struct bfq_data *bfqd,
 		 * the request pattern is actually isochronous.
 		 */
 		BFQ_BUG_ON(bfq_tot_busy_queues(bfqd) < 1);
-		if (bfqq->dispatched == 0)
+		if (bfqq->dispatched == 0) {
 			bfqq->soft_rt_next_start =
 				bfq_bfqq_softrt_next_start(bfqd, bfqq);
 			bfq_log_bfqq(bfqd, bfqq, "new soft_rt_next %lu",
