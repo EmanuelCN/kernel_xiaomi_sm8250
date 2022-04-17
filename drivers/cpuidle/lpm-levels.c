@@ -608,10 +608,9 @@ static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int idx)
 {
-	if (need_resched())
-		return idx;
+	if (!need_resched())
+		wfi();
 
-	wfi();
 	return idx;
 }
 
