@@ -367,6 +367,7 @@ phy_io_error:
 res_parse_error:
 	iounmap(pll_res->pll_base);
 io_error:
+	devm_kfree(&pdev->dev, pll_res);
 error:
 	return rc;
 }
@@ -388,6 +389,7 @@ static int mdss_pll_remove(struct platform_device *pdev)
 		iounmap(pll_res->gdsc_base);
 	mdss_pll_resource_release(pdev, pll_res);
 	iounmap(pll_res->pll_base);
+	devm_kfree(&pdev->dev, pll_res);
 	return 0;
 }
 
