@@ -86,7 +86,6 @@ uint32_t sde_sync_get_name_prefix(void *fence)
 struct sde_fence {
 	struct dma_fence base;
 	struct sde_fence_context *ctx;
-	char name[SDE_FENCE_NAME_SIZE];
 	struct list_head	fence_list;
 	int fd;
 };
@@ -111,7 +110,7 @@ static inline struct sde_fence *to_sde_fence(struct dma_fence *fence)
 
 static const char *sde_fence_get_driver_name(struct dma_fence *fence)
 {
-	return "sde";
+	return "sde_fence";
 }
 
 static const char *sde_fence_get_timeline_name(struct dma_fence *fence)
