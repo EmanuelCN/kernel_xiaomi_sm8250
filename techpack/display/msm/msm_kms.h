@@ -138,6 +138,12 @@ struct msm_kms {
 	struct msm_gem_address_space *aspace;
 };
 
+struct msm_commit {
+	uint32_t crtc_mask;
+	uint32_t plane_mask;
+	struct kthread_work commit_work;
+};
+
 /**
  * Subclass of drm_atomic_state, to allow kms backend to have driver
  * private global state.  The kms backend can do whatever it wants
@@ -146,7 +152,20 @@ struct msm_kms {
  */
 struct msm_kms_state {
 	struct drm_atomic_state base;
+#ifdef CONFIG_DRM_MSM_MDP5
 	void *state;
+#endif
+	struct msm_commit commit;
+	/*
+	 * Everything below `commit` may not be allocated in the struct. The
+	 * `crtcs` member must come right after `commit`, as its placement is
+	 * used to determine if the struct was partially allocated or fully
+	 * allocated.
+	 */
+	struct __drm_crtcs_state crtcs[MAX_CRTCS];
+	struct __drm_connnectors_state connectors[MAX_CONNECTORS];
+	struct __drm_planes_state planes[MAX_PLANES];
+	struct llist_node llist;
 };
 #define to_kms_state(x) container_of(x, struct msm_kms_state, base)
 
