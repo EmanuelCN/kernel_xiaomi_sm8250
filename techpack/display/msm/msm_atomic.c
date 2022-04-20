@@ -24,15 +24,21 @@
 #include "xiaomi_frame_stat.h"
 
 #define MULTIPLE_CONN_DETECTED(x) (x > 1)
+static LLIST_HEAD(msm_atomic_state_cache);
+static DEFINE_SPINLOCK(msm_atomic_cache_lock);
 
-struct msm_commit {
-	struct drm_device *dev;
-	struct drm_atomic_state *state;
-	uint32_t crtc_mask;
-	uint32_t plane_mask;
-	bool nonblock;
-	struct kthread_work commit_work;
-};
+/* clear specified crtcs (no longer pending update)
+ */
+static void end_atomic(struct msm_drm_private *priv, uint32_t crtc_mask,
+			uint32_t plane_mask)
+{
+	spin_lock(&priv->pending_crtcs_event.lock);
+	DBG("end: %08x", crtc_mask);
+	priv->pending_crtcs &= ~crtc_mask;
+	priv->pending_planes &= ~plane_mask;
+	wake_up_all_locked(&priv->pending_crtcs_event);
+	spin_unlock(&priv->pending_crtcs_event.lock);
+}
 
 static inline bool _msm_seamless_for_crtc(struct drm_device *dev,
 					struct drm_atomic_state *state,
@@ -111,25 +117,6 @@ static inline bool _msm_seamless_for_conn(struct drm_connector *connector,
 		return true;
 
 	return false;
-}
-
-/* clear specified crtcs (no longer pending update) */
-static void commit_destroy(struct msm_commit *c)
-{
-	struct msm_drm_private *priv = c->dev->dev_private;
-	uint32_t crtc_mask = c->crtc_mask;
-	uint32_t plane_mask = c->plane_mask;
-
-	/* End_atomic */
-	spin_lock(&priv->pending_crtcs_event.lock);
-	DBG("end: %08x", crtc_mask);
-	priv->pending_crtcs &= ~crtc_mask;
-	priv->pending_planes &= ~plane_mask;
-	wake_up_all_locked(&priv->pending_crtcs_event);
-	spin_unlock(&priv->pending_crtcs_event.lock);
-
-	if (c->nonblock)
-		kfree(c);
 }
 
 static void msm_atomic_wait_for_commit_done(
@@ -469,6 +456,14 @@ static void msm_atomic_helper_commit_modeset_enables(struct drm_device *dev,
 	SDE_ATRACE_END("msm_enable");
 }
 
+static void complete_commit_cleanup(struct msm_commit *c)
+{
+	struct msm_kms_state *state = container_of(c, typeof(*state), commit);
+	struct drm_atomic_state *s = &state->base;
+
+	drm_atomic_state_put(s);
+}
+
 int msm_atomic_prepare_fb(struct drm_plane *plane,
 			  struct drm_plane_state *new_state)
 {
@@ -501,7 +496,8 @@ void complete_time_generate_event(struct drm_device *dev)
  */
 static void complete_commit(struct msm_commit *c)
 {
-	struct drm_atomic_state *state = c->state;
+	struct msm_kms_state *kstate = container_of(c, typeof(*kstate), commit);
+	struct drm_atomic_state *state = &kstate->base;
 	struct drm_device *dev = state->dev;
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
@@ -536,19 +532,16 @@ static void complete_commit(struct msm_commit *c)
 
 	kms->funcs->complete_commit(kms, state);
 
-	drm_atomic_state_put(state);
-
 	priv->complete_commit_time = ktime_get()/1000;
 
 	complete_time_generate_event(dev);
 
-	commit_destroy(c);
+	end_atomic(priv, c->crtc_mask, c->plane_mask);
 }
 
 static void _msm_drm_commit_work_cb(struct kthread_work *work)
 {
-
-	struct msm_commit *commit = container_of(work, typeof(*ccommit),
+	struct msm_commit *commit = container_of(work, typeof(*commit),
 						 commit_work);
 
 	struct pm_qos_request req = {
@@ -577,37 +570,18 @@ static void _msm_drm_commit_work_cb(struct kthread_work *work)
 	frame_stat_collector(duration, COMMIT_END_TS);
         pm_qos_remove_request(&req);
 
-}
-
-static struct msm_commit *commit_init(struct drm_atomic_state *state,
-	bool nonblock)
-{
-	struct msm_commit *c = kzalloc(sizeof(*c), GFP_KERNEL);
-
-	if (!c)
-		return NULL;
-
-	c->dev = state->dev;
-	c->state = state;
-	c->nonblock = nonblock;
-
-	kthread_init_work(&c->commit_work, _msm_drm_commit_work_cb);
-
-	return c;
+	complete_commit_cleanup(commit);
 }
 
 /* Start display thread function */
 static void msm_atomic_commit_dispatch(struct drm_device *dev,
-		struct drm_atomic_state *state, struct msm_commit *commit)
+		struct drm_atomic_state *state, struct msm_commit *commit,
+		bool nonblock)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct drm_crtc *crtc = NULL;
 	struct drm_crtc_state *crtc_state = NULL;
 	int ret = -ECANCELED, i = 0, j = 0;
-	bool nonblock;
-
-	/* cache since work will kfree commit in non-blocking case */
-	nonblock = commit->nonblock;
 
 	for_each_old_crtc_in_state(state, crtc, crtc_state, i) {
 		for (j = 0; j < priv->num_crtcs; j++) {
@@ -652,13 +626,10 @@ static void msm_atomic_commit_dispatch(struct drm_device *dev,
 		 * ensure that SW and HW state don't get out of sync.
 		 */
 		complete_commit(commit);
+		complete_commit_cleanup(commit);
 	} else if (!nonblock) {
 		kthread_flush_work(&commit->commit_work);
 	}
-
-	/* free nonblocking commits in this context, after processing */
-	if (!nonblock)
-		kfree(commit);
 }
 
 /**
@@ -696,12 +667,7 @@ int msm_atomic_commit(struct drm_device *dev,
 		return ret;
 	}
 
-	c = commit_init(state, nonblock);
-	if (!c) {
-		ret = -ENOMEM;
-		goto error;
-	}
-
+	c = &to_kms_state(state)->commit;
 	/*
 	 * Figure out what crtcs we have:
 	 */
@@ -754,7 +720,7 @@ retry:
 	spin_unlock(&priv->pending_crtcs_event.lock);
 
 	if (ret)
-		goto err_free;
+		goto error;
 
 	WARN_ON(drm_atomic_helper_swap_state(state, false) < 0);
 
@@ -785,13 +751,12 @@ retry:
 	 */
 
 	drm_atomic_state_get(state);
-	msm_atomic_commit_dispatch(dev, state, c);
+	msm_atomic_commit_dispatch(dev, state, c, nonblock);
+
 
 	SDE_ATRACE_END("atomic_commit");
 
 	return 0;
-err_free:
-	kfree(c);
 error:
 	drm_atomic_helper_cleanup_planes(dev, state);
 	SDE_ATRACE_END("atomic_commit");
@@ -800,13 +765,52 @@ error:
 
 struct drm_atomic_state *msm_atomic_state_alloc(struct drm_device *dev)
 {
-	struct msm_kms_state *state = kzalloc(sizeof(*state), GFP_KERNEL);
+	struct msm_kms_state *state;
+	struct drm_atomic_state *s;
+	struct llist_node *n;
+	if (unlikely(dev->mode_config.num_crtc > MAX_CRTCS ||
+		     dev->mode_config.num_total_plane > MAX_PLANES)) {
+		/*
+		 * Don't include the large preallocated arrays. Allocate up to
+		 * the offset of `crtcs` and then one more byte so that the
+		 * address of where `crtcs` would be if the struct were fully
+		 * allocated is reserved, to make the msm_atomic_state_free()
+		 * check guaranteed to be reliable.
+		 */
+		state = kzalloc(offsetof(typeof(*state), crtcs) + 1, GFP_KERNEL);
+		if (!state || drm_atomic_state_init(dev, &state->base) < 0) {
+			kfree(state);
+			return NULL;
+		}
 
-	if (!state || drm_atomic_state_init(dev, &state->base) < 0) {
-		kfree(state);
-		return NULL;
+		goto init_commit_work;
 	}
 
+	spin_lock(&msm_atomic_cache_lock);
+	n = llist_del_first(&msm_atomic_state_cache);
+	spin_unlock(&msm_atomic_cache_lock);
+	if (likely(n)) {
+		state = container_of(n, typeof(*state), llist);
+		memset(state, 0, sizeof(*state));
+	} else {
+		state = kzalloc(sizeof(*state), GFP_KERNEL);
+		if (!state)
+			return NULL;
+	}
+	s = &state->base;
+	s->connectors = state->connectors;
+	s->num_connector = MAX_CONNECTORS;
+	s->connectors_preallocated = true;
+
+	/* Perform the generic init done in drm_atomic_state_init() */
+	kref_init(&s->ref);
+	s->allow_modeset = true;
+	s->crtcs = state->crtcs;
+	s->planes = state->planes;
+	s->dev = dev;
+
+init_commit_work:
+	kthread_init_work(&state->commit.commit_work, _msm_drm_commit_work_cb);
 	return &state->base;
 }
 
@@ -815,15 +819,32 @@ void msm_atomic_state_clear(struct drm_atomic_state *s)
 	struct msm_kms_state *state = to_kms_state(s);
 
 	drm_atomic_state_default_clear(&state->base);
+#ifdef CONFIG_DRM_MSM_MDP5
 	kfree(state->state);
 	state->state = NULL;
+#endif
 }
 
-void msm_atomic_state_free(struct drm_atomic_state *state)
+void msm_atomic_state_free(struct drm_atomic_state *s)
 {
-	kfree(to_kms_state(state)->state);
-	drm_atomic_state_default_release(state);
-	kfree(state);
+	struct msm_kms_state *state = to_kms_state(s);
+
+#ifdef CONFIG_DRM_MSM_MDP5
+	kfree(state->state);
+#endif
+	/*
+	 * Check if this was a kms struct with preallocated arrays by looking at
+	 * the address of `crtcs` and seeing if it points inside the kms struct.
+	 */
+	if (likely(s->crtcs == state->crtcs)) {
+		if (!s->connectors_preallocated)
+			kfree(s->connectors);
+		kfree(s->private_objs);
+		llist_add(&state->llist, &msm_atomic_state_cache);
+	} else {
+		drm_atomic_state_default_release(s);
+		kfree(state);
+	}
 }
 
 void msm_atomic_commit_tail(struct drm_atomic_state *state)
