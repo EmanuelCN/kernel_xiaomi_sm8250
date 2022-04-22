@@ -11,7 +11,7 @@
 // #define DEBUG
 
 #include <linux/module.h>
-#include "../block/blk.h"
+#include <linux/blkdev.h>
 
 #define SECTOR_SHIFT		9
 #define SECTOR_SIZE		(1 << SECTOR_SHIFT)
