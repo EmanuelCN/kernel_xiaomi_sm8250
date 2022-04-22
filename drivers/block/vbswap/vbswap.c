@@ -197,8 +197,7 @@ out_error:
 static blk_qc_t vbswap_make_request(struct request_queue *queue,
 				    struct bio *bio)
 {
-	// Deliberately error out on kernel swap
-	if (likely(current->flags & PF_KTHREAD))
+	if (likely(bio->bi_iter.bi_sector >> SECTORS_PER_PAGE_SHIFT))
 		bio_io_error(bio);
 	else
 		__vbswap_make_request(bio, bio_data_dir(bio));
