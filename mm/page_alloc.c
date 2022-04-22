@@ -884,11 +884,6 @@ static inline void __free_one_page(struct page *page,
 
 continue_merging:
 	while (order < max_order) {
-		if (compaction_capture(capc, page, order, migratetype)) {
-			__mod_zone_freepage_state(zone, -(1 << order),
-								migratetype);
-			return;
-		}
 		buddy_pfn = __find_buddy_pfn(pfn, order);
 		buddy = page + (buddy_pfn - pfn);
 
