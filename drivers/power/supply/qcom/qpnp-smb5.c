@@ -4052,9 +4052,10 @@ static int smb5_init_connector_type(struct smb_charger *chg)
 	 */
 	if (chg->chg_param.smb_version == PMI632_SUBTYPE) {
 		schgm_flash_init(chg);
-		smblib_rerun_apsd_if_required(chg);
 	}
 
+	smblib_rerun_apsd_if_required(chg);
+	
 	return 0;
 
 }
