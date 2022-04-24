@@ -3972,14 +3972,12 @@ static inline bool task_fits_capacity(struct task_struct *p,
 	 */
 	if (capacity_orig_of(task_cpu(p)) > capacity_orig_of(cpu))
 		margin = schedtune_task_boost(p) > 0 &&
-			  !schedtune_prefer_high_cap(p) &&
-			   p->prio <= DEFAULT_PRIO ?
+			  !schedtune_prefer_high_cap(p) ?
 			sched_capacity_margin_down_boosted[task_cpu(p)] :
 			sched_capacity_margin_down[task_cpu(p)];
 	else
 		margin = schedtune_task_boost(p) > 0 &&
-			  !schedtune_prefer_high_cap(p) &&
-			   p->prio <= DEFAULT_PRIO ?
+			  !schedtune_prefer_high_cap(p) ?
 			sched_capacity_margin_up_boosted[task_cpu(p)] :
 			sched_capacity_margin_up[task_cpu(p)];
 
@@ -6945,8 +6943,7 @@ static int get_start_cpu(struct task_struct *p, bool sync_boost)
 	int start_cpu = rd->min_cap_orig_cpu;
 	int task_boost = per_task_boost(p);
 #ifdef CONFIG_SCHED_TUNE
-	bool boosted = (schedtune_prefer_high_cap(p) &&
-				    p->prio <= DEFAULT_PRIO) ||
+	bool boosted = schedtune_prefer_high_cap(p) ||
 #else
 	bool boosted = uclamp_boosted(p) ||
 #endif
@@ -7395,7 +7392,7 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 		    (prefer_high_cap &&
 		     (best_idle_cpu != -1 || target_cpu != -1 ||
 		      (fbt_env->strict_max && most_spare_cap_cpu != -1)))) {
-			if (prefer_high_cap && p->prio <= DEFAULT_PRIO) {
+			if (prefer_high_cap) {
 				/*
 				 * For prefer_high_cap task, stop searching when
 				 * an idle cpu is found in mid cluster.
