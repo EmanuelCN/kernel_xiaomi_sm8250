@@ -5395,59 +5395,31 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 	case BINDER_FREEZE: {
 		struct binder_freeze_info info;
-		struct binder_proc **target_procs = NULL, *target_proc;
-		int target_procs_count = 0, i = 0;
-
-		ret = 0;
+		struct binder_proc *target_proc;
+		ret = -EINVAL;
 
 		if (copy_from_user(&info, ubuf, sizeof(info))) {
 			ret = -EFAULT;
 			goto err;
 		}
-
 		mutex_lock(&binder_procs_lock);
 		hlist_for_each_entry(target_proc, &binder_procs, proc_node) {
-			if (target_proc->pid == info.pid)
-				target_procs_count++;
-		}
+			if (target_proc->pid == info.pid) {
+				binder_inner_proc_lock(target_proc);
+				target_proc->tmp_ref++;
+				binder_inner_proc_unlock(target_proc);
 
-		if (target_procs_count == 0) {
-			mutex_unlock(&binder_procs_lock);
-			ret = -EINVAL;
-			goto err;
-		}
+				mutex_unlock(&binder_procs_lock);
+				ret = binder_ioctl_freeze(&info, target_proc);
+				mutex_lock(&binder_procs_lock);
 
-		target_procs = kmalloc(sizeof(struct binder_proc *) *
-					       target_procs_count,
-				       GFP_KERNEL);
+				binder_proc_dec_tmpref(target_proc);
 
-		if (!target_procs) {
-			mutex_unlock(&binder_procs_lock);
-			ret = -ENOMEM;
-			goto err;
-		}
-
-		hlist_for_each_entry(target_proc, &binder_procs, proc_node) {
-			if (target_proc->pid != info.pid)
-				continue;
-
-			binder_inner_proc_lock(target_proc);
-			target_proc->tmp_ref++;
-			binder_inner_proc_unlock(target_proc);
-
-			target_procs[i++] = target_proc;
+				if (ret < 0)
+					break;
+			}
 		}
 		mutex_unlock(&binder_procs_lock);
-
-		for (i = 0; i < target_procs_count; i++) {
-			if (ret >= 0)
-				ret = binder_ioctl_freeze(&info,
-							  target_procs[i]);
-
-			binder_proc_dec_tmpref(target_procs[i]);
-		}
-
-		kfree(target_procs);
 
 		if (ret < 0)
 			goto err;
