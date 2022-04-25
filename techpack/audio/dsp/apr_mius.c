@@ -382,7 +382,6 @@ static inline int block_proximity(char *name)
 				pr_info("Blocking %s from reading proximity sensor...", p->comm);
 				return 1;
 			}
-			break;
 		}
 	}
 
