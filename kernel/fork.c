@@ -2003,10 +2003,6 @@ static __latent_entropy struct task_struct *copy_process(
 	p->sequential_io	= 0;
 	p->sequential_io_avg	= 0;
 #endif
-#if IS_ENABLED(CONFIG_KPERFEVENTS)
-	rwlock_init(&p->kperfevents_lock);
-	p->kperfevents = NULL;
-#endif
 
 	/* Perform scheduler related setup. Assign this task to a CPU. */
 	retval = sched_fork(clone_flags, p);
@@ -2392,14 +2388,6 @@ long _do_fork(unsigned long clone_flags,
 		init_completion(&vfork);
 		get_task_struct(p);
 	}
-
-#if IS_ENABLED(CONFIG_MIHW)
-	p->top_app = 0;
-	p->inherit_top_app = 0;
-#endif
-#if IS_ENABLED(CONFIG_PERF_HUMANTASK)
-        p->human_task = 0;
-#endif
 
 	if (IS_ENABLED(CONFIG_LRU_GEN) && !(clone_flags & CLONE_VM)) {
 		/* lock the task to synchronize with memcg migration */
