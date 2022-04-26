@@ -2044,7 +2044,7 @@ cont:
 			break;
 	}
 	pte_unmap_unlock(pte - 1, ptl);
-	reclaim_pages_from_list(&page_list, vma);
+	reclaim_pages_from_list(&page_list);
 	if (addr != end)
 		goto cont;
 
