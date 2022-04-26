@@ -2,7 +2,7 @@
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM gpio
 
-#ifndef CONFIG_TRACING_EVENTS_GPIO
+#if !defined(CONFIG_TRACING_EVENTS_GPIO) && !defined(NOTRACE)
 #define NOTRACE
 #endif
 

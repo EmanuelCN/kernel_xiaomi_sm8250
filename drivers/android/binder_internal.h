@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-
 #ifndef _LINUX_BINDER_INTERNAL_H
 #define _LINUX_BINDER_INTERNAL_H
-
 #include <linux/export.h>
 #include <linux/fs.h>
 #include <linux/list.h>
@@ -13,22 +11,13 @@
 #include <linux/types.h>
 #include <linux/uidgid.h>
 #include <uapi/linux/android/binderfs.h>
-#include <uapi/linux/eventpoll.h>
 #include "binder_alloc.h"
-
-#define ida_alloc_max(a, b, c) ida_simple_get(a, 0, b + 1, c)
-#define ida_free ida_remove
-
-typedef unsigned int __poll_t;
-typedef __bitwise int vm_fault_t;
-
 struct binder_context {
 	struct binder_node *binder_context_mgr_node;
 	struct mutex context_mgr_node_lock;
 	kuid_t binder_context_mgr_uid;
 	const char *name;
 };
-
 /**
  * struct binder_device - information about a binder device node
  * @hlist:          list of binder devices (only used for devices requested via
@@ -45,7 +34,6 @@ struct binder_device {
 	struct inode *binderfs_inode;
 	refcount_t ref;
 };
-
 /**
  * binderfs_mount_opts - mount options for binderfs
  * @max: maximum number of allocatable binderfs binder devices
@@ -55,7 +43,6 @@ struct binderfs_mount_opts {
 	int max;
 	int stats_mode;
 };
-
 /**
  * binderfs_info - information about a binderfs mount
  * @ipc_ns:         The ipc namespace the binderfs mount belongs to.
@@ -79,11 +66,8 @@ struct binderfs_info {
 	int device_count;
 	struct dentry *proc_log_dir;
 };
-
 extern const struct file_operations binder_fops;
-
 extern char *binder_devices_param;
-
 #ifdef CONFIG_ANDROID_BINDERFS
 extern bool is_binderfs_device(const struct inode *inode);
 extern struct dentry *binderfs_create_file(struct dentry *dir, const char *name,
@@ -104,7 +88,6 @@ static inline struct dentry *binderfs_create_file(struct dentry *dir,
 }
 static inline void binderfs_remove_file(struct dentry *dentry) {}
 #endif
-
 #ifdef CONFIG_ANDROID_BINDERFS
 extern int __init init_binderfs(void);
 #else
@@ -113,19 +96,14 @@ static inline int __init init_binderfs(void)
 	return 0;
 }
 #endif
-
 int binder_stats_show(struct seq_file *m, void *unused);
 DEFINE_SHOW_ATTRIBUTE(binder_stats);
-
 int binder_state_show(struct seq_file *m, void *unused);
 DEFINE_SHOW_ATTRIBUTE(binder_state);
-
 int binder_transactions_show(struct seq_file *m, void *unused);
 DEFINE_SHOW_ATTRIBUTE(binder_transactions);
-
 int binder_transaction_log_show(struct seq_file *m, void *unused);
 DEFINE_SHOW_ATTRIBUTE(binder_transaction_log);
-
 struct binder_transaction_log_entry {
 	int debug_id;
 	int debug_id_done;
@@ -143,13 +121,11 @@ struct binder_transaction_log_entry {
 	uint32_t return_error_param;
 	char context_name[BINDERFS_MAX_NAME + 1];
 };
-
 struct binder_transaction_log {
 	atomic_t cur;
 	bool full;
 	struct binder_transaction_log_entry entry[32];
 };
-
 enum binder_stat_types {
 	BINDER_STAT_PROC,
 	BINDER_STAT_THREAD,
@@ -160,14 +136,12 @@ enum binder_stat_types {
 	BINDER_STAT_TRANSACTION_COMPLETE,
 	BINDER_STAT_COUNT
 };
-
 struct binder_stats {
-	atomic_t br[_IOC_NR(BR_FROZEN_REPLY) + 1];
+	atomic_t br[_IOC_NR(BR_ONEWAY_SPAM_SUSPECT) + 1];
 	atomic_t bc[_IOC_NR(BC_REPLY_SG) + 1];
 	atomic_t obj_created[BINDER_STAT_COUNT];
 	atomic_t obj_deleted[BINDER_STAT_COUNT];
 };
-
 /**
  * struct binder_work - work enqueued on a worklist
  * @entry:             node enqueued on list
@@ -177,10 +151,10 @@ struct binder_stats {
  */
 struct binder_work {
 	struct list_head entry;
-
 	enum binder_work_type {
 		BINDER_WORK_TRANSACTION = 1,
 		BINDER_WORK_TRANSACTION_COMPLETE,
+		BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT,
 		BINDER_WORK_RETURN_ERROR,
 		BINDER_WORK_NODE,
 		BINDER_WORK_DEAD_BINDER,
@@ -188,12 +162,10 @@ struct binder_work {
 		BINDER_WORK_CLEAR_DEATH_NOTIFICATION,
 	} type;
 };
-
 struct binder_error {
 	struct binder_work work;
 	uint32_t cmd;
 };
-
 /**
  * struct binder_node - binder node bookkeeping
  * @debug_id:             unique ID for debugging
@@ -296,7 +268,6 @@ struct binder_node {
 	bool has_async_transaction;
 	struct list_head async_todo;
 };
-
 struct binder_ref_death {
 	/**
 	 * @work: worklist element for death notifications
@@ -306,7 +277,6 @@ struct binder_ref_death {
 	struct binder_work work;
 	binder_uintptr_t cookie;
 };
-
 /**
  * struct binder_ref_data - binder_ref counts and id
  * @debug_id:        unique ID for the ref
@@ -325,7 +295,6 @@ struct binder_ref_data {
 	int strong;
 	int weak;
 };
-
 /**
  * struct binder_ref - struct to track references on nodes
  * @data:        binder_ref_data containing id, handle, and current refcounts
@@ -356,7 +325,6 @@ struct binder_ref {
 	struct binder_node *node;
 	struct binder_ref_death *death;
 };
-
 /**
  * struct binder_priority - scheduler policy and priority
  * @sched_policy            scheduler policy
@@ -372,7 +340,6 @@ struct binder_priority {
 	unsigned int sched_policy;
 	int prio;
 };
-
 /**
  * struct binder_proc - binder process bookkeeping
  * @proc_node:            element for binder_procs list
@@ -439,6 +406,8 @@ struct binder_priority {
  * @outer_lock:           no nesting under innor or node lock
  *                        Lock order: 1) outer, 2) node, 3) inner
  * @binderfs_entry:       process-specific binderfs log file
+ * @oneway_spam_detection_enabled: process enabled oneway spam detection
+ *                        or not
  *
  * Bookkeeping structure for binder processes
  */
@@ -459,7 +428,6 @@ struct binder_proc {
 	bool sync_recv;
 	bool async_recv;
 	wait_queue_head_t freeze_wait;
-
 	struct list_head todo;
 	struct binder_stats stats;
 	struct list_head delivered_death;
@@ -474,8 +442,8 @@ struct binder_proc {
 	spinlock_t inner_lock;
 	spinlock_t outer_lock;
 	struct dentry *binderfs_entry;
+	bool oneway_spam_detection_enabled;
 };
-
 /**
  * struct binder_proc_ext - binder process bookkeeping
  * @proc:            element for binder_procs list
@@ -490,15 +458,12 @@ struct binder_proc_ext {
 	struct binder_proc proc;
 	const struct cred *cred;
 };
-
 static inline const struct cred *binder_get_cred(struct binder_proc *proc)
 {
 	struct binder_proc_ext *eproc;
-
 	eproc = container_of(proc, struct binder_proc_ext, proc);
 	return eproc->cred;
 }
-
 /**
  * struct binder_thread - binder thread bookkeeping
  * @proc:                 binder process for this thread
@@ -554,7 +519,6 @@ struct binder_thread {
 	bool is_dead;
 	struct task_struct *task;
 };
-
 /**
  * struct binder_txn_fd_fixup - transaction fd fixup list element
  * @fixup_entry:          list entry
@@ -571,7 +535,6 @@ struct binder_txn_fd_fixup {
 	struct file *file;
 	size_t offset;
 };
-
 struct binder_transaction {
 	int debug_id;
 	struct binder_work work;
@@ -582,7 +545,6 @@ struct binder_transaction {
 	struct binder_transaction *to_parent;
 	unsigned need_reply:1;
 	/* unsigned is_dead:1; */	/* not used at the moment */
-
 	struct binder_buffer *buffer;
 	unsigned int	code;
 	unsigned int	flags;
@@ -600,7 +562,6 @@ struct binder_transaction {
 	 */
 	spinlock_t lock;
 };
-
 /**
  * struct binder_object - union of flat binder object types
  * @hdr:   generic object header
@@ -620,7 +581,6 @@ struct binder_object {
 		struct binder_fd_array_object fdao;
 	};
 };
-
 extern struct binder_transaction_log binder_transaction_log;
 extern struct binder_transaction_log binder_transaction_log_failed;
 #endif /* _LINUX_BINDER_INTERNAL_H */
