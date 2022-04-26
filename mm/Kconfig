@@ -882,16 +882,6 @@ config PROCESS_RECLAIM
 
 	 Any other value is ignored.
 
-config FORCE_ALLOC_FROM_DMA_ZONE
-	bool "Force certain memory allocators to always return ZONE_DMA32 memory"
-	depends on ZONE_DMA32
-	help
-	  Ensure certain memory allocators always return memory from ZONE_DMA32.
-	  This option helps ensure that clients who require ZONE_DMA32 memory are
-	  always using ZONE_DMA32 memory.
-
-	  If unsure, say "n".
-
 config VMSTAT_INTERVAL
 	int "Default interval in seconds to update vmstat"
 	default 20
