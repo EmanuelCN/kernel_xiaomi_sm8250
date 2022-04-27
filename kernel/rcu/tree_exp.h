@@ -541,9 +541,10 @@ static void rcu_exp_wait_wake(unsigned long s)
 
 	synchronize_sched_expedited_wait();
 
-	// Switch over to wakeup mode, allowing the next GP to proceed.
-	// End the previous grace period only after acquiring the mutex
-	// to ensure that only one GP runs concurrently with wakeups.
+	/* Switch over to wakeup mode, allowing the next GP to proceed.
+	 * End the previous grace period only after acquiring the mutex
+	 * to ensure that only one GP runs concurrently with wakeups.
+	 */
 	mutex_lock(&rcu_state.exp_wake_mutex);
 	rcu_exp_gp_seq_end();
 	trace_rcu_exp_grace_period(rcu_state.name, s, TPS("end"));
@@ -738,7 +739,7 @@ static void sync_sched_exp_online_cleanup(int cpu)
 	my_cpu = get_cpu();
 	/* Quiescent state either not needed or already requested, leave. */
 	if (!(READ_ONCE(rnp->expmask) & rdp->grpmask) ||
-	    rdp->cpu_no_qs.b.exp) {
+	    __this_cpu_read(rcu_data.cpu_no_qs.b.exp)) {
 		put_cpu();
 		return;
 	}
