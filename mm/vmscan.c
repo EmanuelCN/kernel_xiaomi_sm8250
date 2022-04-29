@@ -4844,7 +4844,12 @@ static void lru_gen_seq_show_full(struct seq_file *m, struct lruvec *lruvec,
 static int lru_gen_seq_show(struct seq_file *m, void *v)
 {
 	unsigned long seq;
-	bool full = !debugfs_real_fops(m->file)->write;
+	bool full =
+	#ifdef CONFIG_DEBUG_FS
+		!debugfs_real_fops(m->file)->write;
+	#else
+		false;
+	#endif
 	struct lruvec *lruvec = v;
 	struct lrugen *lrugen = &lruvec->evictable;
 	int nid = lruvec_pgdat(lruvec)->node_id;
