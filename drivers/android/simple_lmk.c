@@ -77,19 +77,21 @@ static int victim_size_cmp(const void *lhs_ptr, const void *rhs_ptr)
 	return rhs->size - lhs->size;
 }
 
-static bool vtsk_is_duplicate(int vlen, struct task_struct *vtsk)
+static bool vtsk_is_duplicate(struct victim_info *varr, int vlen,
+			      struct task_struct *vtsk)
 {
 	int i;
 
 	for (i = 0; i < vlen; i++) {
-		if (same_thread_group(victims[i].tsk, vtsk))
+		if (same_thread_group(varr[i].tsk, vtsk))
 			return true;
 	}
 
 	return false;
 }
 
-static unsigned long find_victims(int *vindex, short target_adj)
+static unsigned long find_victims(struct victim_info *varr, int *vindex,
+				  int vmaxlen, short target_adj)
 {
 	unsigned long pages_found = 0;
 	int old_vindex = *vindex;
@@ -108,7 +110,7 @@ static unsigned long find_victims(int *vindex, short target_adj)
 		 * trying to lock a task that we locked earlier.
 		 */
 		if (READ_ONCE(tsk->signal->oom_score_adj) != target_adj ||
-		    vtsk_is_duplicate(*vindex, tsk))
+		    vtsk_is_duplicate(varr, *vindex, tsk))
 			continue;
 
 		vtsk = find_lock_task_mm(tsk);
@@ -116,15 +118,15 @@ static unsigned long find_victims(int *vindex, short target_adj)
 			continue;
 
 		/* Store this potential victim away for later */
-		victims[*vindex].tsk = vtsk;
-		victims[*vindex].mm = vtsk->mm;
-		victims[*vindex].size = get_mm_rss(vtsk->mm);
+		varr[*vindex].tsk = vtsk;
+		varr[*vindex].mm = vtsk->mm;
+		varr[*vindex].size = get_mm_rss(vtsk->mm);
 
 		/* Keep track of the number of pages that have been found */
-		pages_found += victims[*vindex].size;
+		pages_found += varr[*vindex].size;
 
 		/* Make sure there's space left in the victim array */
-		if (++*vindex == MAX_VICTIMS)
+		if (++*vindex == vmaxlen)
 			break;
 	}
 
@@ -133,13 +135,14 @@ static unsigned long find_victims(int *vindex, short target_adj)
 	 * the larger ones first.
 	 */
 	if (pages_found)
-		sort(&victims[old_vindex], *vindex - old_vindex,
-		     sizeof(*victims), victim_size_cmp, NULL);
+		sort(&varr[old_vindex], *vindex - old_vindex, sizeof(*varr),
+		     victim_size_cmp, NULL);
 
 	return pages_found;
 }
 
-static int process_victims(int vlen, unsigned long pages_needed)
+static int process_victims(struct victim_info *varr, int vlen,
+			   unsigned long pages_needed)
 {
 	unsigned long pages_found = 0;
 	int i, nr_to_kill = 0;
@@ -177,7 +180,8 @@ static void scan_and_kill(unsigned long pages_needed)
 	 */
 	read_lock(&tasklist_lock);
 	for (i = 0; i < ARRAY_SIZE(adj_prio); i++) {
-		pages_found += find_victims(&nr_victims, adj_prio[i]);
+		pages_found += find_victims(victims, &nr_victims, MAX_VICTIMS,
+					    adj_prio[i]);
 		if (pages_found >= pages_needed || nr_victims == MAX_VICTIMS)
 			break;
 	}
@@ -188,7 +192,7 @@ static void scan_and_kill(unsigned long pages_needed)
 		return;
 
 	/* First round of victim processing to weed out unneeded victims */
-	nr_to_kill = process_victims(nr_victims, pages_needed);
+	nr_to_kill = process_victims(victims, nr_victims, pages_needed);
 
 	/*
 	 * Try to kill as few of the chosen victims as possible by sorting the
@@ -198,7 +202,7 @@ static void scan_and_kill(unsigned long pages_needed)
 	sort(victims, nr_to_kill, sizeof(*victims), victim_size_cmp, NULL);
 
 	/* Second round of victim processing to finally select the victims */
-	nr_to_kill = process_victims(nr_to_kill, pages_needed);
+	nr_to_kill = process_victims(victims, nr_to_kill, pages_needed);
 
 	/* Kill the victims */
 	atomic_set_release(&victims_to_kill, nr_to_kill);
@@ -292,11 +296,12 @@ static int simple_lmk_init_set(const char *val, const struct kernel_param *kp)
 	static atomic_t init_done = ATOMIC_INIT(0);
 	struct task_struct *thread;
 
-	if (!atomic_cmpxchg(&init_done, 0, 1)) {
-		thread = kthread_run(simple_lmk_reclaim_thread, NULL,
-				     "simple_lmkd");
-		BUG_ON(IS_ERR(thread));
-	}
+	if (atomic_cmpxchg(&init_done, 0, 1))
+		return 0;
+
+	thread = kthread_run(simple_lmk_reclaim_thread, NULL, "simple_lmkd");
+	BUG_ON(IS_ERR(thread));
+
 	return 0;
 }
 
