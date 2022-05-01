@@ -50,6 +50,7 @@
 #include <linux/printk.h>
 #include <linux/dax.h>
 #include <linux/psi.h>
+#include <linux/simple_lmk.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -3654,6 +3655,7 @@ restart:
 		bool balanced;
 		bool ret;
 
+		simple_lmk_decide_reclaim(sc.priority);
 		sc.reclaim_idx = classzone_idx;
 
 		/*
