@@ -3761,7 +3761,7 @@ restart:
 		ret = try_to_freeze();
 		__fs_reclaim_acquire();
 		if (ret || kthread_should_stop() ||
-		    !atomic_long_read(&kswapd_waiters))
+		    !atomic_read(&pgdat->kswapd_waiters))
 			break;
 
 		/*
