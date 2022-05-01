@@ -145,10 +145,11 @@ static int process_victims(int vlen, unsigned long pages_needed)
 		/* The victim's mm lock is taken in find_victims; release it */
 		if (pages_found >= pages_needed) {
 			task_unlock(vtsk);
-		} else {
-			pages_found += victim->size;
-			nr_to_kill++;
+			continue;
 		}
+
+		pages_found += victim->size;
+		nr_to_kill++;
 	}
 
 	return nr_to_kill;
@@ -248,7 +249,7 @@ static int simple_lmk_reclaim_thread(void *data)
 	sched_setscheduler_nocheck(current, SCHED_FIFO, &sched_max_rt_prio);
 
 	while (1) {
-		wait_event(oom_waitq, atomic_read(&needs_reclaim));
+		wait_event(oom_waitq, atomic_read_acquire(&needs_reclaim));
 		scan_and_kill(MIN_FREE_PAGES);
 		atomic_set_release(&needs_reclaim, 0);
 	}
@@ -259,7 +260,7 @@ static int simple_lmk_reclaim_thread(void *data)
 void simple_lmk_decide_reclaim(int kswapd_priority)
 {
 	if (kswapd_priority == CONFIG_ANDROID_SIMPLE_LMK_AGGRESSION &&
-	    !atomic_cmpxchg_acquire(&needs_reclaim, 0, 1))
+	    !atomic_cmpxchg(&needs_reclaim, 0, 1))
 		wake_up(&oom_waitq);
 }
 
@@ -269,13 +270,11 @@ void simple_lmk_mm_freed(struct mm_struct *mm)
 
 	read_lock(&mm_free_lock);
 	for (i = 0; i < victims_to_kill; i++) {
-		if (victims[i].mm != mm)
-			continue;
-
-		victims[i].mm = NULL;
-		if (atomic_inc_return_relaxed(&nr_killed) == victims_to_kill)
-			complete(&reclaim_done);
-		break;
+		if (cmpxchg(&victims[i].mm, mm, NULL) == mm) {
+			if (atomic_inc_return(&nr_killed) == victims_to_kill)
+				complete(&reclaim_done);
+			break;
+		}
 	}
 	read_unlock(&mm_free_lock);
 }
