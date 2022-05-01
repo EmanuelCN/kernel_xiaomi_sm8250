@@ -165,10 +165,8 @@ static void scan_and_kill(unsigned long pages_needed)
 	read_unlock(&tasklist_lock);
 
 	/* Pretty unlikely but it can happen */
-	if (unlikely(!nr_victims)) {
-		pr_err("No processes available to kill!\n");
+	if (unlikely(!nr_victims))
 		return;
-	}
 
 	/* First round of victim processing to weed out unneeded victims */
 	nr_to_kill = process_victims(nr_victims, pages_needed);
