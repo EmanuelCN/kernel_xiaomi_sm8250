@@ -791,8 +791,7 @@ static int __init rcu_spawn_tasks_kthread(void)
 {
 	struct task_struct *t;
 
-	t = kthread_run_perf_critical(cpu_perf_mask, rcu_tasks_kthread,
-				NULL, "rcu_tasks_kthread");
+	t = kthread_run(rcu_tasks_kthread, NULL, "rcu_tasks_kthread");
 	if (WARN_ONCE(IS_ERR(t), "%s: Could not start Tasks-RCU grace-period kthread, OOM is now expected behavior\n", __func__))
 		return 0;
 	smp_mb(); /* Ensure others see full kthread. */
