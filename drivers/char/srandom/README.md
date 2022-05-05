@@ -49,6 +49,13 @@ To uninstall the kernel module from your system.
 
     make uninstall
 
+Ultra High Speed Mode
+---------------------
+
+Release 1.41+ now includes an Ultra High Speed Mode.  This mode uses the faster of the two 64bit PRNGs, more buffers, disables the background thread and other tweaks to get more performance.  This mode performs much faster, but still passes dieharder tests.  To enable this mode, simply modify the following line in the source code before running make.
+```
+#define ULTRA_HIGH_SPEED_MODE 1
+```
 
 Usage
 -----
@@ -62,7 +69,7 @@ You can load the kernel module temporary, or you can install the kernel module t
 # cat /proc/srandom
 -----------------------:----------------------
 Device                 : /dev/srandom
-Module version         : 1.40.1
+Module version         : 1.41.0
 Current open count     : 5
 Total open count       : 3665
 Total K bytes          : 55146567
