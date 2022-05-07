@@ -1542,9 +1542,9 @@ void *msm_vidc_open(int core_id, int session_type)
 	}
 
 	msm_comm_scale_clocks_and_bus(inst, 1);
-
+/*
 	inst->debugfs_root =
-		msm_vidc_debugfs_init_inst(inst, core->debugfs_root);
+		msm_vidc_debugfs_init_inst(inst, core->debugfs_root); */
 
 	if (inst->session_type == MSM_VIDC_CVP) {
 		rc = msm_comm_try_state(inst, MSM_VIDC_OPEN_DONE);
@@ -1715,11 +1715,11 @@ int msm_vidc_destroy(struct msm_vidc_inst *inst)
 	mutex_destroy(&inst->bufq[INPUT_PORT].lock);
 	mutex_destroy(&inst->lock);
 
-	msm_vidc_debugfs_deinit_inst(inst);
+/*	msm_vidc_debugfs_deinit_inst(inst);
 
 	pr_info(VIDC_DBG_TAG "Closed video instance: %pK\n",
 			"high", inst->sid, get_codec_name(inst->sid),
-			inst);
+			inst); */
 	put_sid(inst->sid);
 	kfree(inst);
 	return 0;
