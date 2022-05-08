@@ -1003,9 +1003,6 @@ static struct attribute * g[] = {
 	&pm_debug_messages_attr.attr,
 #endif
 #endif
-#ifdef CONFIG_PM_SLEEP_MONITOR
-	&pm_hang_attr.attr,
-#endif
 #ifdef CONFIG_FREEZER
 	&pm_freeze_timeout_attr.attr,
 #endif
