@@ -1522,14 +1522,48 @@ static ssize_t fuse_direct_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	return res;
 }
 
+static bool fuse_direct_write_extending_i_size(struct kiocb *iocb,
+                          struct iov_iter *iter)
+{
+  struct inode *inode = file_inode(iocb->ki_filp);
+  loff_t i_size;
+  loff_t offset;
+  size_t count;
+
+  if (iocb->ki_flags & IOCB_APPEND)
+      return true;
+
+  offset = iocb->ki_pos;
+  count = iov_iter_count(iter);
+  i_size = i_size_read(inode);
+
+  return offset + count <= i_size ? false : true;
+}
+
 static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
 {
 	struct inode *inode = file_inode(iocb->ki_filp);
+	struct file *file = iocb->ki_filp;
+	struct fuse_file *ff = file->private_data;
 	struct fuse_io_priv io = FUSE_IO_PRIV_SYNC(iocb);
 	ssize_t res;
+	bool p_write = ff->open_flags & FOPEN_PARALLEL_WRITES ? true : false;
+	bool exclusive_lock = !p_write ||
+                       fuse_direct_write_extending_i_size(iocb, from) ?
+                       true : false;
 
-	/* Don't allow parallel writes to the same file */
-	inode_lock(inode);
+	/*
+	 * Take exclusive lock if
+	 * - parallel writes are disabled.
+	 * - parallel writes are enabled and i_size is being extended
+	 * Take shared lock if
+	 * - parallel writes are enabled but i_size does not extend.
+	 */
+	if (exclusive_lock)
+            inode_lock(inode);
+	else
+            inode_lock_shared(inode);
+
 	res = generic_write_checks(iocb, from);
 	if (res > 0) {
 		if (!is_sync_kiocb(iocb) && iocb->ki_flags & IOCB_DIRECT) {
@@ -1542,7 +1576,11 @@ static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	fuse_invalidate_attr(inode);
 	if (res > 0)
 		fuse_write_update_size(inode, iocb->ki_pos);
-	inode_unlock(inode);
+
+	if (exclusive_lock)
+	    inode_unlock(inode);
+	else
+	    inode_lock_shared(inode);
 
 	return res;
 }
@@ -3147,6 +3185,7 @@ fuse_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 	kref_put(&io->refcnt, fuse_io_release);
 
 	if (iov_iter_rw(iter) == WRITE) {
+	        /* For extending writes we already hold exclusive lock */
 		if (ret > 0)
 			fuse_write_update_size(inode, pos);
 		else if (ret < 0 && offset + count > i_size)
