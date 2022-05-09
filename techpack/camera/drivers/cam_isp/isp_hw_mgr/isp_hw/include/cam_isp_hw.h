@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_ISP_HW_H_
@@ -13,8 +13,6 @@
 #include "cam_irq_controller.h"
 #include "cam_hw_intf.h"
 
-/* Maximum length of tag while dumping */
-#define CAM_ISP_HW_DUMP_TAG_MAX_LEN 32
 /*
  * struct cam_isp_timestamp:
  *
@@ -74,8 +72,8 @@ enum cam_isp_resource_type {
 	CAM_ISP_RESOURCE_CID,
 	CAM_ISP_RESOURCE_PIX_PATH,
 	CAM_ISP_RESOURCE_VFE_IN,
-	CAM_ISP_RESOURCE_VFE_BUS_RD,
 	CAM_ISP_RESOURCE_VFE_OUT,
+	CAM_ISP_RESOURCE_VFE_BUS_RD,
 	CAM_ISP_RESOURCE_MAX,
 };
 
@@ -94,10 +92,8 @@ enum cam_isp_hw_cmd_type {
 	CAM_ISP_HW_CMD_BW_CONTROL,
 	CAM_ISP_HW_CMD_STOP_BUS_ERR_IRQ,
 	CAM_ISP_HW_CMD_UBWC_UPDATE,
-	CAM_ISP_HW_CMD_DUMP_BUS_INFO,
 	CAM_ISP_HW_CMD_SOF_IRQ_DEBUG,
 	CAM_ISP_HW_CMD_SET_CAMIF_DEBUG,
-	CAM_ISP_HW_CMD_CAMIF_DATA,
 	CAM_ISP_HW_CMD_CSID_CLOCK_UPDATE,
 	CAM_ISP_HW_CMD_FE_UPDATE_IN_RD,
 	CAM_ISP_HW_CMD_FE_UPDATE_BUS_RD,
@@ -106,27 +102,7 @@ enum cam_isp_hw_cmd_type {
 	CAM_ISP_HW_CMD_WM_CONFIG_UPDATE,
 	CAM_ISP_HW_CMD_CSID_QCFA_SUPPORTED,
 	CAM_ISP_HW_CMD_QUERY_REGSPACE_DATA,
-	CAM_ISP_HW_CMD_QUERY,
-	CAM_ISP_HW_CMD_QUERY_DSP_MODE,
-	CAM_ISP_HW_CMD_DUMP_HW,
-	CAM_ISP_HW_CMD_FE_TRIGGER_CMD,
-	CAM_ISP_HW_CMD_CSID_CHANGE_HALT_MODE,
-	CAM_ISP_HW_CMD_GET_IRQ_REGISTER_DUMP,
-	CAM_ISP_HW_CMD_CSID_CLOCK_DUMP,
-	CAM_ISP_HW_CMD_SET_NUM_OF_ACQUIRED_RESOURCE,
-	CAM_ISP_HW_CMD_GET_NUM_OF_ACQUIRED_RESOURCE,
 	CAM_ISP_HW_CMD_MAX,
-};
-
-/*
- * struct cam_isp_hw_cmd_query
- *
- * @Brief:              Structure representing query command to HW
- *
- * @query_cmd:          Command identifier
- */
-struct cam_isp_hw_cmd_query {
-	int query_cmd;
 };
 
 /*
@@ -147,7 +123,6 @@ struct cam_isp_hw_cmd_query {
  *                                schedule IRQ events related to this resource
  * @irq_handle:                   handle returned on subscribing for IRQ event
  * @rdi_only_ctx:                 resource belong to rdi only context or not
- * @rdi_only_last_res:            Last resource belong to rdi only context
  * @init:                         function pointer to init the HW resource
  * @deinit:                       function pointer to deinit the HW resource
  * @start:                        function pointer to start the HW resource
@@ -168,7 +143,6 @@ struct cam_isp_resource_node {
 	void                          *tasklet_info;
 	int                            irq_handle;
 	int                            rdi_only_ctx;
-	int                            rdi_only_last_res;
 
 	int (*init)(struct cam_isp_resource_node *rsrc_node,
 		void *init_args, uint32_t arg_size);
@@ -191,7 +165,6 @@ struct cam_isp_resource_node {
  * @res_id:         Unique resource ID
  * @hw_idx:         IFE hw index
  * @err_type:       Error type if any
- * @th_reg_val:     Any critical register value captured during th
  *
  */
 struct cam_isp_hw_event_info {
@@ -199,7 +172,6 @@ struct cam_isp_hw_event_info {
 	uint32_t                       res_id;
 	uint32_t                       hw_idx;
 	uint32_t                       err_type;
-	uint32_t                       th_reg_val;
 };
 
 /*
@@ -224,19 +196,13 @@ struct cam_isp_hw_cmd_buf_update {
  * @Brief:         Get cmd buffer for WM updates.
  *
  * @ image_buf:    image buffer address array
- * @ image_buf_offset: image buffer address offset array
  * @ num_buf:      Number of buffers in the image_buf array
- * @ frame_header: frame header iova
- * @ local_id:     local id for the wm
  * @ io_cfg:       IO buffer config information sent from UMD
  *
  */
 struct cam_isp_hw_get_wm_update {
 	dma_addr_t                     *image_buf;
-	uint32_t                        image_buf_offset[CAM_PACKET_MAX_PLANES];
 	uint32_t                        num_buf;
-	uint64_t                        frame_header;
-	uint32_t                        local_id;
 	struct cam_buf_io_cfg          *io_cfg;
 };
 
@@ -283,40 +249,4 @@ struct cam_isp_hw_dual_isp_update_args {
 	struct cam_isp_resource_node    *res;
 	struct cam_isp_dual_config      *dual_cfg;
 };
-
-/*
- * struct cam_isp_hw_dump_args:
- *
- * @Brief:        isp hw dump args
- *
- * @ req_id:         request id
- * @ cpu_addr:       cpu address
- * @ buf_len:        buf len
- * @ offset:         offset of buffer
- * @ ctxt_to_hw_map: ctx to hw map
- */
-struct cam_isp_hw_dump_args {
-	uint64_t                req_id;
-	uintptr_t               cpu_addr;
-	size_t                  buf_len;
-	size_t                  offset;
-	void                   *ctxt_to_hw_map;
-};
-
-/**
- * struct cam_isp_hw_dump_header - ISP context dump header
- *
- * @Brief:        isp hw dump header
- *
- * @tag:       Tag name for the header
- * @word_size: Size of word
- * @size:      Size of data
- *
- */
-struct cam_isp_hw_dump_header {
-	uint8_t   tag[CAM_ISP_HW_DUMP_TAG_MAX_LEN];
-	uint64_t  size;
-	uint32_t  word_size;
-};
-
 #endif /* _CAM_ISP_HW_H_ */

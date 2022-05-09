@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -649,50 +649,6 @@ static int cam_lrme_mgr_hw_release(void *hw_mgr_priv, void *hw_release_args)
 	return rc;
 }
 
-static int cam_lrme_mgr_hw_dump(void *hw_mgr_priv, void *hw_dump_args)
-{
-	struct cam_hw_dump_args *dump_args = hw_dump_args;
-	struct cam_lrme_hw_mgr *hw_mgr = hw_mgr_priv;
-	struct cam_lrme_device *hw_device;
-	int rc = 0;
-	uint32_t device_index;
-	struct cam_lrme_hw_dump_args lrme_dump_args;
-
-	device_index = CAM_LRME_DECODE_DEVICE_INDEX(dump_args->ctxt_to_hw_map);
-	if (device_index >= hw_mgr->device_count) {
-		CAM_ERR(CAM_LRME, "Invalid device index %d", device_index);
-		return -EPERM;
-	}
-
-	CAM_DBG(CAM_LRME, "Start device index %d", device_index);
-
-	rc = cam_lrme_mgr_util_get_device(hw_mgr, device_index, &hw_device);
-	if (rc) {
-		CAM_ERR(CAM_LRME, "Failed to get hw device");
-		return rc;
-	}
-	rc  = cam_mem_get_cpu_buf(dump_args->buf_handle,
-		&lrme_dump_args.cpu_addr,
-		&lrme_dump_args.buf_len);
-	if (rc) {
-		CAM_ERR(CAM_LRME, "Invalid handle %u rc %d",
-			dump_args->buf_handle, rc);
-		return rc;
-	}
-	lrme_dump_args.offset =  dump_args->offset;
-	lrme_dump_args.request_id = dump_args->request_id;
-
-	rc = hw_device->hw_intf.hw_ops.process_cmd(
-		hw_device->hw_intf.hw_priv,
-		CAM_LRME_HW_CMD_DUMP,
-		&lrme_dump_args,
-		sizeof(struct cam_lrme_hw_dump_args));
-	CAM_DBG(CAM_LRME, "Offset before %zu after %zu",
-		dump_args->offset, lrme_dump_args.offset);
-	dump_args->offset = lrme_dump_args.offset;
-	return rc;
-}
-
 static int cam_lrme_mgr_hw_flush(void *hw_mgr_priv, void *hw_flush_args)
 {	int rc = 0, i;
 	struct cam_lrme_hw_mgr *hw_mgr = hw_mgr_priv;
@@ -1041,11 +997,6 @@ err:
 	return rc;
 }
 
-static void cam_req_mgr_process_workq_cam_lrme_device_submit_worker(
-	struct work_struct *w)
-{
-	cam_req_mgr_process_workq(w);
-}
 
 int cam_lrme_mgr_register_device(
 	struct cam_hw_intf *lrme_hw_intf,
@@ -1073,8 +1024,8 @@ int cam_lrme_mgr_register_device(
 	CAM_DBG(CAM_LRME, "Create submit workq for %s", buf);
 	rc = cam_req_mgr_workq_create(buf,
 		CAM_LRME_WORKQ_NUM_TASK,
-		&hw_device->work, CRM_WORKQ_USAGE_NON_IRQ, 0, true,
-		cam_req_mgr_process_workq_cam_lrme_device_submit_worker);
+		&hw_device->work, CRM_WORKQ_USAGE_NON_IRQ,
+		0);
 	if (rc) {
 		CAM_ERR(CAM_LRME,
 			"Unable to create a worker, rc=%d", rc);
@@ -1196,7 +1147,6 @@ int cam_lrme_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf,
 	hw_mgr_intf->hw_flush = cam_lrme_mgr_hw_flush;
 
 	g_lrme_hw_mgr.event_cb = cam_lrme_dev_buf_done_cb;
-	hw_mgr_intf->hw_dump = cam_lrme_mgr_hw_dump;
 
 	cam_lrme_mgr_create_debugfs_entry();
 

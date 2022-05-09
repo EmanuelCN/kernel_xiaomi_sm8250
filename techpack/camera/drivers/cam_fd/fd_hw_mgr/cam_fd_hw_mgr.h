@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_FD_HW_MGR_H_
@@ -20,12 +20,6 @@
 
 #define CAM_FD_HW_MAX            1
 #define CAM_FD_WORKQ_NUM_TASK    10
-
-/*
- * Response time threshold in ms beyond which a request is not expected to be
- * with FD hw
- */
-#define CAM_FD_RESPONSE_TIME_THRESHOLD   100000
 
 struct cam_fd_hw_mgr;
 
@@ -106,7 +100,6 @@ struct cam_fd_device {
  * @hw_update_entries     : HW update entries corresponding to this request
  *                          which needs to be submitted to HW through CDM
  * @num_hw_update_entries : Number of HW update entries
- * @submit_timestamp      : Time stamp for submit req with hw
  */
 struct cam_fd_mgr_frame_request {
 	struct list_head               list;
@@ -115,7 +108,6 @@ struct cam_fd_mgr_frame_request {
 	struct cam_fd_hw_req_private   hw_req_private;
 	struct cam_hw_update_entry     hw_update_entries[CAM_FD_MAX_HW_ENTRIES];
 	uint32_t                       num_hw_update_entries;
-	ktime_t                        submit_timestamp;
 };
 
 /**
@@ -159,8 +151,6 @@ struct cam_fd_mgr_work_data {
  * @work                      : Worker handle
  * @work_data                 : Worker data
  * @fd_caps                   : FD driver capabilities
- * @num_pending_frames        : Number of total frames pending for processing
- *                              across contexts
  */
 struct cam_fd_hw_mgr {
 	struct list_head                   free_ctx_list;
@@ -184,7 +174,6 @@ struct cam_fd_hw_mgr {
 	struct cam_req_mgr_core_workq     *work;
 	struct cam_fd_mgr_work_data        work_data[CAM_FD_WORKQ_NUM_TASK];
 	struct cam_fd_query_cap_cmd        fd_caps;
-	uint32_t                           num_pending_frames;
 };
 
 #endif /* _CAM_FD_HW_MGR_H_ */

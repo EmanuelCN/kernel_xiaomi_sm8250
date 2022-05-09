@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -19,7 +19,6 @@ struct cam_vfe_top_ver2_common_data {
 	struct cam_hw_soc_info                     *soc_info;
 	struct cam_hw_intf                         *hw_intf;
 	struct cam_vfe_top_ver2_reg_offset_common  *common_reg;
-	struct cam_vfe_top_dump_data               *dump_data;
 };
 
 struct cam_vfe_top_ver2_priv {
@@ -28,9 +27,6 @@ struct cam_vfe_top_ver2_priv {
 	unsigned long                       req_clk_rate[
 						CAM_VFE_TOP_MUX_MAX];
 	struct cam_vfe_top_priv_common      top_common;
-	uint32_t                            num_pix_rsrc;
-	uint32_t                            num_pd_rsrc;
-	uint32_t                            num_rdi_rsrc;
 };
 
 static int cam_vfe_top_mux_get_base(struct cam_vfe_top_ver2_priv *top_priv,
@@ -86,11 +82,8 @@ static int cam_vfe_top_set_hw_clk_rate(
 	struct cam_hw_soc_info        *soc_info = NULL;
 	int                            i, rc = 0;
 	unsigned long                  max_clk_rate = 0;
-	struct cam_vfe_soc_private    *soc_private = NULL;
 
 	soc_info = top_priv->common_data.soc_info;
-	soc_private =
-		(struct cam_vfe_soc_private *)soc_info->soc_private;
 
 	for (i = 0; i < top_priv->top_common.num_mux; i++) {
 		if (top_priv->req_clk_rate[i] > max_clk_rate)
@@ -102,7 +95,7 @@ static int cam_vfe_top_set_hw_clk_rate(
 	CAM_DBG(CAM_PERF, "VFE: Clock name=%s idx=%d clk=%llu",
 		soc_info->clk_name[soc_info->src_clk_idx],
 		soc_info->src_clk_idx, max_clk_rate);
-	soc_private->ife_clk_src = max_clk_rate;
+
 	rc = cam_soc_util_set_src_clk_rate(soc_info, max_clk_rate);
 
 	if (!rc)
@@ -185,164 +178,10 @@ static int cam_vfe_top_mux_get_reg_update(
 	return -EINVAL;
 }
 
-static int cam_vfe_top_get_data(
-	struct cam_vfe_top_ver2_priv *top_priv,
-	void *cmd_args, uint32_t arg_size)
-{
-	struct cam_isp_resource_node  *res = cmd_args;
-
-	if (res->process_cmd)
-		return res->process_cmd(res,
-			CAM_ISP_HW_CMD_CAMIF_DATA, cmd_args, arg_size);
-
-	return -EINVAL;
-}
-
 int cam_vfe_top_get_hw_caps(void *device_priv,
 	void *get_hw_cap_args, uint32_t arg_size)
 {
 	return -EPERM;
-}
-
-static int cam_vfe_hw_dump(
-	struct cam_vfe_top_ver2_priv *top_priv,
-	void *cmd_args,
-	uint32_t arg_size)
-{
-	int                                i, j;
-	uint8_t                           *dst;
-	uint32_t                           reg_start_offset;
-	uint32_t                           reg_dump_size = 0;
-	uint32_t                           lut_dump_size = 0;
-	uint32_t                           val;
-	uint32_t                           num_reg;
-	void __iomem                      *reg_base;
-	uint32_t                          *addr, *start;
-	size_t                             remain_len;
-	uint32_t                           min_len;
-	struct cam_hw_soc_info            *soc_info;
-	struct cam_vfe_top_dump_data      *dump_data;
-	struct cam_isp_hw_dump_header     *hdr;
-	struct cam_isp_hw_dump_args       *dump_args =
-		(struct cam_isp_hw_dump_args *)cmd_args;
-
-	if (!dump_args) {
-		CAM_ERR(CAM_ISP, "Invalid args");
-		return -EINVAL;
-	}
-	if (!dump_args->cpu_addr || !dump_args->buf_len) {
-		CAM_ERR(CAM_ISP,
-			"Invalid params %pK %zu",
-			(void *)dump_args->cpu_addr,
-			dump_args->buf_len);
-		return -EINVAL;
-	}
-	if (dump_args->buf_len <= dump_args->offset) {
-		CAM_WARN(CAM_ISP,
-			"Dump offset overshoot offset %zu buf_len %zu",
-			dump_args->offset, dump_args->buf_len);
-		return -ENOSPC;
-	}
-
-	dump_data = top_priv->common_data.dump_data;
-
-	if (!dump_data) {
-		CAM_ERR(CAM_ISP, "Dump data not available");
-		return -EINVAL;
-	}
-
-	soc_info = top_priv->common_data.soc_info;
-
-	/*Dump registers */
-	for (i = 0; i < dump_data->num_reg_dump_entries; i++)
-		reg_dump_size += (dump_data->reg_entry[i].reg_dump_end -
-			dump_data->reg_entry[i].reg_dump_start);
-	/*
-	 * We dump the offset as well, so the total size dumped becomes
-	 * multiplied by 2
-	 */
-	reg_dump_size *= 2;
-	for (i = 0; i < dump_data->num_lut_dump_entries; i++)
-		lut_dump_size += ((dump_data->lut_entry[i].lut_addr_size) *
-			(dump_data->lut_entry[i].lut_word_size/8));
-
-	/*Minimum len comprises of:
-	 * soc_index
-	 * lut_dump_size + reg_dump_size + sizeof dump_header +
-	 * (num_lut_dump_entries--> represents number of banks)
-	 */
-	min_len = sizeof(uint32_t) + lut_dump_size + reg_dump_size +
-		sizeof(struct cam_isp_hw_dump_header) +
-		(dump_data->num_lut_dump_entries * sizeof(uint32_t));
-	remain_len = dump_args->buf_len - dump_args->offset;
-	if (remain_len < min_len) {
-		CAM_WARN(CAM_ISP, "Dump buffer exhaust remain %zu, min %u",
-			remain_len, min_len);
-		return -ENOSPC;
-	}
-
-	dst = (uint8_t *)dump_args->cpu_addr + dump_args->offset;
-	hdr = (struct cam_isp_hw_dump_header *)dst;
-	hdr->word_size = sizeof(uint32_t);
-	scnprintf(hdr->tag, CAM_ISP_HW_DUMP_TAG_MAX_LEN, "VFE_REG:");
-	addr = (uint32_t *)(dst + sizeof(struct cam_isp_hw_dump_header));
-	start = addr;
-	*addr++ = soc_info->index;
-	for (i = 0; i < dump_data->num_reg_dump_entries; i++) {
-		num_reg  = (dump_data->reg_entry[i].reg_dump_end -
-			dump_data->reg_entry[i].reg_dump_start)/4;
-		reg_start_offset = dump_data->reg_entry[i].reg_dump_start;
-		reg_base = soc_info->reg_map[0].mem_base + reg_start_offset;
-		for (j = 0; j < num_reg; j++) {
-			addr[0] = soc_info->mem_block[0]->start +
-				reg_start_offset + (j*4);
-			addr[1] = cam_io_r(reg_base + (j*4));
-			addr += 2;
-		}
-	}
-	hdr->size = hdr->word_size * (addr - start);
-	dump_args->offset +=  hdr->size +
-		sizeof(struct cam_isp_hw_dump_header);
-
-	/*dump LUT*/
-	for (i = 0; i < dump_data->num_lut_dump_entries; i++) {
-
-		dst = (char *)dump_args->cpu_addr + dump_args->offset;
-		hdr = (struct cam_isp_hw_dump_header *)dst;
-		scnprintf(hdr->tag, CAM_ISP_HW_DUMP_TAG_MAX_LEN, "LUT_REG:");
-		hdr->word_size = dump_data->lut_entry[i].lut_word_size/8;
-		addr = (uint32_t *)(dst +
-			sizeof(struct cam_isp_hw_dump_header));
-		start = addr;
-		*addr++ = dump_data->lut_entry[i].lut_bank_sel;
-		val = 0x100 |  dump_data->lut_entry[i].lut_bank_sel;
-		cam_io_w_mb(val, soc_info->reg_map[0].mem_base +
-			dump_data->dmi_cfg);
-		cam_io_w_mb(0, soc_info->reg_map[0].mem_base +
-			dump_data->dmi_addr);
-		for (j = 0; j < dump_data->lut_entry[i].lut_addr_size;
-			j++) {
-			if (dump_data->lut_entry[i].lut_word_size == 64) {
-				addr[0] = cam_io_r(
-					soc_info->reg_map[0].mem_base +
-					dump_data->dmi_data_path_lo);
-				addr[1] = cam_io_r(
-					soc_info->reg_map[0].mem_base +
-					dump_data->dmi_data_path_hi);
-				addr += 2;
-			} else {
-				*addr = cam_io_r(
-					soc_info->reg_map[0].mem_base +
-					dump_data->dmi_data_path_lo);
-				addr++;
-			}
-		}
-		hdr->size = hdr->word_size * (addr - start);
-		dump_args->offset +=  hdr->size +
-			sizeof(struct cam_isp_hw_dump_header);
-	}
-	CAM_DBG(CAM_ISP, "offset %zu", dump_args->offset);
-	return 0;
 }
 
 int cam_vfe_top_init_hw(void *device_priv,
@@ -412,6 +251,7 @@ int cam_vfe_top_reserve(void *device_priv,
 	top_priv = (struct cam_vfe_top_ver2_priv   *)device_priv;
 	args = (struct cam_vfe_acquire_args *)reserve_args;
 	acquire_args = &args->vfe_in;
+
 
 	for (i = 0; i < top_priv->top_common.num_mux; i++) {
 		if (top_priv->top_common.mux_rsrc[i].res_id ==
@@ -487,10 +327,6 @@ int cam_vfe_top_release(void *device_priv,
 	top_priv = (struct cam_vfe_top_ver2_priv   *)device_priv;
 	mux_res = (struct cam_isp_resource_node *)release_args;
 
-	top_priv->num_pix_rsrc = 0;
-	top_priv->num_pd_rsrc = 0;
-	top_priv->num_rdi_rsrc = 0;
-
 	CAM_DBG(CAM_ISP, "Resource in state %d", mux_res->res_state);
 	if (mux_res->res_state < CAM_ISP_RESOURCE_STATE_RESERVED) {
 		CAM_ERR(CAM_ISP, "Error! Resource in Invalid res_state :%d",
@@ -565,8 +401,6 @@ int cam_vfe_top_stop(void *device_priv,
 	struct cam_vfe_top_ver2_priv            *top_priv;
 	struct cam_isp_resource_node            *mux_res;
 	struct cam_hw_info                      *hw_info = NULL;
-	struct cam_hw_soc_info                  *soc_info = NULL;
-	struct cam_vfe_soc_private              *soc_private = NULL;
 	int i, rc = 0;
 
 	if (!device_priv || !stop_args) {
@@ -577,8 +411,6 @@ int cam_vfe_top_stop(void *device_priv,
 	top_priv = (struct cam_vfe_top_ver2_priv   *)device_priv;
 	mux_res = (struct cam_isp_resource_node *)stop_args;
 	hw_info = (struct cam_hw_info  *)mux_res->hw_intf->hw_priv;
-	soc_info = top_priv->common_data.soc_info;
-	soc_private = soc_info->soc_private;
 
 	if ((mux_res->res_id == CAM_ISP_HW_VFE_IN_CAMIF) ||
 		(mux_res->res_id == CAM_ISP_HW_VFE_IN_PDLIB) ||
@@ -609,7 +441,7 @@ int cam_vfe_top_stop(void *device_priv,
 			}
 		}
 	}
-	soc_private->ife_clk_src = 0;
+
 	return rc;
 }
 
@@ -623,80 +455,6 @@ int cam_vfe_top_write(void *device_priv,
 	void *write_args, uint32_t arg_size)
 {
 	return -EPERM;
-}
-
-int cam_vfe_top_query(struct cam_vfe_top_ver2_priv *top_priv,
-		void *cmd_args, uint32_t arg_size)
-{
-	int rc = 0;
-	struct cam_isp_hw_cmd_query     *vfe_query;
-	struct cam_hw_soc_info          *soc_info = NULL;
-	struct cam_vfe_soc_private      *soc_private = NULL;
-
-	if (!top_priv || !cmd_args) {
-		CAM_ERR(CAM_ISP, "Error! Invalid arguments");
-		return -EINVAL;
-	}
-
-	soc_info = top_priv->common_data.soc_info;
-	soc_private = soc_info->soc_private;
-	vfe_query = (struct cam_isp_hw_cmd_query *)cmd_args;
-
-	if (!soc_private) {
-		CAM_ERR(CAM_ISP, "Error soc_private NULL");
-		return -EINVAL;
-	}
-
-	switch (vfe_query->query_cmd) {
-	case CAM_ISP_HW_CMD_QUERY_DSP_MODE:
-		if (soc_private->dsp_disabled)
-			rc = -EINVAL;
-		break;
-	default:
-		rc = -EINVAL;
-		CAM_ERR(CAM_ISP, "Error, Invalid cmd:%d", vfe_query->query_cmd);
-		break;
-	}
-	return rc;
-}
-
-static int cam_vfe_get_irq_register_dump(
-	struct cam_vfe_top_ver2_priv *top_priv,
-	void *cmd_args, uint32_t arg_size)
-{
-	struct cam_isp_hw_get_cmd_update  *cmd_update = cmd_args;
-
-	if (cmd_update->res->process_cmd)
-		cmd_update->res->process_cmd(cmd_update->res,
-			CAM_ISP_HW_CMD_GET_IRQ_REGISTER_DUMP, cmd_args,
-			arg_size);
-	return 0;
-}
-
-static int cam_vfe_set_num_of_acquired_resource(
-	struct cam_vfe_top_ver2_priv *top_priv,
-	void *cmd_args, uint32_t arg_size)
-{
-	struct cam_vfe_num_of_acquired_resources *num_rsrc = cmd_args;
-
-	top_priv->num_pix_rsrc = num_rsrc->num_pix_rsrc;
-	top_priv->num_pd_rsrc = num_rsrc->num_pd_rsrc;
-	top_priv->num_rdi_rsrc = num_rsrc->num_rdi_rsrc;
-
-	return 0;
-}
-
-static int cam_vfe_get_num_of_acquired_resource(
-	struct cam_vfe_top_ver2_priv *top_priv,
-	void *cmd_args, uint32_t arg_size)
-{
-	struct cam_vfe_num_of_acquired_resources *num_rsrc = cmd_args;
-
-	num_rsrc->num_pix_rsrc = top_priv->num_pix_rsrc;
-	num_rsrc->num_pd_rsrc = top_priv->num_pd_rsrc;
-	num_rsrc->num_rdi_rsrc = top_priv->num_rdi_rsrc;
-
-	return 0;
 }
 
 int cam_vfe_top_process_cmd(void *device_priv, uint32_t cmd_type,
@@ -727,10 +485,6 @@ int cam_vfe_top_process_cmd(void *device_priv, uint32_t cmd_type,
 		rc = cam_vfe_top_mux_get_reg_update(top_priv, cmd_args,
 			arg_size);
 		break;
-	case CAM_ISP_HW_CMD_CAMIF_DATA:
-		rc = cam_vfe_top_get_data(top_priv, cmd_args,
-			arg_size);
-		break;
 	case CAM_ISP_HW_CMD_CLOCK_UPDATE:
 		rc = cam_vfe_top_clock_update(top_priv, cmd_args,
 			arg_size);
@@ -749,25 +503,6 @@ int cam_vfe_top_process_cmd(void *device_priv, uint32_t cmd_type,
 		break;
 	case CAM_ISP_HW_CMD_BW_CONTROL:
 		rc = cam_vfe_top_bw_control(soc_private, &top_priv->top_common,
-			cmd_args, arg_size);
-		break;
-	case CAM_ISP_HW_CMD_DUMP_HW:
-		rc = cam_vfe_hw_dump(top_priv,
-			cmd_args, arg_size);
-		break;
-	case CAM_ISP_HW_CMD_QUERY:
-		rc = cam_vfe_top_query(top_priv, cmd_args, arg_size);
-		break;
-	case CAM_ISP_HW_CMD_GET_IRQ_REGISTER_DUMP:
-		rc = cam_vfe_get_irq_register_dump(top_priv,
-			cmd_args, arg_size);
-		break;
-	case CAM_ISP_HW_CMD_SET_NUM_OF_ACQUIRED_RESOURCE:
-		rc = cam_vfe_set_num_of_acquired_resource(top_priv,
-			cmd_args, arg_size);
-		break;
-	case CAM_ISP_HW_CMD_GET_NUM_OF_ACQUIRED_RESOURCE:
-		rc = cam_vfe_get_num_of_acquired_resource(top_priv,
 			cmd_args, arg_size);
 		break;
 	default:
@@ -892,7 +627,6 @@ int cam_vfe_top_ver2_init(
 	top_priv->common_data.hw_intf      = hw_intf;
 	top_priv->top_common.hw_idx        = hw_intf->hw_idx;
 	top_priv->common_data.common_reg   = ver2_hw_info->common_reg;
-	top_priv->common_data.dump_data    = ver2_hw_info->dump_data;
 
 	return rc;
 

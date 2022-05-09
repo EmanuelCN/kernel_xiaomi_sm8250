@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -19,7 +19,6 @@
 #include "cam_cdm_soc.h"
 #include "cam_io_util.h"
 #include "cam_hw_cdm170_reg.h"
-#include "cam_trace.h"
 
 #define CAM_HW_CDM_CPAS_0_NAME "qcom,cam170-cpas-cdm0"
 #define CAM_HW_CDM_IPE_0_NAME "qcom,cam170-ipe0-cdm"
@@ -381,8 +380,6 @@ int cam_hw_cdm_submit_gen_irq(struct cam_hw_info *cdm_hw,
 		rc = -EIO;
 	}
 
-	trace_cam_log_event("CDM_START", "CDM_START_IRQ", req->data->cookie, 0);
-
 end:
 	return rc;
 }
@@ -563,10 +560,6 @@ static void cam_hw_cdm_work(struct work_struct *work)
 			CAM_DBG(CAM_CDM, "inline IRQ data=0x%x",
 				payload->irq_data);
 			mutex_lock(&cdm_hw->hw_mutex);
-
-			if (atomic_read(&core->work_record))
-				atomic_dec(&core->work_record);
-
 			list_for_each_entry_safe(node, tnode,
 					&core->bl_request_list, entry) {
 				if (node->request_type ==
@@ -672,12 +665,11 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 			kfree(payload);
 			return IRQ_HANDLED;
 		}
-		if (cam_cdm_write_hw_reg(cdm_hw, CDM_IRQ_CLEAR,
-			payload->irq_status))
-			CAM_ERR(CAM_CDM, "Failed to Write CDM HW IRQ Clear");
-		if (cam_cdm_write_hw_reg(cdm_hw, CDM_IRQ_CLEAR_CMD, 0x01))
-			CAM_ERR(CAM_CDM, "Failed to Write CDM HW IRQ cmd");
-
+        if (cam_cdm_write_hw_reg(cdm_hw, CDM_IRQ_CLEAR,
+                                 payload->irq_status))
+            CAM_ERR(CAM_CDM, "Failed to Write CDM HW IRQ Clear");
+        if (cam_cdm_write_hw_reg(cdm_hw, CDM_IRQ_CLEAR_CMD, 0x01))
+            CAM_ERR(CAM_CDM, "Failed to Write CDM HW IRQ cmd");
 		if (payload->irq_status &
 			CAM_CDM_IRQ_STATUS_INFO_INLINE_IRQ_MASK) {
 			if (cam_cdm_read_hw_reg(cdm_hw, CDM_IRQ_USR_DATA,
@@ -686,16 +678,10 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 					"Failed to read CDM HW IRQ data");
 			}
 		}
-		trace_cam_log_event("CDM_DONE", "CDM_DONE_IRQ",
-			payload->irq_status,
-			cdm_hw->soc_info.index);
 		CAM_DBG(CAM_CDM, "Got payload=%d", payload->irq_status);
 		payload->hw = cdm_hw;
 		INIT_WORK((struct work_struct *)&payload->work,
 			cam_hw_cdm_work);
-		if (payload->irq_status &
-			CAM_CDM_IRQ_STATUS_INFO_INLINE_IRQ_MASK)
-			atomic_inc(&cdm_core->work_record);
 		work_status = queue_work(cdm_core->work_queue, &payload->work);
 		if (work_status == false) {
 			CAM_ERR(CAM_CDM, "Failed to queue work for irq=0x%x",
@@ -705,22 +691,6 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 	}
 
 	return IRQ_HANDLED;
-}
-
-int cam_hw_cdm_hang_detect(struct cam_hw_info *cdm_hw, uint32_t handle)
-{
-	struct cam_cdm *cdm_core = NULL;
-	int rc = -1;
-
-	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
-
-	if (atomic_read(&cdm_core->work_record)) {
-		CAM_WARN(CAM_CDM,
-			"workqueue got delayed, work_record :%u",
-			 atomic_read(&cdm_core->work_record));
-		rc = 0;
-	}
-	return rc;
 }
 
 int cam_hw_cdm_alloc_genirq_mem(void *hw_priv)
@@ -798,7 +768,6 @@ int cam_hw_cdm_init(void *hw_priv,
 	CAM_DBG(CAM_CDM, "Enable soc done");
 
 /* Before triggering the reset to HW, clear the reset complete */
-	atomic_set(&cdm_core->work_record, 0);
 	atomic_set(&cdm_core->error, 0);
 	atomic_set(&cdm_core->bl_done, 0);
 	reinit_completion(&cdm_core->reset_complete);
@@ -848,7 +817,6 @@ int cam_hw_cdm_deinit(void *hw_priv,
 
 	soc_info = &cdm_hw->soc_info;
 	cdm_core = cdm_hw->core_info;
-	atomic_set(&cdm_core->work_record, 0);
 	rc = cam_soc_util_disable_platform_resource(soc_info, true, true);
 	if (rc) {
 		CAM_ERR(CAM_CDM, "disable platform failed");
@@ -913,7 +881,6 @@ int cam_hw_cdm_probe(struct platform_device *pdev)
 		cdm_core->flags = CAM_CDM_FLAG_PRIVATE_CDM;
 
 	cdm_core->bl_tag = 0;
-	atomic_set(&cdm_core->work_record, 0);
 	cdm_core->id = cam_hw_cdm_get_id_by_name(cdm_core->name);
 	if (cdm_core->id >= CAM_CDM_MAX) {
 		CAM_ERR(CAM_CDM, "Failed to get CDM HW name for %s",
