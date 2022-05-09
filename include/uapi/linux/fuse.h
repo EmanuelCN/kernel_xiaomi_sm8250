@@ -281,6 +281,7 @@ struct fuse_file_lock {
 #define FOPEN_NONSEEKABLE	(1 << 2)
 #define FOPEN_CACHE_DIR		(1 << 3)
 #define FOPEN_STREAM		(1 << 4)
+#define FOPEN_PARALLEL_WRITES   (1 << 6)
 
 /**
  * INIT request/reply flags
