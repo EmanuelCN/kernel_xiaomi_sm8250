@@ -14,12 +14,11 @@
 #include <media/cam_req_mgr.h>
 #include "cam_req_mgr_util.h"
 #include "cam_debug_util.h"
-#include "cam_subdev.h"
 
 static struct cam_req_mgr_util_hdl_tbl *hdl_tbl;
 static DEFINE_SPINLOCK(hdl_tbl_lock);
 
-static int hdl_count = 0;
+static hdl_count = 0;
 int cam_req_mgr_util_init(void)
 {
 	int rc = 0;
@@ -54,8 +53,7 @@ int cam_req_mgr_util_init(void)
 		goto bitmap_alloc_fail;
 	}
 	hdl_tbl->bits = bitmap_size * BITS_PER_BYTE;
-
-	hdl_count = 0;
+        hdl_count = 0;
 	return rc;
 
 bitmap_alloc_fail:
@@ -124,7 +122,6 @@ static int32_t cam_get_free_handle_index(void)
 	}
 
 	set_bit(idx, hdl_tbl->bitmap);
-
 	hdl_count++;
 	return idx;
 }
@@ -167,14 +164,6 @@ int32_t cam_create_device_hdl(struct cam_create_dev_hdl *hdl_data)
 	int idx;
 	int rand = 0;
 	int32_t handle;
-	bool crm_active;
-
-	crm_active = cam_req_mgr_is_open();
-	if (!crm_active) {
-		CAM_ERR(CAM_ICP, "CRM is not ACTIVE");
-		spin_unlock_bh(&hdl_tbl_lock);
-		return -EINVAL;
-	}
 
 	spin_lock_bh(&hdl_tbl_lock);
 	if (!hdl_tbl) {

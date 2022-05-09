@@ -23,12 +23,6 @@ struct cam_context;
 #define CAM_CTX_CFG_MAX              20
 #define CAM_CTX_RES_MAX              20
 
-/* max tag  dump header string length*/
-#define CAM_CTXT_DUMP_TAG_MAX_LEN 32
-
-/* Number of words to be dumped for context*/
-#define CAM_CTXT_DUMP_NUM_WORDS 10
-
 /**
  * enum cam_ctx_state -  context top level states
  *
@@ -92,7 +86,6 @@ struct cam_ctx_request {
  * @flush_dev:             Function pointer for flush device
  * @acquire_hw:            Function pointer for acquire hw
  * @release_hw:            Function pointer for release hw
- * @dump_dev:              Function pointer for dump dev
  *
  */
 struct cam_ctx_ioctl_ops {
@@ -110,8 +103,6 @@ struct cam_ctx_ioctl_ops {
 			struct cam_flush_dev_cmd *cmd);
 	int (*acquire_hw)(struct cam_context *ctx, void *args);
 	int (*release_hw)(struct cam_context *ctx, void *args);
-	int (*dump_dev)(struct cam_context *ctx,
-			struct cam_dump_req_cmd *cmd);
 };
 
 /**
@@ -123,7 +114,6 @@ struct cam_ctx_ioctl_ops {
  * @apply_req:             Apply setting for the context
  * @flush_req:             Flush request to remove request ids
  * @process_evt:           Handle event notification from CRM.(optional)
- * @dump_req:              Dump information for the issue request
  *
  */
 struct cam_ctx_crm_ops {
@@ -139,8 +129,6 @@ struct cam_ctx_crm_ops {
 			struct cam_req_mgr_flush_request *flush);
 	int (*process_evt)(struct cam_context *ctx,
 			struct cam_req_mgr_link_evt_data *evt_data);
-	int (*dump_req)(struct cam_context *ctx,
-			struct cam_req_mgr_dump_info *dump);
 };
 
 
@@ -232,19 +220,6 @@ struct cam_context {
 };
 
 /**
- * struct cam_context_dump_header -  Function for context dump header
- *
- * @tag         :    Tag for context dump header
- * @size        :    Size of data
- * @word_size   :    Word size of data
- */
-struct cam_context_dump_header {
-	uint8_t   tag[CAM_CTXT_DUMP_TAG_MAX_LEN];
-	uint64_t  size;
-	uint32_t  word_size;
-};
-
-/**
  * cam_context_shutdown()
  *
  * @brief:        Calls while device close or shutdown
@@ -325,18 +300,6 @@ int cam_context_handle_crm_flush_req(struct cam_context *ctx,
  */
 int cam_context_handle_crm_process_evt(struct cam_context *ctx,
 	struct cam_req_mgr_link_evt_data *process_evt);
-
-/**
- * cam_context_handle_crm_dump_req()
- *
- * @brief:        Handle CRM dump request
- *
- * @ctx:          Object pointer for cam_context
- * @dump:         Dump request command payload
- *
- */
-int cam_context_handle_crm_dump_req(struct cam_context *ctx,
-	struct cam_req_mgr_dump_info *dump);
 
 /**
  * cam_context_dump_pf_info()
@@ -446,18 +409,6 @@ int cam_context_handle_start_dev(struct cam_context *ctx,
  */
 int cam_context_handle_stop_dev(struct cam_context *ctx,
 		struct cam_start_stop_dev_cmd *cmd);
-
-/**
- * cam_context_handle_dump_dev()
- *
- * @brief:        Handle dump device command
- *
- * @ctx:          Object pointer for cam_context
- * @cmd:          Dump device command payload
- *
- */
-int cam_context_handle_dump_dev(struct cam_context *ctx,
-	struct cam_dump_req_cmd *cmd);
 
 /**
  * cam_context_handle_info_dump()

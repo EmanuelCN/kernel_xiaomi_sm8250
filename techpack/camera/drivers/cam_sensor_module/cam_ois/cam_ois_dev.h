@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 #ifndef _CAM_OIS_DEV_H_
 #define _CAM_OIS_DEV_H_
@@ -87,12 +87,13 @@ struct cam_ois_intf_params {
 };
 #ifdef ENABLE_OIS_EIS
 struct ois_data_eis_t {
-	uint64_t data_timestamp;
-	uint8_t  data[52];
+    uint64_t data_timestamp;
+    uint8_t  data[52];
 };
+
 struct ois_tele_data_eis_t {
-	uint64_t data_timestamp;
-	uint8_t  data[48];
+    uint64_t data_timestamp;
+    uint8_t  data[48];
 };
 #endif
 /**
@@ -137,12 +138,11 @@ struct cam_ois_ctrl_t {
 	uint8_t ois_fw_flag;
 	uint8_t is_ois_calib;
 	struct cam_ois_opcode opcode;
-	uint32_t open_cnt;
 	struct i2c_settings_array i2c_pre_init_data;
 	uint8_t is_ois_pre_init;
 #ifdef ENABLE_OIS_EIS
-	struct ois_data_eis_t ois_data;
-	struct ois_tele_data_eis_t ois_tele_data;
+    struct ois_data_eis_t ois_data;
+    struct ois_tele_data_eis_t ois_tele_data;
 #endif
 };
 

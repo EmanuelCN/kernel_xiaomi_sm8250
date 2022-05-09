@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/uaccess.h>
@@ -177,9 +177,7 @@ static int cam_jpeg_mgr_process_irq(void *priv, void *data)
 		PTR_TO_U64(p_cfg_req->hw_cfg_args.priv);
 	ctx_data->ctxt_event_cb(ctx_data->context_priv, 0, &buf_data);
 
-	mutex_lock(&g_jpeg_hw_mgr.hw_mgr_mutex);
 	list_add_tail(&p_cfg_req->list, &hw_mgr->free_req_list);
-	mutex_unlock(&g_jpeg_hw_mgr.hw_mgr_mutex);
 	return rc;
 }
 
@@ -484,7 +482,6 @@ static int cam_jpeg_mgr_process_cmd(void *priv, void *data)
 			rc);
 		goto end_callcb;
 	}
-	p_cfg_req->submit_timestamp = ktime_get();
 
 	mutex_unlock(&hw_mgr->hw_mgr_mutex);
 	return rc;
@@ -728,12 +725,10 @@ static int cam_jpeg_mgr_prepare_hw_update(void *hw_mgr_priv,
 	}
 
 	if ((packet->num_cmd_buf > 5) || !packet->num_patches ||
-		!packet->num_io_configs ||
-		(packet->num_io_configs > CAM_JPEG_IMAGE_MAX)) {
-		CAM_ERR(CAM_JPEG,
-			"wrong number of cmd/patch/io_configs info: %u %u %u",
-			packet->num_cmd_buf, packet->num_patches,
-			packet->num_io_configs);
+		!packet->num_io_configs) {
+		CAM_ERR(CAM_JPEG, "wrong number of cmd/patch info: %u %u",
+			packet->num_cmd_buf,
+			packet->num_patches);
 		return -EINVAL;
 	}
 
@@ -1287,16 +1282,6 @@ copy_error:
 	return rc;
 }
 
-static void cam_req_mgr_process_workq_jpeg_command_queue(struct work_struct *w)
-{
-	cam_req_mgr_process_workq(w);
-}
-
-static void cam_req_mgr_process_workq_jpeg_message_queue(struct work_struct *w)
-{
-	cam_req_mgr_process_workq(w);
-}
-
 static int cam_jpeg_setup_workqs(void)
 {
 	int rc, i;
@@ -1305,8 +1290,7 @@ static int cam_jpeg_setup_workqs(void)
 		"jpeg_command_queue",
 		CAM_JPEG_WORKQ_NUM_TASK,
 		&g_jpeg_hw_mgr.work_process_frame,
-		CRM_WORKQ_USAGE_NON_IRQ, 0, false,
-		cam_req_mgr_process_workq_jpeg_command_queue);
+		CRM_WORKQ_USAGE_NON_IRQ, 0);
 	if (rc) {
 		CAM_ERR(CAM_JPEG, "unable to create a worker %d", rc);
 		goto work_process_frame_failed;
@@ -1316,8 +1300,7 @@ static int cam_jpeg_setup_workqs(void)
 		"jpeg_message_queue",
 		CAM_JPEG_WORKQ_NUM_TASK,
 		&g_jpeg_hw_mgr.work_process_irq_cb,
-		CRM_WORKQ_USAGE_IRQ, 0, false,
-		cam_req_mgr_process_workq_jpeg_message_queue);
+		CRM_WORKQ_USAGE_IRQ, 0);
 	if (rc) {
 		CAM_ERR(CAM_JPEG, "unable to create a worker %d", rc);
 		goto work_process_irq_cb_failed;
@@ -1501,143 +1484,6 @@ num_dev_failed:
 	return rc;
 }
 
-static int cam_jpeg_mgr_hw_dump(void *hw_mgr_priv, void *dump_hw_args)
-{
-	int                             rc;
-	uint8_t                        *dst;
-	ktime_t                         cur_time;
-	size_t                          remain_len;
-	uint32_t                        min_len;
-	uint32_t                        dev_type;
-	uint64_t                        diff;
-	uint64_t                       *addr, *start;
-	struct timespec64               cur_ts;
-	struct timespec64               req_ts;
-	struct cam_jpeg_hw_mgr         *hw_mgr;
-	struct cam_hw_dump_args        *dump_args;
-	struct cam_jpeg_hw_cfg_req     *p_cfg_req;
-	struct cam_jpeg_hw_ctx_data    *ctx_data;
-	struct cam_jpeg_hw_dump_args    jpeg_dump_args;
-	struct cam_jpeg_hw_dump_header *hdr;
-
-	if (!hw_mgr_priv || !dump_hw_args) {
-		CAM_ERR(CAM_JPEG, "Invalid args %pK %pK",
-			hw_mgr_priv, dump_hw_args);
-		return -EINVAL;
-	}
-
-	hw_mgr = hw_mgr_priv;
-	dump_args = (struct cam_hw_dump_args *)dump_hw_args;
-	ctx_data = (struct cam_jpeg_hw_ctx_data *)dump_args->ctxt_to_hw_map;
-
-	if (!ctx_data) {
-		CAM_ERR(CAM_JPEG, "Invalid context");
-		return -EINVAL;
-	}
-
-	mutex_lock(&hw_mgr->hw_mgr_mutex);
-
-	if (!ctx_data->in_use) {
-		CAM_ERR(CAM_JPEG, "ctx is not in use");
-		mutex_unlock(&hw_mgr->hw_mgr_mutex);
-		return -EINVAL;
-	}
-
-	dev_type = ctx_data->jpeg_dev_acquire_info.dev_type;
-
-	if (true == hw_mgr->device_in_use[dev_type][0]) {
-		p_cfg_req = hw_mgr->dev_hw_cfg_args[dev_type][0];
-		if (p_cfg_req  && p_cfg_req->req_id ==
-			    (uintptr_t)dump_args->request_id)
-			goto hw_dump;
-	}
-
-	mutex_unlock(&hw_mgr->hw_mgr_mutex);
-	return 0;
-
-hw_dump:
-	cur_time = ktime_get();
-	diff = ktime_us_delta(cur_time, p_cfg_req->submit_timestamp);
-	cur_ts = ktime_to_timespec64(cur_time);
-	req_ts = ktime_to_timespec64(p_cfg_req->submit_timestamp);
-
-	if (diff < CAM_JPEG_RESPONSE_TIME_THRESHOLD) {
-		CAM_INFO(CAM_JPEG,
-			"No error req %lld %ld:%06ld %ld:%06ld",
-			dump_args->request_id,
-			req_ts.tv_sec,
-			req_ts.tv_nsec/NSEC_PER_USEC,
-			cur_ts.tv_sec,
-			cur_ts.tv_nsec/NSEC_PER_USEC);
-		mutex_unlock(&hw_mgr->hw_mgr_mutex);
-		return 0;
-	}
-
-	CAM_INFO(CAM_JPEG,
-		"Error req %lld %ld:%06ld %ld:%06ld",
-		dump_args->request_id,
-		req_ts.tv_sec,
-		req_ts.tv_nsec/NSEC_PER_USEC,
-		cur_ts.tv_sec,
-		cur_ts.tv_nsec/NSEC_PER_USEC);
-	rc  = cam_mem_get_cpu_buf(dump_args->buf_handle,
-		&jpeg_dump_args.cpu_addr, &jpeg_dump_args.buf_len);
-	if (rc) {
-		CAM_ERR(CAM_JPEG, "Invalid handle %u rc %d",
-			dump_args->buf_handle, rc);
-		mutex_unlock(&hw_mgr->hw_mgr_mutex);
-		return -rc;
-	}
-
-	if (jpeg_dump_args.buf_len <= dump_args->offset) {
-		CAM_WARN(CAM_JPEG, "dump offset overshoot len %zu offset %zu",
-			jpeg_dump_args.buf_len, dump_args->offset);
-		mutex_unlock(&hw_mgr->hw_mgr_mutex);
-		return -ENOSPC;
-	}
-
-	remain_len = jpeg_dump_args.buf_len - dump_args->offset;
-	min_len = sizeof(struct cam_jpeg_hw_dump_header) +
-			(CAM_JPEG_HW_DUMP_NUM_WORDS * sizeof(uint64_t));
-	if (remain_len < min_len) {
-		CAM_WARN(CAM_JPEG, "dump buffer exhaust remain %zu min %u",
-			remain_len, min_len);
-		mutex_unlock(&hw_mgr->hw_mgr_mutex);
-		return -ENOSPC;
-	}
-
-	dst = (uint8_t *)jpeg_dump_args.cpu_addr + dump_args->offset;
-	hdr = (struct cam_jpeg_hw_dump_header *)dst;
-	scnprintf(hdr->tag, CAM_JPEG_HW_DUMP_TAG_MAX_LEN,
-		"JPEG_REQ:");
-	hdr->word_size = sizeof(uint64_t);
-	addr = (uint64_t *)(dst + sizeof(struct cam_jpeg_hw_dump_header));
-	start = addr;
-	*addr++ = dump_args->request_id;
-	*addr++ = req_ts.tv_sec;
-	*addr++ = req_ts.tv_nsec/NSEC_PER_USEC;
-	*addr++ = cur_ts.tv_sec;
-	*addr++ = cur_ts.tv_nsec/NSEC_PER_USEC;
-	hdr->size = hdr->word_size * (addr - start);
-	dump_args->offset += hdr->size +
-		sizeof(struct cam_jpeg_hw_dump_header);
-	jpeg_dump_args.request_id = dump_args->request_id;
-	jpeg_dump_args.offset = dump_args->offset;
-
-	if (hw_mgr->devices[dev_type][0]->hw_ops.process_cmd) {
-		rc = hw_mgr->devices[dev_type][0]->hw_ops.process_cmd(
-			hw_mgr->devices[dev_type][0]->hw_priv,
-			CAM_JPEG_CMD_HW_DUMP,
-			&jpeg_dump_args, sizeof(jpeg_dump_args));
-	}
-
-	mutex_unlock(&hw_mgr->hw_mgr_mutex);
-	CAM_DBG(CAM_JPEG, "Offset before %u after %u",
-		dump_args->offset, jpeg_dump_args.offset);
-	dump_args->offset = jpeg_dump_args.offset;
-	return rc;
-}
-
 static int cam_jpeg_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 {
 	int rc = 0;
@@ -1691,7 +1537,6 @@ int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 	hw_mgr_intf->hw_flush = cam_jpeg_mgr_hw_flush;
 	hw_mgr_intf->hw_stop = cam_jpeg_mgr_hw_stop;
 	hw_mgr_intf->hw_cmd = cam_jpeg_mgr_cmd;
-	hw_mgr_intf->hw_dump = cam_jpeg_mgr_hw_dump;
 
 	mutex_init(&g_jpeg_hw_mgr.hw_mgr_mutex);
 	spin_lock_init(&g_jpeg_hw_mgr.hw_mgr_lock);

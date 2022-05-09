@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  */
 
 #include "cam_req_mgr_workq.h"
@@ -88,7 +88,7 @@ static int cam_req_mgr_process_task(struct crm_workq_task *task)
  * cam_req_mgr_process_workq() - main loop handling
  * @w: workqueue task pointer
  */
-void cam_req_mgr_process_workq(struct work_struct *w)
+static void cam_req_mgr_process_workq(struct work_struct *w)
 {
 	struct cam_req_mgr_core_workq *workq = NULL;
 	struct crm_workq_task         *task;
@@ -172,7 +172,7 @@ end:
 
 int cam_req_mgr_workq_create(char *name, int32_t num_tasks,
 	struct cam_req_mgr_core_workq **workq, enum crm_workq_context in_irq,
-	int flags, bool is_static_payload, void (*func)(struct work_struct *w))
+	int flags)
 {
 	int32_t i, wq_flags = 0, max_active_tasks = 0;
 	struct crm_workq_task  *task;
@@ -202,7 +202,7 @@ int cam_req_mgr_workq_create(char *name, int32_t num_tasks,
 		}
 
 		/* Workq attributes initialization */
-		INIT_WORK(&crm_workq->work, func);
+		INIT_WORK(&crm_workq->work, cam_req_mgr_process_workq);
 		spin_lock_init(&crm_workq->lock_bh);
 		CAM_DBG(CAM_CRM, "LOCK_DBG workq %s lock %pK",
 			name, &crm_workq->lock_bh);
@@ -214,7 +214,6 @@ int cam_req_mgr_workq_create(char *name, int32_t num_tasks,
 			INIT_LIST_HEAD(&crm_workq->task.process_head[i]);
 		INIT_LIST_HEAD(&crm_workq->task.empty_head);
 		crm_workq->in_irq = in_irq;
-		crm_workq->is_static_payload = is_static_payload;
 		crm_workq->task.num_task = num_tasks;
 		crm_workq->task.pool = kcalloc(crm_workq->task.num_task,
 				sizeof(struct crm_workq_task), GFP_KERNEL);
@@ -259,10 +258,8 @@ void cam_req_mgr_workq_destroy(struct cam_req_mgr_core_workq **crm_workq)
 		}
 
 		/* Destroy workq payload data */
-		if (!((*crm_workq)->is_static_payload)) {
-			kfree((*crm_workq)->task.pool[0].payload);
-			(*crm_workq)->task.pool[0].payload = NULL;
-		}
+		kfree((*crm_workq)->task.pool[0].payload);
+		(*crm_workq)->task.pool[0].payload = NULL;
 		kfree((*crm_workq)->task.pool);
 		kfree(*crm_workq);
 		*crm_workq = NULL;
