@@ -1327,6 +1327,16 @@ config UCLAMP_ASSIST
 	help
 	  This option enabled in-kernel uclamp setting overrides
 
+config RT_SOFTIRQ_AWARE_SCHED
+	bool "Improve RT scheduling during long softirq execution"
+	depends on SMP && !PREEMPT_RT
+	default n
+	help
+	  Enable an optimization which tries to avoid placing RT tasks on CPUs
+	  occupied by nonpreemptible tasks, such as a long softirq or CPUs
+	  which may soon block preemptions, such as a CPU running a ksoftirq
+	  thread which handles slow softirqs.
+
 config CPUSET_ASSIST
 	bool "Cpuset configuration helper"
 	depends on CPUSETS
