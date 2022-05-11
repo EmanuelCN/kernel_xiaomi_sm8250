@@ -477,12 +477,8 @@ int kgsl_drawobj_sync_add_sync(struct kgsl_device *device,
 	struct kgsl_drawobj_sync *syncobj,
 	struct kgsl_cmd_syncpoint *sync)
 {
-	union {
-		struct kgsl_cmd_syncpoint_timestamp sync_timestamp;
-		struct kgsl_cmd_syncpoint_fence sync_fence;
-	} data;
 	void *priv;
-	int psize;
+	int ret, psize;
 	struct kgsl_drawobj *drawobj = DRAWOBJ(syncobj);
 	int (*func)(struct kgsl_device *device,
 			struct kgsl_drawobj_sync *syncobj,
@@ -492,12 +488,10 @@ int kgsl_drawobj_sync_add_sync(struct kgsl_device *device,
 	case KGSL_CMD_SYNCPOINT_TYPE_TIMESTAMP:
 		psize = sizeof(struct kgsl_cmd_syncpoint_timestamp);
 		func = drawobj_add_sync_timestamp;
-		priv = &data.sync_timestamp;
 		break;
 	case KGSL_CMD_SYNCPOINT_TYPE_FENCE:
 		psize = sizeof(struct kgsl_cmd_syncpoint_fence);
 		func = drawobj_add_sync_fence;
-		priv = &data.sync_fence;
 		break;
 	default:
 		dev_err(device->dev,
@@ -513,10 +507,14 @@ int kgsl_drawobj_sync_add_sync(struct kgsl_device *device,
 		return -EINVAL;
 	}
 
-	if (copy_from_user(priv, sync->priv, sync->size))
-		return -EFAULT;
+	priv = memdup_user(sync->priv, sync->size);
+	if (IS_ERR(priv))
+		return PTR_ERR(priv);
 
-	return func(device, syncobj, priv);
+	ret = func(device, syncobj, priv);
+	kfree(priv);
+
+	return ret;
 }
 
 static void add_profiling_buffer(struct kgsl_device *device,
