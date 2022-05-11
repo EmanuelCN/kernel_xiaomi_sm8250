@@ -43,9 +43,8 @@ static bool is_aligned(const void *base, size_t size, unsigned char align)
 
 /**
  * swap_words_32 - swap two elements in 32-bit chunks
- * @a: pointer to the first element to swap
- * @b: pointer to the second element to swap
- * @n: element size (must be a multiple of 4)
+ * @a, @b: pointers to the elements
+ * @size: element size (must be a multiple of 4)
  *
  * Exchange the two objects in memory.  This exploits base+index addressing,
  * which basically all CPUs have, to minimize loop overhead computations.
@@ -66,9 +65,8 @@ static void swap_words_32(void *a, void *b, size_t n)
 
 /**
  * swap_words_64 - swap two elements in 64-bit chunks
- * @a: pointer to the first element to swap
- * @b: pointer to the second element to swap
- * @n: element size (must be a multiple of 8)
+ * @a, @b: pointers to the elements
+ * @size: element size (must be a multiple of 8)
  *
  * Exchange the two objects in memory.  This exploits base+index
  * addressing, which basically all CPUs have, to minimize loop overhead
@@ -102,9 +100,8 @@ static void swap_words_64(void *a, void *b, size_t n)
 
 /**
  * swap_bytes - swap two elements a byte at a time
- * @a: pointer to the first element to swap
- * @b: pointer to the second element to swap
- * @n: element size
+ * @a, @b: pointers to the elements
+ * @size: element size
  *
  * This is the fallback if alignment doesn't allow using larger chunks.
  */
