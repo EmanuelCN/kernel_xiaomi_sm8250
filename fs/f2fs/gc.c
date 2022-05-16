@@ -15,7 +15,7 @@
 #include <linux/freezer.h>
 #include <linux/sched/signal.h>
 #include <linux/pm_wakeup.h>
-#include <linux/msm_drm_notify.h>
+#include <drm/drm_notifier_mi.h>
 #include <linux/power_supply.h>
 
 #include "f2fs.h"
@@ -303,13 +303,13 @@ static void rapid_gc_fb_work(struct work_struct *work)
 	}
 }
 
-static int msm_drm_notifier_callback(struct notifier_block *self,
+static int mi_drm_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data)
 {
-	struct msm_drm_notifier *evdata = data;
+	struct mi_drm_notifier *evdata = data;
 	int *blank;
 
-	if (event != MSM_DRM_EVENT_BLANK)
+	if (event != MI_DRM_EVENT_BLANK)
 		goto out;
 
 	if (!evdata || !evdata->data)
@@ -317,13 +317,13 @@ static int msm_drm_notifier_callback(struct notifier_block *self,
 
 	blank = evdata->data;
 	switch (*blank) {
-	case MSM_DRM_BLANK_POWERDOWN:
+	case MI_DRM_BLANK_POWERDOWN:
 		if (!screen_on)
 			goto out;
 		screen_on = false;
 		queue_work(system_power_efficient_wq, &rapid_gc_fb_worker);
 		break;
-	case MSM_DRM_BLANK_UNBLANK:
+	case MI_DRM_BLANK_UNBLANK:
 		if (screen_on)
 			goto out;
 		screen_on = true;
@@ -336,19 +336,19 @@ out:
 }
 
 static struct notifier_block fb_notifier_block = {
-	.notifier_call = msm_drm_notifier_callback,
+	.notifier_call = mi_drm_notifier_callback,
 };
 
 void __init f2fs_init_rapid_gc(void)
 {
 	INIT_WORK(&rapid_gc_fb_worker, rapid_gc_fb_work);
 	gc_wakelock = wakeup_source_register(NULL, "f2fs_rapid_gc_wakelock");
-	msm_drm_register_client(&fb_notifier_block);
+	mi_drm_register_client(&fb_notifier_block);
 }
 
 void __exit f2fs_destroy_rapid_gc(void)
 {
-	msm_drm_unregister_client(&fb_notifier_block);
+	mi_drm_unregister_client(&fb_notifier_block);
 	wakeup_source_unregister(gc_wakelock);
 }
 
