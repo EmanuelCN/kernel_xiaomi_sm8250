@@ -86,6 +86,7 @@ uint32_t sde_sync_get_name_prefix(void *fence)
 struct sde_fence {
 	struct dma_fence base;
 	struct sde_fence_context *ctx;
+	char name[SDE_FENCE_NAME_SIZE];
 	struct list_head	fence_list;
 	int fd;
 };
