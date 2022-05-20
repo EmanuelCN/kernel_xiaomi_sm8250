@@ -5827,6 +5827,33 @@ static int fts_set_fod_status(int value)
 	return res;
 }
 
+#if defined(GESTURE_MODE) && defined(CONFIG_TOUCHSCREEN_COMMON) && defined(CONFIG_TOUCHSCREEN_FOD)
+static ssize_t fod_status_show(struct kobject *kobj,
+                               struct kobj_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", fts_info->fod_status);
+}
+
+static ssize_t fod_status_store(struct kobject *kobj,
+                                struct kobj_attribute *attr, const char *buf,
+                                size_t count)
+{
+    int rc, val;
+
+    rc = kstrtoint(buf, 10, &val);
+    if (rc)
+    return -EINVAL;
+
+    fts_set_fod_status(val);
+    return count;
+}
+
+static struct tp_common_ops fod_status_ops = {
+    .show = fod_status_show,
+    .store = fod_status_store
+};
+#endif
+
 static int fts_set_aod_status(int value)
 {
 	fts_info->aod_status = value;
@@ -7697,16 +7724,12 @@ static int fts_probe(struct spi_device *client)
 	mutex_init(&(info->input_report_mutex));
 #ifdef GESTURE_MODE
 	mutex_init(&gestureMask_mutex);
-#ifdef CONFIG_TOUCHSCREEN_COMMON
-	ret = tp_common_set_double_tap_ops(&double_tap_ops);
-	if (ret < 0)
-		MI_TOUCH_LOGE(1, "%s %s: Failed to create double_tap node err=%d\n",
-			tag, __func__, ret);
+#endif
 
-	ret = tp_common_set_fp_state_ops(&fp_state_ops);
-	if (ret < 0)
-		MI_TOUCH_LOGE(1, "%s %s: Failed to create fp_state node err=%d\n",
-			tag, __func__, ret);
+#if defined(GESTURE_MODE) && defined(CONFIG_TOUCHSCREEN_COMMON)
+	tp_common_set_double_tap_ops(&double_tap_ops);
+#ifdef CONFIG_TOUCHSCREEN_FOD
+	tp_common_set_fod_status_ops(&fod_status_ops);
 #endif
 #endif
 
