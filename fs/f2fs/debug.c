@@ -582,6 +582,7 @@ static int stat_show(struct seq_file *s, void *v)
 #ifdef CONFIG_DEBUG_FS
 DEFINE_SHOW_ATTRIBUTE(stat);
 #endif
+
 int f2fs_build_stats(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *raw_super = F2FS_RAW_SUPER(sbi);
