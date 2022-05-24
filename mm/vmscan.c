@@ -3970,6 +3970,7 @@ static void lru_gen_age_node(struct pglist_data *pgdat, struct scan_control *sc)
 	 * memcgs are either below min or empty.
 	 */
 	if (!success) {
+		pr_err("mglru: min_ttl unsatisfied, calling OOM killer\n");
 #ifdef CONFIG_ANDROID_SIMPLE_LMK
 		simple_lmk_trigger();
 #else
