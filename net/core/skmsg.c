@@ -490,6 +490,7 @@ struct sk_psock *sk_psock_init(struct sock *sk, int node)
 
 	psock->sk = sk;
 	psock->eval =  __SK_NONE;
+	psock->saved_destroy = prot->destroy;
 
 	INIT_LIST_HEAD(&psock->link);
 	spin_lock_init(&psock->link_lock);
