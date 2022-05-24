@@ -9,8 +9,12 @@ struct mm_struct;
 
 #ifdef CONFIG_ANDROID_SIMPLE_LMK
 void simple_lmk_mm_freed(struct mm_struct *mm);
+void simple_lmk_trigger(void);
 #else
 static inline void simple_lmk_mm_freed(struct mm_struct *mm)
+{
+}
+static inline void simple_lmk_trigger(void)
 {
 }
 #endif
