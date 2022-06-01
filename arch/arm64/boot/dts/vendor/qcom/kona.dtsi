@@ -359,8 +359,8 @@
 				vendor {
 					compatible = "android,vendor";
 					dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/vendor";
-					type = "erofs";
-					mnt_flags = "ro";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,discard";
 					fsmgr_flags = "wait,avb";
 					status = "ok";
 				};
