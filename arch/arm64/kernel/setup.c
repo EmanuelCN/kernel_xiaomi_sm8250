@@ -318,13 +318,14 @@ void __init setup_arch(char **cmdline_p)
 	early_fixmap_init();
 	early_ioremap_init();
 
-	setup_machine_fdt(__fdt_pointer);
-
 	/*
 	 * Initialise the static keys early as they may be enabled by the
-	 * cpufeature code and early parameters.
+	 * cpufeature code, early parameters, and DT setup.
 	 */
 	jump_label_init();
+
+	setup_machine_fdt(__fdt_pointer);
+
 	parse_early_param();
 
 	/*
