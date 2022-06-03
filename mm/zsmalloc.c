@@ -854,7 +854,7 @@ static int get_pages_per_zspage(int class_size)
 
 static struct zspage *get_zspage(struct page *page)
 {
-	struct zspage *zspage = (struct zspage *)page_private(page);
+	struct zspage *zspage = (struct zspage *)page->private;
 
 	BUG_ON(zspage->magic != ZSPAGE_MAGIC);
 	return zspage;
