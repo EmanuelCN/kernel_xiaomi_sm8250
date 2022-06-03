@@ -78,7 +78,7 @@
 
 /*
  * Object location (<PFN>, <obj_idx>) is encoded as
- * a single (unsigned long) handle value.
+ * as single (unsigned long) handle value.
  *
  * Note that object index <obj_idx> starts from 0.
  *
