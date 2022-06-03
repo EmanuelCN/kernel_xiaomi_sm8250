@@ -1156,16 +1156,10 @@ static inline int __zs_cpu_up(struct mapping_area *area)
 	 */
 	if (area->vm)
 		return 0;
-	area->vm = get_vm_area(PAGE_SIZE * 2, 0);
+	area->vm = alloc_vm_area(PAGE_SIZE * 2, NULL);
 	if (!area->vm)
 		return -ENOMEM;
-
-	/*
-	 * Populate ptes in advance to avoid pte allocation with GFP_KERNEL
-	 * in non-preemtible context of zs_map_object.
-	 */
-	return apply_to_page_range(&init_mm, (unsigned long)area->vm->addr,
-			PAGE_SIZE * 2, NULL, NULL);
+	return 0;
 }
 
 static inline void __zs_cpu_down(struct mapping_area *area)
