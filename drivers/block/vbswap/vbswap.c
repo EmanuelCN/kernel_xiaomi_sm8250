@@ -22,38 +22,41 @@
 #define VBSWAP_SECTOR_PER_LOGICAL_BLOCK	(1 << \
 	(VBSWAP_LOGICAL_BLOCK_SHIFT - SECTOR_SHIFT))
 
-// vbswap is intentionally designed to expose 1 disk only
+struct vbswap {
+	struct request_queue *queue;
+	struct gendisk *disk;
+	u64 disksize;	/* bytes */
+	int init_success;
+};
 
 /* Globals */
 static int vbswap_major;
-static struct gendisk *vbswap_disk;
-static u64 vbswap_disksize;
+static struct vbswap *vbswap_device;
 static struct page *swap_header_page;
-static bool vbswap_initialized;
 
 static void vbswap_init_disksize(u64 disksize)
 {
-	if (vbswap_initialized) {
+	if (vbswap_device->init_success) {
 		pr_err("%s %d: disksize is already initialized (disksize = %llu)\n",
-				__func__, __LINE__, vbswap_disksize);
+				__func__, __LINE__, vbswap_device->disksize);
 		return;
 	}
 
-	vbswap_disksize = PAGE_ALIGN(disksize);
-	if (!vbswap_disksize) {
+	vbswap_device->disksize = PAGE_ALIGN(disksize);
+	if (!vbswap_device->disksize) {
 		pr_err("%s %d: disksize is invalid (disksize = %llu)\n",
-		       __func__, __LINE__, vbswap_disksize);
-		vbswap_disksize = 0;
-		vbswap_initialized = 0;
+		       __func__, __LINE__, vbswap_device->disksize);
+		vbswap_device->disksize = 0;
+		vbswap_device->init_success = 0;
 		return;
 	}
-	set_capacity(vbswap_disk,
-		     vbswap_disksize >> SECTOR_SHIFT);
+	set_capacity(vbswap_device->disk,
+		     vbswap_device->disksize >> SECTOR_SHIFT);
 
-	vbswap_initialized = 1;
+	vbswap_device->init_success = 1;
 }
 
-static int vbswap_bvec_read(struct bio_vec bvec,
+static int vbswap_bvec_read(struct vbswap *vbswap, struct bio_vec bvec,
 			    u32 index, struct bio *bio)
 {
 	struct page *page;
@@ -76,7 +79,7 @@ static int vbswap_bvec_read(struct bio_vec bvec,
 	return 0;
 }
 
-static int vbswap_bvec_write(struct bio_vec bvec,
+static int vbswap_bvec_write(struct vbswap *vbswap, struct bio_vec bvec,
 			     u32 index, struct bio *bio)
 {
 	struct page *page;
@@ -98,7 +101,7 @@ static int vbswap_bvec_write(struct bio_vec bvec,
 	return 0;
 }
 
-static int vbswap_bvec_rw(struct bio_vec bvec,
+static int vbswap_bvec_rw(struct vbswap *vbswap, struct bio_vec bvec,
 			  u32 index, struct bio *bio, int rw)
 {
 	int ret;
@@ -106,17 +109,18 @@ static int vbswap_bvec_rw(struct bio_vec bvec,
 	if (rw == READ) {
 		pr_debug("%s %d: (rw,index) = (%d, %d)\n",
 			 __func__, __LINE__, rw, index);
-		ret = vbswap_bvec_read(bvec, index, bio);
+		ret = vbswap_bvec_read(vbswap, bvec, index, bio);
 	} else {
 		pr_debug("%s %d: (rw,index) = (%d, %d)\n",
 			 __func__, __LINE__, rw, index);
-		ret = vbswap_bvec_write(bvec, index, bio);
+		ret = vbswap_bvec_write(vbswap, bvec, index, bio);
 	}
 
 	return ret;
 }
 
-static void __vbswap_make_request(struct bio *bio, int rw)
+static void __vbswap_make_request(struct vbswap *vbswap,
+				  struct bio *bio, int rw)
 {
 	int offset, ret;
 	u32 index, is_swap_header_page;
@@ -165,7 +169,7 @@ static void __vbswap_make_request(struct bio *bio, int rw)
 			 "(%d, %d, %d)\n",
 			 __func__, __LINE__, rw, index, bvec.bv_len);
 
-		ret = vbswap_bvec_rw(bvec, index, bio, rw);
+		ret = vbswap_bvec_rw(vbswap, bvec, index, bio, rw);
 		if (ret < 0) {
 			if (ret != -ENOSPC)
 				pr_err("%s %d: vbswap_bvec_rw failed."
@@ -195,10 +199,11 @@ out_error:
 /*
  * Check if request is within bounds and aligned on vbswap logical blocks.
  */
-static inline int vbswap_valid_io_request(struct bio *bio)
+static inline int vbswap_valid_io_request(struct vbswap *vbswap,
+					  struct bio *bio)
 {
 	if (unlikely(
-		(bio->bi_iter.bi_sector >= (vbswap_disksize >> SECTOR_SHIFT)) ||
+		(bio->bi_iter.bi_sector >= (vbswap->disksize >> SECTOR_SHIFT)) ||
 		(bio->bi_iter.bi_sector & (VBSWAP_SECTOR_PER_LOGICAL_BLOCK - 1)) ||
 		(bio->bi_iter.bi_size & (VBSWAP_LOGICAL_BLOCK_SIZE - 1)))) {
 
@@ -224,20 +229,20 @@ static blk_qc_t vbswap_make_request(struct request_queue *queue,
 
 	vbswap = queue->queuedata;
 
-	if (!vbswap_valid_io_request(bio)) {
+	if (!vbswap_valid_io_request(vbswap, bio)) {
 		pr_err("%s %d: invalid io request. "
 		       "(bio->bi_iter.bi_sector, bio->bi_iter.bi_size,"
-		       "vbswap_disksize) = "
+		       "vbswap->disksize) = "
 		       "(%llu, %d, %llu)\n",
 		       __func__, __LINE__,
 		       (unsigned long long)bio->bi_iter.bi_sector,
-		       bio->bi_iter.bi_size, vbswap_disksize);
+		       bio->bi_iter.bi_size, vbswap->disksize);
 
 		bio_io_error(bio);
 		return BLK_QC_T_NONE;
 	}
 
-	__vbswap_make_request(bio, bio_data_dir(bio));
+	__vbswap_make_request(vbswap, bio, bio_data_dir(bio));
 	return BLK_QC_T_NONE;
 }
 
@@ -248,7 +253,7 @@ static const struct block_device_operations vbswap_fops = {
 static ssize_t disksize_show(struct device *dev,
 			     struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%llu\n", vbswap_disksize);
+	return sprintf(buf, "%llu\n", vbswap_device->disksize);
 }
 
 static ssize_t disksize_store(struct device *dev,
@@ -277,64 +282,67 @@ static struct attribute_group vbswap_disk_attr_group = {
 	.attrs = vbswap_disk_attrs,
 };
 
-static int create_device(void)
+static int create_device(struct vbswap *vbswap)
 {
 	int ret;
 
-	/* gendisk structure */
-	vbswap_disk = alloc_disk(1);
-	if (!vbswap_disk) {
-		pr_err("%s %d: Error allocating disk structure for device\n",
+	vbswap->queue = blk_alloc_queue(GFP_KERNEL);
+	if (!vbswap->queue) {
+		pr_err("%s %d: Error allocating disk queue for device\n",
 		       __func__, __LINE__);
 		ret = -ENOMEM;
 		goto out;
 	}
 
-	vbswap_disk->queue = blk_alloc_queue(GFP_KERNEL);
-	if (!vbswap_disk->queue) {
-		pr_err("%s %d: Error allocating disk queue for device\n",
+	blk_queue_make_request(vbswap->queue, vbswap_make_request);
+	vbswap->queue->queuedata = vbswap;
+
+	/* gendisk structure */
+	vbswap->disk = alloc_disk(1);
+	if (!vbswap->disk) {
+		blk_cleanup_queue(vbswap->queue);
+		pr_err("%s %d: Error allocating disk structure for device\n",
 		       __func__, __LINE__);
 		ret = -ENOMEM;
-		goto out_put_disk;
+		goto out_free_queue;
 	}
 
-	blk_queue_make_request(vbswap_disk->queue, vbswap_make_request);
-
-	vbswap_disk->major = vbswap_major;
-	vbswap_disk->first_minor = 0;
-	vbswap_disk->fops = &vbswap_fops;
-	vbswap_disk->private_data = NULL;
-	snprintf(vbswap_disk->disk_name, 16, "vbswap%d", 0);
+	vbswap->disk->major = vbswap_major;
+	vbswap->disk->first_minor = 0;
+	vbswap->disk->fops = &vbswap_fops;
+	vbswap->disk->queue = vbswap->queue;
+	vbswap->disk->private_data = vbswap;
+	snprintf(vbswap->disk->disk_name, 16, "vbswap%d", 0);
 
 	/* Actual capacity set using sysfs (/sys/block/vbswap<id>/disksize) */
-	set_capacity(vbswap_disk, 0);
+	set_capacity(vbswap->disk, 0);
 
 	/*
 	 * To ensure that we always get PAGE_SIZE aligned
 	 * and n*PAGE_SIZED sized I/O requests.
 	 */
-	blk_queue_physical_block_size(vbswap_disk->queue, PAGE_SIZE);
-	blk_queue_logical_block_size(vbswap_disk->queue,
+	blk_queue_physical_block_size(vbswap->disk->queue, PAGE_SIZE);
+	blk_queue_logical_block_size(vbswap->disk->queue,
 				     VBSWAP_LOGICAL_BLOCK_SIZE);
-	blk_queue_io_min(vbswap_disk->queue, PAGE_SIZE);
-	blk_queue_io_opt(vbswap_disk->queue, PAGE_SIZE);
-	blk_queue_max_hw_sectors(vbswap_disk->queue, PAGE_SIZE / SECTOR_SIZE);
+	blk_queue_io_min(vbswap->disk->queue, PAGE_SIZE);
+	blk_queue_io_opt(vbswap->disk->queue, PAGE_SIZE);
+	blk_queue_max_hw_sectors(vbswap->disk->queue, PAGE_SIZE / SECTOR_SIZE);
 
-	add_disk(vbswap_disk);
+	add_disk(vbswap->disk);
 
-	vbswap_disksize = 0;
-	vbswap_initialized = 0;
+	vbswap->disksize = 0;
+	vbswap->init_success = 0;
 
-	ret = sysfs_create_group(&disk_to_dev(vbswap_disk)->kobj,
+	ret = sysfs_create_group(&disk_to_dev(vbswap->disk)->kobj,
 				 &vbswap_disk_attr_group);
 	if (ret < 0) {
 		pr_err("%s %d: Error creating sysfs group\n",
 		       __func__, __LINE__);
-		goto out_free_queue;
+		goto out_put_disk;
 	}
 
 	/* vbswap devices sort of resembles non-rotational disks */
-	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, vbswap_disk->queue);
+	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, vbswap->disk->queue);
 
 	swap_header_page = alloc_page(__GFP_HIGHMEM);
 
@@ -349,31 +357,31 @@ out:
 	return ret;
 
 remove_vbswap_group:
-	sysfs_remove_group(&disk_to_dev(vbswap_disk)->kobj,
+	sysfs_remove_group(&disk_to_dev(vbswap->disk)->kobj,
 			   &vbswap_disk_attr_group);
 
-out_free_queue:
-	blk_cleanup_queue(vbswap_disk->queue);
-
 out_put_disk:
-	put_disk(vbswap_disk);
+	put_disk(vbswap->disk);
+
+out_free_queue:
+	blk_cleanup_queue(vbswap->queue);
 
 	return ret;
 }
 
-static void destroy_device(void)
+static void destroy_device(struct vbswap *vbswap)
 {
-	if (vbswap_disk)
-		sysfs_remove_group(&disk_to_dev(vbswap_disk)->kobj,
+	if (vbswap->disk)
+		sysfs_remove_group(&disk_to_dev(vbswap->disk)->kobj,
 				   &vbswap_disk_attr_group);
 
-	if (vbswap_disk) {
-		del_gendisk(vbswap_disk);
-		put_disk(vbswap_disk);
+	if (vbswap->disk) {
+		del_gendisk(vbswap->disk);
+		put_disk(vbswap->disk);
 	}
 
-	if (vbswap_disk->queue)
-		blk_cleanup_queue(vbswap_disk->queue);
+	if (vbswap->queue)
+		blk_cleanup_queue(vbswap->queue);
 }
 
 static int __init vbswap_init(void)
@@ -388,7 +396,16 @@ static int __init vbswap_init(void)
 		goto out;
 	}
 
-	ret = create_device();
+	/* Allocate and initialize the device */
+	vbswap_device = kzalloc(sizeof(struct vbswap), GFP_KERNEL);
+	if (!vbswap_device) {
+		ret = -ENOMEM;
+		pr_err("%s %d: Unable to allocate vbswap_device\n",
+		       __func__, __LINE__);
+		goto unregister;
+	}
+
+	ret = create_device(vbswap_device);
 	if (ret) {
 		pr_err("%s %d: Unable to create vbswap_device\n",
 		       __func__, __LINE__);
@@ -398,19 +415,26 @@ static int __init vbswap_init(void)
 	return 0;
 
 free_devices:
+	kfree(vbswap_device);
+
+unregister:
 	unregister_blkdev(vbswap_major, "vbswap");
+
 out:
 	return ret;
 }
 
 static void __exit vbswap_exit(void)
 {
-	destroy_device();
+	destroy_device(vbswap_device);
 
 	unregister_blkdev(vbswap_major, "vbswap");
 
 	if (swap_header_page)
 		__free_page(swap_header_page);
+	kfree(vbswap_device);
+
+	pr_debug("%s %d: Cleanup done!\n", __func__, __LINE__);
 }
 
 module_init(vbswap_init);
