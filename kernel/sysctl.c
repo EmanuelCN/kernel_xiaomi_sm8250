@@ -1754,11 +1754,7 @@ static struct ctl_table vm_table[] = {
 		.extra1		= &zero,
 	},
 	{
-#ifdef CONFIG_VBSWAP
-		.procname	= "vbswappiness",
-#else
 		.procname	= "swappiness",
-#endif
 		.data		= &vm_swappiness,
 		.maxlen		= sizeof(vm_swappiness),
 		.mode		= 0644,
