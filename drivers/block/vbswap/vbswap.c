@@ -56,20 +56,15 @@ static int vbswap_bvec_read(struct bio_vec *bvec,
 
 	if (unlikely(index != 0)) {
 		pr_err("tried to read outside of swap header\n");
-		// Return empty pages on valid requests to workaround toybox binary search
+		return -EIO;
 	}
 
 	page = bvec->bv_page;
 
 	user_mem = kmap_atomic(page);
-	if (index == 0) {
-		swap_header_page_mem = kmap_atomic(swap_header_page);
-		memcpy(user_mem + bvec->bv_offset, swap_header_page_mem, bvec->bv_len);
-		kunmap_atomic(swap_header_page_mem);
-	} else {
-		// Do not allow memory dumps
-		memset(user_mem + bvec->bv_offset, 0, bvec->bv_len);
-	}
+	swap_header_page_mem = kmap_atomic(swap_header_page);
+	memcpy(user_mem, swap_header_page_mem, bvec->bv_len);
+	kunmap_atomic(swap_header_page_mem);
 	kunmap_atomic(user_mem);
 	flush_dcache_page(page);
 
@@ -110,7 +105,7 @@ static int vbswap_bvec_rw(struct bio_vec *bvec,
 static noinline void __vbswap_make_request(struct bio *bio, int rw)
 {
 	int offset, ret;
-	u32 index;
+	u32 index, is_swap_header_page;
 	struct bio_vec bvec;
 	struct bvec_iter iter;
 
@@ -130,6 +125,11 @@ static noinline void __vbswap_make_request(struct bio *bio, int rw)
 	index = bio->bi_iter.bi_sector >> SECTORS_PER_PAGE_SHIFT;
 	offset = (bio->bi_iter.bi_sector & (SECTORS_PER_PAGE - 1)) <<
 	    SECTOR_SHIFT;
+
+	if (index == 0)
+		is_swap_header_page = 1;
+	else
+		is_swap_header_page = 0;
 
 	pr_debug("%s %d: (rw, index, offset, bi_size) = "
 		 "(%d, %d, %d, %d)\n",
@@ -180,8 +180,10 @@ static noinline void __vbswap_make_request(struct bio *bio, int rw)
 		index++;
 	}
 
-	bio->bi_status = BLK_STS_OK;
-	bio_endio(bio);
+	if (is_swap_header_page) {
+		bio->bi_status = BLK_STS_OK;
+		bio_endio(bio);
+	}
 
 	return;
 
