@@ -214,12 +214,19 @@ void inc_rq_walt_stats(struct rq *rq, struct task_struct *p)
 {
 	inc_nr_big_task(&rq->walt_stats, p);
 	walt_inc_cumulative_runnable_avg(rq, p);
+
+	p->rtg_high_prio = task_rtg_high_prio(p);
+	if (p->rtg_high_prio)
+		rq->walt_stats.nr_rtg_high_prio_tasks++;
+
 }
 
 void dec_rq_walt_stats(struct rq *rq, struct task_struct *p)
 {
 	dec_nr_big_task(&rq->walt_stats, p);
 	walt_dec_cumulative_runnable_avg(rq, p);
+	if (p->rtg_high_prio)
+		rq->walt_stats.nr_rtg_high_prio_tasks--;
 }
 
 void fixup_walt_sched_stats_common(struct rq *rq, struct task_struct *p,
@@ -1030,7 +1037,7 @@ unsigned int max_possible_efficiency = 1;
 unsigned int min_possible_efficiency = UINT_MAX;
 
 unsigned int sysctl_sched_conservative_pl;
-unsigned int sysctl_sched_many_wakeup_threshold = 1000;
+unsigned int sysctl_sched_many_wakeup_threshold = WALT_MANY_WAKEUP_DEFAULT;
 
 #define INC_STEP 8
 #define DEC_STEP 2
@@ -2143,6 +2150,11 @@ void init_new_task_load(struct task_struct *p)
 	memset(&p->ravg, 0, sizeof(struct ravg));
 	p->cpu_cycles = 0;
 
+	p->ravg.curr_window_cpu = kcalloc(nr_cpu_ids, sizeof(u32),
+					  GFP_KERNEL | __GFP_NOFAIL);
+	p->ravg.prev_window_cpu = kcalloc(nr_cpu_ids, sizeof(u32),
+					  GFP_KERNEL | __GFP_NOFAIL);
+
 	if (init_load_pct) {
 		init_load_windows = div64_u64((u64)init_load_pct *
 			  (u64)sched_ravg_window, 100);
@@ -2160,28 +2172,46 @@ void init_new_task_load(struct task_struct *p)
 	p->unfilter = sysctl_sched_task_unfilter_period;
 }
 
+/*
+ * kfree() may wakeup kswapd. So this function should NOT be called
+ * with any CPU's rq->lock acquired.
+ */
+void free_task_load_ptrs(struct task_struct *p)
+{
+	kfree(p->ravg.curr_window_cpu);
+	kfree(p->ravg.prev_window_cpu);
+
+	/*
+	 * update_task_ravg() can be called for exiting tasks. While the
+	 * function itself ensures correct behavior, the corresponding
+	 * trace event requires that these pointers be NULL.
+	 */
+	p->ravg.curr_window_cpu = NULL;
+	p->ravg.prev_window_cpu = NULL;
+}
+
 void reset_task_stats(struct task_struct *p)
 {
-	u32 sum;
-	u32 curr_window_saved[CONFIG_NR_CPUS];
-	u32 prev_window_saved[CONFIG_NR_CPUS];
+	u32 sum = 0;
+	u32 *curr_window_ptr = NULL;
+	u32 *prev_window_ptr = NULL;
 
 	if (exiting_task(p)) {
 		sum = EXITING_TASK_MARKER;
-
-		memset(&p->ravg, 0, sizeof(struct ravg));
-
-		/* Retain EXITING_TASK marker */
-		p->ravg.sum_history[0] = sum;
 	} else {
-		memcpy(curr_window_saved, p->ravg.curr_window_cpu, sizeof(curr_window_saved));
-		memcpy(prev_window_saved, p->ravg.prev_window_cpu, sizeof(prev_window_saved));
-
-		memset(&p->ravg, 0, sizeof(struct ravg));
-
-		memcpy(p->ravg.curr_window_cpu, curr_window_saved, sizeof(curr_window_saved));
-		memcpy(p->ravg.prev_window_cpu, prev_window_saved, sizeof(prev_window_saved));
+		curr_window_ptr =  p->ravg.curr_window_cpu;
+		prev_window_ptr = p->ravg.prev_window_cpu;
+		memset(curr_window_ptr, 0, sizeof(u32) * nr_cpu_ids);
+		memset(prev_window_ptr, 0, sizeof(u32) * nr_cpu_ids);
 	}
+
+	memset(&p->ravg, 0, sizeof(struct ravg));
+
+	p->ravg.curr_window_cpu = curr_window_ptr;
+	p->ravg.prev_window_cpu = prev_window_ptr;
+
+	/* Retain EXITING_TASK marker */
+	p->ravg.sum_history[0] = sum;
 }
 
 void mark_task_starting(struct task_struct *p)
@@ -3643,8 +3673,6 @@ int walt_proc_user_hint_handler(struct ctl_table *table,
 	int ret;
 	unsigned int old_value;
 	static DEFINE_MUTEX(mutex);
-
-	return 0;
 
 	mutex_lock(&mutex);
 

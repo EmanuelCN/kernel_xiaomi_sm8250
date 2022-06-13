@@ -667,14 +667,9 @@ unsigned int cpuinfo_max_freq_cached;
 
 static bool should_use_cached_freq(int cpu)
 {
-	/* This is a safe check. may not be needed */
 	if (!cpuinfo_max_freq_cached)
 		return false;
 
-	/*
-	 * perfd already configure sched_lib_mask_force to
-	 * 0xf0 from user space. so re-using it.
-	 */
 	if (!(BIT(cpu) & sched_lib_mask_force))
 		return false;
 

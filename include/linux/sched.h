@@ -109,6 +109,9 @@ struct task_group;
 
 #define task_is_stopped_or_traced(task)	((task->state & (__TASK_STOPPED | __TASK_TRACED)) != 0)
 
+#define task_contributes_to_load(task)	((task->state & TASK_UNINTERRUPTIBLE) != 0 && \
+					 (task->flags & PF_FROZEN) == 0 && \
+					 (task->state & TASK_NOLOAD) == 0)
 
 enum task_boost_type {
 	TASK_BOOST_NONE = 0,
@@ -583,6 +586,7 @@ extern u32 sched_get_init_task_load(struct task_struct *p);
 extern void sched_update_cpu_freq_min_max(const cpumask_t *cpus, u32 fmin,
 					  u32 fmax);
 extern int sched_set_boost(int enable);
+extern void free_task_load_ptrs(struct task_struct *p);
 extern void sched_set_refresh_rate(enum fps fps);
 
 #define RAVG_HIST_SIZE_MAX 5
@@ -627,7 +631,7 @@ struct ravg {
 	u32 sum, demand;
 	u32 coloc_demand;
 	u32 sum_history[RAVG_HIST_SIZE_MAX];
-	u32 curr_window_cpu[CONFIG_NR_CPUS], prev_window_cpu[CONFIG_NR_CPUS];
+	u32 *curr_window_cpu, *prev_window_cpu;
 	u32 curr_window, prev_window;
 	u32 pred_demand;
 	u8 busy_buckets[NUM_BUSY_BUCKETS];
@@ -645,7 +649,11 @@ register_cpu_cycle_counter_cb(struct cpu_cycle_counter_cb *cb)
 }
 static inline void sched_set_io_is_busy(int val) {};
 
-extern int sched_set_boost(int enable);
+static inline int sched_set_boost(int enable)
+{
+	return -EINVAL;
+}
+static inline void free_task_load_ptrs(struct task_struct *p) { }
 
 static inline void sched_update_cpu_freq_min_max(const cpumask_t *cpus,
 					u32 fmin, u32 fmax) { }
@@ -871,6 +879,7 @@ struct task_struct {
 	bool misfit;
 	u32 unfilter;
 	bool low_latency;
+	bool rtg_high_prio;
 #endif
 
 #ifdef CONFIG_CGROUP_SCHED
@@ -2095,7 +2104,6 @@ static inline void set_task_cpu(struct task_struct *p, unsigned int cpu)
 # define vcpu_is_preempted(cpu)	false
 #endif
 
-extern long msm_sched_setaffinity(pid_t pid, struct cpumask *new_mask);
 extern long sched_setaffinity(pid_t pid, const struct cpumask *new_mask);
 extern long sched_getaffinity(pid_t pid, struct cpumask *mask);
 
