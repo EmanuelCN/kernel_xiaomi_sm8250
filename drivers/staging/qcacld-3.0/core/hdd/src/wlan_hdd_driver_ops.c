@@ -53,7 +53,11 @@
 #define WLAN_MODULE_NAME  "wlan"
 #endif
 
-#define DISABLE_KRAIT_IDLE_PS_VAL      1
+#ifdef CLD_PM_QOS
+#define DISABLE_KRAIT_IDLE_PS_VAL	1
+#else
+#define DISABLE_KRAIT_IDLE_PS_VAL	PM_QOS_DEFAULT_VALUE
+#endif
 
 #define SSR_MAX_FAIL_CNT 3
 static uint8_t re_init_fail_cnt, probe_fail_cnt;
