@@ -454,7 +454,7 @@ static int msm_gpio_direction_output(struct gpio_chip *chip, unsigned offset, in
 
 	val = readl_relaxed(pctrl->regs + g->ctl_reg);
 	val |= BIT(g->oe_bit);
-	writel_relaxed(val, pctrl->regs + g->ctl_reg);
+	writel(val, pctrl->regs + g->ctl_reg);
 
 	raw_spin_unlock_irqrestore(&pctrl->lock, flags);
 
@@ -627,11 +627,11 @@ static void msm_gpio_update_dual_edge_pos(struct msm_pinctrl *pctrl,
 	unsigned pol;
 
 	do {
-		val = readl_relaxed(pctrl->regs + g->io_reg) & BIT(g->in_bit);
+		val = readl(pctrl->regs + g->io_reg) & BIT(g->in_bit);
 
 		pol = readl_relaxed(pctrl->regs + g->intr_cfg_reg);
 		pol ^= BIT(g->intr_polarity_bit);
-		writel_relaxed(pol, pctrl->regs + g->intr_cfg_reg);
+		writel(pol, pctrl->regs + g->intr_cfg_reg);
 
 		val2 = readl_relaxed(pctrl->regs + g->io_reg) & BIT(g->in_bit);
 		intstat = readl_relaxed(pctrl->regs + g->intr_status_reg);
@@ -731,7 +731,7 @@ static void _msm_gpio_irq_unmask(struct irq_data *d, bool status_clear)
 	val = readl_relaxed(pctrl->regs + g->intr_cfg_reg);
 	val |= BIT(g->intr_raw_status_bit);
 	val |= BIT(g->intr_enable_bit);
-	writel_relaxed(val, pctrl->regs + g->intr_cfg_reg);
+	writel(val, pctrl->regs + g->intr_cfg_reg);
 
 	set_bit(d->hwirq, pctrl->enabled_irqs);
 
@@ -1097,7 +1097,7 @@ static int msm_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	} else {
 		BUG();
 	}
-	writel_relaxed(val, pctrl->regs + g->intr_cfg_reg);
+	writel(val, pctrl->regs + g->intr_cfg_reg);
 
 	if (test_bit(d->hwirq, pctrl->dual_edge_irqs))
 		msm_gpio_update_dual_edge_pos(pctrl, g, d);
