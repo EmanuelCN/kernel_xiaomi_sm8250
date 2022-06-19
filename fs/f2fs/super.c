@@ -616,7 +616,7 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
 	int arg = 0;
 	kuid_t uid;
 	kgid_t gid;
-	int ret;
+	int ret = 0;
 
 	if (!options)
 		goto default_check;
@@ -2640,8 +2640,8 @@ int f2fs_quota_sync(struct super_block *sb, int type)
 		if (type != -1 && cnt != type)
 			continue;
 
-		if (!sb_has_quota_active(sb, type))
-			return 0;
+		if (!sb_has_quota_active(sb, cnt))
+			continue;
 
 		inode_lock(dqopt->files[cnt]);
 
