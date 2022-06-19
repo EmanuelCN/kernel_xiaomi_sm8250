@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0-only
 #
 # RCU-related debugging configuration options
 #
@@ -67,17 +66,6 @@ config RCU_CPU_STALL_TIMEOUT
 	  number of seconds, a CPU stall warning is printed.  If the
 	  RCU grace period persists, additional CPU stall warnings are
 	  printed at more widely spaced intervals.
-
-config RCU_PANIC_ON_STALL
-	int "Panic on RCU Stalls"
-	range 0 1
-	default 0
-	depends on RCU_STALL_COMMON
-	help
-	  Panic if a given RCU grace period extends more than the specified
-	  number of seconds instead of just printing a CPU stall warning.
-	  This helps to collect cpu context as part of ramdumps for post
-	  mortem analysis.
 
 config RCU_TRACE
 	bool "Enable tracing for RCU"

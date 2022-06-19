@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0-only
 #
 # RCU-related configuration options
 #
@@ -74,7 +73,7 @@ config TASKS_RCU
 	select SRCU
 	help
 	  This option enables a task-based RCU implementation that uses
-	  only voluntary context switch (not PREEMPT!), idle, and
+	  only voluntary context switch (not preemption!), idle, and
 	  user-mode execution as quiescent states.
 
 config RCU_STALL_COMMON
