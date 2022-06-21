@@ -2801,7 +2801,7 @@ static inline unsigned long cpu_util_cfs(struct rq *rq)
 #ifdef CONFIG_CPU_FREQ_GOV_SCHEDUTIL
 
 unsigned long schedutil_cpu_util(int cpu, unsigned long util_cfs,
-				 unsigned long max, enum schedutil_type type,
+				 enum schedutil_type type,
 				 struct task_struct *p);
 
 static inline unsigned long cpu_bw_dl(struct rq *rq)

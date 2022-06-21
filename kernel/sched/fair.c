@@ -8170,8 +8170,7 @@ compute_energy(struct task_struct *p, int dst_cpu, struct perf_domain *pd)
 			 * is already enough to scale the EM reported power
 			 * consumption at the (eventually clamped) cpu_capacity.
 			 */
-			sum_util += schedutil_cpu_util(cpu, util_cfs, cpu_cap,
-						       ENERGY_UTIL, NULL);
+			sum_util += schedutil_cpu_util(cpu, util_cfs, ENERGY_UTIL, NULL);
 
 			/*
 			 * Performance domain frequency: utilization clamping
@@ -8181,8 +8180,7 @@ compute_energy(struct task_struct *p, int dst_cpu, struct perf_domain *pd)
 			 * FREQUENCY_UTIL's utilization can be max OPP.
 			 */
 			tsk = cpu == dst_cpu ? p : NULL;
-			cpu_util = schedutil_cpu_util(cpu, util_cfs, cpu_cap,
-						      FREQUENCY_UTIL, tsk);
+			cpu_util = schedutil_cpu_util(cpu, util_cfs, FREQUENCY_UTIL, tsk);
 #endif
 			max_util = max(max_util, cpu_util);
 		}
