@@ -6322,8 +6322,6 @@ static int select_idle_cpu(struct task_struct *p, struct sched_domain *sd, int t
 	for_each_cpu_wrap(cpu, cpus, target) {
 		if (!--nr)
 			return si_cpu;
-		if (cpu_isolated(cpu))
-			continue;
 		if (available_idle_cpu(cpu))
 			break;
 		if (si_cpu == -1 && sched_idle_cpu(cpu))
@@ -6398,15 +6396,15 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
 		task_util = uclamp_task_util(p);
 	}
 
-	if ((available_idle_cpu(target) || sched_idle_cpu(target)) &&
-	    !cpu_isolated(target) && asym_fits_capacity(task_util, target))
+	if ((available_idle_cpu(target) || sched_idle_cpu(target))
+	    && asym_fits_capacity(task_util, target))
 		return target;
 
 	/*
 	 * If the previous CPU is cache affine and idle, don't be stupid:
 	 */
 	if (prev != target && cpus_share_cache(prev, target) &&
-	    (available_idle_cpu(prev) || sched_idle_cpu(prev)) && !cpu_isolated(prev) &&
+	    (available_idle_cpu(prev) || sched_idle_cpu(prev)) &&
 	    asym_fits_capacity(task_util, prev))
 		return prev;
 
