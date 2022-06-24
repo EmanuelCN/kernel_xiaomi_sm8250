@@ -16,6 +16,7 @@ struct kobject *touchpanel_kobj;
 TS_ENABLE_FOPS(capacitive_keys)
 TS_ENABLE_FOPS(double_tap)
 TS_ENABLE_FOPS(reversed_keys)
+TS_ENABLE_FOPS(fod_status)
 
 static int __init tp_common_init(void)
 {
