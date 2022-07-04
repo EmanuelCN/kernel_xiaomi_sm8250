@@ -339,7 +339,9 @@ ol_tx_ll_fast(ol_txrx_vdev_handle vdev, qdf_nbuf_t msdu_list)
 	uint32_t pkt_download_len;
 	uint32_t ep_id = HTT_EPID_GET(pdev->htt_pdev);
 	struct ol_txrx_msdu_info_t msdu_info;
+#if defined(FEATURE_TSO_DEBUG)
 	uint32_t tso_msdu_stats_idx = 0;
+#endif
 
 	qdf_mem_zero(&msdu_info, sizeof(msdu_info));
 	msdu_info.htt.info.l2_hdr_type = vdev->pdev->htt_pkt_type;
@@ -368,6 +370,7 @@ ol_tx_ll_fast(ol_txrx_vdev_handle vdev, qdf_nbuf_t msdu_list)
 
 		segments = msdu_info.tso_info.num_segs;
 
+#if defined(FEATURE_TSO_DEBUG)
 		if (msdu_info.tso_info.is_tso) {
 			tso_msdu_stats_idx =
 					ol_tx_tso_get_stats_idx(vdev->pdev);
@@ -376,6 +379,7 @@ ol_tx_ll_fast(ol_txrx_vdev_handle vdev, qdf_nbuf_t msdu_list)
 					       &(msdu_info.tso_info),
 					       msdu, tso_msdu_stats_idx);
 		}
+#endif
 
 		/*
 		 * The netbuf may get linked into a different list
