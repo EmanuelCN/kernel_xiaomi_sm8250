@@ -435,55 +435,6 @@ uint8_t ol_tx_prepare_tso(ol_txrx_vdev_handle vdev,
 }
 
 /**
- * ol_tx_tso_update_stats() - update TSO stats
- * @pdev: pointer to ol_txrx_pdev_t structure
- * @msdu_info: tso msdu_info for the msdu
- * @msdu: tso mdsu for which stats are updated
- * @tso_msdu_idx: stats index in the global TSO stats array where stats will be
- *                updated
- *
- * Return: None
- */
-void ol_tx_tso_update_stats(struct ol_txrx_pdev_t *pdev,
-			    struct qdf_tso_info_t  *tso_info, qdf_nbuf_t msdu,
-			    uint32_t tso_msdu_idx)
-{
-	TXRX_STATS_TSO_HISTOGRAM(pdev, tso_info->num_segs);
-	TXRX_STATS_TSO_GSO_SIZE_UPDATE(pdev, tso_msdu_idx,
-				       qdf_nbuf_tcp_tso_size(msdu));
-	TXRX_STATS_TSO_TOTAL_LEN_UPDATE(pdev,
-					tso_msdu_idx, qdf_nbuf_len(msdu));
-	TXRX_STATS_TSO_NUM_FRAGS_UPDATE(pdev, tso_msdu_idx,
-					qdf_nbuf_get_nr_frags(msdu));
-}
-
-/**
- * ol_tx_tso_get_stats_idx() - retrieve global TSO stats index and increment it
- * @pdev: pointer to ol_txrx_pdev_t structure
- *
- * Retrieve  the current value of the global variable and increment it. This is
- * done in a spinlock as the global TSO stats may be accessed in parallel by
- * multiple TX streams.
- *
- * Return: The current value of TSO stats index.
- */
-uint32_t ol_tx_tso_get_stats_idx(struct ol_txrx_pdev_t *pdev)
-{
-	uint32_t msdu_stats_idx = 0;
-
-	qdf_spin_lock_bh(&pdev->stats.pub.tx.tso.tso_stats_lock);
-	msdu_stats_idx = pdev->stats.pub.tx.tso.tso_info.tso_msdu_idx;
-	pdev->stats.pub.tx.tso.tso_info.tso_msdu_idx++;
-	pdev->stats.pub.tx.tso.tso_info.tso_msdu_idx &=
-					NUM_MAX_TSO_MSDUS_MASK;
-	qdf_spin_unlock_bh(&pdev->stats.pub.tx.tso.tso_stats_lock);
-
-	TXRX_STATS_TSO_RESET_MSDU(pdev, msdu_stats_idx);
-
-	return msdu_stats_idx;
-}
-
-/**
  * ol_tso_seg_list_init() - function to initialise the tso seg freelist
  * @pdev: the data physical device sending the data
  * @num_seg: number of segments needs to be intialised
@@ -691,6 +642,55 @@ void ol_tso_num_seg_list_deinit(struct ol_txrx_pdev_t *pdev)
 #endif /* FEATURE_TSO */
 
 #if defined(FEATURE_TSO) && defined(FEATURE_TSO_DEBUG)
+/**
+ * ol_tx_tso_update_stats() - update TSO stats
+ * @pdev: pointer to ol_txrx_pdev_t structure
+ * @msdu_info: tso msdu_info for the msdu
+ * @msdu: tso mdsu for which stats are updated
+ * @tso_msdu_idx: stats index in the global TSO stats array where stats will be
+ *                updated
+ *
+ * Return: None
+ */
+void ol_tx_tso_update_stats(struct ol_txrx_pdev_t *pdev,
+			    struct qdf_tso_info_t  *tso_info, qdf_nbuf_t msdu,
+			    uint32_t tso_msdu_idx)
+{
+	TXRX_STATS_TSO_HISTOGRAM(pdev, tso_info->num_segs);
+	TXRX_STATS_TSO_GSO_SIZE_UPDATE(pdev, tso_msdu_idx,
+				       qdf_nbuf_tcp_tso_size(msdu));
+	TXRX_STATS_TSO_TOTAL_LEN_UPDATE(pdev,
+					tso_msdu_idx, qdf_nbuf_len(msdu));
+	TXRX_STATS_TSO_NUM_FRAGS_UPDATE(pdev, tso_msdu_idx,
+					qdf_nbuf_get_nr_frags(msdu));
+}
+
+/**
+ * ol_tx_tso_get_stats_idx() - retrieve global TSO stats index and increment it
+ * @pdev: pointer to ol_txrx_pdev_t structure
+ *
+ * Retrieve  the current value of the global variable and increment it. This is
+ * done in a spinlock as the global TSO stats may be accessed in parallel by
+ * multiple TX streams.
+ *
+ * Return: The current value of TSO stats index.
+ */
+uint32_t ol_tx_tso_get_stats_idx(struct ol_txrx_pdev_t *pdev)
+{
+	uint32_t msdu_stats_idx = 0;
+
+	qdf_spin_lock_bh(&pdev->stats.pub.tx.tso.tso_stats_lock);
+	msdu_stats_idx = pdev->stats.pub.tx.tso.tso_info.tso_msdu_idx;
+	pdev->stats.pub.tx.tso.tso_info.tso_msdu_idx++;
+	pdev->stats.pub.tx.tso.tso_info.tso_msdu_idx &=
+					NUM_MAX_TSO_MSDUS_MASK;
+	qdf_spin_unlock_bh(&pdev->stats.pub.tx.tso.tso_stats_lock);
+
+	TXRX_STATS_TSO_RESET_MSDU(pdev, msdu_stats_idx);
+
+	return msdu_stats_idx;
+}
+
 void ol_txrx_tso_stats_init(ol_txrx_pdev_handle pdev)
 {
 	qdf_spinlock_create(&pdev->stats.pub.tx.tso.tso_stats_lock);

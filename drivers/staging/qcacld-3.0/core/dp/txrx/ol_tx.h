@@ -267,13 +267,15 @@ void ol_tso_seg_list_init(struct ol_txrx_pdev_t *pdev, uint32_t num_seg);
 void ol_tso_seg_list_deinit(struct ol_txrx_pdev_t *pdev);
 void ol_tso_num_seg_list_init(struct ol_txrx_pdev_t *pdev, uint32_t num_seg);
 void ol_tso_num_seg_list_deinit(struct ol_txrx_pdev_t *pdev);
-uint32_t ol_tx_tso_get_stats_idx(struct ol_txrx_pdev_t *pdev);
 uint8_t ol_tx_prepare_tso(ol_txrx_vdev_handle vdev,
 			  qdf_nbuf_t msdu,
 			  struct ol_txrx_msdu_info_t *msdu_info);
+#if defined(FEATURE_TSO_DEBUG)
+uint32_t ol_tx_tso_get_stats_idx(struct ol_txrx_pdev_t *pdev);
 void ol_tx_tso_update_stats(struct ol_txrx_pdev_t *pdev,
 			    struct qdf_tso_info_t  *tso_info, qdf_nbuf_t msdu,
 			    uint32_t tso_msdu_idx);
+#endif
 #else
 static inline uint32_t ol_tx_tso_get_stats_idx(struct ol_txrx_pdev_t *pdev)
 {
