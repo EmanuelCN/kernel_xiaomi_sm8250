@@ -132,15 +132,17 @@ unsigned int sysctl_sched_cfs_bandwidth_slice		= 5000UL;
 #define fits_capacity(cap, max)	((cap) * 1280 < (max) * 1024)
 
 unsigned int sched_capacity_margin_up[CPU_NR] = {
-			[0 ... CPU_NR-1] = 1078}; /* ~5% margin */
+			[0 ... CPU_NR-1] = 1078
+};
 unsigned int sched_capacity_margin_down[CPU_NR] = {
-			[0 ... CPU_NR-1] = 1205}; /* ~15% margin */
+			[0 ... CPU_NR-1] = 1205
+};
 unsigned int sched_capacity_margin_up_boosted[CPU_NR] = {
-	3658, 3658, 3658, 3658, 3658, 3658, 1078, 1024
-}; /* 72% margin for small, 5% for big, 0% for big+ */
+	3658, 3658, 3658, 3658, 1078, 1078, 1078, 1024
+};
 unsigned int sched_capacity_margin_down_boosted[CPU_NR] = {
 	3658, 3658, 3658, 3658, 3658, 3658, 3658, 3658
-}; /* not used for small cores, 72% margin for big, 72% margin for big+ */
+};
 
 unsigned int sched_small_task_threshold = 102;
 __read_mostly unsigned int sysctl_sched_force_lb_enable = 1;
