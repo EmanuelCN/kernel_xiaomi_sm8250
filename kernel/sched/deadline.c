@@ -1492,7 +1492,10 @@ static void enqueue_task_dl(struct rq *rq, struct task_struct *p, int flags)
 		 * it, as it's going to return back to its original
 		 * scheduling class after this.
 		 */
-		BUG_ON(!p->dl.dl_boosted || flags != ENQUEUE_REPLENISH);
+		if (!(flags & ENQUEUE_REPLENISH))
+			printk_deferred_once("sched: DL de-boosted task PID %d: REPLENISH flag missing\n",
+					     task_pid_nr(p));
+
 		return;
 	}
 
