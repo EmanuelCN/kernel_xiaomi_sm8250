@@ -97,8 +97,6 @@
 #include <linux/scs.h>
 #include <linux/devfreq_boost.h>
 #include <linux/cpu_input_boost.h>
-#include <linux/simple_lmk.h>
-
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
 #include <linux/uaccess.h>
@@ -1065,7 +1063,6 @@ static inline void __mmput(struct mm_struct *mm)
 	ksm_exit(mm);
 	khugepaged_exit(mm); /* must run before exit_mmap */
 	exit_mmap(mm);
-	simple_lmk_mm_freed(mm);
 	mm_put_huge_zero_page(mm);
 	set_mm_exe_file(mm, NULL);
 	if (!list_empty(&mm->mmlist)) {

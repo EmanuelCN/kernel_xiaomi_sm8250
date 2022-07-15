@@ -74,39 +74,5 @@ config ANDROID_STRUCT_PADDING
 	  to make the kernel static and runtime image slightly smaller but will
 	  NOT be supported by the Google Android kernel team.
 	  If even slightly unsure, say Y.
-
-config ANDROID_SIMPLE_LMK
-	bool "Simple Android Low Memory Killer"
-	depends on !ANDROID_LOW_MEMORY_KILLER && !MEMCG && !PSI
-	---help---
-	  This is a complete low memory killer solution for Android that is
-	  small and simple. Processes are killed according to the priorities
-	  that Android gives them, so that the least important processes are
-	  always killed first. Processes are killed until memory deficits are
-	  satisfied, as observed from direct reclaim and kswapd reclaim
-	  struggling to free up pages, via VM pressure notifications.
-
-if ANDROID_SIMPLE_LMK
-
-config ANDROID_SIMPLE_LMK_MINFREE
-	int "Minimum MiB of memory to free per reclaim"
-	range 8 512
-	default 128
-	help
-	  Simple LMK will try to free at least this much memory per reclaim.
-
-config ANDROID_SIMPLE_LMK_TIMEOUT_MSEC
-	int "Reclaim timeout in milliseconds"
-	range 50 1000
-	default 200
-	help
-	  Simple LMK tries to wait until all of the victims it kills have their
-	  memory freed; however, sometimes victims can take a while to die,
-	  which can block Simple LMK from killing more processes in time when
-	  needed. After the specified timeout elapses, Simple LMK will stop
-	  waiting and make itself available to kill more processes.
-
-endif
-
 endif # if ANDROID
 endmenu
