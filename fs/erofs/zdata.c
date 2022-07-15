@@ -851,6 +851,7 @@ struct z_erofs_decompress_backend {
 	struct page **compressed_pages;
 
 	struct page **pagepool;
+	unsigned int onstack_used;
 };
 
 static int z_erofs_parse_out_bvecs(struct z_erofs_decompress_backend *be)
@@ -897,14 +898,9 @@ static int z_erofs_parse_in_bvecs(struct z_erofs_decompress_backend *be,
 {
 	struct z_erofs_pcluster *pcl = be->pcl;
 	unsigned int pclusterpages = z_erofs_pclusterpages(pcl);
-	struct page **compressed_pages;
 	int i, err = 0;
 
-	/* XXX: will have a better approach in the following commits */
-	compressed_pages = kmalloc_array(pclusterpages, sizeof(struct page *),
-					 GFP_KERNEL | __GFP_NOFAIL);
 	*overlapped = false;
-
 	for (i = 0; i < pclusterpages; ++i) {
 		struct z_erofs_bvec *bvec = &pcl->compressed_bvecs[i];
 		struct page *page = bvec->page;
@@ -915,7 +911,7 @@ static int z_erofs_parse_in_bvecs(struct z_erofs_decompress_backend *be,
 			DBG_BUGON(1);
 			continue;
 		}
-		compressed_pages[i] = page;
+		be->compressed_pages[i] = page;
 
 		if (z_erofs_is_inline_pcluster(pcl)) {
 			if (!PageUptodate(page))
@@ -946,11 +942,8 @@ static int z_erofs_parse_in_bvecs(struct z_erofs_decompress_backend *be,
 		}
 	}
 
-	if (err) {
-		kfree(compressed_pages);
+	if (err)
 		return err;
-	}
-	be->compressed_pages = compressed_pages;
 	return 0;
 }
 
@@ -969,15 +962,28 @@ static int z_erofs_decompress_pcluster(struct z_erofs_decompress_backend *be,
 	mutex_lock(&pcl->lock);
 	nr_pages = pcl->nr_pages;
 
+	/* allocate (de)compressed page arrays if cannot be kept on stack */
+	be->decompressed_pages = NULL;
+	be->compressed_pages = NULL;
+	be->onstack_used = 0;
 	if (nr_pages <= Z_EROFS_ONSTACK_PAGES) {
 		be->decompressed_pages = be->onstack_pages;
+		be->onstack_used = nr_pages;
 		memset(be->decompressed_pages, 0,
 		       sizeof(struct page *) * nr_pages);
-	} else {
+	}
+
+	if (pclusterpages + be->onstack_used <= Z_EROFS_ONSTACK_PAGES)
+		be->compressed_pages = be->onstack_pages + be->onstack_used;
+
+	if (!be->decompressed_pages)
 		be->decompressed_pages =
 			kvcalloc(nr_pages, sizeof(struct page *),
 				 GFP_KERNEL | __GFP_NOFAIL);
-	}
+	if (!be->compressed_pages)
+		be->compressed_pages =
+			kvcalloc(pclusterpages, sizeof(struct page *),
+				 GFP_KERNEL | __GFP_NOFAIL);
 
 	err2 = z_erofs_parse_out_bvecs(be);
 	if (err2)
@@ -1034,7 +1040,9 @@ out:
 			WRITE_ONCE(pcl->compressed_bvecs[i].page, NULL);
 		}
 	}
-	kfree(be->compressed_pages);
+	if (be->compressed_pages < be->onstack_pages ||
+	    be->compressed_pages >= be->onstack_pages + Z_EROFS_ONSTACK_PAGES)
+		kvfree(be->compressed_pages);
 
 	for (i = 0; i < nr_pages; ++i) {
 		page = be->decompressed_pages[i];
