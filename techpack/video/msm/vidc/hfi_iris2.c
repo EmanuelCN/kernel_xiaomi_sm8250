@@ -5,6 +5,7 @@
 
 #include "msm_vidc_debug.h"
 #include "hfi_common.h"
+#include <linux/kernel.h>
 
 #define VBIF_BASE_OFFS_IRIS2			0x00080000
 
@@ -167,9 +168,9 @@ void __setup_ucregion_memory_map_iris2(struct venus_hfi_device *device, u32 sid)
 				(u32)device->qdss.align_device_addr, sid);
 	/* update queues vaddr for debug purpose */
 	__write_register(device, CPU_CS_VCICMDARG0_IRIS2,
-		(u32)device->iface_q_table.align_virtual_addr, sid);
+		(u32)((uintptr_t)device->iface_q_table.align_virtual_addr & UINT_MAX), sid);
 	__write_register(device, CPU_CS_VCICMDARG1_IRIS2,
-		(u32)((u64)device->iface_q_table.align_virtual_addr >> 32),
+		(u32)((uintptr_t)device->iface_q_table.align_virtual_addr >> 32),
 		sid);
 }
 
