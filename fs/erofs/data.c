@@ -346,37 +346,27 @@ static sector_t erofs_bmap(struct address_space *mapping, sector_t block)
 	return iomap_bmap(mapping, block, &erofs_iomap_ops);
 }
 
-static int erofs_prepare_dio(struct kiocb *iocb, struct iov_iter *to)
-{
-	struct inode *inode = file_inode(iocb->ki_filp);
-	loff_t align = iocb->ki_pos | iov_iter_count(to) |
-		iov_iter_alignment(to);
-	struct block_device *bdev = inode->i_sb->s_bdev;
-	unsigned int blksize_mask;
-
-	if (bdev)
-		blksize_mask = (1 << ilog2(bdev_logical_block_size(bdev))) - 1;
-	else
-		blksize_mask = (1 << inode->i_blkbits) - 1;
-
-	if (align & blksize_mask)
-		return -EINVAL;
-	return 0;
-}
-
 static ssize_t erofs_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 {
+	struct inode *inode = file_inode(iocb->ki_filp);
+
 	/* no need taking (shared) inode lock since it's a ro filesystem */
 	if (!iov_iter_count(to))
 		return 0;
 
 	if (iocb->ki_flags & IOCB_DIRECT) {
-		int err = erofs_prepare_dio(iocb, to);
+		struct block_device *bdev = inode->i_sb->s_bdev;
+		unsigned int blksize_mask;
 
-		if (!err)
-			return iomap_dio_rw(iocb, to, &erofs_iomap_ops, NULL);
-		if (err < 0)
-			return err;
+		if (bdev)
+			blksize_mask = (1 << ilog2(bdev_logical_block_size(bdev))) - 1;
+		else
+			blksize_mask = (1 << inode->i_blkbits) - 1;
+
+		if ((iocb->ki_pos | iov_iter_count(to) | iov_iter_alignment(to)) & blksize_mask)
+			return -EINVAL;
+
+		return iomap_dio_rw(iocb, to, &erofs_iomap_ops, NULL);
 	}
 	return generic_file_read_iter(iocb, to);
 }
