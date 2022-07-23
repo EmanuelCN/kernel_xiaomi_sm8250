@@ -4700,10 +4700,6 @@ retry:
 	if (current->flags & PF_MEMALLOC)
 		goto nopage;
 
-	if (fatal_signal_pending(current) && !(gfp_mask & __GFP_NOFAIL) &&
-			(gfp_mask & __GFP_FS))
-		goto nopage;
-
 	/* Try direct reclaim and then allocating */
 	if (!used_vmpressure)
 		used_vmpressure = vmpressure_inc_users(order);
