@@ -1334,10 +1334,10 @@ void *msm_vidc_open(int core_id, int session_type)
 			"Instance count reached Max limit, rejecting session");
 		goto fail_init;
 	}
-
+#ifdef CONFIG_DEBUG_FS
 	inst->debugfs_root =
 		msm_vidc_debugfs_init_inst(inst, core->debugfs_root);
-
+#endif
 	return inst;
 fail_init:
 	mutex_lock(&core->lock);
@@ -1432,8 +1432,9 @@ int msm_vidc_destroy(struct msm_vidc_inst *inst)
 	mutex_destroy(&inst->bufq[CAPTURE_PORT].lock);
 	mutex_destroy(&inst->bufq[OUTPUT_PORT].lock);
 	mutex_destroy(&inst->lock);
-
+#ifdef CONFIG_DEBUG_FS
 	msm_vidc_debugfs_deinit_inst(inst);
+#endif
 	pr_info(VIDC_DBG_TAG "Closed video instance: %pK\n",
 			VIDC_MSG_PRIO2STRING(VIDC_INFO), inst);
 	kfree(inst);
