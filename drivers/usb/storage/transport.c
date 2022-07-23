@@ -484,7 +484,7 @@ int usb_stor_bulk_transfer_sg(struct us_data* us, unsigned int pipe,
 		void *buf, unsigned int length_left, int use_sg, int *residual)
 {
 	int result;
-	unsigned int partial;
+	unsigned int partial = 0;
 
 	/* are we scatter-gathering? */
 	if (use_sg) {
