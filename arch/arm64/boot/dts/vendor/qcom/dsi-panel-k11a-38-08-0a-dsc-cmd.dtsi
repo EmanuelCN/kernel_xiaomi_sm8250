@@ -60,13 +60,14 @@
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
 				qcom,mdss-dsi-panel-clockrate = <1100000000>;
+				qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
 				qcom,mdss-mdp-transfer-time-us = <14000>;
 				qcom,mdss-dsi-on-command = [
-					/* 1 Sleep Out */
-					05 01 00 00 0A 00 02 11 00            /* Sleep Out */
+					/* Sleep Out, Wait 10 ms */
+					05 01 00 00 0A 00 01 11
 					/* 3 Common Setting */
 					/* 3.1 TE(Vsync) On/Off */
-					39 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
+					15 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
 					/* DSC Setting */
 					39 01 00 00 00 00 02 9D 01            /* Compression Enable */
 					39 01 00 00 00 00 81 9E               /* PPS Setting */
@@ -147,7 +148,7 @@
 					/* 5 Display On */
 					05 01 00 00 00 00 02 29 00
 					/* 60hz Frequency Select*/
-					39 01 00 00 00 00 02 60 00];
+					15 01 00 00 00 00 02 60 00];
 				qcom,mdss-dsi-off-command = [
 					05 01 00 00 14 00 02 28 00
 					/* Default Frequency Setting */
@@ -207,18 +208,14 @@
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
 				qcom,mdss-dsi-panel-clockrate = <1100000000>;
-				qcom,mdss-mdp-transfer-time-us = <7533>;
+				qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
+				qcom,mdss-mdp-transfer-time-us = <7000>;
 				qcom,mdss-dsi-on-command = [
-					/* 1 Sleep Out */
+					/* Sleep Out, Wait 10 ms */
 					05 01 00 00 0A 00 01 11
-					39 01 00 00 00 00 03 F0 5A 5A
 					/* 3 Common Setting */
 					/* 3.1 TE(Vsync) On/Off */
-					15 01 00 00 00 00 02 35 00
-					39 01 00 00 00 00 08 DF 00 00 00 01 95 80 0C
-					/* Vsync Setting */
-					15 01 00 00 00 00 02 B0 01
-					15 01 00 00 00 00 02 E6 01
+					15 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
 					/* DSC Setting */
 					39 01 00 00 00 00 02 9D 01            /* Compression Enable */
 					39 01 00 00 00 00 81 9E               /* PPS Setting */
@@ -282,11 +279,11 @@
 					39 01 00 00 00 00 03 F0 A5 A5
 					/* 3.7 Hporch Setting */
 					39 01 00 00 00 00 03 F0 5A 5A
-					15 00 00 00 00 00 02 60 10						// 0x00 : 96/60/48 Hz
-					15 00 00 00 00 00 02 B0 0B
-					39 00 00 00 00 00 03 D8 59 70					// 0x59 0x70 : 120/60 Hz
-					15 00 00 00 00 00 02 F7 03
-					39 01 00 00 00 00 03 F0 A5 A5
+					39 01 00 00 00 00 03 FC 5A 5A
+					39 00 00 00 00 00 02 B0 16
+					39 01 00 00 00 00 02 D1 2E
+					39 01 00 00 00 00 03 FC A5 A5
+					39 01 00 00 5A 00 03 F0 A5 A5
 					/* Dimming Setting*/
 					39 01 00 00 00 00 03 F0 5A 5A
 					39 00 00 00 00 00 02 B0 06
