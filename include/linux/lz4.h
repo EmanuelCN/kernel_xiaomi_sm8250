@@ -661,4 +661,8 @@ int LZ4_decompress_safe_continue(LZ4_streamDecode_t *LZ4_streamDecode,
 //int LZ4_decompress_fast_usingDict(const char *source, char *dest,
 //	int originalSize, const char *dictStart, int dictSize);
 
+ssize_t LZ4_arm64_decompress_safe(const void *source, void *dest, size_t inputSize, size_t outputSize, bool dip);
+
+ssize_t LZ4_arm64_decompress_safe_partial(const void *source, void *dest, size_t inputSize, size_t outputSize, bool dip);
+
 #endif
