@@ -684,8 +684,8 @@ KBUILD_CFLAGS   += -Os
 KBUILD_AFLAGS   += -Os
 KBUILD_LDFLAGS  += -Os
 else ifeq ($(cc-name),clang)
-KBUILD_CFLAGS   += -O3 -march=armv8.1-a+crypto+fp16+rcpc
-KBUILD_AFLAGS   += -O3 -march=armv8.1-a+crypto+fp16+rcpc
+KBUILD_CFLAGS   += -O3 -march=armv8.2-a+crypto+fp16
+KBUILD_AFLAGS   += -O3 -march=armv8.2-a+crypto+fp16
 KBUILD_LDFLAGS  += -O3
 else
 KBUILD_CFLAGS   += -O2
