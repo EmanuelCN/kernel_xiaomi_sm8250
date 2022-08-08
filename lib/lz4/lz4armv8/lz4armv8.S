@@ -1,6 +1,8 @@
 /*
  * lz4armv8.S
  * LZ4 decompression optimization based on arm64 NEON instruction
+ *
+ * Adapt LLVM asm build, Tarsin Norbin.
  */
 
 #include <linux/linkage.h>
@@ -79,7 +81,7 @@
 	 * save current dst and src ,ensure when return from asm routine
 	 * current both of "dst" and "src" save good position.
 	 */
-1: 	 mov save_dst, x0
+1: 	mov save_dst, x0
 	mov	save_src, x3
 
 	check_dst_overflow
@@ -93,7 +95,7 @@
 .endif
 
 	/* Decode Token Byte: */
-2:	 ldrb w_tmp, [x3], #1		/* read Token Byte */
+2:	ldrb w_tmp, [x3], #1		/* read Token Byte */
 	lsr	literal_length, tmp, #4	/* get literal_length */
 	and	tmp_match_length, tmp, #0xf	/* get match_length */
 	add	match_length, tmp_match_length, #4	/* match_length >=4 */
@@ -110,35 +112,34 @@
 	 * continue decoding more literal length bytes.
 	 */
 
-3: 	 check_src_overflow
+3: 	check_src_overflow
 	ldrb	w_tmp, [x3], #1
 	add	literal_length, literal_length, tmp
 	cmp	tmp, #255
 	b.eq	3b
 
 /* literal copy */
-
-4:	 mov copy_from_ptr, x3
+	mov copy_from_ptr, x3
 	mov	copy_to_ptr, x0
 	add	x3, x3, literal_length
 	add	x0, x0, literal_length
 	check_dst_overflow
 	check_src_overflow
 
-4:	 ldr	q0, [copy_from_ptr], #16
+4:	ldr	q0, [copy_from_ptr], #16
 	str	q0, [copy_to_ptr], #16
 
 	cmp	x0, copy_to_ptr
 	b.ls	6f
 	b	4b
 
-5:	 ldr q0, [x3]
+5:	ldr q0, [x3]
 	str q0, [x0]
 	add	x3, x3, literal_length
 	add	x0, x0, literal_length
 
 	/* Decode offset and match_length */
-6:	 mov	offset_src_ptr, x3
+6:	mov	offset_src_ptr, x3
 	ldrh	w_offset, [x3], #2	/* 2Byte:offset bytes */
 	cbz	offset, Failed			/* match_length == 0 is invalid */
 	sub	copy_from_ptr, x0, offset
@@ -155,7 +156,7 @@
 	 * continue decoding more match length bytes.
 	 */
 
-7:	 check_src_overflow1
+7:	check_src_overflow1
 	ldrb	w_tmp, [x3], #1
 	add	x0, x0, tmp
 	add	match_length, match_length, tmp
@@ -166,14 +167,14 @@
 	 * here got the matchlength,start "match copy".
 	 */
 
-8:	 check_dst_overflow1
+8:	check_dst_overflow1
 	cmp	offset , match_length
 	b.hs	13f
 
-9:	 cmp	offset , #32
+9:	cmp	offset , #32
 	b.hs	13f
 
-10:  ldr	q1, [copy_from_ptr]
+10: ldr	q1, [copy_from_ptr]
 	add	tmp, permtable_addr, offset, lsl #5
 	ldp	q2, q3, [tmp]
 	tbl	v0.16b, {v1.16b}, v2.16b
@@ -182,13 +183,13 @@
 	b.lo    11f
 	ldp     q0, q1, [copy_from_ptr]
 
-11:	 ldrb	w_tmp, [cplen_table_addr, offset]
+11:	ldrb	w_tmp, [cplen_table_addr, offset]
 	stp	q0, q1, [copy_to_ptr]
 	add	copy_to_ptr, copy_to_ptr, tmp
 	cmp	x0, copy_to_ptr
 	b.ls	1b
 
-12:  stp	q0, q1, [copy_to_ptr]
+12: stp	q0, q1, [copy_to_ptr]
 	add	copy_to_ptr, copy_to_ptr, tmp
 	stp	q0, q1, [copy_to_ptr]
 	add	copy_to_ptr, copy_to_ptr, tmp
@@ -198,13 +199,13 @@
 
 /* offset >= match */
 
-13:	 ldr	q0, [copy_from_ptr], #16
+13:	ldr	q0, [copy_from_ptr], #16
 	str	q0, [copy_to_ptr], #16
 
 	cmp	x0, copy_to_ptr
 	b.ls	1b
 
-14:  ldp	q0, q1, [copy_from_ptr], #32
+14: ldp	q0, q1, [copy_from_ptr], #32
 	stp	q0, q1, [copy_to_ptr], #32
 
 	cmp	x0, copy_to_ptr
