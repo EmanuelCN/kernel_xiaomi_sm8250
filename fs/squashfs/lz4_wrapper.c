@@ -108,7 +108,7 @@ static int lz4_uncompress(struct squashfs_sb_info *msblk, void *strm,
 	}
 
 	res = LZ4_decompress_safe(stream->input, stream->output,
-		length, output->length);
+		length, output->length, false);
 
 	if (res < 0)
 		return -EIO;

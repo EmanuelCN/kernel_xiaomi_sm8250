@@ -95,7 +95,7 @@ static int lz4hc_compress_crypto(struct crypto_tfm *tfm, const u8 *src,
 static int __lz4hc_decompress_crypto(const u8 *src, unsigned int slen,
 				     u8 *dst, unsigned int *dlen, void *ctx)
 {
-	int out_len = LZ4_decompress_safe(src, dst, slen, *dlen);
+	int out_len = LZ4_decompress_safe(src, dst, slen, *dlen, false);
 
 	if (out_len < 0)
 		return -EINVAL;
