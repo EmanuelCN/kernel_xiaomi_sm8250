@@ -1,14 +1,21 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
-/*
+/* SPDX-License-Identifier: GPL-2.0
+ *
+ * linux/drivers/staging/erofs/unzip_pagevec.h
+ *
  * Copyright (C) 2018 HUAWEI, Inc.
- *             https://www.huawei.com/
+ *             http://www.huawei.com/
+ * Created by Gao Xiang <gaoxiang25@huawei.com>
+ *
+ * This file is subject to the terms and conditions of the GNU General Public
+ * License.  See the file COPYING in the main directory of the Linux
+ * distribution for more details.
  */
-#ifndef __EROFS_FS_ZPVEC_H
-#define __EROFS_FS_ZPVEC_H
+#ifndef __EROFS_UNZIP_PAGEVEC_H
+#define __EROFS_UNZIP_PAGEVEC_H
 
-#include "tagptr.h"
+#include <linux/tagptr.h>
 
-/* page type in pagevec for decompress subsystem */
+/* page type in pagevec for unzip subsystem */
 enum z_erofs_page_type {
 	/* including Z_EROFS_VLE_PAGE_TAIL_EXCLUSIVE */
 	Z_EROFS_PAGE_TYPE_EXCLUSIVE,
@@ -36,7 +43,7 @@ struct z_erofs_pagevec_ctor {
 static inline void z_erofs_pagevec_ctor_exit(struct z_erofs_pagevec_ctor *ctor,
 					     bool atomic)
 {
-	if (!ctor->curr)
+	if (ctor->curr == NULL)
 		return;
 
 	if (atomic)
@@ -47,22 +54,25 @@ static inline void z_erofs_pagevec_ctor_exit(struct z_erofs_pagevec_ctor *ctor,
 
 static inline struct page *
 z_erofs_pagevec_ctor_next_page(struct z_erofs_pagevec_ctor *ctor,
-			       unsigned int nr)
+			       unsigned nr)
 {
-	unsigned int index;
+	unsigned index;
 
 	/* keep away from occupied pages */
-	if (ctor->next)
+	if (ctor->next != NULL)
 		return ctor->next;
 
 	for (index = 0; index < nr; ++index) {
 		const erofs_vtptr_t t = ctor->pages[index];
-		const unsigned int tags = tagptr_unfold_tags(t);
+		const unsigned tags = tagptr_unfold_tags(t);
 
 		if (tags == Z_EROFS_PAGE_TYPE_EXCLUSIVE)
 			return tagptr_unfold_ptr(t);
 	}
-	DBG_BUGON(nr >= ctor->nr);
+
+	if (unlikely(nr >= ctor->nr))
+		BUG();
+
 	return NULL;
 }
 
@@ -84,9 +94,8 @@ z_erofs_pagevec_ctor_pagedown(struct z_erofs_pagevec_ctor *ctor,
 }
 
 static inline void z_erofs_pagevec_ctor_init(struct z_erofs_pagevec_ctor *ctor,
-					     unsigned int nr,
-					     erofs_vtptr_t *pages,
-					     unsigned int i)
+					     unsigned nr,
+					     erofs_vtptr_t *pages, unsigned i)
 {
 	ctor->nr = nr;
 	ctor->curr = ctor->next = NULL;
@@ -100,26 +109,23 @@ static inline void z_erofs_pagevec_ctor_init(struct z_erofs_pagevec_ctor *ctor,
 			z_erofs_pagevec_ctor_pagedown(ctor, false);
 		}
 	}
+
 	ctor->next = z_erofs_pagevec_ctor_next_page(ctor, i);
 	ctor->index = i;
 }
 
-static inline bool z_erofs_pagevec_enqueue(struct z_erofs_pagevec_ctor *ctor,
-					   struct page *page,
-					   enum z_erofs_page_type type,
-					   bool pvec_safereuse)
+static inline bool
+z_erofs_pagevec_ctor_enqueue(struct z_erofs_pagevec_ctor *ctor,
+			     struct page *page,
+			     enum z_erofs_page_type type,
+			     bool *occupied)
 {
-	if (!ctor->next) {
-		/* some pages cannot be reused as pvec safely without I/O */
-		if (type == Z_EROFS_PAGE_TYPE_EXCLUSIVE && !pvec_safereuse)
-			type = Z_EROFS_VLE_PAGE_TYPE_TAIL_SHARED;
-
-		if (type != Z_EROFS_PAGE_TYPE_EXCLUSIVE &&
-		    ctor->index + 1 == ctor->nr)
+	*occupied = false;
+	if (unlikely(ctor->next == NULL && type))
+		if (ctor->index + 1 == ctor->nr)
 			return false;
-	}
 
-	if (ctor->index >= ctor->nr)
+	if (unlikely(ctor->index >= ctor->nr))
 		z_erofs_pagevec_ctor_pagedown(ctor, false);
 
 	/* exclusive page type must be 0 */
@@ -129,18 +135,21 @@ static inline bool z_erofs_pagevec_enqueue(struct z_erofs_pagevec_ctor *ctor,
 	/* should remind that collector->next never equal to 1, 2 */
 	if (type == (uintptr_t)ctor->next) {
 		ctor->next = page;
+		*occupied = true;
 	}
-	ctor->pages[ctor->index++] = tagptr_fold(erofs_vtptr_t, page, type);
+
+	ctor->pages[ctor->index++] =
+		tagptr_fold(erofs_vtptr_t, page, type);
 	return true;
 }
 
 static inline struct page *
-z_erofs_pagevec_dequeue(struct z_erofs_pagevec_ctor *ctor,
-			enum z_erofs_page_type *type)
+z_erofs_pagevec_ctor_dequeue(struct z_erofs_pagevec_ctor *ctor,
+			     enum z_erofs_page_type *type)
 {
 	erofs_vtptr_t t;
 
-	if (ctor->index >= ctor->nr) {
+	if (unlikely(ctor->index >= ctor->nr)) {
 		DBG_BUGON(!ctor->next);
 		z_erofs_pagevec_ctor_pagedown(ctor, true);
 	}
@@ -153,7 +162,11 @@ z_erofs_pagevec_dequeue(struct z_erofs_pagevec_ctor *ctor,
 	if (*type == (uintptr_t)ctor->next)
 		ctor->next = tagptr_unfold_ptr(t);
 
-	ctor->pages[ctor->index++] = tagptr_fold(erofs_vtptr_t, NULL, 0);
+	ctor->pages[ctor->index++] =
+		tagptr_fold(erofs_vtptr_t, NULL, 0);
+
 	return tagptr_unfold_ptr(t);
 }
+
 #endif
+
