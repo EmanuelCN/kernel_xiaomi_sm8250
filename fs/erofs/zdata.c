@@ -479,33 +479,12 @@ static void z_erofs_try_to_claim_pcluster(struct z_erofs_decompress_frontend *f)
 	f->mode = Z_EROFS_PCLUSTER_INFLIGHT;
 }
 
-static int z_erofs_lookup_pcluster(struct z_erofs_decompress_frontend *fe)
-{
-	struct erofs_map_blocks *map = &fe->map;
-	struct erofs_workgroup *grp;
-	struct z_erofs_pcluster *pcl;
-
-	grp = erofs_find_workgroup(fe->inode->i_sb, map->m_pa >> PAGE_SHIFT);
-	if (!grp)
-		return -ENOENT;
-
-	pcl = container_of(grp, struct z_erofs_pcluster, obj);
-
-	mutex_lock(&pcl->lock);
-	/* used to check tail merging loop due to corrupted images */
-	if (fe->owned_head == Z_EROFS_PCLUSTER_TAIL)
-		fe->tailpcl = pcl;
-	fe->pcl = pcl;
-	z_erofs_try_to_claim_pcluster(fe);
-	fe->pcl = pcl;
-	return 0;
-}
-
 static int z_erofs_register_pcluster(struct z_erofs_decompress_frontend *fe)
 {
 	struct erofs_map_blocks *map = &fe->map;
 	bool ztailpacking = map->m_flags & EROFS_MAP_META;
 	struct z_erofs_pcluster *pcl;
+	struct erofs_workgroup *grp;
 	int err;
 
 	if (!(map->m_flags & EROFS_MAP_ENCODED)) {
@@ -542,10 +521,18 @@ static int z_erofs_register_pcluster(struct z_erofs_decompress_frontend *fe)
 		pcl->tailpacking_size = map->m_plen;
 	} else {
 		pcl->obj.index = map->m_pa >> PAGE_SHIFT;
-		err = erofs_register_workgroup(fe->inode->i_sb, &pcl->obj);
-		if (err) {
-			z_erofs_free_pcluster(pcl);
-			return -EAGAIN;
+
+		grp = erofs_insert_workgroup(fe->inode->i_sb, &pcl->obj);
+		if (IS_ERR(grp)) {
+			err = PTR_ERR(grp);
+			goto err_out;
+		}
+
+		if (grp != &pcl->obj) {
+			fe->pcl = container_of(grp,
+					struct z_erofs_pcluster, obj);
+			err = -EEXIST;
+			goto err_out;
 		}
 	}
 	/* used to check tail merging loop due to corrupted images */
@@ -554,11 +541,17 @@ static int z_erofs_register_pcluster(struct z_erofs_decompress_frontend *fe)
 	fe->owned_head = &pcl->next;
 	fe->pcl = pcl;
 	return 0;
+
+err_out:
+	mutex_unlock(&pcl->lock);
+	z_erofs_free_pcluster(pcl);
+	return err;
 }
 
 static int z_erofs_collector_begin(struct z_erofs_decompress_frontend *fe)
 {
 	struct erofs_map_blocks *map = &fe->map;
+	struct erofs_workgroup *grp = NULL;
 	int ret;
 
 	DBG_BUGON(fe->pcl);
@@ -567,29 +560,31 @@ static int z_erofs_collector_begin(struct z_erofs_decompress_frontend *fe)
 	DBG_BUGON(fe->owned_head == Z_EROFS_PCLUSTER_NIL);
 	DBG_BUGON(fe->owned_head == Z_EROFS_PCLUSTER_TAIL_CLOSED);
 
-	if (map->m_flags & EROFS_MAP_META) {
-		if ((map->m_pa & ~PAGE_MASK) + map->m_plen > PAGE_SIZE) {
-			DBG_BUGON(1);
-			return -EFSCORRUPTED;
-		}
-		goto tailpacking;
+	if (!(map->m_flags & EROFS_MAP_META)) {
+		grp = erofs_find_workgroup(fe->inode->i_sb,
+					   map->m_pa >> PAGE_SHIFT);
+	} else if ((map->m_pa & ~PAGE_MASK) + map->m_plen > PAGE_SIZE) {
+		DBG_BUGON(1);
+		return -EFSCORRUPTED;
 	}
 
-repeat:
-	ret = z_erofs_lookup_pcluster(fe);
-	if (ret == -ENOENT) {
-tailpacking:
+	if (grp) {
+		fe->pcl = container_of(grp, struct z_erofs_pcluster, obj);
+		ret = -EEXIST;
+	} else {
 		ret = z_erofs_register_pcluster(fe);
-		/* someone registered at the same time, give another try */
-		if (ret == -EAGAIN) {
-			cond_resched();
-			goto repeat;
-		}
 	}
 
-	if (ret)
-		return ret;
+	if (ret == -EEXIST) {
+		mutex_lock(&fe->pcl->lock);
+		/* used to check tail merging loop due to corrupted images */
+		if (fe->owned_head == Z_EROFS_PCLUSTER_TAIL)
+			fe->tailpcl = fe->pcl;
 
+		z_erofs_try_to_claim_pcluster(fe);
+	} else if (ret) {
+		return ret;
+	}
 	z_erofs_bvec_iter_begin(&fe->biter, &fe->pcl->bvset,
 				Z_EROFS_INLINE_BVECS, fe->pcl->vcnt);
 	/* since file-backed online pages are traversed in reverse order */
