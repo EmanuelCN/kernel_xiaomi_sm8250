@@ -153,6 +153,11 @@
 #include "wlan_hdd_cfr.h"
 #include <qdf_hang_event_notifier.h>
 #include "hif.h"
+
+#ifdef FEATURE_WLAN_DYNAMIC_NSS
+#include "wlan_hdd_dynamic_nss.h"
+#endif
+
 #include "wlan_hdd_ioctl.h"
 #include "wlan_hdd_gpio.h"
 
