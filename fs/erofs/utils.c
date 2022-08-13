@@ -92,6 +92,7 @@ repeat:
 	if (ret) {
 		if (erofs_workgroup_get(ret)) {
 			xa_unlock(&sbi->workstn_tree);
+			cond_resched();
 			goto repeat;
 		}
 		DBG_BUGON(ret->index != grp->index);
