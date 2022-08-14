@@ -3868,7 +3868,7 @@ static inline bool cpu_is_in_target_set(struct task_struct *p, int cpu)
 		first_cpu = rd->min_cap_orig_cpu;
 	}
 
-	next_usable_cpu = cpumask_next(first_cpu - 1, &p->cpus_allowed);
+	next_usable_cpu = cpumask_next(first_cpu - 1, p->cpus_ptr);
 	return cpu >= next_usable_cpu || next_usable_cpu >= nr_cpu_ids;
 }
 
@@ -6363,7 +6363,7 @@ select_idle_capacity(struct task_struct *p, struct sched_domain *sd, int target)
 	struct cpumask *cpus;
 
 	cpus = this_cpu_cpumask_var_ptr(select_idle_mask);
-	cpumask_and(cpus, sched_domain_span(sd), &p->cpus_allowed);
+	cpumask_and(cpus, sched_domain_span(sd), p->cpus_ptr);
 
 	task_util = uclamp_task_util(p);
 
@@ -6496,10 +6496,10 @@ static inline int select_idle_sibling_cstate_aware(struct task_struct *p,
 		sg = sd->groups;
 		do {
 			if (!cpumask_intersects(sched_group_span(sg),
-						&p->cpus_allowed))
+						p->cpus_ptr))
 				goto next;
 
-			for_each_cpu_and(i, &p->cpus_allowed,
+			for_each_cpu_and(i, p->cpus_ptr,
 					  sched_group_span(sg)) {
 				int idle_idx;
 				unsigned long new_usage;
