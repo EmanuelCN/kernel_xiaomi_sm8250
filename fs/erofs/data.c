@@ -359,11 +359,12 @@ static ssize_t erofs_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 		unsigned int blksize_mask;
 
 		if (bdev)
-			blksize_mask = (1 << ilog2(bdev_logical_block_size(bdev))) - 1;
+			blksize_mask = bdev_logical_block_size(bdev) - 1;
 		else
 			blksize_mask = (1 << inode->i_blkbits) - 1;
 
-		if ((iocb->ki_pos | iov_iter_count(to) | iov_iter_alignment(to)) & blksize_mask)
+		if ((iocb->ki_pos | iov_iter_count(to) |
+		     iov_iter_alignment(to)) & blksize_mask)
 			return -EINVAL;
 
 		return iomap_dio_rw(iocb, to, &erofs_iomap_ops, NULL);
