@@ -164,6 +164,7 @@ void __do_page_cache_readahead(struct address_space *mapping,
 		struct file *filp, pgoff_t index, unsigned long nr_to_read,
 		unsigned long lookahead_size)
 {
+	unsigned int nofs;
 	struct inode *inode = mapping->host;
 	LIST_HEAD(page_pool);
 	loff_t isize = i_size_read(inode);
@@ -192,7 +193,7 @@ void __do_page_cache_readahead(struct address_space *mapping,
 	 * filesystems already specify __GFP_NOFS in their mapping's
 	 * gfp_mask, but let's be explicit here.
 	 */
-	unsigned int nofs = memalloc_nofs_save();
+	nofs = memalloc_nofs_save();
 
 	/*
 	 * Preallocate as many pages as we will need.
