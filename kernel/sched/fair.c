@@ -4027,19 +4027,6 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 			thresh >>= 1;
 
 		vruntime -= thresh;
-#ifdef CONFIG_SCHED_WALT
-		if (entity_is_task(se)) {
-			if ((per_task_boost(task_of(se)) ==
-					TASK_BOOST_STRICT_MAX) ||
-					walt_low_latency_task(task_of(se)) ||
-					task_rtg_high_prio(task_of(se))) {
-				vruntime -= sysctl_sched_latency;
-				vruntime -= thresh;
-				se->vruntime = vruntime;
-				return;
-			}
-		}
-#endif
 	}
 
 	/* ensure we never gain time by being placed backwards. */
@@ -6883,12 +6870,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 			}
 
 			/*
-			 * Consider only idle CPUs for active migration.
-			 */
-			if (p->state == TASK_RUNNING)
-				continue;
-
-			/*
 			 * Case C) Non latency sensitive tasks on ACTIVE CPUs.
 			 *
 			 * Pack tasks in the most energy efficient capacities.
@@ -6988,11 +6969,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 		backup_cpu = prefer_idle
 		? best_active_cpu
 		: best_idle_cpu;
-
-	if (target_cpu == -1 && most_spare_cap_cpu != -1 &&
-		/* ensure we use active cpu for active migration */
-		!(p->state == TASK_RUNNING && !idle_cpu(most_spare_cap_cpu)))
-		target_cpu = most_spare_cap_cpu;
 
 	if (target_cpu == -1 && isolated_candidate != -1 &&
 					cpu_isolated(prev_cpu))
