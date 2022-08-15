@@ -3896,20 +3896,20 @@ static const struct snd_kcontrol_new rt_proxy_config_controls[] = {
 };
 
 static const struct snd_kcontrol_new usb_audio_cfg_controls[] = {
-	SOC_SINGLE_EXT("USB_AUDIO_RX dev_token", 0, 0, UINT_MAX, 0,
+	SOC_SINGLE_EXT("USB_AUDIO_RX dev_token", 0, 0, INT_MAX, 0,
 			msm_dai_q6_usb_audio_cfg_get,
 			msm_dai_q6_usb_audio_cfg_put),
 	SOC_SINGLE_EXT("USB_AUDIO_RX endian", 0, 0, 1, 0,
 			msm_dai_q6_usb_audio_endian_cfg_get,
 			msm_dai_q6_usb_audio_endian_cfg_put),
-	SOC_SINGLE_EXT("USB_AUDIO_TX dev_token", 0, 0, UINT_MAX, 0,
+	SOC_SINGLE_EXT("USB_AUDIO_TX dev_token", 0, 0, INT_MAX, 0,
 			msm_dai_q6_usb_audio_cfg_get,
 			msm_dai_q6_usb_audio_cfg_put),
 	SOC_SINGLE_EXT("USB_AUDIO_TX endian", 0, 0, 1, 0,
 			msm_dai_q6_usb_audio_endian_cfg_get,
 			msm_dai_q6_usb_audio_endian_cfg_put),
 	SOC_SINGLE_EXT("USB_AUDIO_RX service_interval", SND_SOC_NOPM, 0,
-			UINT_MAX, 0,
+			INT_MAX, 0,
 			msm_dai_q6_usb_audio_svc_interval_get,
 			msm_dai_q6_usb_audio_svc_interval_put),
 };
