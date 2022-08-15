@@ -96,6 +96,7 @@ TRACE_EVENT(rcu_grace_period,
  * "Startedroot": Requested a nocb grace period based on root-node data.
  * "NoGPkthread": The RCU grace-period kthread has not yet started.
  * "StartWait": Start waiting for the requested grace period.
+ * "ResumeWait": Resume waiting after signal.
  * "EndWait": Complete wait.
  * "Cleanup": Clean up rcu_node structure after previous GP.
  * "CleanupMore": Clean up, and another GP is needed.
@@ -262,8 +263,7 @@ TRACE_EVENT(rcu_exp_funnel_lock,
  *	"WakeNotPoll": Don't wake rcuo kthread because it is polling.
  *	"DeferredWake": Carried out the "IsDeferred" wakeup.
  *	"Poll": Start of new polling cycle for rcu_nocb_poll.
- *	"Sleep": Sleep waiting for GP for !rcu_nocb_poll.
- *	"CBSleep": Sleep waiting for CBs for !rcu_nocb_poll.
+ *	"Sleep": Sleep waiting for CBs for !rcu_nocb_poll.
  *	"WokeEmpty": rcuo kthread woke to find empty list.
  *	"WokeNonEmpty": rcuo kthread woke to find non-empty list.
  *	"WaitQueue": Enqueue partially done, timed wait for it to complete.
@@ -393,8 +393,9 @@ TRACE_EVENT(rcu_quiescent_state_report,
  * Tracepoint for quiescent states detected by force_quiescent_state().
  * These trace events include the type of RCU, the grace-period number
  * that was blocked by the CPU, the CPU itself, and the type of quiescent
- * state, which can be "dti" for dyntick-idle mode or "kick" when kicking
- * a CPU that has been in dyntick-idle mode for too long.
+ * state, which can be "dti" for dyntick-idle mode, "kick" when kicking
+ * a CPU that has been in dyntick-idle mode for too long, or "rqc" if the
+ * CPU got a quiescent state via its rcu_qs_ctr.
  */
 TRACE_EVENT(rcu_fqs,
 
@@ -438,7 +439,7 @@ TRACE_EVENT(rcu_fqs,
  */
 TRACE_EVENT(rcu_dyntick,
 
-	TP_PROTO(const char *polarity, long oldnesting, long newnesting, int dynticks),
+	TP_PROTO(const char *polarity, long oldnesting, long newnesting, atomic_t dynticks),
 
 	TP_ARGS(polarity, oldnesting, newnesting, dynticks),
 
@@ -453,7 +454,7 @@ TRACE_EVENT(rcu_dyntick,
 		__entry->polarity = polarity;
 		__entry->oldnesting = oldnesting;
 		__entry->newnesting = newnesting;
-		__entry->dynticks = dynticks;
+		__entry->dynticks = atomic_read(&dynticks);
 	),
 
 	TP_printk("%s %lx %lx %#3x", __entry->polarity,
@@ -704,20 +705,20 @@ TRACE_EVENT(rcu_torture_read,
 );
 
 /*
- * Tracepoint for rcu_barrier() execution.  The string "s" describes
- * the rcu_barrier phase:
- *	"Begin": rcu_barrier() started.
- *	"EarlyExit": rcu_barrier() piggybacked, thus early exit.
- *	"Inc1": rcu_barrier() piggyback check counter incremented.
- *	"OfflineNoCB": rcu_barrier() found callback on never-online CPU
- *	"OnlineNoCB": rcu_barrier() found online no-CBs CPU.
- *	"OnlineQ": rcu_barrier() found online CPU with callbacks.
- *	"OnlineNQ": rcu_barrier() found online CPU, no callbacks.
+ * Tracepoint for _rcu_barrier() execution.  The string "s" describes
+ * the _rcu_barrier phase:
+ *	"Begin": _rcu_barrier() started.
+ *	"EarlyExit": _rcu_barrier() piggybacked, thus early exit.
+ *	"Inc1": _rcu_barrier() piggyback check counter incremented.
+ *	"OfflineNoCB": _rcu_barrier() found callback on never-online CPU
+ *	"OnlineNoCB": _rcu_barrier() found online no-CBs CPU.
+ *	"OnlineQ": _rcu_barrier() found online CPU with callbacks.
+ *	"OnlineNQ": _rcu_barrier() found online CPU, no callbacks.
  *	"IRQ": An rcu_barrier_callback() callback posted on remote CPU.
  *	"IRQNQ": An rcu_barrier_callback() callback found no callbacks.
  *	"CB": An rcu_barrier_callback() invoked a callback, not the last.
  *	"LastCB": An rcu_barrier_callback() invoked the last callback.
- *	"Inc2": rcu_barrier() piggyback check counter incremented.
+ *	"Inc2": _rcu_barrier() piggyback check counter incremented.
  * The "cpu" argument is the CPU or -1 if meaningless, the "cnt" argument
  * is the count of remaining callbacks, and "done" is the piggybacking count.
  */

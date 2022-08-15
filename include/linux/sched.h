@@ -782,8 +782,10 @@ union rcu_special {
 	struct {
 		u8			blocked;
 		u8			need_qs;
-		u8			exp_hint; /* Hint for performance. */
-		u8			deferred_qs;
+		u8			exp_need_qs;
+
+		/* Otherwise the compiler can store garbage here: */
+		u8			pad;
 	} b; /* Bits. */
 	u32 s; /* Set of bits. */
 };

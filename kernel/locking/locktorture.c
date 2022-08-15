@@ -970,7 +970,7 @@ static int __init lock_torture_init(void)
 	/* Prepare torture context. */
 	if (onoff_interval > 0) {
 		firsterr = torture_onoff_init(onoff_holdoff * HZ,
-					      onoff_interval * HZ, NULL);
+					      onoff_interval * HZ);
 		if (firsterr)
 			goto unwind;
 	}
@@ -986,7 +986,7 @@ static int __init lock_torture_init(void)
 			goto unwind;
 	}
 	if (stutter > 0) {
-		firsterr = torture_stutter_init(stutter, stutter);
+		firsterr = torture_stutter_init(stutter);
 		if (firsterr)
 			goto unwind;
 	}
