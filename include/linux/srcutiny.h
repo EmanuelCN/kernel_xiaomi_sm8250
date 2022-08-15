@@ -60,7 +60,7 @@ void srcu_drive_gp(struct work_struct *wp);
 #define DEFINE_STATIC_SRCU(name) \
 	static struct srcu_struct name = __SRCU_STRUCT_INIT(name, name)
 
-void synchronize_srcu(struct srcu_struct *ssp);
+void synchronize_srcu(struct srcu_struct *sp);
 
 /*
  * Counts the new reader in the appropriate per-CPU element of the
@@ -68,36 +68,36 @@ void synchronize_srcu(struct srcu_struct *ssp);
  * __srcu_read_unlock() must be in the same handler instance.  Returns an
  * index that must be passed to the matching srcu_read_unlock().
  */
-static inline int __srcu_read_lock(struct srcu_struct *ssp)
+static inline int __srcu_read_lock(struct srcu_struct *sp)
 {
 	int idx;
 
-	idx = READ_ONCE(ssp->srcu_idx);
-	WRITE_ONCE(ssp->srcu_lock_nesting[idx], ssp->srcu_lock_nesting[idx] + 1);
+	idx = READ_ONCE(sp->srcu_idx);
+	WRITE_ONCE(sp->srcu_lock_nesting[idx], sp->srcu_lock_nesting[idx] + 1);
 	return idx;
 }
 
-static inline void synchronize_srcu_expedited(struct srcu_struct *ssp)
+static inline void synchronize_srcu_expedited(struct srcu_struct *sp)
 {
-	synchronize_srcu(ssp);
+	synchronize_srcu(sp);
 }
 
-static inline void srcu_barrier(struct srcu_struct *ssp)
+static inline void srcu_barrier(struct srcu_struct *sp)
 {
-	synchronize_srcu(ssp);
+	synchronize_srcu(sp);
 }
 
 /* Defined here to avoid size increase for non-torture kernels. */
-static inline void srcu_torture_stats_print(struct srcu_struct *ssp,
+static inline void srcu_torture_stats_print(struct srcu_struct *sp,
 					    char *tt, char *tf)
 {
 	int idx;
 
-	idx = READ_ONCE(ssp->srcu_idx) & 0x1;
+	idx = READ_ONCE(sp->srcu_idx) & 0x1;
 	pr_alert("%s%s Tiny SRCU per-CPU(idx=%d): (%hd,%hd)\n",
 		 tt, tf, idx,
-		 READ_ONCE(ssp->srcu_lock_nesting[!idx]),
-		 READ_ONCE(ssp->srcu_lock_nesting[idx]));
+		 READ_ONCE(sp->srcu_lock_nesting[!idx]),
+		 READ_ONCE(sp->srcu_lock_nesting[idx]));
 }
 
 #endif

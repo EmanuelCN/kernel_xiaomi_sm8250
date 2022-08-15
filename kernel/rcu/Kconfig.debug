@@ -7,17 +7,6 @@ menu "RCU Debugging"
 config PROVE_RCU
 	def_bool PROVE_LOCKING
 
-config PROVE_RCU_LIST
-	bool "RCU list lockdep debugging"
-	depends on PROVE_RCU && RCU_EXPERT
-	default n
-	help
-	  Enable RCU lockdep checking for list usages. By default it is
-	  turned off since there are several list RCU users that still
-	  need to be converted to pass a lockdep expression. To prevent
-	  false-positive splats, we keep it default disabled but once all
-	  users are converted, we can remove this config option.
-
 config TORTURE_TEST
 	tristate
 	default n
@@ -66,6 +55,17 @@ config RCU_CPU_STALL_TIMEOUT
 	  number of seconds, a CPU stall warning is printed.  If the
 	  RCU grace period persists, additional CPU stall warnings are
 	  printed at more widely spaced intervals.
+
+config RCU_PANIC_ON_STALL
+	int "Panic on RCU Stalls"
+	range 0 1
+	default 0
+	depends on RCU_STALL_COMMON
+	help
+	  Panic if a given RCU grace period extends more than the specified
+	  number of seconds instead of just printing a CPU stall warning.
+	  This helps to collect cpu context as part of ramdumps for post
+	  mortem analysis.
 
 config RCU_TRACE
 	bool "Enable tracing for RCU"
