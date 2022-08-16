@@ -613,34 +613,6 @@ TRACE_EVENT(rcu_invoke_kvfree_callback,
 );
 
 /*
- * Tracepoint for the invocation of a single RCU callback of the special
- * kfree_bulk() form. The first argument is the RCU flavor, the second
- * argument is a number of elements in array to free, the third is an
- * address of the array holding nr_records entries.
- */
-TRACE_EVENT_RCU(rcu_invoke_kfree_bulk_callback,
-
-	TP_PROTO(const char *rcuname, unsigned long nr_records, void **p),
-
-	TP_ARGS(rcuname, nr_records, p),
-
-	TP_STRUCT__entry(
-		__field(const char *, rcuname)
-		__field(unsigned long, nr_records)
-		__field(void **, p)
-	),
-
-	TP_fast_assign(
-		__entry->rcuname = rcuname;
-		__entry->nr_records = nr_records;
-		__entry->p = p;
-	),
-
-	TP_printk("%s bulk=0x%p nr_records=%lu",
-		__entry->rcuname, __entry->p, __entry->nr_records)
-);
-
-/*
  * Tracepoint for exiting rcu_do_batch after RCU callbacks have been
  * invoked.  The first argument is the name of the RCU flavor,
  * the second argument is number of callbacks actually invoked,
@@ -789,13 +761,13 @@ TRACE_EVENT(rcu_barrier,
 	while (0)
 #define trace_rcu_fqs(rcuname, gp_seq, cpu, qsevent) do { } while (0)
 #define trace_rcu_dyntick(polarity, oldnesting, newnesting, dyntick) do { } while (0)
-#define trace_rcu_callback(rcuname, rhp, qlen_lazy, qlen) do { } while (0)
-#define trace_rcu_kfree_callback(rcuname, rhp, offset, qlen_lazy, qlen) \
+#define trace_rcu_callback(rcuname, rhp, qlen) do { } while (0)
+#define trace_rcu_kvfree_callback(rcuname, rhp, offset, qlen) \
 	do { } while (0)
-#define trace_rcu_batch_start(rcuname, qlen_lazy, qlen, blimit) \
+#define trace_rcu_batch_start(rcuname, qlen, blimit) \
 	do { } while (0)
 #define trace_rcu_invoke_callback(rcuname, rhp) do { } while (0)
-#define trace_rcu_invoke_kfree_callback(rcuname, rhp, offset) do { } while (0)
+#define trace_rcu_invoke_kvfree_callback(rcuname, rhp, offset) do { } while (0)
 #define trace_rcu_batch_end(rcuname, callbacks_invoked, cb, nr, iit, risk) \
 	do { } while (0)
 #define trace_rcu_torture_read(rcutorturename, rhp, secs, c_old, c) \
@@ -808,3 +780,4 @@ TRACE_EVENT(rcu_barrier,
 
 /* This part must be outside protection */
 #include <trace/define_trace.h>
+
