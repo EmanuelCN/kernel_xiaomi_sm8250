@@ -64,6 +64,19 @@
 #include "tree.h"
 #include "rcu.h"
 
+#ifndef data_race
+#define data_race(expr)							\
+	({								\
+		expr;							\
+	})
+#endif
+#ifndef ASSERT_EXCLUSIVE_WRITER
+#define ASSERT_EXCLUSIVE_WRITER(var) do { } while (0)
+#endif
+#ifndef ASSERT_EXCLUSIVE_ACCESS
+#define ASSERT_EXCLUSIVE_ACCESS(var) do { } while (0)
+#endif
+
 #ifdef MODULE_PARAM_PREFIX
 #undef MODULE_PARAM_PREFIX
 #endif
@@ -3199,10 +3212,6 @@ static void kfree_rcu_work(struct work_struct *work)
 
 			rcu_lock_acquire(&rcu_callback_map);
 			if (i == 0) { // kmalloc() / kfree().
-				trace_rcu_invoke_kfree_bulk_callback(
-					rcu_state.name, bkvhead[i]->nr_records,
-					bkvhead[i]->records);
-
 				kfree_bulk(bkvhead[i]->nr_records,
 					bkvhead[i]->records);
 			} else { // vmalloc() / vfree().
