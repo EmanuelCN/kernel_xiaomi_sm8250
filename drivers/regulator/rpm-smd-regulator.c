@@ -2042,7 +2042,6 @@ int __init rpm_smd_regulator_driver_init(void)
 
 	return platform_driver_register(&rpm_vreg_resource_driver);
 }
-EXPORT_SYMBOL(rpm_smd_regulator_driver_init);
 
 static void __exit rpm_vreg_exit(void)
 {
