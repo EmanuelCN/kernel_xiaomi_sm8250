@@ -2,7 +2,6 @@
 /*
  * Copyright (C) 2017-2018 HUAWEI, Inc.
  *             https://www.huawei.com/
- * Copyright (C) 2022, Alibaba Cloud
  */
 #include "xattr.h"
 
@@ -87,14 +86,14 @@ static struct erofs_dirent *find_target_dirent(struct erofs_qstr *name,
 	return ERR_PTR(-ENOENT);
 }
 
-static void *find_target_block_classic(struct erofs_buf *target,
-				       struct inode *dir,
-				       struct erofs_qstr *name,
-				       int *_ndirents)
+static struct page *find_target_block_classic(struct inode *dir,
+					      struct erofs_qstr *name,
+					      int *_ndirents)
 {
 	unsigned int startprfx, endprfx;
 	int head, back;
-	void *candidate = ERR_PTR(-ENOENT);
+	struct address_space *const mapping = dir->i_mapping;
+	struct page *candidate = ERR_PTR(-ENOENT);
 
 	startprfx = endprfx = 0;
 	head = 0;
@@ -102,11 +101,10 @@ static void *find_target_block_classic(struct erofs_buf *target,
 
 	while (head <= back) {
 		const int mid = head + (back - head) / 2;
-		struct erofs_buf buf = __EROFS_BUF_INITIALIZER;
-		struct erofs_dirent *de;
+		struct page *page = read_mapping_page(mapping, mid, NULL);
 
-		de = erofs_bread(&buf, dir, mid, EROFS_KMAP);
-		if (!IS_ERR(de)) {
+		if (!IS_ERR(page)) {
+			struct erofs_dirent *de = kmap_atomic(page);
 			const int nameoff = nameoff_from_disk(de->nameoff,
 							      EROFS_BLKSIZ);
 			const int ndirents = nameoff / sizeof(*de);
@@ -115,12 +113,13 @@ static void *find_target_block_classic(struct erofs_buf *target,
 			struct erofs_qstr dname;
 
 			if (!ndirents) {
-				erofs_put_metabuf(&buf);
+				kunmap_atomic(de);
+				put_page(page);
 				erofs_err(dir->i_sb,
 					  "corrupted dir block %d @ nid %llu",
 					  mid, EROFS_I(dir)->nid);
 				DBG_BUGON(1);
-				de = ERR_PTR(-EFSCORRUPTED);
+				page = ERR_PTR(-EFSCORRUPTED);
 				goto out;
 			}
 
@@ -136,6 +135,7 @@ static void *find_target_block_classic(struct erofs_buf *target,
 
 			/* string comparison without already matched prefix */
 			diff = erofs_dirnamecmp(name, &dname, &matched);
+			kunmap_atomic(de);
 
 			if (!diff) {
 				*_ndirents = 0;
@@ -145,12 +145,11 @@ static void *find_target_block_classic(struct erofs_buf *target,
 				startprfx = matched;
 
 				if (!IS_ERR(candidate))
-					erofs_put_metabuf(target);
-				*target = buf;
-				candidate = de;
+					put_page(candidate);
+				candidate = page;
 				*_ndirents = ndirents;
 			} else {
-				erofs_put_metabuf(&buf);
+				put_page(page);
 
 				back = mid - 1;
 				endprfx = matched;
@@ -159,17 +158,19 @@ static void *find_target_block_classic(struct erofs_buf *target,
 		}
 out:		/* free if the candidate is valid */
 		if (!IS_ERR(candidate))
-			erofs_put_metabuf(target);
-		return de;
+			put_page(candidate);
+		return page;
 	}
 	return candidate;
 }
 
-int erofs_namei(struct inode *dir, const struct qstr *name, erofs_nid_t *nid,
-		unsigned int *d_type)
+int erofs_namei(struct inode *dir,
+		struct qstr *name,
+		erofs_nid_t *nid, unsigned int *d_type)
 {
 	int ndirents;
-	struct erofs_buf buf = __EROFS_BUF_INITIALIZER;
+	struct page *page;
+	void *data;
 	struct erofs_dirent *de;
 	struct erofs_qstr qn;
 
@@ -180,20 +181,26 @@ int erofs_namei(struct inode *dir, const struct qstr *name, erofs_nid_t *nid,
 	qn.end = name->name + name->len;
 
 	ndirents = 0;
+	page = find_target_block_classic(dir, &qn, &ndirents);
 
-	de = find_target_block_classic(&buf, dir, &qn, &ndirents);
-	if (IS_ERR(de))
-		return PTR_ERR(de);
+	if (IS_ERR(page))
+		return PTR_ERR(page);
 
+	data = kmap_atomic(page);
 	/* the target page has been mapped */
 	if (ndirents)
-		de = find_target_dirent(&qn, (u8 *)de, EROFS_BLKSIZ, ndirents);
+		de = find_target_dirent(&qn, data, EROFS_BLKSIZ, ndirents);
+	else
+		de = (struct erofs_dirent *)data;
 
 	if (!IS_ERR(de)) {
 		*nid = le64_to_cpu(de->nid);
 		*d_type = de->file_type;
 	}
-	erofs_put_metabuf(&buf);
+
+	kunmap_atomic(data);
+	put_page(page);
+
 	return PTR_ERR_OR_ZERO(de);
 }
 
@@ -226,8 +233,8 @@ static struct dentry *erofs_lookup(struct inode *dir,
 	} else if (err) {
 		inode = ERR_PTR(err);
 	} else {
-		erofs_dbg("%s, %pd (nid %llu) found, d_type %u", __func__,
-			  dentry, nid, d_type);
+		erofs_dbg("%s, %s (nid %llu) found, d_type %u", __func__,
+			  dentry->d_name.name, nid, d_type);
 		inode = erofs_iget(dir->i_sb, nid, d_type == EROFS_FT_DIR);
 	}
 	return d_splice_alias(inode, dentry);
@@ -238,5 +245,4 @@ const struct inode_operations erofs_dir_iops = {
 	.getattr = erofs_getattr,
 	.listxattr = erofs_listxattr,
 	.get_acl = erofs_get_acl,
-	.fiemap = erofs_fiemap,
 };

@@ -285,7 +285,6 @@ enum positive_aop_returns {
 struct page;
 struct address_space;
 struct writeback_control;
-struct readahead_control;
 
 /*
  * Write life time hint values.
@@ -368,7 +367,6 @@ struct address_space_operations {
 	 */
 	int (*readpages)(struct file *filp, struct address_space *mapping,
 			struct list_head *pages, unsigned nr_pages);
-	void (*readahead)(struct readahead_control *);
 
 	int (*write_begin)(struct file *, struct address_space *mapping,
 				loff_t pos, unsigned len, unsigned flags,

@@ -6,32 +6,26 @@
 #include "internal.h"
 #include <linux/pagevec.h>
 
-struct page *erofs_allocpage(struct page **pagepool, gfp_t gfp)
+struct page *erofs_allocpage(struct list_head *pool, gfp_t gfp)
 {
-	struct page *page = *pagepool;
+	struct page *page;
 
-	if (page) {
+	if (!list_empty(pool)) {
+		page = lru_to_page(pool);
 		DBG_BUGON(page_ref_count(page) != 1);
-		*pagepool = (struct page *)page_private(page);
+		list_del(&page->lru);
 	} else {
 		page = alloc_page(gfp);
 	}
 	return page;
 }
 
-void erofs_release_pages(struct page **pagepool)
-{
-	while (*pagepool) {
-		struct page *page = *pagepool;
-
-		*pagepool = (struct page *)page_private(page);
-		put_page(page);
-	}
-}
-
 #ifdef CONFIG_EROFS_FS_ZIP
 /* global shrink count (for all mounted EROFS instances) */
 static atomic_long_t erofs_global_shrink_cnt;
+
+#define __erofs_workgroup_get(grp)	atomic_inc(&(grp)->refcount)
+#define __erofs_workgroup_put(grp)	atomic_dec(&(grp)->refcount)
 
 static int erofs_workgroup_get(struct erofs_workgroup *grp)
 {
@@ -73,54 +67,43 @@ repeat:
 	return grp;
 }
 
-struct erofs_workgroup *erofs_insert_workgroup(struct super_block *sb,
+int erofs_register_workgroup(struct super_block *sb,
 			     struct erofs_workgroup *grp)
 {
 	struct erofs_sb_info *sbi;
-	struct erofs_workgroup *ret;
 	int err;
+
+	/* grp shouldn't be broken or used before */
+	if (atomic_read(&grp->refcount) != 1) {
+		DBG_BUGON(1);
+		return -EINVAL;
+	}
 
 	err = radix_tree_preload(GFP_NOFS);
 	if (err)
-		return ERR_PTR(err);
+		return err;
 
 	sbi = EROFS_SB(sb);
-
-repeat:
 	xa_lock(&sbi->workstn_tree);
-	ret = radix_tree_lookup(&sbi->workstn_tree, grp->index);
-	if (ret) {
-		if (erofs_workgroup_get(ret)) {
-			xa_unlock(&sbi->workstn_tree);
-			cond_resched();
-			goto repeat;
-		}
-		DBG_BUGON(ret->index != grp->index);
-		goto out_unlock;
-	}
 
 	/*
 	 * Bump up reference count before making this workgroup
 	 * visible to other users in order to avoid potential UAF
 	 * without serialized by workstn_lock.
 	 */
-	atomic_inc(&grp->refcount);
+	__erofs_workgroup_get(grp);
 
 	err = radix_tree_insert(&sbi->workstn_tree, grp->index, grp);
-	if (err) {
+	if (err)
 		/*
 		 * it's safe to decrease since the workgroup isn't visible
 		 * and refcount >= 2 (cannot be freezed).
 		 */
-		atomic_dec(&grp->refcount);
-		ret = ERR_PTR(err);
-	} else
-		ret = grp;
+		__erofs_workgroup_put(grp);
 
-out_unlock:
 	xa_unlock(&sbi->workstn_tree);
 	radix_tree_preload_end();
-	return ret;
+	return err;
 }
 
 static void  __erofs_workgroup_free(struct erofs_workgroup *grp)
