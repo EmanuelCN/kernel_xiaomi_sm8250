@@ -44,51 +44,6 @@
 #define MAX_SPATIAL_STREAM 3
 #endif
 
-/*
- * NOTE: The CONFIG_160MHZ_SUPPORT is not used consistently - some code
- * uses "#ifdef CONFIG_160MHZ_SUPPORT" while other code uses
- * "#if CONFIG_160MHZ_SUPPORT".
- * This use is being standardized in the recent versions of code to use
- * #ifdef, but is being left as is in the legacy code branches.
- * To minimize impact to legacy code branches, this file internally
- * converts CONFIG_160MHZ_SUPPORT=0 to having CONFIG_160MHZ_SUPPORT
- * undefined.
- * For builds that explicitly set CONFIG_160MHZ_SUPPORT=0, the bottom of
- * this file restores CONFIG_160MHZ_SUPPORT from being undefined to being 0.
- */
-// OLD:
-//#ifndef CONFIG_160MHZ_SUPPORT
-//#define CONFIG_160MHZ_SUPPORT 0 /* default: 160 MHz channels not supported */
-//#endif
-// NEW:
-#ifdef CONFIG_160MHZ_SUPPORT
-  /* CONFIG_160MHZ_SUPPORT is explicitly enabled or explicitly disabled */
-  #if !CONFIG_160MHZ_SUPPORT
-    /* CONFIG_160MHZ_SUPPORT is explicitly disabled */
-    /* Change from CONFIG_160MHZ_SUPPORT=0 to CONFIG_160MHZ_SUPPORT=<undef> */
-    #undef CONFIG_160MHZ_SUPPORT
-    /*
-     * Set a flag to indicate this CONFIG_160MHZ_SUPPORT = 0 --> undef
-     * change has been done, so we can undo the change at the bottom
-     * of the file.
-     */
-    #define CONFIG_160MHZ_SUPPORT_UNDEF_WAR
-  #endif
-#else
-  /*
-   * For backwards compatibility, if CONFIG_160MHZ_SUPPORT is not defined,
-   * default it to 0, if this is either a host build or a Rome target build.
-   * This maintains the prior behavior for the host and Rome target builds.
-   */
-  #if defined(AR6320) || !defined(ATH_TARGET)
-    /*
-     * Set a flag to indicate that at the end of the file,
-     * CONFIG_160MHZ_SUPPORT should be set to 0.
-     */
-    #define CONFIG_160MHZ_SUPPORT_UNDEF_WAR
-  #endif
-#endif
-
 #ifndef SUPPORT_11AX
 #define SUPPORT_11AX 0 /* 11ax not supported by default */
 #endif
@@ -1301,15 +1256,6 @@ typedef enum {
     WLAN_DBG_DATA_STALL_RECOVERY_CONNECT_PDR,
     WLAN_DBG_DATA_STALL_RECOVERY_CONNECT_SSR,
 } wlan_dbg_data_stall_recovery_type_e;
-
-/*
- * NOTE: If necessary, restore the explicit disabling of CONFIG_160MHZ_SUPPORT
- * See the corresponding comment + pre-processor block at the top of the file.
- */
-#ifdef CONFIG_160MHZ_SUPPORT_UNDEF_WAR
-    #define CONFIG_160MHZ_SUPPORT 0
-    #undef CONFIG_160MHZ_SUPPORT_UNDEF_WAR
-#endif
 
 /** MGMT RX REO Changes */
 /* Macros for having versioning info for compatibility check between host and firmware */
