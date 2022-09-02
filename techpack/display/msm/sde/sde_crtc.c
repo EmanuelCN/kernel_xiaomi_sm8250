@@ -2158,8 +2158,6 @@ static void sde_crtc_frame_event_cb(void *data, u32 event)
 	struct msm_drm_private *priv;
 	struct sde_crtc_frame_event *fevent;
 	struct sde_crtc_frame_event_cb_data *cb_data;
-	struct drm_plane *plane;
-	u32 ubwc_error;
 	unsigned long flags;
 	u32 crtc_id;
 
@@ -2189,34 +2187,9 @@ static void sde_crtc_frame_event_cb(void *data, u32 event)
 	spin_unlock_irqrestore(&sde_crtc->fevent_spin_lock, flags);
 
 	if (!fevent) {
-		SDE_ERROR("crtc%d event %d overflow\n",
-				crtc->base.id, event);
+		SDE_ERROR("crtc%d event %d overflow\n", DRMID(crtc), event);
 		SDE_EVT32(DRMID(crtc), event);
 		return;
-	}
-
-	/* log and clear plane ubwc errors if any */
-	if (event & (SDE_ENCODER_FRAME_EVENT_ERROR
-				| SDE_ENCODER_FRAME_EVENT_PANEL_DEAD
-				| SDE_ENCODER_FRAME_EVENT_DONE)) {
-		drm_for_each_plane_mask(plane, crtc->dev,
-						sde_crtc->plane_mask_old) {
-			ubwc_error = sde_plane_get_ubwc_error(plane);
-			if (ubwc_error) {
-				SDE_EVT32(DRMID(crtc), DRMID(plane),
-						ubwc_error, SDE_EVTLOG_ERROR);
-				SDE_DEBUG("crtc%d plane %d ubwc_error %d\n",
-						DRMID(crtc), DRMID(plane),
-						ubwc_error);
-				sde_plane_clear_ubwc_error(plane);
-			}
-		}
-	}
-
-	if ((event & SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE) &&
-		(sde_crtc && sde_crtc->retire_frame_event_sf)) {
-		sde_crtc->retire_frame_event_time = ktime_get();
-		sysfs_notify_dirent(sde_crtc->retire_frame_event_sf);
 	}
 
 	fevent->event = event;
@@ -2401,6 +2374,9 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 	struct sde_kms *sde_kms;
 	unsigned long flags;
 	bool in_clone_mode = false;
+	int ret;
+	struct drm_plane *plane;
+	u32 ubwc_error;
 
 	if (!work) {
 		SDE_ERROR("invalid work handle\n");
@@ -2435,6 +2411,27 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 	if (!in_clone_mode && (fevent->event & (SDE_ENCODER_FRAME_EVENT_ERROR
 					| SDE_ENCODER_FRAME_EVENT_PANEL_DEAD
 					| SDE_ENCODER_FRAME_EVENT_DONE))) {
+		ret = pm_runtime_get_sync(crtc->dev->dev);
+		if (ret < 0) {
+			SDE_ERROR("failed to enable power resource %d\n", ret);
+			SDE_EVT32(ret, SDE_EVTLOG_ERROR);
+		} else {
+			/* log and clear plane ubwc errors if any */
+			drm_for_each_plane_mask(plane, crtc->dev,
+						sde_crtc->plane_mask_old) {
+				ubwc_error = sde_plane_get_ubwc_error(plane);
+				if (ubwc_error) {
+					SDE_EVT32(DRMID(crtc), DRMID(plane),
+					ubwc_error, SDE_EVTLOG_ERROR);
+					SDE_DEBUG("crtc%d plane %d ubwc_error %d\n",
+					DRMID(crtc), DRMID(plane),
+					ubwc_error);
+					sde_plane_clear_ubwc_error(plane);
+				}
+			}
+			pm_runtime_put_sync(crtc->dev->dev);
+		}
+
 		if (atomic_read(&sde_crtc->frame_pending) < 1) {
 			/* this should not happen */
 			SDE_ERROR("crtc%d ts:%lld invalid frame_pending:%d\n",
@@ -2466,6 +2463,10 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 	}
 
 	if (fevent->event & SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE) {
+		if (sde_crtc->retire_frame_event_sf) {
+			sde_crtc->retire_frame_event_time = fevent->ts;
+			sysfs_notify_dirent(sde_crtc->retire_frame_event_sf);
+		}
 		/* this api should be called without spin_lock */
 		_sde_crtc_retire_event(fevent->connector, fevent->ts,
 				(fevent->event & SDE_ENCODER_FRAME_EVENT_ERROR)
