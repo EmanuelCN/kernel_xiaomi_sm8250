@@ -46,7 +46,9 @@
 #endif
 #include <linux/backlight.h>
 #include <linux/input/touch_common_info.h>
-
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+#include <linux/input/tp_common.h>
+#endif
 
 /*****************************************************************************
 * Private constant and macro definitions using #define
@@ -582,6 +584,8 @@ static void fts_release_all_finger(void)
 	FTS_FUNC_ENTER();
 #ifdef CONFIG_TOUCHSCREEN_FTS_FOD
 	fts_data->finger_in_fod = false;
+	fts_data->fod_x = 0;
+	fts_data->fod_y = 0;
 	/* fts_data->overlap_area = 0; */
 	fod_overlap_aera = 0;
 #endif
@@ -740,6 +744,9 @@ static int fts_read_and_report_foddata(struct fts_ts_data *data)
 					}
 				}
 				data->finger_in_fod = true;
+				data->fod_x = x;
+				data->fod_y = y;
+				tp_common_notify_fp_state();
 				irq_num++;
 				if (data->suspended && data->fod_status == 0) {
 					if (irq_num == 1)
@@ -780,6 +787,9 @@ static int fts_read_and_report_foddata(struct fts_ts_data *data)
 				FTS_INFO("Report_0x152 UP for FingerPrint\n");
 				/* data->overlap_area = 0; */
 				fod_overlap_aera = 0;
+				data->fod_x = 0;
+				data->fod_y = 0;
+				tp_common_notify_fp_state();
 				irq_num = 0;
 				if (!data->suspended) {
 					pr_info("FTS:touch is not in suspend state, report x,y value by touch nomal report\n");
@@ -2105,6 +2115,20 @@ static ssize_t fts_fod_test_write(struct device *dev,
 }
 static DEVICE_ATTR(fod_test, 0644, NULL, fts_fod_test_write);
 
+static ssize_t fp_state_show(struct kobject *kobj, struct kobj_attribute *attr,
+			     char *buf)
+{
+	if (!fts_data)
+		return -EINVAL;
+
+	return sprintf(buf, "%d,%d,%d\n", fts_data->fod_x, fts_data->fod_y,
+		       fts_data->finger_in_fod);
+}
+
+static struct tp_common_ops fp_state_ops = {
+	.show = fp_state_show,
+};
+
 /*****************************************************************************
 *  Name: fts_ts_probe
 *  Brief:
@@ -2333,6 +2357,11 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 #endif
 	ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
 	power_supply_reg_notifier(&ts_data->power_supply_notifier);
+        ret = tp_common_set_fp_state_ops(&fp_state_ops);
+	if (ret < 0) {
+		FTS_ERROR("%s: Failed to create fp_state node err=%d\n",
+                          __func__, ret);
+	}
 	if (ts_data->fts_tp_class == NULL) {
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 		ts_data->fts_tp_class = get_xiaomi_touch_class();

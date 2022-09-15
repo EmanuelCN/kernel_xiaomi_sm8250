@@ -214,6 +214,8 @@ struct fts_ts_data {
 	int fod_status;
 	bool finger_in_fod;
 	bool fod_finger_skip;
+        int fod_x;
+	int fod_y;
 	int overlap_area;
 	struct mutex fod_mutex;
 	bool point_id_changed;
