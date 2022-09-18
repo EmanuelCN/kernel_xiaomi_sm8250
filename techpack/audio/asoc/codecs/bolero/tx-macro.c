@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/init.h>
@@ -45,7 +45,12 @@
 #define TX_MACRO_DMIC_UNMUTE_DELAY_MS	40
 #define TX_MACRO_AMIC_UNMUTE_DELAY_MS	100
 #define TX_MACRO_DMIC_HPF_DELAY_MS	100
+
+#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH)
+#define TX_MACRO_AMIC_HPF_DELAY_MS	300
+#else
 #define TX_MACRO_AMIC_HPF_DELAY_MS	100
+#endif
 
 static int tx_unmute_delay = TX_MACRO_DMIC_UNMUTE_DELAY_MS;
 struct tx_macro_priv *g_tx_priv;
@@ -178,7 +183,7 @@ struct tx_macro_priv {
 	int dec_mode[NUM_DECIMATORS];
 	bool bcs_clk_en;
 	bool hs_slow_insert_complete;
-	int amic_sample_rate;
+	int pcm_rate[NUM_DECIMATORS];
 };
 
 static bool tx_macro_get_data(struct snd_soc_component *component,
@@ -504,23 +509,23 @@ static void tx_macro_tx_hpf_corner_freq_callback(struct work_struct *work)
 		snd_soc_component_update_bits(component, hpf_gate_reg,
 						0x03, 0x02);
 		/* Add delay between toggle hpf gate based on sample rate */
-		switch(tx_priv->amic_sample_rate) {
-		case 8000:
+		switch (tx_priv->pcm_rate[hpf_work->decimator]) {
+		case 0:
 			usleep_range(125, 130);
 			break;
-		case 16000:
+		case 1:
 			usleep_range(62, 65);
 			break;
-		case 32000:
+		case 3:
 			usleep_range(31, 32);
 			break;
-		case 48000:
+		case 4:
 			usleep_range(20, 21);
 			break;
-		case 96000:
+		case 5:
 			usleep_range(10, 11);
 			break;
-		case 192000:
+		case 6:
 			usleep_range(5, 6);
 			break;
 		default:
@@ -706,6 +711,9 @@ static int tx_macro_tx_mixer_put(struct snd_kcontrol *kcontrol,
 
 	if (!tx_macro_get_data(component, &tx_dev, &tx_priv, __func__))
 		return -EINVAL;
+
+	dev_err(tx_dev, "%s: id:%d(%s) enable:%d active_ch_cnt:%d\n", __func__,
+		dai_id, widget->name, enable, tx_priv->active_ch_cnt[dai_id]);
 
 	if (enable) {
 		set_bit(dec_id, &tx_priv->active_ch_mask[dai_id]);
@@ -942,6 +950,13 @@ void bolero_tx_macro_mute_hs(void)
 		return;
 
 	component = g_tx_priv->component;
+
+	if (delayed_work_pending(&g_tx_priv->tx_hs_unmute_dwork)) {
+		dev_err(component->dev, "%s: there is already a work, give up unmute\n",
+				__func__);
+		return;
+	}
+
 	g_tx_priv->reg_before_mute = snd_soc_component_read32(component, BOLERO_CDC_TX0_TX_VOL_CTL);
 	dev_info(component->dev, "%s: the reg value before mute is: %#x \n",
 			__func__, g_tx_priv->reg_before_mute);
@@ -992,7 +1007,7 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 	tx_fs_reg = BOLERO_CDC_TX0_TX_PATH_CTL +
 				TX_MACRO_TX_PATH_OFFSET * decimator;
 
-	tx_priv->amic_sample_rate = (snd_soc_component_read32(component,
+	tx_priv->pcm_rate[decimator] = (snd_soc_component_read32(component,
 				     tx_fs_reg) & 0x0F);
 
 	switch (event) {
@@ -1055,9 +1070,15 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 				   msecs_to_jiffies(tx_unmute_delay));
 		if (tx_priv->tx_hpf_work[decimator].hpf_cut_off_freq !=
 							CF_MIN_3DB_150HZ) {
+#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH)
+			queue_delayed_work(system_freezable_wq,
+					&tx_priv->tx_hpf_work[decimator].dwork,
+					msecs_to_jiffies(hpf_delay));
+#else
 			queue_delayed_work(system_freezable_wq,
 					&tx_priv->tx_hpf_work[decimator].dwork,
 					msecs_to_jiffies(100));
+#endif
 			snd_soc_component_update_bits(component,
 					hpf_gate_reg, 0x03, 0x02);
 			if (!is_amic_enabled(component, decimator))
@@ -1231,6 +1252,8 @@ static int tx_macro_get_channel_map(struct snd_soc_dai *dai,
 		dev_err(tx_dev, "%s: Invalid AIF\n", __func__);
 		break;
 	}
+	dev_err(tx_dev, "%s: id:%d(%s) ch_mask:0x%x active_ch_cnt:%d active_mask: 0x%lx\n",
+		__func__, dai->id, dai->name, *tx_slot, *tx_num, tx_priv->active_ch_mask[dai->id]);
 	return 0;
 }
 
@@ -2724,7 +2747,6 @@ static int tx_macro_core_vote(void *handle, bool enable)
 		pr_err("%s: tx priv data is NULL\n", __func__);
 		return -EINVAL;
 	}
-
 	if (enable) {
 		pm_runtime_get_sync(tx_priv->dev);
 		if (bolero_check_core_votes(tx_priv->dev))
@@ -2735,6 +2757,7 @@ static int tx_macro_core_vote(void *handle, bool enable)
 		pm_runtime_put_autosuspend(tx_priv->dev);
 		pm_runtime_mark_last_busy(tx_priv->dev);
 	}
+
 	return rc;
 }
 

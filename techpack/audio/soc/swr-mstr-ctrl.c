@@ -828,6 +828,11 @@ static int swrm_cmd_fifo_rd_cmd(struct swr_mstr_ctrl *swrm, int *cmd_data,
 	u32 val;
 	u32 retry_attempt = 0;
 
+	if (!dev_addr) {
+		dev_err(swrm->dev, "%s: invalid slave dev num\n", __func__);
+		return -EINVAL;
+	}
+
 	mutex_lock(&swrm->iolock);
 	val = swrm_get_packed_reg_val(&swrm->rcmd_id, len, dev_addr, reg_addr);
 	if (swrm->read) {
@@ -882,6 +887,11 @@ static int swrm_cmd_fifo_wr_cmd(struct swr_mstr_ctrl *swrm, u8 cmd_data,
 {
 	u32 val;
 	int ret = 0;
+
+	if (!dev_addr) {
+		dev_err(swrm->dev, "%s: invalid slave dev num\n", __func__);
+		return -EINVAL;
+	}
 
 	mutex_lock(&swrm->iolock);
 	if (!cmd_id)
@@ -944,8 +954,6 @@ static int swrm_read(struct swr_master *master, u8 dev_num, u16 reg_addr,
 	mutex_unlock(&swrm->devlock);
 
 	pm_runtime_get_sync(swrm->dev);
-	if (swrm->req_clk_switch)
-		swrm_runtime_resume(swrm->dev);
 	ret = swrm_cmd_fifo_rd_cmd(swrm, &val, dev_num, 0, reg_addr, len);
 
 	if (!ret)
@@ -979,8 +987,6 @@ static int swrm_write(struct swr_master *master, u8 dev_num, u16 reg_addr,
 	mutex_unlock(&swrm->devlock);
 
 	pm_runtime_get_sync(swrm->dev);
-	if (swrm->req_clk_switch)
-		swrm_runtime_resume(swrm->dev);
 	ret = swrm_cmd_fifo_wr_cmd(swrm, reg_val, dev_num, 0, reg_addr);
 
 	pm_runtime_put_autosuspend(swrm->dev);
@@ -2129,12 +2135,15 @@ handle_irq:
 			dev_err(swrm->dev,
 				"%s: SWR read FIFO overflow fifo status 0x%x\n",
 				__func__, value);
+			swr_master_write(swrm, SWRM_COMP_SW_RESET, 0x01);
+			swrm_master_init(swrm);
 			break;
 		case SWRM_INTERRUPT_STATUS_RD_FIFO_UNDERFLOW:
-			value = swr_master_read(swrm, SWRM_CMD_FIFO_STATUS);
 			dev_err(swrm->dev,
 				"%s: SWR read FIFO underflow fifo status 0x%x\n",
 				__func__, value);
+			swr_master_write(swrm, SWRM_COMP_SW_RESET, 0x01);
+			swrm_master_init(swrm);
 			break;
 		case SWRM_INTERRUPT_STATUS_WR_CMD_FIFO_OVERFLOW:
 			value = swr_master_read(swrm, SWRM_CMD_FIFO_STATUS);
@@ -2887,6 +2896,10 @@ static int swrm_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev,
 			 "%s: version specified in dtsi: 0x%x not match with HW read version 0x%x\n",
 			 __func__, swrm->version, swrm_hw_ver);
+	swrm->rd_fifo_depth = ((swr_master_read(swrm, SWRM_COMP_PARAMS)
+				& SWRM_COMP_PARAMS_RD_FIFO_DEPTH) >> 15);
+	swrm->wr_fifo_depth = ((swr_master_read(swrm, SWRM_COMP_PARAMS)
+				& SWRM_COMP_PARAMS_WR_FIFO_DEPTH) >> 10);
 	ret = swrm_master_init(swrm);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
@@ -2902,11 +2915,6 @@ static int swrm_probe(struct platform_device *pdev)
 
 	if (pdev->dev.of_node)
 		of_register_swr_devices(&swrm->master);
-
-	swrm->rd_fifo_depth = ((swr_master_read(swrm, SWRM_COMP_PARAMS)
-				& SWRM_COMP_PARAMS_RD_FIFO_DEPTH) >> 15);
-	swrm->wr_fifo_depth = ((swr_master_read(swrm, SWRM_COMP_PARAMS)
-				& SWRM_COMP_PARAMS_WR_FIFO_DEPTH) >> 10);
 
 #ifdef CONFIG_DEBUG_FS
 	swrm->debugfs_swrm_dent = debugfs_create_dir(dev_name(&pdev->dev), 0);
@@ -3141,8 +3149,6 @@ exit:
 	else
 		pm_runtime_set_autosuspend_delay(&pdev->dev,
 				auto_suspend_timer);
-	if (swrm->req_clk_switch)
-		swrm->req_clk_switch = false;
 	mutex_unlock(&swrm->reslock);
 
 	trace_printk("%s: pm_runtime: resume done, state:%d\n",
@@ -3454,12 +3460,8 @@ int swrm_wcd_notify(struct platform_device *pdev, u32 id, void *data)
 		}
 		mutex_lock(&swrm->mlock);
 		if (swrm->clk_src != *(int *)data) {
-			if (swrm->state == SWR_MSTR_UP) {
-				swrm->req_clk_switch = true;
+			if (swrm->state == SWR_MSTR_UP)
 				swrm_device_suspend(&pdev->dev);
-				if (swrm->state == SWR_MSTR_UP)
-					swrm->req_clk_switch = false;
-			}
 			swrm->clk_src = *(int *)data;
 		}
 		mutex_unlock(&swrm->mlock);

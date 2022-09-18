@@ -752,6 +752,8 @@ int adm_set_stereo_to_custom_stereo(int port_id, int copp_idx,
 	if (!rc) {
 		pr_err("%s: Set params timed out port = 0x%x\n", __func__,
 			port_id);
+		if (AFE_PORT_ID_USB_RX == port_id)
+			is_usb_timeout = true;
 		rc = -EINVAL;
 		goto set_stereo_to_custom_stereo_return;
 	} else if (atomic_read(&this_adm.copp.stat
@@ -2528,8 +2530,6 @@ int adm_connect_afe_port(int mode, int session_id, int port_id)
 	if (!ret) {
 		pr_err("%s: ADM connect timedout for port_id: 0x%x\n",
 			__func__, port_id);
-		if (AFE_PORT_ID_USB_RX == port_id)
-			is_usb_timeout = true;
 		ret = -EINVAL;
 		goto fail_cmd;
 	} else if (atomic_read(&this_adm.copp.stat
@@ -3212,10 +3212,10 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 				this_adm.ffecns_port_id);
 	}
 
-	if (topology == VPM_TX_VOICE_SMECNS_V2_COPP_TOPOLOGY ||
-	        topology == VPM_TX_VOICE_FLUENCE_SM_COPP_TOPOLOGY ||
-		topology == ADM_TOPOLOGY_ID_AUDIO_RX_FVSAM ||
-		topology == ADM_TOPOLOGY_ID_AUDIO_RX_MISE) {
+	if ((topology == VPM_TX_VOICE_SMECNS_V2_COPP_TOPOLOGY) ||
+	    (topology == VPM_TX_VOICE_FLUENCE_SM_COPP_TOPOLOGY) ||
+	    (topology == ADM_TOPOLOGY_ID_AUDIO_RX_FVSAM) ||
+	    (topology == ADM_TOPOLOGY_ID_AUDIO_RX_MISE)) {
 		pr_debug("%s: set channel_mode as 1 for topology=%d\n", __func__, topology);
 		channel_mode = 1;
 	}
