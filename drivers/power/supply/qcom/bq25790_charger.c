@@ -43,10 +43,10 @@
 #include "bq25790_reg.h"
 #include "bq25790.h"
 
-#define	bq_info	pr_err
+#define	bq_info	pr_debug
 #define bq_dbg	pr_debug
-#define bq_err	pr_err
-#define bq_log	pr_err
+#define bq_err	pr_debug
+#define bq_log	pr_debug
 
 enum {
 	USER		= BIT(0),
@@ -1634,7 +1634,7 @@ static void bq25790_charge_monitor_workfunc(struct work_struct *work)
 	bq25790_update_status(bq);
 	bq25790_reset_wdt(bq);
 
-	queue_delayed_work(system_power_efficient_wq, &bq->charge_monitor_work, 6 * HZ);
+	schedule_delayed_work(&bq->charge_monitor_work, 6 * HZ);
 }
 
 
@@ -1688,7 +1688,7 @@ static void bq25790_charge_irq_workfunc(struct work_struct *work)
 			return;
 		}
 		bq25790_update_charging_profile(bq);
-		queue_delayed_work(system_power_efficient_wq, &bq->charge_monitor_work, 60 * HZ);
+		schedule_delayed_work(&bq->charge_monitor_work, 60 * HZ);
 
 		bq_err("usb plugged in, set usb present = %d\n", bq->usb_present);
 	}
@@ -1703,7 +1703,7 @@ static irqreturn_t bq25790_charger_interrupt(int irq, void *dev_id)
 {
 	struct bq25790 *bq = dev_id;
 
-	queue_delayed_work(system_power_efficient_wq, &bq->charge_irq_work, 0);
+	schedule_delayed_work(&bq->charge_irq_work, 0);
 
 	return IRQ_HANDLED;
 }

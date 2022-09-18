@@ -300,7 +300,7 @@ static void da9030_charging_monitor(struct work_struct *work)
 	da9030_charger_check_state(charger);
 
 	/* reschedule for the next time */
-	queue_delayed_work(system_power_efficient_wq, &charger->work, charger->interval);
+	schedule_delayed_work(&charger->work, charger->interval);
 }
 
 static enum power_supply_property da9030_battery_props[] = {
@@ -530,7 +530,7 @@ static int da9030_battery_probe(struct platform_device *pdev)
 		goto err_charger_init;
 
 	INIT_DELAYED_WORK(&charger->work, da9030_charging_monitor);
-	queue_delayed_work(system_power_efficient_wq, &charger->work, charger->interval);
+	schedule_delayed_work(&charger->work, charger->interval);
 
 	charger->nb.notifier_call = da9030_battery_event;
 	ret = da903x_register_notifier(charger->master, &charger->nb,

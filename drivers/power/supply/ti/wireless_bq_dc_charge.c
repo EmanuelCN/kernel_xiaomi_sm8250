@@ -1,3 +1,4 @@
+
 #define pr_fmt(fmt)	"[WIRELESS-PM]: %s: " fmt, __func__
 
 #include <linux/module.h>
@@ -1001,7 +1002,8 @@ static int wldc_pm_fc2_charge_algo(struct wireless_dc_device_info *pm)
 	} else if ((tx_adapter_type == ADAPTER_XIAOMI_PD_40W)
 			|| (tx_adapter_type == ADAPTER_VOICE_BOX)
 			|| (tx_adapter_type == ADAPTER_XIAOMI_PD_50W)
-			|| (tx_adapter_type == ADAPTER_XIAOMI_PD_60W)) {
+			|| (tx_adapter_type == ADAPTER_XIAOMI_PD_60W)
+			|| (tx_adapter_type == ADAPTER_XIAOMI_PD_100W)) {
 		effective_iout_current_max = pm->rx_iout_curr_max;
 	} else {
 		pr_err("not our defined quick chargers, switch to main\n");
@@ -1312,7 +1314,7 @@ static int wldc_pm_sm(struct wireless_dc_device_info *pm)
 
 		if (pm->cp.vbat_volt < pm_config.min_vbat_for_cp) {
 			pr_info("batt_volt %d, waiting...\n", pm->cp.vbat_volt);
-		} else if (tx_adapter_type > ADAPTER_XIAOMI_PD_60W ||
+		} else if (tx_adapter_type > ADAPTER_XIAOMI_PD_100W ||
 			tx_adapter_type < ADAPTER_XIAOMI_QC3) {
 			pr_info("not our defined quick chargers, waiting...\n");
 		} else if (pm->cp.vbat_volt > pm_config.bat_volt_lp_lmt - VBAT_HIGH_FOR_FC_HYS_MV
@@ -1581,7 +1583,7 @@ static void wldc_dc_ctrl_workfunc(struct work_struct *work)
 	wldc_pm_update_cp_sec_status(pm);
 
 	if (!wldc_pm_sm(pm) && pm->wl_info.active)
-		queue_delayed_work(system_power_efficient_wq, &pm->wireles_dc_ctrl_work,
+		schedule_delayed_work(&pm->wireles_dc_ctrl_work,
 				msecs_to_jiffies(WLDC_WORK_RUN_INTERVAL));
 }
 
@@ -1612,7 +1614,7 @@ static void wldc_wl_contact(struct wireless_dc_device_info *pm, bool connected)
 	pm->wl_info.active = connected;
 
 	if (connected) {
-		queue_delayed_work(system_power_efficient_wq, &pm->wireles_dc_ctrl_work, 0);
+		schedule_delayed_work(&pm->wireles_dc_ctrl_work, 0);
 	} else {
 		wldc_wl_disconnect(pm);
 	}
@@ -1636,7 +1638,7 @@ static void cp_psy_change_work(struct work_struct *work)
 		pdpm->cp.vbus_pres = val.intval;
 
 	if (!ac_pres && pdpm->cp.vbus_pres)
-		queue_delayed_work(system_power_efficient_wq, &pdpm->pm_work, 0);
+		schedule_delayed_work(&pdpm->pm_work, 0);
 #endif
 	pm->psy_change_running = false;
 }

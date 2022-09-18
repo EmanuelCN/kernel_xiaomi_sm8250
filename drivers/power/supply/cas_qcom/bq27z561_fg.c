@@ -1001,10 +1001,6 @@ static int fg_read_system_soc(struct bq_fg_chip *bq)
 				soc = bq->last_soc;
 		} else
 			soc = 100;
-	} else if (raw_soc > 770) {
-		soc += 3;
-		if (soc <= 102 && soc > 99)
-			soc = 99;
 	} else {
 		if (raw_soc == 0 && bq->last_soc > 1) {
 			bq->ffc_smooth = false;
@@ -1022,7 +1018,9 @@ static int fg_read_system_soc(struct bq_fg_chip *bq)
 			} else
 				soc = bq->last_soc;
 		} else {
-			soc = (raw_soc + 69) / 70;
+			soc = (raw_soc + 95) / 96;
+			if (soc <= 102 && soc > 99)
+				soc = 99;
 		}
 	}
 
@@ -1351,6 +1349,8 @@ static enum power_supply_property fg_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_VOLTAGE_CELL1,
+	POWER_SUPPLY_PROP_VOLTAGE_CELL2,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
@@ -1409,6 +1409,20 @@ static int fg_get_property(struct power_supply *psy, enum power_supply_property 
 		}
 		bq->batt_volt = fg_read_volt(bq);
 		val->intval = bq->batt_volt * 1000;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_CELL1:
+		if (bq->fake_volt != -EINVAL) {
+			val->intval = bq->fake_volt;
+			break;
+		}
+		val->intval = bq->cell1;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_CELL2:
+		if (bq->fake_volt != -EINVAL) {
+			val->intval = bq->fake_volt;
+			break;
+		}
+		val->intval = bq->cell2;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = 1;
@@ -2478,7 +2492,7 @@ static void fg_monitor_workfunc(struct work_struct *work)
 	interval = fg_check_full_status(bq);
 	fg_check_recharge_status(bq);
 
-	queue_delayed_work(system_power_efficient_wq, &bq->monitor_work, interval * HZ);
+	schedule_delayed_work(&bq->monitor_work, interval * HZ);
 }
 
 static int bq_parse_dt(struct bq_fg_chip *bq)
@@ -2727,7 +2741,7 @@ static int bq_fg_probe(struct i2c_client *client,
 		bq_dbg(PR_OEM, "Failed to register sysfs:%d\n", ret);
 
 	INIT_DELAYED_WORK(&bq->monitor_work, fg_monitor_workfunc);
-	queue_delayed_work(system_power_efficient_wq, &bq->monitor_work, 10 * HZ);
+	schedule_delayed_work(&bq->monitor_work, 10 * HZ);
 
 	bq_dbg(PR_OEM, "bq fuel gauge probe successfully, %s\n",
 			device2str[bq->chip]);
@@ -2764,7 +2778,7 @@ static int bq_fg_resume(struct device *dev)
 		bq->update_now = true;
 	}
 
-	queue_delayed_work(system_power_efficient_wq, &bq->monitor_work, HZ);
+	schedule_delayed_work(&bq->monitor_work, HZ);
 
 	return 0;
 }

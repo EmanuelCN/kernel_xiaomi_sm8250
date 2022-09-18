@@ -168,7 +168,7 @@ static irqreturn_t max14656_irq(int irq, void *dev_id)
 {
 	struct max14656_chip *chip = dev_id;
 
-	queue_delayed_work(system_power_efficient_wq, &chip->irq_work, msecs_to_jiffies(100));
+	schedule_delayed_work(&chip->irq_work, msecs_to_jiffies(100));
 
 	return IRQ_HANDLED;
 }
@@ -309,7 +309,7 @@ static int max14656_probe(struct i2c_client *client,
 	}
 	enable_irq_wake(chip->irq);
 
-	queue_delayed_work(system_power_efficient_wq, &chip->irq_work, msecs_to_jiffies(2000));
+	schedule_delayed_work(&chip->irq_work, msecs_to_jiffies(2000));
 
 	return 0;
 }

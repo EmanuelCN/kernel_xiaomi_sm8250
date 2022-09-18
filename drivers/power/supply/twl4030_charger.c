@@ -263,7 +263,7 @@ static int twl4030_charger_update_current(struct twl4030_bci *bci)
 			bci->usb_cur = cur;
 		}
 		if (cur < bci->usb_cur_target)
-			queue_delayed_work(system_power_efficient_wq, &bci->current_worker, USB_CUR_DELAY);
+			schedule_delayed_work(&bci->current_worker, USB_CUR_DELAY);
 	}
 
 	/* First, check thresholds and see if cgain is needed */
@@ -429,7 +429,7 @@ static void twl4030_current_worker(struct work_struct *data)
 		return;
 	} else {
 		bci->usb_cur += USB_CUR_STEP;
-		queue_delayed_work(system_power_efficient_wq, &bci->current_worker, USB_CUR_DELAY);
+		schedule_delayed_work(&bci->current_worker, USB_CUR_DELAY);
 	}
 	twl4030_charger_update_current(bci);
 }

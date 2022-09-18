@@ -767,7 +767,7 @@ static bool max28200_set_watchdog_enable(struct max28200_chip *max, bool enable)
 		if (enable)
 			max28200_set_time(max, MAX28200_SET_TIME_10S);
 		max28200_cmd_set_en(max, enable);
-		queue_delayed_work(system_power_efficient_wq, &max->monitor_work, msecs_to_jiffies(5000));
+		schedule_delayed_work(&max->monitor_work, msecs_to_jiffies(5000));
 		max_dbg(PR_OEM, "set watchdog enable cp:%d\n", enable);
 
 	}
@@ -931,7 +931,7 @@ static void max28200_monitor_work_fn(struct work_struct *work)
 
 	if (max->enabled) {
 		max28200_reset_watchdog(max);
-		queue_delayed_work(system_power_efficient_wq, &max->monitor_work, msecs_to_jiffies(5000));
+		schedule_delayed_work(&max->monitor_work, msecs_to_jiffies(5000));
 	}
 }
 
@@ -944,7 +944,7 @@ static void max28200_firmware_download_work_fn(struct work_struct *work)
 
 	if (max28200_program
 	    (chip, max28200_firmware, MAX28200_FIRMWARE_MAXBYTES))
-		queue_delayed_work(system_power_efficient_wq, &chip->firmware_download_work,
+		schedule_delayed_work(&chip->firmware_download_work,
 				      msecs_to_jiffies(3000));
 }
 
@@ -962,7 +962,7 @@ static void max28200_sw_check_work_fn(struct work_struct *work)
 	if (val != MAX28200_SW_VERSION) {
 		max_dbg(PR_OEM,
 			"max28200_probe get sw version failed need download firmware\n");
-		queue_delayed_work(system_power_efficient_wq, &chip->firmware_download_work,
+		schedule_delayed_work(&chip->firmware_download_work,
 				      msecs_to_jiffies(3000));
 	} else {
 		chip->fw_ok = true;;
@@ -1032,7 +1032,7 @@ static int max28200_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK(&chip->monitor_work, max28200_monitor_work_fn);
 
 	if (!chip->use_pin_en)
-		queue_delayed_work(system_power_efficient_wq, &chip->sw_check_work, 0);
+		schedule_delayed_work(&chip->sw_check_work, 0);
 
 	max_dbg(PR_OEM, "max28200 probe sucess\n");
 

@@ -443,6 +443,7 @@
 #define BQ25970_DEVICE_ID				0x10
 #define SC8551_DEVICE_ID				0x00
 #define SC8551A_DEVICE_ID				0x51
+#define NU2105_DEVICE_ID				0xC0
 
 
 /* Register 14h */
@@ -796,15 +797,15 @@
 #define BQ2597X_IBUS_LOW_DG_10US			0
 #define BQ2597X_IBUS_LOW_DG_5MS				1
 
-#define SC8551_IBUS_ADC_LSB				(15625000 / 10000000)
-#define SC8551_VBUS_ADC_LSB				(37500000 / 10000000)
-#define SC8551_VAC_ADC_LSB				(50000000 / 10000000)
-#define SC8551_VOUT_ADC_LSB				(12500000 / 10000000)
-#define SC8551_VBAT_ADC_LSB				(12575000 / 10000000)
-#define SC8551_IBAT_ADC_LSB				(31250000 / 10000000)
-#define SC8551_TSBUS_ADC_LSB			(9766	 / 10000000)
-#define SC8551_TSBAT_ADC_LSB			(9766	 / 10000000)
-#define SC8551_TDIE_ADC_LSB				(5000000  / 10000000)
+#define SC8551_IBUS_ADC_LSB				1.5625
+#define SC8551_VBUS_ADC_LSB				3.75
+#define SC8551_VAC_ADC_LSB				5
+#define SC8551_VOUT_ADC_LSB				1.25
+#define SC8551_VBAT_ADC_LSB				1.2575
+#define SC8551_IBAT_ADC_LSB				3.125
+#define SC8551_TSBUS_ADC_LSB				0.0009766
+#define SC8551_TSBAT_ADC_LSB				0.0009766
+#define SC8551_TDIE_ADC_LSB				0.5
 /* Register 00h */
 #define SC8551_BAT_OVP_BASE				3500
 #define SC8551_REG_2F					0x2F
@@ -818,4 +819,9 @@
 #define SC8551_REG_34					0x34
 #define SC8551_REG_36					0x36
 
+#define NU2105_REG_2F                                   0x2F
+#define NU2105_CHG_MODE_MASK                            0x01
+#define NU2105_CHG_MODE_SHIFT                           0
+#define NU2105_1_1_MODE                                 1
+#define NU2105_2_1_MODE                                 0
 #endif

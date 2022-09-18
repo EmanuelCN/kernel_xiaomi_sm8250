@@ -296,7 +296,7 @@ static void ds278x_bat_work(struct work_struct *work)
 	info = container_of(work, struct ds278x_info, bat_work.work);
 	ds278x_bat_update(info);
 
-	queue_delayed_work(system_power_efficient_wq, &info->bat_work, DS278x_DELAY);
+	schedule_delayed_work(&info->bat_work, DS278x_DELAY);
 }
 
 static enum power_supply_property ds278x_battery_props[] = {
@@ -349,7 +349,7 @@ static int ds278x_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct ds278x_info *info = i2c_get_clientdata(client);
 
-	queue_delayed_work(system_power_efficient_wq, &info->bat_work, DS278x_DELAY);
+	schedule_delayed_work(&info->bat_work, DS278x_DELAY);
 	return 0;
 }
 #endif /* CONFIG_PM_SLEEP */
@@ -435,7 +435,7 @@ static int ds278x_battery_probe(struct i2c_client *client,
 		ret = PTR_ERR(info->battery);
 		goto fail_register;
 	} else {
-		queue_delayed_work(system_power_efficient_wq, &info->bat_work, DS278x_DELAY);
+		schedule_delayed_work(&info->bat_work, DS278x_DELAY);
 	}
 
 	return 0;

@@ -4598,7 +4598,7 @@ static int process_resume(struct qpnp_qg *chip)
 	sleep_time_secs = rtc_sec - chip->suspend_time;
 
 	if (chip->dt.qg_sleep_config)
-		queue_delayed_work(system_power_efficient_wq, &chip->qg_sleep_exit_work,
+		schedule_delayed_work(&chip->qg_sleep_exit_work,
 				msecs_to_jiffies(QG_SLEEP_EXIT_TIME_MS));
 
 	rc = qg_read(chip, chip->qg_base + QG_STATUS2_REG, &status2, 1);
@@ -4655,7 +4655,7 @@ static int process_resume(struct qpnp_qg *chip)
 		chip->suspend_data = false;
 	}
 
-	queue_delayed_work(system_power_efficient_wq, &chip->ttf->ttf_work, 0);
+	schedule_delayed_work(&chip->ttf->ttf_work, 0);
 
 	return rc;
 }
@@ -4871,7 +4871,7 @@ static int qpnp_qg_probe(struct platform_device *pdev)
 			pr_err("Error in restoring cycle_count, rc=%d\n", rc);
 			return rc;
 		}
-		queue_delayed_work(system_power_efficient_wq, &chip->ttf->ttf_work, 10000);
+		schedule_delayed_work(&chip->ttf->ttf_work, 10000);
 	}
 
 	rc = qg_determine_pon_soc(chip);

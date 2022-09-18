@@ -1206,7 +1206,7 @@ static void status_change_work(struct work_struct *work)
 		/* insertion */
 		chip->usb_present = 1;
 		vote(chip->awake_votable, USB_READY_VOTER, true, 0);
-		queue_delayed_work(system_power_efficient_wq, &chip->usb_debounce_work,
+		schedule_delayed_work(&chip->usb_debounce_work,
 				msecs_to_jiffies(DEBOUNCE_MS));
 	}
 

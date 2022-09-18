@@ -431,7 +431,7 @@ static void ltc294x_work(struct work_struct *work)
 
 	info = container_of(work, struct ltc294x_info, work.work);
 	ltc294x_update(info);
-	queue_delayed_work(system_power_efficient_wq, &info->work, LTC294X_WORK_DELAY * HZ);
+	schedule_delayed_work(&info->work, LTC294X_WORK_DELAY * HZ);
 }
 
 static enum power_supply_property ltc294x_properties[] = {
@@ -559,7 +559,7 @@ static int ltc294x_i2c_probe(struct i2c_client *client,
 		dev_err(&client->dev, "failed to register ltc2941\n");
 		return PTR_ERR(info->supply);
 	} else {
-		queue_delayed_work(system_power_efficient_wq, &info->work, LTC294X_WORK_DELAY * HZ);
+		schedule_delayed_work(&info->work, LTC294X_WORK_DELAY * HZ);
 	}
 
 	return 0;
@@ -604,7 +604,7 @@ static int ltc294x_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct ltc294x_info *info = i2c_get_clientdata(client);
 
-	queue_delayed_work(system_power_efficient_wq, &info->work, LTC294X_WORK_DELAY * HZ);
+	schedule_delayed_work(&info->work, LTC294X_WORK_DELAY * HZ);
 	return 0;
 }
 
