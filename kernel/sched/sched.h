@@ -1805,6 +1805,13 @@ static inline void unregister_sched_domain_sysctl(void)
 
 extern void flush_smp_call_function_from_idle(void);
 
+static inline const struct cpumask *task_user_cpus(struct task_struct *p)
+{
+	if (!p->user_cpus_ptr)
+		return cpu_possible_mask; /* &init_task.cpus_mask */
+	return p->user_cpus_ptr;
+}
+
 #else /* !CONFIG_SMP: */
 static inline void flush_smp_call_function_from_idle(void) { }
 #endif
@@ -2002,6 +2009,7 @@ extern const u32		sched_prio_to_wmult[40];
 
 struct affinity_context {
 	const struct cpumask *new_mask;
+	struct cpumask *user_mask;
 	unsigned int flags;
 };
 
