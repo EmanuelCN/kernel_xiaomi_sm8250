@@ -1296,14 +1296,12 @@ static void affine_one_perf_thread(struct irqaction *action)
 	if (!action->thread)
 		return;
 
-	if (action->flags & IRQF_PERF_AFFINE) {
+	if (action->flags & IRQF_PERF_AFFINE)
 		mask = cpu_perf_mask;
-		action->thread->pc_flags |= PC_PERF_AFFINE;
-	} else {
+	else
 		mask = cpu_prime_mask;
-		action->thread->pc_flags |= PC_PRIME_AFFINE;
-	}
 
+	action->thread->flags |= PF_PERF_CRITICAL;
 	set_cpus_allowed_ptr(action->thread, mask);
 }
 
@@ -1312,8 +1310,7 @@ static void unaffine_one_perf_thread(struct irqaction *action)
 	if (!action->thread)
 		return;
 
-	action->thread->pc_flags &= ~PC_PERF_AFFINE;
-	action->thread->pc_flags &= ~PC_PRIME_AFFINE;
+	action->thread->flags &= ~PF_PERF_CRITICAL;
 	set_cpus_allowed_ptr(action->thread, cpu_all_mask);
 }
 
