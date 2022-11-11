@@ -25,7 +25,6 @@
 #include <linux/genhd.h>
 #include <linux/highmem.h>
 #include <linux/slab.h>
-#include <linux/swap.h>
 #include <linux/backing-dev.h>
 #include <linux/string.h>
 #include <linux/vmalloc.h>
@@ -42,7 +41,7 @@ static DEFINE_IDR(zram_index_idr);
 static DEFINE_MUTEX(zram_index_mutex);
 
 static int zram_major;
-static const char *default_compressor = CONFIG_ZRAM_DEF_COMP;
+static const char *default_compressor = "lzo";
 
 /* Module params (documentation at end) */
 static unsigned int num_devices = 1;
@@ -208,17 +207,14 @@ static inline void zram_fill_page(void *ptr, unsigned long len,
 
 static bool page_same_filled(void *ptr, unsigned long *element)
 {
+	unsigned int pos;
 	unsigned long *page;
 	unsigned long val;
-	unsigned int pos, last_pos = PAGE_SIZE / sizeof(*page) - 1;
 
 	page = (unsigned long *)ptr;
 	val = page[0];
 
-	if (val != page[last_pos])
-		return false;
-
-	for (pos = 1; pos < last_pos; pos++) {
+	for (pos = 1; pos < PAGE_SIZE / sizeof(*page); pos++) {
 		if (val != page[pos])
 			return false;
 	}
@@ -294,8 +290,18 @@ static ssize_t idle_store(struct device *dev,
 	struct zram *zram = dev_to_zram(dev);
 	unsigned long nr_pages = zram->disksize >> PAGE_SHIFT;
 	int index;
+	char mode_buf[8];
+	ssize_t sz;
 
-	if (!sysfs_streq(buf, "all"))
+	sz = strscpy(mode_buf, buf, sizeof(mode_buf));
+	if (sz <= 0)
+		return -EINVAL;
+
+	/* ignore trailing new line */
+	if (mode_buf[sz - 1] == '\n')
+		mode_buf[sz - 1] = 0x00;
+
+	if (strcmp(mode_buf, "all"))
 		return -EINVAL;
 
 	down_read(&zram->init_lock);
@@ -595,7 +601,7 @@ static int read_from_bdev_async(struct zram *zram, struct bio_vec *bvec,
 {
 	struct bio *bio;
 
-	bio = bio_alloc(GFP_NOIO, 1);
+	bio = bio_alloc(GFP_ATOMIC, 1);
 	if (!bio)
 		return -ENOMEM;
 
@@ -618,41 +624,38 @@ static int read_from_bdev_async(struct zram *zram, struct bio_vec *bvec,
 	return 1;
 }
 
-#define PAGE_WB_SIG "page_index="
-
-#define PAGE_WRITEBACK 0
 #define HUGE_WRITEBACK 1
 #define IDLE_WRITEBACK 2
-
 
 static ssize_t writeback_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
 	struct zram *zram = dev_to_zram(dev);
 	unsigned long nr_pages = zram->disksize >> PAGE_SHIFT;
-	unsigned long index = 0;
+	unsigned long index;
 	struct bio bio;
 	struct bio_vec bio_vec;
 	struct page *page;
-	ssize_t ret;
-	int mode, err;
+	ssize_t ret, sz;
+	char mode_buf[8];
+	int mode = -1;
 	unsigned long blk_idx = 0;
 
-	if (sysfs_streq(buf, "idle"))
+	sz = strscpy(mode_buf, buf, sizeof(mode_buf));
+	if (sz <= 0)
+		return -EINVAL;
+
+	/* ignore trailing newline */
+	if (mode_buf[sz - 1] == '\n')
+		mode_buf[sz - 1] = 0x00;
+
+	if (!strcmp(mode_buf, "idle"))
 		mode = IDLE_WRITEBACK;
-	else if (sysfs_streq(buf, "huge"))
+	else if (!strcmp(mode_buf, "huge"))
 		mode = HUGE_WRITEBACK;
-	else {
-		if (strncmp(buf, PAGE_WB_SIG, sizeof(PAGE_WB_SIG) - 1))
-			return -EINVAL;
 
-		if (kstrtol(buf + sizeof(PAGE_WB_SIG) - 1, 10, &index) ||
-				index >= nr_pages)
-			return -EINVAL;
-
-		nr_pages = 1;
-		mode = PAGE_WRITEBACK;
-	}
+	if (mode == -1)
+		return -EINVAL;
 
 	down_read(&zram->init_lock);
 	if (!init_done(zram)) {
@@ -671,7 +674,7 @@ static ssize_t writeback_store(struct device *dev,
 		goto release_init_lock;
 	}
 
-	for (; nr_pages != 0; index++, nr_pages--) {
+	for (index = 0; index < nr_pages; index++) {
 		struct bio_vec bvec;
 
 		bvec.bv_page = page;
@@ -736,17 +739,12 @@ static ssize_t writeback_store(struct device *dev,
 		 * XXX: A single page IO would be inefficient for write
 		 * but it would be not bad as starter.
 		 */
-		err = submit_bio_wait(&bio);
-		if (err) {
+		ret = submit_bio_wait(&bio);
+		if (ret) {
 			zram_slot_lock(zram, index);
 			zram_clear_flag(zram, index, ZRAM_UNDER_WB);
 			zram_clear_flag(zram, index, ZRAM_IDLE);
 			zram_slot_unlock(zram, index);
-			/*
-			 * Return last IO error unless every IO were
-			 * not suceeded.
-			 */
-			ret = err;
 			continue;
 		}
 
@@ -1382,14 +1380,13 @@ compress_again:
 				__GFP_KSWAPD_RECLAIM |
 				__GFP_NOWARN |
 				__GFP_HIGHMEM |
-				__GFP_MOVABLE |
-				__GFP_CMA);
+				__GFP_MOVABLE);
 	if (!handle) {
 		zcomp_stream_put(zram->comp);
 		atomic64_inc(&zram->stats.writestall);
 		handle = zs_malloc(zram->mem_pool, comp_len,
 				GFP_NOIO | __GFP_HIGHMEM |
-				__GFP_MOVABLE | __GFP_CMA);
+				__GFP_MOVABLE);
 		if (handle)
 			goto compress_again;
 		return -ENOMEM;
@@ -1646,27 +1643,6 @@ static void zram_slot_free_notify(struct block_device *bdev,
 	zram_slot_unlock(zram, index);
 }
 
-/* Moto huangzq2: check sync_io state on swap entry,
- * return 0 on wb page, else return 1.
- */
-#ifdef CONFIG_ZRAM_WRITEBACK
-static int zram_ioctl(struct block_device *bdev, fmode_t mode,
-				 unsigned int cmd, unsigned long index)
-{
-	struct zram *zram;
-	int has_sync_io = 1;
-
-	if (cmd != SWP_SYNCHRONOUS_IO) return -EINVAL;
-
-	zram = bdev->bd_disk->private_data;
-	zram_slot_lock(zram, index);
-	has_sync_io = zram_test_flag(zram, index, ZRAM_WB) ? 0 : 1;
-	zram_slot_unlock(zram, index);
-
-	return has_sync_io;
-}
-#endif
-
 static int zram_rw_page(struct block_device *bdev, sector_t sector,
 		       struct page *page, unsigned int op)
 {
@@ -1859,9 +1835,6 @@ static int zram_open(struct block_device *bdev, fmode_t mode)
 static const struct block_device_operations zram_devops = {
 	.open = zram_open,
 	.swap_slot_free_notify = zram_slot_free_notify,
-#ifdef CONFIG_ZRAM_WRITEBACK
-	.ioctl = zram_ioctl,
-#endif
 	.rw_page = zram_rw_page,
 	.owner = THIS_MODULE
 };
