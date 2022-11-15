@@ -1,0 +1,14 @@
+#
+# Focaltech Touchscreen driver configuration
+#
+
+config TOUCHSCREEN_FOCALTECH
+	tristate "Focaltech Touchscreen"
+	default n
+	help
+	  Say Y here if you have Focaltech touch panel.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called focaltech_touch.

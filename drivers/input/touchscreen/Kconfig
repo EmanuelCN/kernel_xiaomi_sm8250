@@ -1356,4 +1356,32 @@ source "drivers/input/touchscreen/focaltech_touch/Kconfig"
 
 source "drivers/input/touchscreen/nt36xxx/Kconfig"
 
+# Xiaomi
+config INPUT_PRESS_NDT
+	bool "ndt"
+	depends on I2C
+	help
+	  Say Y here if you have a press ic ndt.
+
+config SECURE_TOUCH
+	bool "Secure Touch support for Xiaomi Touchscreen"
+	help
+      Say Y here
+	  -Goodix touch driver is connected
+	  -To enable secure touch for Goodix touch driver
+
+	  If unsure, say N.
+
+source "drivers/input/touchscreen/focaltech_3658u/Kconfig"
+source "drivers/input/touchscreen/focaltech_touch_mi/Kconfig"
+source "drivers/input/touchscreen/focaltech_spi/Kconfig"
+source "drivers/input/touchscreen/fts_521/Kconfig"
+source "drivers/input/touchscreen/fts_spi/Kconfig"
+source "drivers/input/touchscreen/goodix_9916/Kconfig"
+source "drivers/input/touchscreen/goodix_driver_gt9886/Kconfig"
+source "drivers/input/touchscreen/hxchipset/Kconfig"
+source "drivers/input/touchscreen/nt36523/Kconfig"
+source "drivers/input/touchscreen/nt36672c/Kconfig"
+source "drivers/input/touchscreen/xiaomi/Kconfig"
+
 endif
