@@ -1,0 +1,7 @@
+config INPUT_XIAOMI_KEYBOARD
+	tristate "xiaomi keyboard control-driver"
+	depends on INPUT
+	help
+	  Say Y here, compile xiaomi keyboard control driver.
+
+	  If unsure, say N.

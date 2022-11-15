@@ -887,5 +887,6 @@ config INPUT_SC27XX_VIBRA
 
 source "drivers/input/misc/aw8697_haptic/Kconfig"
 source "drivers/input/misc/aw86927_haptic/Kconfig"
+source "drivers/input/misc/xiaomi_keyboard/Kconfig"
 
 endif
