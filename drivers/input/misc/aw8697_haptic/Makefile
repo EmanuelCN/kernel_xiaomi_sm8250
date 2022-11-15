@@ -1,0 +1,21 @@
+ifeq ($(CONFIG_MACH_XIAOMI_LMI),y)
+CDEFINES += -DUSE_CONT_F0_CALI
+KBUILD_CPPFLAGS += $(CDEFINES)
+else ifeq ($(CONFIG_MACH_XIAOMI_UMI),y)
+CDEFINES += -DSUPPORT_RELOAD_FW
+KBUILD_CPPFLAGS += $(CDEFINES)
+endif
+
+ifeq ($(CONFIG_MACH_XIAOMI_PSYCHE),y)
+CDEFINES += -DRETRY_F0_CHECK \
+            -DRTP_SET_GAIN
+KBUILD_CPPFLAGS += $(CDEFINES)
+endif
+
+obj-$(CONFIG_INPUT_AW8697_HAPTIC)	+= aw8697-haptic.o
+ifeq ($(CONFIG_INPUT_AW8697_HAPTIC_DAGU),y)
+aw8697-haptic-objs = aw8697_dagu.o
+else
+aw8697-haptic-objs = aw8697.o
+endif
+aw8697-haptic-objs += ringbuffer.o

@@ -1,0 +1,23 @@
+#
+# Awinic aw8697 driver
+#
+
+config INPUT_AW8697_HAPTIC
+	tristate "Awinic AW8697 HAPTIC"
+	depends on I2C
+	help
+	  Say Y here if you have Awinic AW8697 haptic controller
+	  chip in your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here.
+
+config INPUT_AW8697_HAPTIC_DAGU
+	bool "Awinic AW8697 HAPTIC dagu driver"
+	depends on INPUT_AW8697_HAPTIC
+	help
+	  Say Y here if you want to use the AW8697 driver from
+	  dagu.
+
+	  If unsure, say N.
