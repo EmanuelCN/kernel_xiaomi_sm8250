@@ -641,6 +641,13 @@ config MOTOR_DRV8846
 	help
 	  Say Y here if you want to enable TI-drv8846 Stepper motor.
 
+config SPI_XIAOMI_TP
+	bool
+	depends on SPI
+	default y if TOUCHSCREEN_NT36xxx_HOSTDL_SPI
+	help
+	  Say Y if want use xiaomi touch panel.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
