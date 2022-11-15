@@ -38,6 +38,7 @@
 #define ION_SECURE_HEAP_NAME	"secure_heap"
 #define ION_SECURE_DISPLAY_HEAP_NAME "secure_display"
 #define ION_AUDIO_HEAP_NAME    "audio"
+#define ION_CAMERA_HEAP_NAME   "camera"
 
 #define ION_IS_CACHED(__flags)  ((__flags) & ION_FLAG_CACHED)
 
@@ -370,6 +371,7 @@ size_t ion_heap_freelist_size(struct ion_heap *heap);
 struct ion_heap *ion_heap_create(struct ion_platform_heap *heap_data);
 
 struct ion_heap *ion_system_heap_create(struct ion_platform_heap *unused);
+struct ion_heap *ion_camera_heap_create(struct ion_platform_heap *heap);
 struct ion_heap *ion_system_contig_heap_create(struct ion_platform_heap *heap);
 
 struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data);
@@ -452,6 +454,7 @@ struct ion_page_pool *ion_page_pool_create(gfp_t gfp_mask, unsigned int order,
 void ion_page_pool_refill(struct ion_page_pool *pool);
 void ion_page_pool_destroy(struct ion_page_pool *pool);
 struct page *ion_page_pool_alloc(struct ion_page_pool *a, bool *from_pool);
+void ion_page_pool_prealloc(struct ion_page_pool *pool, unsigned int reserve);
 void ion_page_pool_free(struct ion_page_pool *pool, struct page *page);
 
 struct ion_heap *get_ion_heap(int heap_id);
