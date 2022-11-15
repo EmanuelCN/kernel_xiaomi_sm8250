@@ -4,6 +4,7 @@
 #include <linux/firmware.h>
 #include <linux/module.h>
 #include <linux/soc/qcom/qmi.h>
+#include <soc/qcom/socinfo.h>
 
 #include "bus.h"
 #include "debug.h"
@@ -14,6 +15,42 @@
 #define WLFW_CLIENT_ID			0x4b4e454c
 #define BDF_FILE_NAME_PREFIX		"bdwlan"
 #define ELF_BDF_FILE_NAME		"bdwlan.elf"
+
+#define ELF_BDF_FILE_NAME_J11		"bd_j11.elf"
+#define ELF_BDF_FILE_NAME_J11_B_BOM		"bd_j11_b.elf"
+#define ELF_BDF_FILE_NAME_J11_INDIA		"bd_j11in.elf"
+#define ELF_BDF_FILE_NAME_J11_GLOBAL		"bd_j11gl.elf"
+
+#define ELF_BDF_FILE_NAME_GLOBAL	 "bd_j1gl.elf"
+#define ELF_BDF_FILE_NAME_INDIA		 "bd_j1in.elf"
+#define ELF_BDF_FILE_NAME_B_BOM		 "bd_j1_b.elf"
+
+#define ELF_BDF_FILE_NAME_L3A		 "bd_l3a.elf"
+#define ELF_BDF_FILE_NAME_L3A_GLOBAL		 "bd_l3agl.elf"
+
+#define ELF_BDF_FILE_NAME_L10A		 "bd_l10a.elf"
+#define ELF_BDF_FILE_NAME_L10A_GLOBAL	 "bd_l10agl.elf"
+
+#define ELF_BDF_FILE_NAME_L11R           "bd_l11r.elf"
+#define ELF_BDF_FILE_NAME_L11R_GLOBAL    "bd_l11rgl.elf"
+
+#define ELF_BDF_FILE_NAME_J1S		 "bd_j1s.elf"
+
+#define ELF_BDF_FILE_NAME_J2S		 "bd_j2s.elf"
+
+#define ELF_BDF_FILE_NAME_J3S		 "bd_j3s.elf"
+#define ELF_BDF_FILE_NAME_J3S_GLOBAL	 "bd_j3sgl.elf"
+#define ELF_BDF_FILE_NAME_J3S_INDIA	 "bd_j3sin.elf"
+
+#define ELF_BDF_FILE_NAME_K11A		 "bd_k11a.elf"
+#define ELF_BDF_FILE_NAME_K11A_GLOBAL	 "bd_k11agl.elf"
+#define ELF_BDF_FILE_NAME_K11A_INDIA	 "bd_k11ain.elf"
+
+#define ELF_BDF_FILE_NAME_K81            "bd_k81.elf"
+#define ELF_BDF_FILE_NAME_K81A           "bd_k81a.elf"
+
+#define ELF_BDF_FILE_NAME_L81A           "bd_l81a.elf"
+
 #define ELF_BDF_FILE_NAME_GF		"bdwlang.elf"
 #define ELF_BDF_FILE_NAME_PREFIX	"bdwlan.e"
 #define ELF_BDF_FILE_NAME_GF_PREFIX	"bdwlang.e"
@@ -22,6 +59,7 @@
 #define BIN_BDF_FILE_NAME_PREFIX	"bdwlan.b"
 #define BIN_BDF_FILE_NAME_GF_PREFIX	"bdwlang.b"
 #define REGDB_FILE_NAME			"regdb.bin"
+#define REGDB_FILE_NAME_J11		"regdb_j11.bin"
 #define DUMMY_BDF_FILE_NAME		"bdwlan.dmy"
 #define CHIP_ID_GF_MASK			0x10
 
@@ -214,6 +252,29 @@ static int cnss_wlfw_host_cap_send_sync(struct cnss_plat_data *plat_priv)
 		cnss_pr_dbg("WAKE MSI base data is %d\n", req->wake_msi);
 		req->wake_msi_valid = 1;
 	}
+
+#ifdef CONFIG_WIFI_THREE_ANTENNA
+	req->gpios_valid = 1;
+	/* Format of GPIO configuration -
+	*
+	* A_UINT32 default_output_val:1, - GPIO default Output value if direction is output
+	* reserved1:7, - reserved bits
+	* sw_func:4, - GPIO pin software function selection
+	* pull:2, - GPIO Pull, TLMM_GPIO_CFGn.GPIO_PULL
+	* func:4, - GPIO pin function, TLMM_GPIO_CFGn.FUNC_SEL
+	* drive:3, - GPIO Drive, TLMM_GPIO_CFGn.DRV_STRENGTH
+	* dir:1, - GPIO pin direction: PLAT_GPIO_DIR_INPUT/PLAT_GPIO_DIR_OUTPUT, TLMM_GPIO_CFGn.GPIO_OE
+	* reserved0:2, - reserved bits
+	* gpio_num:8; - GPIO pin number
+	*/
+	/* 1st GPIO,set default GPIO config*/
+	req->gpios[0] = 0x38242F01;
+
+	/* The Nth GPIO if any, and update req->gpios_len accordingly
+	* Ensure gpios_len less than QMI_WLFW_MAX_NUM_GPIO_V01
+	*/
+	req->gpios_len = 1;
+#endif
 
 	req->bdf_support_valid = 1;
 	req->bdf_support = 1;
@@ -500,6 +561,137 @@ out:
 	return ret;
 }
 
+static void cnss_get_xiaomi_bdf_elf_file_name(char *filename_tmp, u32 filename_len)
+{
+	int hw_platform_ver = -1;
+	uint32_t hw_country_ver = 0;
+
+	hw_platform_ver = get_hw_version_platform();
+	hw_country_ver = get_hw_country_version();
+
+	switch (hw_platform_ver) {
+	case HARDWARE_PLATFORM_LMI:
+		switch (hw_country_ver) {
+		case (uint32_t)CountryGlobal:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_J11_GLOBAL);
+			break;
+		case (uint32_t)CountryIndia:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_J11_INDIA);
+			break;
+		default:
+			if ((get_hw_version_minor() == (uint32_t)HW_MINOR_VERSION_B) &&
+			    (get_hw_version_major() == (uint32_t)HW_MAJOR_VERSION_B)) {
+				snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_J11_B_BOM);
+			} else {
+				snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_J11);
+			}
+			break;
+		}
+		break;
+	case HARDWARE_PLATFORM_CAS:
+		snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_J1S);
+		break;
+	case HARDWARE_PLATFORM_THYME:
+		snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_J2S);
+		break;
+	case HARDWARE_PLATFORM_APOLLO:
+		switch (hw_country_ver) {
+		case (uint32_t)CountryGlobal:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_J3S_GLOBAL);
+			break;
+		case (uint32_t)CountryIndia:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_J3S_INDIA);
+			break;
+		default:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_J3S);
+			break;
+		}
+		break;
+	case HARDWARE_PLATFORM_ALIOTH:
+		switch (hw_country_ver) {
+		case (uint32_t)CountryGlobal:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_K11A_GLOBAL);
+			break;
+		case (uint32_t)CountryIndia:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_K11A_INDIA);
+			break;
+		default:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_K11A);
+			break;
+		}
+		break;
+	case HARDWARE_PLATFORM_ENUMA:
+		snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_K81);
+		break;
+	case HARDWARE_PLATFORM_ELISH:
+		snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_K81A);
+		break;
+	case HARDWARE_PLATFORM_PSYCHE:
+		switch (hw_country_ver) {
+		case (uint32_t)CountryGlobal:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_L3A_GLOBAL);
+			break;
+		default:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_L3A);
+			break;
+		}
+		break;
+	case HARDWARE_PLATFORM_MUNCH:
+		switch (hw_country_ver) {
+		case (uint32_t)CountryGlobal:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_L11R_GLOBAL);
+			break;
+		default:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_L11R);
+			break;
+		}
+		break;
+	case HARDWARE_PLATFORM_DAGU:
+		snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_L81A);
+		break;
+	default:
+		switch (hw_country_ver) {
+		case (uint32_t)CountryGlobal:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_GLOBAL);
+			break;
+		case (uint32_t)CountryIndia:
+			snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_INDIA);
+			break;
+		default:
+			if ((get_hw_version_minor() == (uint32_t)HW_MINOR_VERSION_B) &&
+			    (get_hw_version_major() == (uint32_t)HW_MAJOR_VERSION_B)) {
+				snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_B_BOM);
+			} else {
+				snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME);
+			}
+			break;
+		}
+		break;
+	}
+
+	return;
+}
+
+static void cnss_get_xiaomi_bdf_regdb_file_name(char *filename_tmp, u32 filename_len)
+{
+	int hw_platform_ver = -1;
+	uint32_t hw_country_ver = 0;
+
+	hw_platform_ver = get_hw_version_platform();
+	hw_country_ver = get_hw_country_version();
+
+	switch (hw_platform_ver) {
+	case HARDWARE_PLATFORM_LMI:
+		snprintf(filename_tmp, filename_len, REGDB_FILE_NAME_J11);
+		break;
+	default:
+		snprintf(filename_tmp, filename_len, REGDB_FILE_NAME);
+		break;
+	}
+
+	return;
+}
+
 static int cnss_get_bdf_file_name(struct cnss_plat_data *plat_priv,
 				  u32 bdf_type, char *filename,
 				  u32 filename_len)
@@ -511,21 +703,11 @@ static int cnss_get_bdf_file_name(struct cnss_plat_data *plat_priv,
 	case CNSS_BDF_ELF:
 		/* Board ID will be equal or less than 0xFF in GF mask case */
 		if (plat_priv->board_info.board_id == 0xFF) {
-			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
-				snprintf(filename_tmp, filename_len,
-					 ELF_BDF_FILE_NAME_GF);
-			else
-				snprintf(filename_tmp, filename_len,
-					 ELF_BDF_FILE_NAME);
+			cnss_get_xiaomi_bdf_elf_file_name(filename_tmp, filename_len);
 		} else if (plat_priv->board_info.board_id < 0xFF) {
-			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
-				snprintf(filename_tmp, filename_len,
-					 ELF_BDF_FILE_NAME_GF_PREFIX "%02x",
-					 plat_priv->board_info.board_id);
-			else
-				snprintf(filename_tmp, filename_len,
-					 ELF_BDF_FILE_NAME_PREFIX "%02x",
-					 plat_priv->board_info.board_id);
+			snprintf(filename_tmp, filename_len,
+				 ELF_BDF_FILE_NAME_PREFIX "%02x",
+				 plat_priv->board_info.board_id);
 		} else {
 			snprintf(filename_tmp, filename_len,
 				 BDF_FILE_NAME_PREFIX "%02x.e%02x",
@@ -558,7 +740,7 @@ static int cnss_get_bdf_file_name(struct cnss_plat_data *plat_priv,
 		}
 		break;
 	case CNSS_BDF_REGDB:
-		snprintf(filename_tmp, filename_len, REGDB_FILE_NAME);
+		cnss_get_xiaomi_bdf_regdb_file_name(filename_tmp, filename_len);
 		break;
 	case CNSS_BDF_DUMMY:
 		cnss_pr_dbg("CNSS_BDF_DUMMY is set, sending dummy BDF\n");
