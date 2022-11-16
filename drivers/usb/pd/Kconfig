@@ -28,4 +28,11 @@ config QPNP_USB_PDPHY
 	  The is used to handle the PHY layer communication of the
 	  Power Delivery stack.
 
+config PS5169
+	tristate "Redriver PS5169"
+	depends on I2C
+	help
+		Say Y to support PS5169 for USB3.2.
+		PS5169 is a enhanced signal driver.
+
 endmenu
