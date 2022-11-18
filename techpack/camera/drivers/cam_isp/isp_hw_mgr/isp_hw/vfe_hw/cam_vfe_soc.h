@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE_SOC_H_
@@ -24,8 +24,6 @@
  * @cpas_version:            Has cpas version read from Hardware
  * @ubwc_static_ctrl:        UBWC static control configuration
  * @is_ife_lite:             Flag to indicate full vs lite IFE
- * @dsp_disabled:            Flag to indicate DSP is not supported for VFE
- * @ife_clk_src:             IFE source clock
  */
 struct cam_vfe_soc_private {
 	uint32_t    cpas_handle;
@@ -35,8 +33,6 @@ struct cam_vfe_soc_private {
 	int32_t     dsp_clk_rate;
 	uint32_t    ubwc_static_ctrl[UBWC_STATIC_CONFIG_MAX];
 	bool        is_ife_lite;
-	bool        dsp_disabled;
-	uint64_t    ife_clk_src;
 };
 
 /*
@@ -73,17 +69,10 @@ int cam_vfe_deinit_soc_resources(struct cam_hw_soc_info *soc_info);
  *
  * @soc_info:                Device soc information
  *
- * @num_pix_rsrc:            Number of pix resource in input port
- *
- * @num_pd_rsrc:             Number of pdaf resource in input port
- *
- * @num_rdi_rsrc:            Number of rdi resource in input port
- *
  * @Return:                  0: Success
  *                           Non-zero: Failure
  */
-int cam_vfe_enable_soc_resources(struct cam_hw_soc_info *soc_info,
-	int num_pix_rsrc, int num_pd_rsrc, int num_rdi_rsrc);
+int cam_vfe_enable_soc_resources(struct cam_hw_soc_info *soc_info);
 
 /*
  * cam_vfe_disable_soc_resources()

@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE175_H_
@@ -179,32 +178,6 @@ static struct cam_vfe_rdi_reg_data  vfe_175_rdi_2_data = {
 	.reg_update_irq_mask      = 0x80,
 };
 
-struct cam_vfe_top_dump_data vfe175_dump_data = {
-	.num_reg_dump_entries  =  2,
-	.num_lut_dump_entries  =  1,
-	.dmi_cfg               =  0xc24,
-	.dmi_addr              =  0xc28,
-	.dmi_data_path_hi      =  0xc2C,
-	.dmi_data_path_lo      =  0xc30,
-	.reg_entry = {
-		{
-			.reg_dump_start = 0x0,
-			.reg_dump_end   = 0x1164,
-		},
-		{
-			.reg_dump_start = 0x2000,
-			.reg_dump_end   = 0x397C,
-		},
-	},
-	.lut_entry = {
-		{
-			.lut_word_size = 64,
-			.lut_bank_sel  = 0x40,
-			.lut_addr_size = 180,
-		},
-	},
-};
-
 static struct cam_vfe_top_ver2_hw_info vfe175_top_hw_info = {
 	.common_reg = &vfe175_top_common_reg,
 	.camif_hw_info = {
@@ -236,7 +209,6 @@ static struct cam_vfe_top_ver2_hw_info vfe175_top_hw_info = {
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_CAMIF_LITE_VER_2_0,
 	},
-	.dump_data = &vfe175_dump_data,
 };
 
 static struct cam_irq_register_set vfe175_bus_irq_reg[3] = {
@@ -268,7 +240,6 @@ static struct cam_vfe_bus_ver2_reg_offset_ubwc_3_client
 	.mode_cfg_0       = 0x00002544,
 	.mode_cfg_1       = 0x000025A4,
 	.bw_limit         = 0x000025A0,
-	.ubwc_comp_en_bit = BIT(1),
 };
 
 static struct cam_vfe_bus_ver2_reg_offset_ubwc_3_client
@@ -282,7 +253,6 @@ static struct cam_vfe_bus_ver2_reg_offset_ubwc_3_client
 	.mode_cfg_0       = 0x00002644,
 	.mode_cfg_1       = 0x000026A4,
 	.bw_limit         = 0x000026A0,
-	.ubwc_comp_en_bit = BIT(1),
 };
 
 static struct cam_vfe_bus_ver2_reg_offset_ubwc_3_client
@@ -296,7 +266,6 @@ static struct cam_vfe_bus_ver2_reg_offset_ubwc_3_client
 	.mode_cfg_0       = 0x00003644,
 	.mode_cfg_1       = 0x000036A4,
 	.bw_limit         = 0x000036A0,
-	.ubwc_comp_en_bit = BIT(1),
 };
 
 static struct cam_vfe_bus_ver2_reg_offset_ubwc_3_client
@@ -310,7 +279,6 @@ static struct cam_vfe_bus_ver2_reg_offset_ubwc_3_client
 	.mode_cfg_0       = 0x00003744,
 	.mode_cfg_1       = 0x000037A4,
 	.bw_limit         = 0x000037A0,
-	.ubwc_comp_en_bit = BIT(1),
 };
 
 static struct cam_vfe_bus_ver2_hw_info vfe175_bus_hw_info = {
@@ -1024,7 +992,6 @@ static struct cam_vfe_bus_ver2_hw_info vfe175_bus_hw_info = {
 			.max_height    = 1080,
 		},
 	},
-	.support_consumed_addr = false,
 };
 
 struct cam_vfe_hw_info cam_vfe175_hw_info = {

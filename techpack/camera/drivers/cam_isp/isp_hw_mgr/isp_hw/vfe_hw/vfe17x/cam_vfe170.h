@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE170_H_
@@ -145,40 +144,6 @@ static struct cam_vfe_rdi_reg_data  vfe_170_rdi_2_data = {
 	.reg_update_irq_mask      = 0x80,
 };
 
-struct cam_vfe_top_dump_data vfe170_dump_data = {
-	.num_reg_dump_entries  =  2,
-	.num_lut_dump_entries  =  1,
-	.dmi_cfg               =  0xc24,
-	.dmi_addr              =  0xc28,
-	.dmi_data_path_hi      =  0xc2C,
-	.dmi_data_path_lo      =  0xc30,
-	.reg_entry = {
-		{
-			.reg_dump_start = 0x0,
-			.reg_dump_end   = 0x1164,
-		},
-		{
-			.reg_dump_start = 0x2000,
-			.reg_dump_end   = 0x397C,
-		},
-	},
-	.lut_entry = {
-		{
-			.lut_word_size = 64,
-			.lut_bank_sel  = 0x40,
-			.lut_addr_size = 180,
-		},
-	},
-};
-
-static struct cam_vfe_rdi_overflow_status vfe170_rdi_irq_status = {
-	.rdi0_overflow_mask = 0x8,
-	.rdi1_overflow_mask = 0x10,
-	.rdi2_overflow_mask = 0x18,
-	.rdi3_overflow_mask = 0x20,
-	.rdi_overflow_mask  = 0x3c,
-};
-
 static struct cam_vfe_top_ver2_hw_info vfe170_top_hw_info = {
 	.common_reg = &vfe170_top_common_reg,
 	.camif_hw_info = {
@@ -192,9 +157,8 @@ static struct cam_vfe_top_ver2_hw_info vfe170_top_hw_info = {
 		.reg_data       = NULL,
 		},
 	.rdi_hw_info = {
-		.common_reg      = &vfe170_top_common_reg,
-		.rdi_reg         = &vfe170_rdi_reg,
-		.rdi_irq_status  = &vfe170_rdi_irq_status,
+		.common_reg = &vfe170_top_common_reg,
+		.rdi_reg    = &vfe170_rdi_reg,
 		.reg_data = {
 			&vfe_170_rdi_0_data,
 			&vfe_170_rdi_1_data,
@@ -209,7 +173,6 @@ static struct cam_vfe_top_ver2_hw_info vfe170_top_hw_info = {
 		CAM_VFE_RDI_VER_1_0,
 		CAM_VFE_RDI_VER_1_0,
 	},
-	.dump_data = &vfe170_dump_data,
 };
 
 static struct cam_irq_register_set vfe170_bus_irq_reg[3] = {
@@ -239,7 +202,6 @@ static struct cam_vfe_bus_ver2_reg_offset_ubwc_client ubwc_regs_client_3 = {
 	.meta_stride      = 0x00002540,
 	.mode_cfg_0       = 0x00002544,
 	.bw_limit         = 0x000025A0,
-	.ubwc_comp_en_bit = BIT(1),
 };
 
 static struct cam_vfe_bus_ver2_reg_offset_ubwc_client ubwc_regs_client_4 = {
@@ -251,7 +213,6 @@ static struct cam_vfe_bus_ver2_reg_offset_ubwc_client ubwc_regs_client_4 = {
 	.meta_stride      = 0x00002640,
 	.mode_cfg_0       = 0x00002644,
 	.bw_limit         = 0x000026A0,
-	.ubwc_comp_en_bit = BIT(1),
 };
 
 static struct cam_vfe_bus_ver2_hw_info vfe170_bus_hw_info = {
@@ -861,7 +822,6 @@ static struct cam_vfe_bus_ver2_hw_info vfe170_bus_hw_info = {
 			.max_height    = -1,
 		},
 	},
-	.support_consumed_addr = false,
 };
 
 struct cam_vfe_hw_info cam_vfe170_hw_info = {

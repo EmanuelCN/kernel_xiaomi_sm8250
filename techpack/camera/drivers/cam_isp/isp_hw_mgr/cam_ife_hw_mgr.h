@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_IFE_HW_MGR_H_
@@ -81,22 +81,18 @@ struct ctx_base_info {
  * @dentry:                    Debugfs entry
  * @csid_debug:                csid debug information
  * @enable_recovery:           enable recovery
- * @enable_csid_recovery:      enable csid recovery
  * @enable_diag_sensor_status: enable sensor diagnosis status
  * @enable_req_dump:           Enable request dump on HW errors
  * @per_req_reg_dump:          Enable per request reg dump
- * @disable_ubwc_comp:         Disable UBWC compression
  *
  */
 struct cam_ife_hw_mgr_debug {
 	struct dentry  *dentry;
 	uint64_t       csid_debug;
 	uint32_t       enable_recovery;
-	uint32_t       enable_csid_recovery;
 	uint32_t       camif_debug;
 	bool           enable_req_dump;
 	bool           per_req_reg_dump;
-	bool           disable_ubwc_comp;
 };
 
 /**
@@ -105,8 +101,6 @@ struct cam_ife_hw_mgr_debug {
  * @list:                   used by the ctx list.
  * @common:                 common acquired context data
  * @ctx_index:              acquired context id.
- * @master_hw_idx:          hw index for master core
- * @slave_hw_idx:           hw index for slave core
  * @hw_mgr:                 IFE hw mgr which owns this context
  * @ctx_in_use:             flag to tell whether context is active
  * @res_list_ife_in:        Starting resource(TPG,PHY0, PHY1...) Can only be
@@ -133,7 +127,6 @@ struct cam_ife_hw_mgr_debug {
  *                          context
  * @cdm_done                flag to indicate cdm has finished writing shadow
  *                          registers
- * @last_cdm_done_req:      Last cdm done request
  * @is_rdi_only_context     flag to specify the context has only rdi resource
  * @config_done_complete    indicator for configuration complete
  * @reg_dump_buf_desc:      cmd buffer descriptors for reg dump
@@ -142,23 +135,15 @@ struct cam_ife_hw_mgr_debug {
  * @last_dump_flush_req_id  Last req id for which reg dump on flush was called
  * @last_dump_err_req_id    Last req id for which reg dump on error was called
  * @init_done               indicate whether init hw is done
- * @is_fe_enabled           Indicate whether fetch engine\read path is enabled
+ * @is_fe_enable            indicate whether fetch engine\read path is enabled
  * @is_dual                 indicate whether context is in dual VFE mode
- * @custom_enabled          update the flag if context is connected to custom HW
- * @use_frame_header_ts     obtain qtimer ts using frame header
  * @ts                      captured timestamp when the ctx is acquired
- * @is_offline              Indicate whether context is for offline IFE
- * @dsp_enabled             Indicate whether dsp is enabled in this context
- * @dual_ife_irq_mismatch_cnt   irq mismatch count value per core, used for
- *                              dual VFE
  */
 struct cam_ife_hw_mgr_ctx {
 	struct list_head                list;
 	struct cam_isp_hw_mgr_ctx       common;
 
 	uint32_t                        ctx_index;
-	uint32_t                        master_hw_idx;
-	uint32_t                        slave_hw_idx;
 	struct cam_ife_hw_mgr          *hw_mgr;
 	uint32_t                        ctx_in_use;
 
@@ -186,7 +171,6 @@ struct cam_ife_hw_mgr_ctx {
 	uint32_t                        eof_cnt[CAM_IFE_HW_NUM_MAX];
 	atomic_t                        overflow_pending;
 	atomic_t                        cdm_done;
-	uint64_t                        last_cdm_done_req;
 	uint32_t                        is_rdi_only_context;
 	struct completion               config_done_complete;
 	struct cam_cmd_buf_desc         reg_dump_buf_desc[
@@ -196,14 +180,9 @@ struct cam_ife_hw_mgr_ctx {
 	uint64_t                        last_dump_flush_req_id;
 	uint64_t                        last_dump_err_req_id;
 	bool                            init_done;
-	bool                            is_fe_enabled;
+	bool                            is_fe_enable;
 	bool                            is_dual;
-	bool                            custom_enabled;
-	bool                            use_frame_header_ts;
 	struct timespec64               ts;
-	bool                            is_offline;
-	bool                            dsp_enabled;
-	uint32_t                        dual_ife_irq_mismatch_cnt;
 };
 
 /**
@@ -222,7 +201,6 @@ struct cam_ife_hw_mgr_ctx {
  * @ife_dev_caps           ife device capability per core
  * @work q                 work queue for IFE hw manager
  * @debug_cfg              debug configuration
- * @support_consumed_addr  indicate whether hw supports last consumed address
  */
 struct cam_ife_hw_mgr {
 	struct cam_isp_hw_mgr          mgr_common;
@@ -241,8 +219,6 @@ struct cam_ife_hw_mgr {
 	struct cam_vfe_hw_get_hw_cap   ife_dev_caps[CAM_IFE_HW_NUM_MAX];
 	struct cam_req_mgr_core_workq *workq;
 	struct cam_ife_hw_mgr_debug    debug_cfg;
-	spinlock_t                     ctx_lock;
-	bool                           support_consumed_addr;
 };
 
 /**

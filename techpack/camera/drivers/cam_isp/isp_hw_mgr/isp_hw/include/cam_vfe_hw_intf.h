@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_VFE_HW_INTF_H_
@@ -104,27 +103,6 @@ struct cam_vfe_hw_get_hw_cap {
 };
 
 /*
- * struct cam_vfe_hw_vfe_bus_rd_acquire_args:
- *
- * @rsrc_node:               Pointer to Resource Node object, filled if acquire
- *                           is successful
- * @res_id:                  Unique Identity of port to associate with this
- *                           resource.
- * @is_dual:                 Flag to indicate dual VFE usecase
- * @cdm_ops:                 CDM operations
- * @unpacket_fmt:            Unpacker format for read engine
- * @is_offline:              Flag to indicate offline usecase
- */
-struct cam_vfe_hw_vfe_bus_rd_acquire_args {
-	struct cam_isp_resource_node         *rsrc_node;
-	uint32_t                              res_id;
-	uint32_t                              is_dual;
-	struct cam_cdm_utils_ops             *cdm_ops;
-	uint32_t                              unpacker_fmt;
-	bool                                  is_offline;
-};
-
-/*
  * struct cam_vfe_hw_vfe_out_acquire_args:
  *
  * @rsrc_node:               Pointer to Resource Node object, filled if acquire
@@ -140,7 +118,6 @@ struct cam_vfe_hw_vfe_bus_rd_acquire_args {
  *                           (Default is Master in case of Single VFE)
  * @dual_slave_core:         If Master and Slave exists, HW Index of Slave
  * @cdm_ops:                 CDM operations
- * disable_ubwc_comp:        Disable UBWC compression
  */
 struct cam_vfe_hw_vfe_out_acquire_args {
 	struct cam_isp_resource_node         *rsrc_node;
@@ -151,7 +128,6 @@ struct cam_vfe_hw_vfe_out_acquire_args {
 	uint32_t                              is_master;
 	uint32_t                              dual_slave_core;
 	struct cam_cdm_utils_ops             *cdm_ops;
-	bool                                  disable_ubwc_comp;
 };
 
 /*
@@ -161,25 +137,17 @@ struct cam_vfe_hw_vfe_out_acquire_args {
  *                           is successful
  * @res_id:                  Resource ID of resource to acquire if specific,
  *                           else CAM_ISP_HW_VFE_IN_MAX
- * @dual_hw_idx:             Slave core for this master core if dual vfe case
- * @is_dual:                 flag to indicate if dual vfe case
  * @cdm_ops:                 CDM operations
  * @sync_mode:               In case of Dual VFE, this is Master or Slave.
  *                           (Default is Master in case of Single VFE)
  * @in_port:                 Input port details to acquire
- * @is_fe_enabled:           Flag to indicate if FE is enabled
- * @is_offline:              Flag to indicate Offline IFE
  */
 struct cam_vfe_hw_vfe_in_acquire_args {
 	struct cam_isp_resource_node         *rsrc_node;
 	uint32_t                              res_id;
-	uint32_t                              dual_hw_idx;
-	uint32_t                              is_dual;
 	void                                 *cdm_ops;
 	enum cam_isp_hw_sync_mode             sync_mode;
 	struct cam_isp_in_port_generic_info  *in_port;
-	bool                                  is_fe_enabled;
-	bool                                  is_offline;
 };
 
 /*
@@ -201,9 +169,9 @@ struct cam_vfe_acquire_args {
 	void                                *priv;
 	cam_hw_mgr_event_cb_func             event_cb;
 	union {
-		struct cam_vfe_hw_vfe_out_acquire_args     vfe_out;
-		struct cam_vfe_hw_vfe_bus_rd_acquire_args  vfe_bus_rd;
-		struct cam_vfe_hw_vfe_in_acquire_args      vfe_in;
+		struct cam_vfe_hw_vfe_out_acquire_args  vfe_out;
+		struct cam_vfe_hw_vfe_out_acquire_args  vfe_bus_rd;
+		struct cam_vfe_hw_vfe_in_acquire_args   vfe_in;
 	};
 };
 
@@ -255,19 +223,6 @@ struct cam_vfe_bw_update_args {
 };
 
 /*
- * struct cam_vfe_num_of_acquired_resources:
- *
- * @num_pix_rsrc:            Number of pix resources acquired in context
- * @num_pd_rsrc:             Number of pd resources acquired in context
- * @num_rdi_rsrc:            Number of rdi resources acquired in context
- */
-struct cam_vfe_num_of_acquired_resources {
-	uint32_t      num_pix_rsrc;
-	uint32_t      num_pd_rsrc;
-	uint32_t      num_rdi_rsrc;
-};
-
-/*
  * struct cam_vfe_fe_update_args:
  *
  * @node_res:             Resource to get fetch configuration
@@ -304,15 +259,11 @@ struct cam_vfe_bw_control_args {
  * @list:                    list_head node for the payload
  * @irq_reg_val:             IRQ and Error register values, read when IRQ was
  *                           handled
- * @reg_val:                 Value of any critical register that needs to be
- *                           read at during irq handling
- *
  * @ts:                      Timestamp
  */
 struct cam_vfe_top_irq_evt_payload {
 	struct list_head            list;
 	uint32_t                    irq_reg_val[CAM_IFE_IRQ_REGISTERS_MAX];
-	uint32_t                    reg_val;
 	struct cam_isp_timestamp    ts;
 };
 

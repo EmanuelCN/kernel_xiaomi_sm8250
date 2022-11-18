@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -148,7 +147,6 @@ int cam_vfe_init_hw(void *hw_priv, void *init_hw_args, uint32_t arg_size)
 	struct cam_hw_soc_info            *soc_info = NULL;
 	struct cam_vfe_hw_core_info       *core_info = NULL;
 	struct cam_isp_resource_node      *isp_res = NULL;
-	struct cam_vfe_num_of_acquired_resources num_rsrc;
 	int rc = 0;
 	uint32_t                           reset_core_args =
 					CAM_VFE_HW_RESET_HW_AND_REG;
@@ -171,26 +169,16 @@ int cam_vfe_init_hw(void *hw_priv, void *init_hw_args, uint32_t arg_size)
 
 	soc_info = &vfe_hw->soc_info;
 	core_info = (struct cam_vfe_hw_core_info *)vfe_hw->core_info;
-	isp_res   = (struct cam_isp_resource_node *)init_hw_args;
-
-	rc = core_info->vfe_top->hw_ops.process_cmd(
-		core_info->vfe_top->top_priv,
-		CAM_ISP_HW_CMD_GET_NUM_OF_ACQUIRED_RESOURCE,
-		&num_rsrc,
-		sizeof(struct cam_vfe_num_of_acquired_resources));
-	if (rc)
-		CAM_ERR(CAM_ISP, "Failed to get the port information rc=%d",
-			rc);
 
 	/* Turn ON Regulators, Clocks and other SOC resources */
-	rc = cam_vfe_enable_soc_resources(soc_info, num_rsrc.num_pix_rsrc,
-		num_rsrc.num_pd_rsrc, num_rsrc.num_rdi_rsrc);
+	rc = cam_vfe_enable_soc_resources(soc_info);
 	if (rc) {
 		CAM_ERR(CAM_ISP, "Enable SOC failed");
 		rc = -EFAULT;
 		goto decrement_open_cnt;
 	}
 
+	isp_res   = (struct cam_isp_resource_node *)init_hw_args;
 	if (isp_res && isp_res->init) {
 		rc = isp_res->init(isp_res, NULL, 0);
 		if (rc) {
@@ -605,13 +593,6 @@ int cam_vfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_BW_CONTROL:
 	case CAM_ISP_HW_CMD_CORE_CONFIG:
 	case CAM_ISP_HW_CMD_BW_UPDATE_V2:
-	case CAM_ISP_HW_CMD_DUMP_HW:
-	case CAM_ISP_HW_CMD_QUERY:
-	case CAM_ISP_HW_CMD_QUERY_DSP_MODE:
-	case CAM_ISP_HW_CMD_CAMIF_DATA:
-	case CAM_ISP_HW_CMD_GET_IRQ_REGISTER_DUMP:
-	case CAM_ISP_HW_CMD_SET_NUM_OF_ACQUIRED_RESOURCE:
-	case CAM_ISP_HW_CMD_GET_NUM_OF_ACQUIRED_RESOURCE:
 		rc = core_info->vfe_top->hw_ops.process_cmd(
 			core_info->vfe_top->top_priv, cmd_type, cmd_args,
 			arg_size);
@@ -623,8 +604,6 @@ int cam_vfe_process_cmd(void *hw_priv, uint32_t cmd_type,
 	case CAM_ISP_HW_CMD_UBWC_UPDATE:
 	case CAM_ISP_HW_CMD_UBWC_UPDATE_V2:
 	case CAM_ISP_HW_CMD_WM_CONFIG_UPDATE:
-	case CAM_ISP_HW_CMD_DUMP_BUS_INFO:
-	case CAM_ISP_HW_CMD_IS_CONSUMED_ADDR_SUPPORT:
 		rc = core_info->vfe_bus->hw_ops.process_cmd(
 			core_info->vfe_bus->bus_priv, cmd_type, cmd_args,
 			arg_size);

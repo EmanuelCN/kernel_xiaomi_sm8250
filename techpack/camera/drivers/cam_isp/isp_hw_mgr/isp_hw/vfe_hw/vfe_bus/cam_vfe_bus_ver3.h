@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2019, The Linux Foundation. All rights reserved.
  */
 
 
@@ -114,7 +113,6 @@ struct cam_vfe_bus_ver3_reg_offset_ubwc_client {
 	uint32_t lossy_thresh1;
 	uint32_t off_lossy_var;
 	uint32_t bw_limit;
-	uint32_t ubwc_comp_en_bit;
 };
 
 /*
@@ -168,13 +166,12 @@ struct cam_vfe_bus_ver3_vfe_out_hw_info {
  *
  * @Brief:            HW register info for entire Bus
  *
- * @common_reg:            Common register details
- * @num_client:            Total number of write clients
- * @bus_client_reg:        Bus client register info
- * @vfe_out_hw_info:       VFE output capability
- * @comp_done_shift:       Mask shift for comp done mask
- * @top_irq_shift:         Mask shift for top level BUS WR irq
- * @support_consumed_addr: Indicate if bus support consumed address
+ * @common_reg:       Common register details
+ * @num_client:       Total number of write clients
+ * @bus_client_reg:   Bus client register info
+ * @vfe_out_hw_info:  VFE output capability
+ * @comp_done_shift:  Mask shift for comp done mask
+ * @top_irq_shift:    Mask shift for top level BUS WR irq
  */
 struct cam_vfe_bus_ver3_hw_info {
 	struct cam_vfe_bus_ver3_reg_offset_common common_reg;
@@ -186,7 +183,6 @@ struct cam_vfe_bus_ver3_hw_info {
 		vfe_out_hw_info[CAM_VFE_BUS_VER3_VFE_OUT_MAX];
 	uint32_t comp_done_shift;
 	uint32_t top_irq_shift;
-	bool support_consumed_addr;
 };
 
 /*
