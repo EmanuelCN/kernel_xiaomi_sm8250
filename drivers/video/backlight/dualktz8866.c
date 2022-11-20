@@ -38,23 +38,23 @@ struct ktz8866 {
 	struct ktz8866_platform_data *pdata;
 };
 
-struct ktz8866 *bd;
-struct ktz8866_status ktz8866_status;
-struct pwm_to_51 pwm_map[6] = {
+static struct ktz8866 *bd;
+static struct ktz8866_status ktz8866_status;
+static struct pwm_to_51 pwm_map[6] = {
 	{ 10, 0x199 }, { 20, 0x333 }, { 40, 0x666 },
 	{ 60, 0x999 }, { 80, 0xccc }, { 100, 0xFFF },
 };
 
-struct ktz8866 *bd_a;
-struct ktz8866 *bd_b;
-char gresult[30];
-int caseid = 0;
+static struct ktz8866 *bd_a;
+static struct ktz8866 *bd_b;
+static char gresult[30];
+static int caseid = 0;
 
 static struct ktz8866_led g_ktz8866_led;
 
 extern int mi_mipi_dsi_dcs_set_pwm_value(u16 dbv_value);
 
-int ktz8866_read(u8 reg, u8 *data)
+static int ktz8866_read(u8 reg, u8 *data)
 {
 	int ret;
 
@@ -69,12 +69,12 @@ int ktz8866_read(u8 reg, u8 *data)
 	return 0;
 }
 
-int ktz8866_write(u8 reg, u8 data)
+static int ktz8866_write(u8 reg, u8 data)
 {
 	return i2c_smbus_write_byte_data(bd->client, reg, data);
 }
 
-int ktz8866_reads(struct ktz8866 *bd, u8 reg, u8 *data)
+static int ktz8866_reads(struct ktz8866 *bd, u8 reg, u8 *data)
 {
 	int ret;
 
@@ -89,7 +89,7 @@ int ktz8866_reads(struct ktz8866 *bd, u8 reg, u8 *data)
 	return 0;
 }
 
-int ktz8866_writes(struct ktz8866 *bd, u8 reg, u8 data)
+static int ktz8866_writes(struct ktz8866 *bd, u8 reg, u8 data)
 {
 	return i2c_smbus_write_byte_data(bd->client, reg, data);
 }
@@ -184,8 +184,8 @@ static ssize_t bl_selftest_read(struct file *file, char __user *buf,
 	return cnt;
 }
 
-ssize_t bl_selftest_write(struct file *file, const char __user *buf,
-			  size_t count, loff_t *pos)
+static ssize_t bl_selftest_write(struct file *file, const char __user *buf,
+				 size_t count, loff_t *pos)
 {
 	char tmp[6] = { 0 };
 	int pwm_value = 0;

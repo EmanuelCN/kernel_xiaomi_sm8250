@@ -77,7 +77,7 @@ static struct ktz8866_reg ktz8866_regs_conf[] = {
 	{ KTZ8866_DISP_BL_ENABLE, 0x5f },/* KTZ8866_DISP_BL_ENABLE BL_EN*/
 };
 
-const int bl_level_remap[BL_LEVEL_MAX+1] = {
+static const int bl_level_remap[BL_LEVEL_MAX+1] = {
 0,17,17,31,40,54,107,132,163,186,
 213,222,241,260,279,300,321,330,349,365,
 379,395,408,419,430,440,449,458,466,485,
