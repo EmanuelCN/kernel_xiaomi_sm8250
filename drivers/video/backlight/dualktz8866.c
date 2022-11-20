@@ -69,11 +69,6 @@ static int ktz8866_read(u8 reg, u8 *data)
 	return 0;
 }
 
-static int ktz8866_write(u8 reg, u8 data)
-{
-	return i2c_smbus_write_byte_data(bd->client, reg, data);
-}
-
 static int ktz8866_reads(struct ktz8866 *bd, u8 reg, u8 *data)
 {
 	int ret;
