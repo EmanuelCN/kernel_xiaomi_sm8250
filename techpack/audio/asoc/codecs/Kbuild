@@ -248,6 +248,17 @@ ifeq ($(KERNEL_BUILD), 1)
 	obj-y	+= wcd937x/
 	obj-y	+= wcd938x/
 	obj-y	+= bolero/
+ifeq (y, $(filter y, \
+	$(CONFIG_MACH_XIAOMI_DAGU) \
+	$(CONFIG_MACH_XIAOMI_ELISH) \
+	$(CONFIG_MACH_XIAOMI_ENUMA)))
+	obj-y	+= cs35l41_k81/
+else ifeq ($(CONFIG_MACH_XIAOMI_MUNCH), y)
+	obj-y	+= tfa9874/
+else
+	obj-y	+= cs35l41/
+	obj-y	+= tfa98xx/
+endif
 	obj-y	+= rouleur/
 	obj-y	+= wsa883x/
 	obj-y	+= sdm660_cdc/

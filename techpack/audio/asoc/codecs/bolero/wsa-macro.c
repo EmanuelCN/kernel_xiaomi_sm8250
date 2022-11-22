@@ -445,8 +445,8 @@ static struct snd_soc_dai_driver wsa_macro_dai[] = {
 static const struct wsa_macro_reg_mask_val wsa_macro_spkr_default[] = {
 	{BOLERO_CDC_WSA_COMPANDER0_CTL3, 0x80, 0x80},
 	{BOLERO_CDC_WSA_COMPANDER1_CTL3, 0x80, 0x80},
-	{BOLERO_CDC_WSA_COMPANDER0_CTL7, 0x1F, 0x19},
-	{BOLERO_CDC_WSA_COMPANDER1_CTL7, 0x1F, 0x19},
+	{BOLERO_CDC_WSA_COMPANDER0_CTL7, 0x01, 0x01},
+	{BOLERO_CDC_WSA_COMPANDER1_CTL7, 0x01, 0x01},
 	{BOLERO_CDC_WSA_BOOST0_BOOST_CTL, 0x7C, 0x58},
 	{BOLERO_CDC_WSA_BOOST1_BOOST_CTL, 0x7C, 0x58},
 };
@@ -454,8 +454,8 @@ static const struct wsa_macro_reg_mask_val wsa_macro_spkr_default[] = {
 static const struct wsa_macro_reg_mask_val wsa_macro_spkr_mode1[] = {
 	{BOLERO_CDC_WSA_COMPANDER0_CTL3, 0x80, 0x00},
 	{BOLERO_CDC_WSA_COMPANDER1_CTL3, 0x80, 0x00},
-	{BOLERO_CDC_WSA_COMPANDER0_CTL7, 0x1F, 0x18},
-	{BOLERO_CDC_WSA_COMPANDER1_CTL7, 0x1F, 0x18},
+	{BOLERO_CDC_WSA_COMPANDER0_CTL7, 0x01, 0x00},
+	{BOLERO_CDC_WSA_COMPANDER1_CTL7, 0x01, 0x00},
 	{BOLERO_CDC_WSA_BOOST0_BOOST_CTL, 0x7C, 0x44},
 	{BOLERO_CDC_WSA_BOOST1_BOOST_CTL, 0x7C, 0x44},
 };
@@ -2744,10 +2744,10 @@ static const struct snd_soc_dapm_route wsa_audio_map[] = {
 static const struct wsa_macro_reg_mask_val wsa_macro_reg_init[] = {
 	{BOLERO_CDC_WSA_BOOST0_BOOST_CFG1, 0x3F, 0x12},
 	{BOLERO_CDC_WSA_BOOST0_BOOST_CFG2, 0x1C, 0x08},
-	{BOLERO_CDC_WSA_COMPANDER0_CTL7, 0x1E, 0x0C},
+	{BOLERO_CDC_WSA_COMPANDER0_CTL7, 0x1E, 0x18},
 	{BOLERO_CDC_WSA_BOOST1_BOOST_CFG1, 0x3F, 0x12},
 	{BOLERO_CDC_WSA_BOOST1_BOOST_CFG2, 0x1C, 0x08},
-	{BOLERO_CDC_WSA_COMPANDER1_CTL7, 0x1E, 0x0C},
+	{BOLERO_CDC_WSA_COMPANDER1_CTL7, 0x1E, 0x18},
 	{BOLERO_CDC_WSA_BOOST0_BOOST_CTL, 0x70, 0x58},
 	{BOLERO_CDC_WSA_BOOST1_BOOST_CTL, 0x70, 0x58},
 	{BOLERO_CDC_WSA_RX0_RX_PATH_CFG1, 0x08, 0x08},
@@ -2758,6 +2758,8 @@ static const struct wsa_macro_reg_mask_val wsa_macro_reg_init[] = {
 	{BOLERO_CDC_WSA_TX1_SPKR_PROT_PATH_CFG0, 0x01, 0x01},
 	{BOLERO_CDC_WSA_TX2_SPKR_PROT_PATH_CFG0, 0x01, 0x01},
 	{BOLERO_CDC_WSA_TX3_SPKR_PROT_PATH_CFG0, 0x01, 0x01},
+	{BOLERO_CDC_WSA_COMPANDER0_CTL3, 0x80, 0x80},
+	{BOLERO_CDC_WSA_COMPANDER1_CTL3, 0x80, 0x80},
 	{BOLERO_CDC_WSA_COMPANDER0_CTL7, 0x01, 0x01},
 	{BOLERO_CDC_WSA_COMPANDER1_CTL7, 0x01, 0x01},
 	{BOLERO_CDC_WSA_RX0_RX_PATH_CFG0, 0x01, 0x01},
@@ -2828,25 +2830,22 @@ static void wsa_macro_init_reg(struct snd_soc_component *component)
 
 static int wsa_macro_core_vote(void *handle, bool enable)
 {
-	int rc = 0;
 	struct wsa_macro_priv *wsa_priv = (struct wsa_macro_priv *) handle;
 
 	if (wsa_priv == NULL) {
 		pr_err("%s: wsa priv data is NULL\n", __func__);
 		return -EINVAL;
 	}
-
 	if (enable) {
 		pm_runtime_get_sync(wsa_priv->dev);
-		if (bolero_check_core_votes(wsa_priv->dev))
-			rc = 0;
-		else
-			rc = -ENOTSYNC;
-	} else {
 		pm_runtime_put_autosuspend(wsa_priv->dev);
 		pm_runtime_mark_last_busy(wsa_priv->dev);
 	}
-	return rc;
+
+	if (bolero_check_core_votes(wsa_priv->dev))
+		return 0;
+	else
+		return -EINVAL;
 }
 
 static int wsa_swrm_clock(void *handle, bool enable)
@@ -3240,12 +3239,12 @@ static int wsa_macro_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "%s: register macro failed\n", __func__);
 		goto reg_macro_fail;
 	}
+	schedule_work(&wsa_priv->wsa_macro_add_child_devices_work);
 	pm_runtime_set_autosuspend_delay(&pdev->dev, AUTO_SUSPEND_DELAY);
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
 	pm_suspend_ignore_children(&pdev->dev, true);
 	pm_runtime_enable(&pdev->dev);
-	schedule_work(&wsa_priv->wsa_macro_add_child_devices_work);
 
 	return ret;
 reg_macro_fail:

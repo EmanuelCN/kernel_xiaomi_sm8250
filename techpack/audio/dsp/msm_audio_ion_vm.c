@@ -544,11 +544,6 @@ static int msm_audio_ion_map_buf(void *handle, dma_addr_t *paddr,
 {
 	int rc = 0;
 
-	if (!handle || !paddr || !vaddr || !plen) {
-		pr_err("%s: Invalid params\n", __func__);
-		return -EINVAL;
-	}
-
 	rc = msm_audio_ion_get_phys((struct dma_buf*) handle, paddr, plen);
 	if (rc) {
 		pr_err("%s: ION Get Physical for AUDIO failed, rc = %d\n",

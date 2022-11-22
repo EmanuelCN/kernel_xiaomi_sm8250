@@ -250,6 +250,12 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-Werror\
 		-D__linux__
 
+ifeq (y, $(filter y,\
+	$(CONFIG_MACH_XIAOMI_LMI) \
+	$(CONFIG_MACH_XIAOMI_MUNCH)))
+CDEFINES += -DTFA_ADSP_SUPPORTED
+endif
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile

@@ -389,6 +389,9 @@ static int va_macro_swr_pwr_event_v2(struct snd_soc_dapm_widget *w,
 	dev_dbg(va_dev, "%s: event = %d, lpi_enable = %d\n",
 		__func__, event, va_priv->lpi_enable);
 
+	if (!va_priv->lpi_enable)
+		return ret;
+
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (va_priv->swr_ctrl_data) {
@@ -400,8 +403,12 @@ static int va_macro_swr_pwr_event_v2(struct snd_soc_dapm_widget *w,
 				dev_dbg(va_dev, "%s: clock switch failed\n",
 					__func__);
 		}
+		msm_cdc_pinctrl_set_wakeup_capable(
+				va_priv->va_swr_gpio_p, false);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		msm_cdc_pinctrl_set_wakeup_capable(
+				va_priv->va_swr_gpio_p, true);
 		if (va_priv->swr_ctrl_data) {
 			clk_src = CLK_SRC_TX_RCG;
 			ret = swrm_wcd_notify(
@@ -434,6 +441,9 @@ static int va_macro_swr_pwr_event(struct snd_soc_dapm_widget *w,
 
 	dev_dbg(va_dev, "%s: event = %d, lpi_enable = %d\n",
 		__func__, event, va_priv->lpi_enable);
+
+	if (!va_priv->lpi_enable)
+		return ret;
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -554,12 +564,9 @@ static int va_macro_tx_va_mclk_enable(struct va_macro_priv *va_priv,
 		(enable ? "enable" : "disable"), va_priv->va_mclk_users);
 
 	if (enable) {
-		if (va_priv->swr_clk_users == 0) {
+		if (va_priv->swr_clk_users == 0)
 			msm_cdc_pinctrl_select_active_state(
 						va_priv->va_swr_gpio_p);
-			msm_cdc_pinctrl_set_wakeup_capable(
-					va_priv->va_swr_gpio_p, false);
-		}
 		clk_tx_ret = bolero_clk_rsc_request_clock(va_priv->dev,
 						   TX_CORE_CLK,
 						   TX_CORE_CLK,
@@ -652,12 +659,9 @@ static int va_macro_tx_va_mclk_enable(struct va_macro_priv *va_priv,
 						   TX_CORE_CLK,
 						   TX_CORE_CLK,
 						   false);
-		if (va_priv->swr_clk_users == 0) {
-			msm_cdc_pinctrl_set_wakeup_capable(
-					va_priv->va_swr_gpio_p, true);
+		if (va_priv->swr_clk_users == 0)
 			msm_cdc_pinctrl_select_sleep_state(
 						va_priv->va_swr_gpio_p);
-		}
 	}
 	return 0;
 
@@ -672,25 +676,22 @@ done:
 
 static int va_macro_core_vote(void *handle, bool enable)
 {
-	int rc = 0;
 	struct va_macro_priv *va_priv = (struct va_macro_priv *) handle;
 
 	if (va_priv == NULL) {
 		pr_err("%s: va priv data is NULL\n", __func__);
 		return -EINVAL;
 	}
-
 	if (enable) {
 		pm_runtime_get_sync(va_priv->dev);
-		if (bolero_check_core_votes(va_priv->dev))
-			rc = 0;
-		else
-			rc = -ENOTSYNC;
-	} else {
 		pm_runtime_put_autosuspend(va_priv->dev);
 		pm_runtime_mark_last_busy(va_priv->dev);
 	}
-	return rc;
+
+	if (bolero_check_core_votes(va_priv->dev))
+		return 0;
+	else
+		return -EINVAL;
 }
 
 static int va_macro_swrm_clock(void *handle, bool enable)
@@ -3173,13 +3174,13 @@ static int va_macro_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "%s: register macro failed\n", __func__);
 		goto reg_macro_fail;
 	}
+	if (is_used_va_swr_gpio)
+		schedule_work(&va_priv->va_macro_add_child_devices_work);
 	pm_runtime_set_autosuspend_delay(&pdev->dev, VA_AUTO_SUSPEND_DELAY);
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
 	pm_suspend_ignore_children(&pdev->dev, true);
 	pm_runtime_enable(&pdev->dev);
-	if (is_used_va_swr_gpio)
-		schedule_work(&va_priv->va_macro_add_child_devices_work);
 	return ret;
 
 reg_macro_fail:
