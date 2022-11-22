@@ -21,7 +21,7 @@
 
 #define PS5169_DRIVER_NAME	"ps5169"
 
-static struct ps5169_info *g_info;
+static struct ps5169_info *g_info = NULL;
 
 static const struct regmap_config ps5169_regmap_config = {
 	.reg_bits	= 8,
@@ -82,6 +82,11 @@ static int ps5169_update_reg(struct ps5169_info *info, u8 reg, u8 data)
 
 static bool ps5169_present_check(struct ps5169_info *info)
 {
+	if (!info) {
+		pr_err("%s: info is null", __func__);
+		return false;
+	}
+
 	if (!info->present_flag) {
 		pr_err("%s: present_flag false.\n", __func__);
 		return false;
