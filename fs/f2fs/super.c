@@ -3,7 +3,6 @@
  * fs/f2fs/super.c
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
- * Copyright (C) 2021 XiaoMi, Inc.
  *             http://www.samsung.com/
  */
 #include <linux/module.h>
@@ -635,6 +634,21 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
 
 		switch (token) {
 		case Opt_gc_background:
+			name = match_strdup(&args[0]);
+
+			if (!name)
+				return -ENOMEM;
+			if (!strcmp(name, "on")) {
+				F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_ON;
+			} else if (!strcmp(name, "off")) {
+				F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_OFF;
+			} else if (!strcmp(name, "sync")) {
+				F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_SYNC;
+			} else {
+				kfree(name);
+				return -EINVAL;
+			}
+			kfree(name);
 			break;
 		case Opt_disable_roll_forward:
 			set_opt(sbi, DISABLE_ROLL_FORWARD);
@@ -1543,7 +1557,6 @@ static void f2fs_put_super(struct super_block *sb)
 	 * above failed with error.
 	 */
 	f2fs_destroy_stats(sbi);
-	f2fs_gc_sbi_list_del(sbi);
 
 	/* destroy f2fs internal modules */
 	f2fs_destroy_node_manager(sbi);
@@ -1560,6 +1573,7 @@ static void f2fs_put_super(struct super_block *sb)
 
 	destroy_device_list(sbi);
 	f2fs_destroy_page_array_cache(sbi);
+	f2fs_destroy_xattr_caches(sbi);
 	mempool_destroy(sbi->write_io_dummy);
 #ifdef CONFIG_QUOTA
 	for (i = 0; i < MAXQUOTAS; i++)
@@ -1983,7 +1997,7 @@ static void default_options(struct f2fs_sb_info *sbi)
 	F2FS_OPTION(sbi).compress_log_size = MIN_COMPRESS_LOG_SIZE;
 	F2FS_OPTION(sbi).compress_ext_cnt = 0;
 	F2FS_OPTION(sbi).compress_mode = COMPR_MODE_FS;
-	F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_OFF;
+	F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_ON;
 
 	set_opt(sbi, ATGC);
 	set_opt(sbi, GC_MERGE);
@@ -4056,9 +4070,13 @@ try_onemore:
 		}
 	}
 
-	err = f2fs_init_page_array_cache(sbi);
+	/* init per sbi slab cache */
+	err = f2fs_init_xattr_caches(sbi);
 	if (err)
 		goto free_io_dummy;
+	err = f2fs_init_page_array_cache(sbi);
+	if (err)
+		goto free_xattr_cache;
 
 	/* get an inode for meta space */
 	sbi->meta_inode = f2fs_iget(sb, F2FS_META_INO(sbi));
@@ -4171,8 +4189,6 @@ try_onemore:
 		err = PTR_ERR(sbi->node_inode);
 		goto free_stats;
 	}
-
-	f2fs_gc_sbi_list_add(sbi);
 
 	/* read root inode and dentry */
 	root = f2fs_iget(sb, F2FS_ROOT_INO(sbi));
@@ -4342,7 +4358,6 @@ free_node_inode:
 	iput(sbi->node_inode);
 	sbi->node_inode = NULL;
 free_stats:
-	f2fs_gc_sbi_list_del(sbi);
 	f2fs_destroy_stats(sbi);
 free_nm:
 	f2fs_destroy_node_manager(sbi);
@@ -4360,6 +4375,8 @@ free_meta_inode:
 	sbi->meta_inode = NULL;
 free_page_array_cache:
 	f2fs_destroy_page_array_cache(sbi);
+free_xattr_cache:
+	f2fs_destroy_xattr_caches(sbi);
 free_io_dummy:
 	mempool_destroy(sbi->write_io_dummy);
 free_percpu:
@@ -4525,8 +4542,6 @@ static int __init init_f2fs_fs(void)
 	err = f2fs_create_casefold_cache();
 	if (err)
 		goto free_compress_cache;
-	f2fs_init_rapid_gc();
-
 	return 0;
 free_compress_cache:
 	f2fs_destroy_compress_cache();
@@ -4571,7 +4586,6 @@ static void __exit exit_f2fs_fs(void)
 	f2fs_destroy_compress_cache();
 	f2fs_destroy_compress_mempool();
 	f2fs_destroy_bioset();
-	f2fs_destroy_rapid_gc();
 	f2fs_destroy_bio_entry_cache();
 	f2fs_destroy_iostat_processing();
 	f2fs_destroy_post_read_processing();
@@ -4588,4 +4602,10 @@ static void __exit exit_f2fs_fs(void)
 	destroy_inodecache();
 }
 
-late_initcall(init_f2fs_fs);
+module_init(init_f2fs_fs)
+module_exit(exit_f2fs_fs)
+
+MODULE_AUTHOR("Samsung Electronics's Praesto Team");
+MODULE_DESCRIPTION("Flash Friendly File System");
+MODULE_LICENSE("GPL");
+MODULE_SOFTDEP("pre: crc32");

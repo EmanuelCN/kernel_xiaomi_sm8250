@@ -3,7 +3,6 @@
  * f2fs debugging statistics
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
- * Copyright (C) 2021 XiaoMi, Inc.
  *             http://www.samsung.com/
  * Copyright (c) 2012 Linux Foundation
  * Copyright (c) 2012 Greg Kroah-Hartman <gregkh@linuxfoundation.org>
@@ -12,7 +11,6 @@
 #include <linux/fs.h>
 #include <linux/backing-dev.h>
 #include <linux/f2fs_fs.h>
-#include <linux/proc_fs.h>
 #include <linux/blkdev.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
@@ -27,7 +25,6 @@ static DEFINE_MUTEX(f2fs_stat_mutex);
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *f2fs_debugfs_root;
 #endif
-extern struct proc_dir_entry *f2fs_proc_root;
 
 /*
  * This function calculates BDF of every segments
@@ -62,6 +59,7 @@ void f2fs_update_sit_info(struct f2fs_sb_info *sbi)
 		si->avg_vblocks = 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
 static void update_general_status(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_stat_info *si = F2FS_STAT(sbi);
@@ -579,9 +577,9 @@ static int stat_show(struct seq_file *s, void *v)
 	return 0;
 }
 
-#ifdef CONFIG_DEBUG_FS
 DEFINE_SHOW_ATTRIBUTE(stat);
 #endif
+
 int f2fs_build_stats(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *raw_super = F2FS_RAW_SUPER(sbi);
@@ -647,16 +645,10 @@ void __init f2fs_create_root_stats(void)
 	debugfs_create_file("status", 0444, f2fs_debugfs_root, NULL,
 			    &stat_fops);
 #endif
-	if (f2fs_proc_root)
-		proc_create_single_data("status", S_IRUGO, f2fs_proc_root,
-				stat_show, NULL);
 }
 
 void f2fs_destroy_root_stats(void)
 {
-	if (f2fs_proc_root)
-		remove_proc_entry("status", f2fs_proc_root);
-
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(f2fs_debugfs_root);
 	f2fs_debugfs_root = NULL;
