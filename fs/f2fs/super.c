@@ -1576,8 +1576,7 @@ static void f2fs_put_super(struct super_block *sb)
 	/* be sure to wait for any on-going discard commands */
 	dropped = f2fs_issue_discard_timeout(sbi);
 
-	if ((f2fs_hw_support_discard(sbi) || f2fs_hw_should_discard(sbi)) &&
-					!sbi->discard_blks && !dropped) {
+	if (f2fs_realtime_discard_enable(sbi) && !sbi->discard_blks && !dropped) {
 		struct cp_control cpc = {
 			.reason = CP_UMOUNT | CP_TRIMMED,
 		};
@@ -1953,9 +1952,9 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 	if (test_opt(sbi, FASTBOOT))
 		seq_puts(seq, ",fastboot");
 	if (test_opt(sbi, READ_EXTENT_CACHE))
-		seq_puts(seq, ",read_extent_cache");
+		seq_puts(seq, ",extent_cache");
 	else
-		seq_puts(seq, ",no_read_extent_cache");
+		seq_puts(seq, ",noextent_cache");
 	if (test_opt(sbi, AGE_EXTENT_CACHE))
 		seq_puts(seq, ",age_extent_cache");
 	if (test_opt(sbi, DATA_FLUSH))
@@ -2231,7 +2230,6 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 	bool no_discard = !test_opt(sbi, DISCARD);
 	bool no_compress_cache = !test_opt(sbi, COMPRESS_CACHE);
 	bool block_unit_discard = f2fs_block_unit_discard(sbi);
-	struct discard_cmd_control *dcc;
 #ifdef CONFIG_QUOTA
 	int i, j;
 #endif
@@ -2418,10 +2416,8 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 				goto restore_flush;
 			need_stop_discard = true;
 		} else {
-			dcc = SM_I(sbi)->dcc_info;
 			f2fs_stop_discard_thread(sbi);
-			if (atomic_read(&dcc->discard_cmd_cnt))
-				f2fs_issue_discard_timeout(sbi);
+			f2fs_issue_discard_timeout(sbi);
 			need_restart_discard = true;
 		}
 	}
@@ -4712,7 +4708,7 @@ static int __init init_f2fs_fs(void)
 		goto free_iostat;
 	err = f2fs_init_bioset();
 	if (err)
-		goto free_bio_enrty_cache;
+		goto free_bio_entry_cache;
 	err = f2fs_init_compress_mempool();
 	if (err)
 		goto free_bioset;
@@ -4729,7 +4725,7 @@ free_compress_mempool:
 	f2fs_destroy_compress_mempool();
 free_bioset:
 	f2fs_destroy_bioset();
-free_bio_enrty_cache:
+free_bio_entry_cache:
 	f2fs_destroy_bio_entry_cache();
 free_iostat:
 	f2fs_destroy_iostat_processing();
