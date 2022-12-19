@@ -1345,17 +1345,6 @@ int copy_page_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	return ret;
 }
 
-/* Whether we should zap all COWed (private) pages too */
-static inline bool should_zap_cows(struct zap_details *details)
-{
-	/* By default, zap all pages */
-	if (!details)
-		return true;
-
-	/* Or, we zap COWed pages only if the caller wants to */
-	return !details->check_mapping;
-}
-
 static unsigned long zap_pte_range(struct mmu_gather *tlb,
 				struct vm_area_struct *vma, pmd_t *pmd,
 				unsigned long addr, unsigned long end,
@@ -1447,19 +1436,17 @@ again:
 			continue;
 		}
 
+		/* If details->check_mapping, we leave swap entries. */
+		if (unlikely(details))
+			continue;
+
 		entry = pte_to_swp_entry(ptent);
-		if (!non_swap_entry(entry)) {
-			/* Genuine swap entry, hence a private anon page */
-			if (!should_zap_cows(details))
-				continue;
+		if (!non_swap_entry(entry))
 			rss[MM_SWAPENTS]--;
-		} else if (is_migration_entry(entry)) {
+		else if (is_migration_entry(entry)) {
 			struct page *page;
 
 			page = migration_entry_to_page(entry);
-			if (details && details->check_mapping &&
-			    details->check_mapping != page_rmapping(page))
-				continue;
 			rss[mm_counter(page)]--;
 		}
 		if (unlikely(!free_swap_and_cache(entry)))
@@ -3689,20 +3676,11 @@ static vm_fault_t __do_fault(struct vm_fault *vmf)
 		return ret;
 
 	if (unlikely(PageHWPoison(vmf->page))) {
-		struct page *page = vmf->page;
-		vm_fault_t poisonret = VM_FAULT_HWPOISON;
-		if (ret & VM_FAULT_LOCKED) {
-			if (page_mapped(page))
-				unmap_mapping_pages(page_mapping(page),
-						    page->index, 1, false);
-			/* Retry if a clean page was removed from the cache. */
-			if (invalidate_inode_page(page))
-				poisonret = VM_FAULT_NOPAGE;
-			unlock_page(page);
-		}
-		put_page(page);
+		if (ret & VM_FAULT_LOCKED)
+			unlock_page(vmf->page);
+		put_page(vmf->page);
 		vmf->page = NULL;
-		return poisonret;
+		return VM_FAULT_HWPOISON;
 	}
 
 	if (unlikely(!(ret & VM_FAULT_LOCKED)))
@@ -5526,8 +5504,6 @@ long copy_huge_page_from_user(struct page *dst_page,
 		ret_val -= (PAGE_SIZE - rc);
 		if (rc)
 			break;
-
-		flush_dcache_page(subpage);
 
 		cond_resched();
 	}
