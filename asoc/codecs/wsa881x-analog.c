@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2016, 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -1470,7 +1471,7 @@ static int wsa881x_i2c_probe(struct i2c_client *client,
 					pdata->regmap[WSA881X_DIGITAL_SLAVE],
 					WSA881X_DIGITAL_SLAVE);
 		}
-		pdata->wsa881x_id == wsa881x_i2c_read_device(pdata,
+		pdata->wsa881x_id = wsa881x_i2c_read_device(pdata,
 					WSA881X_OTP_REG_0);
 		if (pdata->wsa881x_id & 0x01) {
 			pdata->wsa881x_id = WSA8815;
