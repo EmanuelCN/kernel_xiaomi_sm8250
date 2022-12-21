@@ -3963,6 +3963,7 @@ void f2fs_invalidate_page(struct page *page, unsigned int offset,
 		}
 	}
 
+	clear_page_private_reference(page);
 	clear_page_private_gcing(page);
 
 	if (test_opt(sbi, COMPRESS_CACHE) &&
@@ -3986,6 +3987,7 @@ int f2fs_release_page(struct page *page, gfp_t wait)
 			clear_page_private_data(page);
 	}
 
+	clear_page_private_reference(page);
 	clear_page_private_gcing(page);
 
 	detach_page_private(page);
