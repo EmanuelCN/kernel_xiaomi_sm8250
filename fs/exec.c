@@ -1731,27 +1731,6 @@ static int exec_binprm(struct linux_binprm *bprm)
 	return ret;
 }
 
-static noinline bool is_lmkd_reinit(struct user_arg_ptr *argv)
-{
-	const char __user *str;
-	char buf[10];
-	int len;
-
-	str = get_user_arg_ptr(*argv, 1);
-	if (IS_ERR(str))
-		return false;
-
-	// strnlen_user() counts NULL terminator
-	len = strnlen_user(str, MAX_ARG_STRLEN);
-	if (len != 9)
-		return false;
-
-	if (copy_from_user(buf, str, len))
-		return false;
-
-	return !strcmp(buf, "--reinit");
-}
-
 /*
  * sys_execve() executes a new program.
  */
@@ -1876,15 +1855,6 @@ static int __do_execve_file(int fd, struct filename *filename,
 			goto out;
 		bprm.argc = 1;
 	}
-
-        // Super nasty hack to disable lmkd reloading props
-        if (unlikely(strcmp(bprm.filename, "/system/bin/lmkd") == 0)) {
-                if (is_lmkd_reinit(&argv)) {
-                        pr_info("sys_execve(): prevented /system/bin/lmkd --reinit\n");
-                        retval = -ENOENT;
-                        goto out;
-                }
-        }
 
         retval = exec_binprm(&bprm);
 	if (retval < 0)
