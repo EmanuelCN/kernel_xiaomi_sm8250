@@ -226,12 +226,6 @@ exit_idle:
 static void do_idle(void)
 {
 	int cpu = smp_processor_id();
-
-	/*
-	 * Check if we need to update blocked load
-	 */
-	nohz_run_idle_balance(cpu);
-
 	/*
 	 * If the arch has a polling bit, we maintain an invariant:
 	 *
@@ -293,11 +287,6 @@ static void do_idle(void)
 	 */
 	smp_mb__after_atomic();
 
-	/*
-	 * RCU relies on this call to be done outside of an RCU read-side
-	 * critical section.
-	 */
-	flush_smp_call_function_from_idle();
 	sched_ttwu_pending();
 	schedule_idle();
 

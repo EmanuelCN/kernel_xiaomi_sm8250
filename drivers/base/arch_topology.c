@@ -15,7 +15,6 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/sched/topology.h>
-#include <linux/sched/sysctl.h>
 #include <linux/cpuset.h>
 
 DEFINE_PER_CPU(unsigned long, freq_scale) = SCHED_CAPACITY_SCALE;
@@ -69,10 +68,7 @@ static ssize_t cpu_capacity_show(struct device *dev,
 {
 	struct cpu *cpu = container_of(dev, struct cpu, dev);
 
-	if (is_sched_lib_based_app(current->pid))
-		return scnprintf(buf, PAGE_SIZE, "%lu\n", SCHED_CAPACITY_SCALE);
-
-	return sprintf(buf, "%lu\n", topology_get_cpu_scale(cpu->dev.id));
+	return sprintf(buf, "%lu\n", topology_get_cpu_scale(NULL, cpu->dev.id));
 }
 
 static void update_topology_flags_workfn(struct work_struct *work);
@@ -176,7 +172,7 @@ void topology_normalize_cpu_scale(void)
 			/ capacity_scale;
 		topology_set_cpu_scale(cpu, capacity);
 		pr_debug("cpu_capacity: CPU%d cpu_capacity=%lu\n",
-			cpu, topology_get_cpu_scale(cpu));
+			cpu, topology_get_cpu_scale(NULL, cpu));
 	}
 	mutex_unlock(&cpu_scale_mutex);
 }
@@ -246,7 +242,7 @@ init_cpu_capacity_callback(struct notifier_block *nb,
 	cpumask_andnot(cpus_to_visit, cpus_to_visit, policy->related_cpus);
 
 	for_each_cpu(cpu, policy->related_cpus) {
-		raw_capacity[cpu] = topology_get_cpu_scale(cpu) *
+		raw_capacity[cpu] = topology_get_cpu_scale(NULL, cpu) *
 				    policy->cpuinfo.max_freq / 1000UL;
 		capacity_scale = max(raw_capacity[cpu], capacity_scale);
 	}
