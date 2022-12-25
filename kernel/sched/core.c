@@ -1927,7 +1927,7 @@ void sched_migrate_to_cpumask_start(struct cpumask *old_mask,
 	struct task_struct *p = current;
 
 	raw_spin_lock_irq(&p->pi_lock);
-	*cpumask_bits(old_mask) = *cpumask_bits(&p->cpus_allowed);
+	*cpumask_bits(old_mask) = *cpumask_bits(p->cpus_ptr);
 	raw_spin_unlock_irq(&p->pi_lock);
 
 	/*
@@ -1948,7 +1948,7 @@ void sched_migrate_to_cpumask_end(const struct cpumask *old_mask,
 	 * cpumask. There's no need to immediately migrate right now.
 	 */
 	raw_spin_lock_irq(&p->pi_lock);
-	if (*cpumask_bits(&p->cpus_allowed) == *cpumask_bits(dest)) {
+	if (*cpumask_bits(p->cpus_ptr) == *cpumask_bits(dest)) {
 		struct rq *rq = this_rq();
 
 		raw_spin_lock(&rq->lock);
@@ -2769,6 +2769,7 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 	 * A similar smb_rmb() lives in try_invoke_on_locked_down_task().
 	 */
 	smp_rmb();
+
 	if (READ_ONCE(p->on_rq)) {
 		if (ttwu_remote(p, wake_flags))
 			goto unlock;
@@ -2870,6 +2871,54 @@ out:
 	preempt_enable();
 
 	return success;
+}
+
+
+
+/**
+ * try_invoke_on_locked_down_task - Invoke a function on task in fixed state
+ * @p: Process for which the function is to be invoked.
+ * @func: Function to invoke.
+ * @arg: Argument to function.
+ *
+ * If the specified task can be quickly locked into a definite state
+ * (either sleeping or on a given runqueue), arrange to keep it in that
+ * state while invoking @func(@arg).  This function can use ->on_rq and
+ * task_curr() to work out what the state is, if required.  Given that
+ * @func can be invoked with a runqueue lock held, it had better be quite
+ * lightweight.
+ *
+ * Returns:
+ *	@false if the task slipped out from under the locks.
+ *	@true if the task was locked onto a runqueue or is sleeping.
+ *		However, @func can override this by returning @false.
+ */
+bool try_invoke_on_locked_down_task(struct task_struct *p, bool (*func)(struct task_struct *t, void *arg), void *arg)
+{
+	bool ret = false;
+	struct rq_flags rf;
+	struct rq *rq;
+
+	lockdep_assert_irqs_enabled();
+	raw_spin_lock_irq(&p->pi_lock);
+	if (p->on_rq) {
+		rq = __task_rq_lock(p, &rf);
+		if (task_rq(p) == rq)
+			ret = func(p, arg);
+		rq_unlock(rq, &rf);
+	} else {
+		switch (p->state) {
+		case TASK_RUNNING:
+		case TASK_WAKING:
+			break;
+		default:
+			smp_rmb(); // See smp_rmb() comment in try_to_wake_up().
+			if (!p->on_rq)
+				ret = func(p, arg);
+		}
+	}
+	raw_spin_unlock_irq(&p->pi_lock);
+	return ret;
 }
 
 /**

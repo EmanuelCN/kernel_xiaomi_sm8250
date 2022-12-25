@@ -7055,7 +7055,11 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 	if (target_cpu != -1 && !idle_cpu(target_cpu) &&
 			best_idle_cpu != -1) {
 		curr_tsk = READ_ONCE(cpu_rq(target_cpu)->curr);
+#ifdef CONFIG_SCHED_TUNE
 		if (curr_tsk && schedtune_task_boost_rcu_locked(curr_tsk))
+#else
+		if (curr_tsk && uclamp_boosted(curr_tsk))
+#endif
 			target_cpu = best_idle_cpu;
 	}
 
@@ -10023,15 +10027,6 @@ static int need_active_balance(struct lb_env *env)
 		return 1;
 
 	return unlikely(sd->nr_balance_failed > sd->cache_nice_tries+2);
-}
-
-static int group_balance_cpu_not_isolated(struct sched_group *sg)
-{
-	cpumask_t cpus;
-
-	cpumask_and(&cpus, sched_group_span(sg), group_balance_mask(sg));
-	cpumask_andnot(&cpus, &cpus, cpu_isolated_mask);
-	return cpumask_first(&cpus);
 }
 
 static int active_load_balance_cpu_stop(void *data);
