@@ -74,18 +74,32 @@ struct drm_printer {
 	const char *prefix;
 };
 
-void __drm_printfn_coredump(struct drm_printer *p, struct va_format *vaf);
-void __drm_puts_coredump(struct drm_printer *p, const char *str);
-void __drm_printfn_seq_file(struct drm_printer *p, struct va_format *vaf);
-void __drm_puts_seq_file(struct drm_printer *p, const char *str);
-void __drm_printfn_info(struct drm_printer *p, struct va_format *vaf);
-void __drm_printfn_debug(struct drm_printer *p, struct va_format *vaf);
+static inline void __drm_printfn_coredump(struct drm_printer *p, struct va_format *vaf)
+{
+}
+static inline void __drm_puts_coredump(struct drm_printer *p, const char *str)
+{
+}
+static inline void __drm_printfn_seq_file(struct drm_printer *p, struct va_format *vaf)
+{
+}
+static inline void __drm_puts_seq_file(struct drm_printer *p, const char *str)
+{
+}
+static inline void __drm_printfn_info(struct drm_printer *p, struct va_format *vaf)
+{
+}
+static inline void __drm_printfn_debug(struct drm_printer *p, struct va_format *vaf)
+{
+}
 
-__printf(2, 3)
-void drm_printf(struct drm_printer *p, const char *f, ...);
-void drm_puts(struct drm_printer *p, const char *str);
+static inline void drm_printf(struct drm_printer *p, const char *f, ...)
+{
+}
+static inline void drm_puts(struct drm_printer *p, const char *str)
+{
+}
 
-__printf(2, 0)
 /**
  * drm_vprintf - print to a &drm_printer stream
  * @p: the &drm_printer
@@ -95,9 +109,6 @@ __printf(2, 0)
 static inline void
 drm_vprintf(struct drm_printer *p, const char *fmt, va_list *va)
 {
-	struct va_format vaf = { .fmt = fmt, .va = va };
-
-	p->printfn(p, &vaf);
 }
 
 /**
@@ -268,17 +279,21 @@ static inline struct drm_printer drm_debug_printer(const char *prefix)
 #define DRM_UT_LEASE		0x80
 #define DRM_UT_DP		0x100
 
-__printf(3, 4)
-void drm_dev_printk(const struct device *dev, const char *level,
-		    const char *format, ...);
-__printf(3, 4)
-void drm_dev_dbg(const struct device *dev, unsigned int category,
-		 const char *format, ...);
+static inline void drm_dev_printk(const struct device *dev, const char *level,
+		    const char *format, ...)
+{
+}
+static inline void drm_dev_dbg(const struct device *dev, unsigned int category,
+		 const char *format, ...)
+{
+}
 
-__printf(2, 3)
-void drm_dbg(unsigned int category, const char *format, ...);
-__printf(1, 2)
-void drm_err(const char *format, ...);
+static inline void drm_dbg(unsigned int category, const char *format, ...)
+{
+}
+static inline void drm_err(const char *format, ...)
+{
+}
 
 /* Macros to make printk easier */
 
