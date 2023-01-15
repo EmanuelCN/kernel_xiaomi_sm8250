@@ -215,7 +215,7 @@ static __exit void nanosic_driver_exit(void)
 	i2c_del_driver(&nanosic_803_driver);
 }
 
-static xiaomi_keyboard_init(struct nano_i2c_client *i2c_client)
+static int xiaomi_keyboard_init(struct nano_i2c_client *i2c_client)
 {
 	//struct xiaomi_keyboard_platdata *pdata;
 	int ret = 0;
