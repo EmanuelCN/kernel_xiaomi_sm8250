@@ -1417,8 +1417,7 @@ exit:
 		clusttimer_cancel();
 	}
 	if (cpu->bias) {
-		if (!idx)
-			biastimer_cancel();
+		biastimer_cancel();
 		cpu->bias = 0;
 	}
 	local_irq_enable();
