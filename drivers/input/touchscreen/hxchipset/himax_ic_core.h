@@ -130,6 +130,11 @@ extern int i2c_error_count;
 extern u8 HX_EXCP_RESET_ACTIVATE;
 #endif
 
+#if defined(HX_SMART_WAKEUP)
+bool himax_get_gesture_mode(void);
+int himax_set_gesture_mode(uint8_t gesture_mode);
+#endif
+
 /* CORE_INIT */
 int himax_mcu_in_cmd_struct_init(void);
 void himax_mcu_in_cmd_init(void);

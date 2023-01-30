@@ -1129,7 +1129,12 @@ static int himax_Screen_orientation_set(uint8_t direction)
 #endif
 
 #if defined(HX_SMART_WAKEUP)
-static int himax_set_gesture_mode(uint8_t gesture_mode)
+bool himax_get_gesture_mode(void)
+{
+	return !!private_ts->db_wakeup;
+}
+
+int himax_set_gesture_mode(uint8_t gesture_mode)
 {
 	int ret = 0;
 	private_ts->db_wakeup = gesture_mode ? (private_ts->db_wakeup | 0x01) :

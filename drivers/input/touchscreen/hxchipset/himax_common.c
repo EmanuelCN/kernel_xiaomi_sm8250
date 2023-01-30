@@ -20,6 +20,10 @@
 #include <drm/drm_notifier_mi.h>
 #endif
 
+#if defined(HX_SMART_WAKEUP) && defined(CONFIG_TOUCHSCREEN_COMMON)
+#include <linux/input/tp_common.h>
+#endif
+
 #if defined(HX_PEN_DETECT_GLOBAL)
 extern int pen_charge_state_notifier_register_client(struct notifier_block *nb);
 extern int
@@ -1003,6 +1007,34 @@ static int sysfs_node_init()
 	device_create_file(private_ts->dev, &dev_attr_pen_connect_strategy);
 	return ret;
 }
+#endif
+
+#if defined(HX_SMART_WAKEUP) && defined(CONFIG_TOUCHSCREEN_COMMON)
+static ssize_t double_tap_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", himax_get_gesture_mode());
+}
+
+static ssize_t double_tap_store(struct kobject *kobj,
+				struct kobj_attribute *attr, const char *buf,
+				size_t count)
+{
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	himax_set_gesture_mode(!!val);
+
+	return count;
+}
+
+static struct tp_common_ops double_tap_ops = {
+	.show = double_tap_show,
+	.store = double_tap_store,
+};
 #endif
 
 static ssize_t himax_vendor_read(struct file *file, char *buf, size_t len,
@@ -3857,6 +3889,11 @@ int himax_chip_common_init(void)
 		E(" %s: crate sysfs node failed!\n", __func__);
 		goto err_creat_sysfs_node_failed;
 	}
+
+#if defined(HX_SMART_WAKEUP) && defined(CONFIG_TOUCHSCREEN_COMMON)
+	tp_common_set_double_tap_ops(&double_tap_ops);
+#endif
+
 #if defined(CONFIG_TOUCHSCREEN_HIMAX_DEBUG)
 	if (himax_debug_init()) {
 		E(" %s: debug initial failed!\n", __func__);
