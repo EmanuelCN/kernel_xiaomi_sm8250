@@ -30,6 +30,10 @@
 #define INPUT_TYPE_B_PROTOCOL
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+#include <linux/input/tp_common.h>
+#endif
+
 #include "goodix_ts_core.h"
 
 #define GOODIX_DEFAULT_CFG_NAME "goodix_cfg_group.cfg"
@@ -840,6 +844,37 @@ static ssize_t goodix_report_rate_store(struct device *dev,
 	}
 	return count;
 }
+
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+static ssize_t double_tap_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", goodix_core_data->double_wakeup);
+}
+
+static ssize_t double_tap_store(struct kobject *kobj,
+				struct kobj_attribute *attr, const char *buf,
+				size_t count)
+{
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	goodix_core_data->double_wakeup = !!val;
+	queue_work(goodix_core_data->gesture_wq,
+		   &goodix_core_data->gesture_work);
+
+	return count;
+}
+
+static struct tp_common_ops double_tap_ops = {
+	.show = double_tap_show,
+	.store = double_tap_store,
+};
+#endif
+
 static DEVICE_ATTR(driver_info, 0444, goodix_ts_driver_info_show, NULL);
 static DEVICE_ATTR(chip_info, 0444, goodix_ts_chip_info_show, NULL);
 static DEVICE_ATTR(reset, 0220, NULL, goodix_ts_reset_store);
@@ -2351,6 +2386,10 @@ int goodix_ts_stage2_init(struct goodix_ts_core *cd)
 
 	/* create sysfs files */
 	goodix_ts_sysfs_init(cd);
+
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+	tp_common_set_double_tap_ops(&double_tap_ops);
+#endif
 
 	/* create procfs files */
 	goodix_ts_procfs_init(cd);
