@@ -37,6 +37,11 @@
 #include <linux/input/mt.h>
 #define INPUT_TYPE_B_PROTOCOL
 #endif
+
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+#include <linux/input/tp_common.h>
+#endif
+
 #include <linux/input/touch_common_info.h>
 #include "../xiaomi/xiaomi_touch.h"
 
@@ -875,6 +880,36 @@ err_out:
 		 "invalid params, format{r/w:4100:length:[41:21:31]}");
 	return -EINVAL;
 }
+
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+static ssize_t double_tap_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", goodix_core_data->double_wakeup);
+}
+
+static ssize_t double_tap_store(struct kobject *kobj,
+				struct kobj_attribute *attr, const char *buf,
+				size_t count)
+{
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	goodix_core_data->double_wakeup = !!val;
+	queue_work(goodix_core_data->touch_feature_wq,
+		   &goodix_core_data->cmd_update_work);
+
+	return count;
+}
+
+static struct tp_common_ops double_tap_ops = {
+	.show = double_tap_show,
+	.store = double_tap_store,
+};
+#endif
 
 static DEVICE_ATTR(extmod_info, S_IRUGO, goodix_ts_extmod_show, NULL);
 static DEVICE_ATTR(driver_info, S_IRUGO, goodix_ts_driver_info_show, NULL);
@@ -2310,6 +2345,10 @@ int goodix_ts_stage2_init(struct goodix_ts_core *core_data)
 #endif
 	/*create sysfs files*/
 	goodix_ts_sysfs_init(core_data);
+
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+	tp_common_set_double_tap_ops(&double_tap_ops);
+#endif
 
 	/* esd protector */
 	goodix_ts_esd_init(core_data);
