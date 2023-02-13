@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -269,7 +270,7 @@
  * gSoftApMaxPeers - Set Max peers connected for SAP
  * @Min: 1
  * @Max: 32
- * @Default: 32
+ * @Default: 10
  *
  * This ini is used to set Max peers connected for SAP
  *
@@ -285,7 +286,7 @@
 			"gSoftApMaxPeers", \
 			1, \
 			32, \
-			32, \
+			10, \
 			CFG_VALUE_OR_DEFAULT, \
 			"max no of peers")
 
