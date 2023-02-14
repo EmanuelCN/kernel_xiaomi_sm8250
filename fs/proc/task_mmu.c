@@ -387,15 +387,65 @@ static int is_stack(struct vm_area_struct *vma)
 	__len;								\
 })
 
-#define print_vma_hex2(out, val) \
+#define print_vma_hex5(out, val, clz_fn) \
 ({									\
 	const typeof(val) __val = val;					\
 	char *const __out = out;					\
+	size_t __len;							\
 									\
-	__out[1] = hex_asc[(__val >>  0) & 0xf];			\
-	__out[0] = hex_asc[(__val >>  4) & 0xf];			\
+	if (__val) {							\
+		__len = (sizeof(__val) * 8 - clz_fn(__val) + 3) / 4;	\
+		switch (__len) {					\
+		case 5:							\
+			__out[4] = hex_asc[(__val >>  0) & 0xf];	\
+			__out[3] = hex_asc[(__val >>  4) & 0xf];	\
+			__out[2] = hex_asc[(__val >>  8) & 0xf];	\
+			__out[1] = hex_asc[(__val >> 12) & 0xf];	\
+			__out[0] = hex_asc[(__val >> 16) & 0xf];	\
+			break;						\
+		case 4:							\
+			__out[3] = hex_asc[(__val >>  0) & 0xf];	\
+			__out[2] = hex_asc[(__val >>  4) & 0xf];	\
+			__out[1] = hex_asc[(__val >>  8) & 0xf];	\
+			__out[0] = hex_asc[(__val >> 12) & 0xf];	\
+			break;						\
+		case 3:							\
+			__out[2] = hex_asc[(__val >>  0) & 0xf];	\
+			__out[1] = hex_asc[(__val >>  4) & 0xf];	\
+			__out[0] = hex_asc[(__val >>  8) & 0xf];	\
+			break;						\
+		default:						\
+			__out[1] = hex_asc[(__val >>  0) & 0xf];	\
+			__out[0] = hex_asc[(__val >>  4) & 0xf];	\
+			__len = 2;					\
+			break;						\
+		}							\
+	} else {							\
+		*(u16 *)__out = U16_C(0x3030);				\
+		__len = 2;						\
+	}								\
 									\
-	2;								\
+	__len;								\
+})
+
+#define print_vma_hex3(out, val, clz_fn) \
+({									\
+	const typeof(val) __val = val;					\
+	char *const __out = out;					\
+	size_t __len;							\
+									\
+	if (__val & 0xf00) {						\
+		__out[2] = hex_asc[(__val >> 0) & 0xf];			\
+		__out[1] = hex_asc[(__val >> 4) & 0xf];			\
+		__out[0] = hex_asc[(__val >> 8) & 0xf];			\
+		__len = 3;						\
+	} else {							\
+		__out[1] = hex_asc[(__val >> 0) & 0xf];			\
+		__out[0] = hex_asc[(__val >> 4) & 0xf];			\
+		__len = 2;						\
+	}								\
+									\
+	__len;								\
 })
 
 #define print_vma_hex10_shrink(out, val, clz_fn) \
@@ -525,7 +575,7 @@ static int show_vma_header_prefix(struct seq_file *m, unsigned long start,
 	char *out;
 
 	/* Set the overflow status to get more memory if there's no space */
-	if (seq_get_buf(m, &out) < 65) {
+	if (seq_get_buf(m, &out) < 69) {
 		seq_commit(m, -1);
 		return -ENOMEM;
 	}
@@ -557,11 +607,11 @@ static int show_vma_header_prefix(struct seq_file *m, unsigned long start,
 
 		out[len++] = ' ';
 
-		len += print_vma_hex2_shrink(out + len, MAJOR(dev), __builtin_clz);
+ 	 	len += print_vma_hex3(out + len, MAJOR(dev), __builtin_clz);
 
 		out[len++] = ':';
 
-		len += print_vma_hex2_shrink(out + len, MINOR(dev), __builtin_clz);
+		len += print_vma_hex5(out + len, MINOR(dev), __builtin_clz);
 
 		out[len++] = ' ';
 	} else {
@@ -586,12 +636,12 @@ static int show_vma_header_prefix(struct seq_file *m, unsigned long start,
 
 		out[len++] = ' ';
 
-		len += print_vma_hex2(out + len, MAJOR(dev));
+		len += print_vma_hex3(out + len, MAJOR(dev), __builtin_clz);
 
 		out[len++] = ':';
 
-		len += print_vma_hex2(out + len, MINOR(dev));
-		
+		len += print_vma_hex5(out + len, MINOR(dev), __builtin_clz);
+
 		out[len++] = ' ';
 	}
 
