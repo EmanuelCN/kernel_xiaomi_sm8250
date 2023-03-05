@@ -44,7 +44,6 @@
 #include "wm_adsp.h"
 #include "cs35l41.h"
 #include <sound/cs35l41.h>
-#include "send_data_to_xlog.h"
 static const char *const cs35l41_supplies[] = {
 	"VA",
 	"VP",
@@ -767,7 +766,6 @@ static irqreturn_t cs35l41_irq(int irq, void *data)
 	unsigned int status[4];
 	unsigned int masks[4];
 	unsigned int i;
-	char reason[] = "DSP";
 	dev_info(cs35l41->dev, "step into cs35l41 irq handler\n");
 
 	for (i = 0; i < ARRAY_SIZE(status); i++) {
@@ -888,7 +886,6 @@ static irqreturn_t cs35l41_irq(int irq, void *data)
 		//Analog mute PA if DC is detected
 		//regmap_write(cs35l41->regmap, CS35L41_AMP_OUT_MUTE,
 		//	     1 << CS35L41_AMP_MUTE_SHIFT);
-		send_DC_data_to_xlog(reason);
 		dev_crit(cs35l41->dev, "DC current detected");
 	}
 
