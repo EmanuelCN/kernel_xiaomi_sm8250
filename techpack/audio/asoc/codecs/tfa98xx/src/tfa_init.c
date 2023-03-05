@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "dbgprint.h"
-#include "tfa_service.h"
-#include "tfa_internal.h"
-#include "tfa_container.h"
-#include "tfa98xx_tfafieldnames.h"
+#include "../inc/dbgprint.h"
+#include "../inc/tfa_service.h"
+#include "../inc/tfa_internal.h"
+#include "../inc/tfa_container.h"
+#include "../inc/tfa98xx_tfafieldnames.h"
 
 /* The CurrentSense4 registers are not in the datasheet */
 #define TFA98XX_CURRENTSENSE4_CTRL_CLKGATECFOFF (1 << 2)

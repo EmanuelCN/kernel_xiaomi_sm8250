@@ -31,10 +31,10 @@
 #include <linux/debugfs.h>
 #include <linux/version.h>
 #include <linux/input.h>
-#include "config.h"
-#include "tfa98xx.h"
-#include "tfa.h"
-#include "tfa_dsp_fw.h"
+#include "../inc/config.h"
+#include "../inc/tfa98xx.h"
+#include "../inc/tfa.h"
+#include "../inc/tfa_dsp_fw.h"
 
 #undef pr_info
 #undef pr_err
@@ -45,9 +45,9 @@
 #define pr_err(fmt, args...) printk(KERN_ERR "[tfa9874] " pr_fmt(fmt), ##args)
 
 /* required for enum tfa9912_irq */
-#include "tfa98xx_tfafieldnames.h"
+#include "../inc/tfa98xx_tfafieldnames.h"
 
-#include "spk-id.h"
+#include "../inc/spk-id.h"
 
 #define TFA98XX_VERSION TFA98XX_API_REV_STR
 
