@@ -647,5 +647,11 @@ config CHARGER_CROS_USBPD
 	  that into power_supply properties.
 
 source "drivers/power/supply/qcom/Kconfig"
+source "drivers/power/supply/qcom_cas/Kconfig"
+source "drivers/power/supply/lionsemi/Kconfig"
+source "drivers/power/supply/maxim/Kconfig"
+source "drivers/power/supply/nuvolta/Kconfig"
+source "drivers/power/supply/renesas/Kconfig"
+source "drivers/power/supply/ti/Kconfig"
 
 endif # POWER_SUPPLY
