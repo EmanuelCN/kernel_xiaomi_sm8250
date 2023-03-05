@@ -5173,16 +5173,13 @@ static struct i2c_driver rx1619_driver = {
 static int __init rx1619_init(void)
 {
 	int ret;
-	uint32_t hw_version = 0;
 #ifdef CONFIG_RX1619_REMOVE
 	return 0;
 #endif
-	hw_version = get_hw_version_platform();
-	printk("rx1619: hw version: %d\n", hw_version);
 
 #ifndef CONFIG_RX_ON_URD
 	printk("is_nvt_rx flag is:%d\n", is_nvt_rx);
-	if (!is_nvt_rx && (hw_version != HARDWARE_PLATFORM_SKULD))
+	if (!is_nvt_rx)
 		return 0;
 #endif
 
