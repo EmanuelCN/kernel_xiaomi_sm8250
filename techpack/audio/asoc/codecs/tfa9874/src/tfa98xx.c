@@ -3298,6 +3298,7 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 		tfa98xx_send_mute_cmd(TFA_KCONTROL_VALUE_ENABLED);
 		msleep(60);
 #endif
+#endif
 		tfa_dev_stop(tfa98xx->tfa);
 		tfa98xx->dsp_init = TFA98XX_DSP_INIT_STOPPED;
 		mutex_unlock(&tfa98xx->dsp_lock);
@@ -3330,8 +3331,10 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 							tfa98xx_mixer_profile),
 				     ".standby") != NULL)) {
 				tfa98xx_adsp_send_calib_values();
-			} else
-				tfa98xx_adsp_send_calib_values();
+			}
+#else
+			tfa98xx_adsp_send_calib_values();
+#endif
 #endif
 		} else {
 			tfa98xx->cstream = 1;
