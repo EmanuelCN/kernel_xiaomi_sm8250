@@ -310,13 +310,16 @@ cfg80211_add_nontrans_list(struct cfg80211_bss *trans_bss,
 	}
 	ssid_len = ssid[1];
 	ssid = ssid + 2;
-	rcu_read_unlock();
 
 	/* check if nontrans_bss is in the list */
 	list_for_each_entry(bss, &trans_bss->nontrans_list, nontrans_list) {
-		if (is_bss(bss, nontrans_bss->bssid, ssid, ssid_len))
+		if (is_bss(bss, nontrans_bss->bssid, ssid, ssid_len)) {
+			rcu_read_unlock();
 			return 0;
+		}
 	}
+
+	rcu_read_unlock();
 
 	/* This is a bit weird - it's not on the list, but already on another
 	 * one! The only way that could happen is if there's some BSSID/SSID
