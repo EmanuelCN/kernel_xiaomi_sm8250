@@ -4953,6 +4953,10 @@ enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 
 	account_entity_enqueue(cfs_rq, se);
 
+	/* Entity has migrated, no longer consider this task hot */
+	if (flags & ENQUEUE_MIGRATED)
+		se->exec_start = 0;
+
 	check_schedstat_required();
 	update_stats_enqueue(cfs_rq, se, flags);
 	if (!curr)
@@ -8637,9 +8641,6 @@ static void migrate_task_rq_fair(struct task_struct *p, int new_cpu)
 
 	/* Tell new CPU we are migrated */
 	se->avg.last_update_time = 0;
-
-	/* We have migrated, no longer consider this task hot */
-	se->exec_start = 0;
 
 	update_scan_period(p, new_cpu);
 }
