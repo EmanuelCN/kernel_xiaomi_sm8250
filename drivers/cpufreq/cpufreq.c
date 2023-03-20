@@ -2255,7 +2255,7 @@ static int cpufreq_set_policy(struct cpufreq_policy *policy,
 	* because new_policy is a copy of policy with one field updated.
 	*/
 	if (new_policy->min > new_policy->max)
-		return -EINVAL;
+		new_policy->min = new_policy->max;
 
 	/* verify the cpu speed can be set within this limit */
 	ret = cpufreq_driver->verify(new_policy);
