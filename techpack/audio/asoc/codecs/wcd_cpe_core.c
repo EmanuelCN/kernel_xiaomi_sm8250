@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2019, 2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -18,7 +18,7 @@
 #include <soc/qcom/pm.h>
 #include <dsp/audio_cal_utils.h>
 #include <asoc/core.h>
-#include "cpe_core.h"
+#include <asoc/cpe_core.h>
 #include "cpe_err.h"
 #include "cpe_cmi.h"
 #include "wcd_cpe_core.h"
@@ -115,6 +115,8 @@ struct wcd_cpe_attribute {
 	ssize_t (*store)(struct wcd_cpe_core *core, const char *buf,
 			 ssize_t count);
 };
+
+static u64 wcd_cpe_dma_mask = DMA_BIT_MASK(32);
 
 #define WCD_CPE_ATTR(_name, _mode, _show, _store) \
 static struct wcd_cpe_attribute cpe_attr_##_name = { \
@@ -639,7 +641,7 @@ void *wcd_cpe_get_core_handle(
 		goto done;
 	}
 
-	core = wcd_get_cpe_core(component);
+	core = wcd_get_cpe_core(core_d->component);
 
 	if (!core)
 		dev_err(component->dev,
@@ -2034,6 +2036,8 @@ struct wcd_cpe_core *wcd_cpe_init(const char *img_fname,
 			__func__);
 		goto schedule_dload_work;
 	}
+	core->dev->coherent_dma_mask = DMA_BIT_MASK(32);
+	core->dev->dma_mask = &wcd_cpe_dma_mask;
 
 	arch_setup_dma_ops(core->dev, 0, 0, NULL, 0);
 	core->cpe_dump_v_addr = dma_alloc_coherent(core->dev,

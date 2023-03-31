@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2015-2018, 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2018, 2020-2021, The Linux Foundation. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/init.h>
@@ -3931,13 +3931,15 @@ static int sdm660_cdc_notifier_service_cb(struct notifier_block *nb,
 	bool timedout;
 	unsigned long timeout;
 	static bool initial_boot = true;
+	struct audio_notifier_cb_data *cb_data = ptr;
 
 	component = sdm660_cdc_priv->component;
 	dev_dbg(component->dev, "%s: Service opcode 0x%lx\n", __func__, opcode);
 
 	switch (opcode) {
 	case AUDIO_NOTIFIER_SERVICE_DOWN:
-		if (initial_boot) {
+		if (initial_boot &&
+			cb_data->service == AUDIO_NOTIFIER_PDR_SERVICE) {
 			initial_boot = false;
 			break;
 		}
@@ -3946,7 +3948,8 @@ static int sdm660_cdc_notifier_service_cb(struct notifier_block *nb,
 		msm_anlg_cdc_device_down(component);
 		break;
 	case AUDIO_NOTIFIER_SERVICE_UP:
-		if (initial_boot)
+		if (initial_boot &&
+			cb_data->service == AUDIO_NOTIFIER_PDR_SERVICE)
 			initial_boot = false;
 		dev_dbg(component->dev,
 			"ADSP is about to power up. bring up codec\n");
@@ -4653,7 +4656,8 @@ static int msm_anlg_cdc_probe(struct platform_device *pdev)
 	int adsp_state;
 
 	adsp_state = apr_get_subsys_state();
-	if (adsp_state != APR_SUBSYS_LOADED) {
+	if (adsp_state != APR_SUBSYS_LOADED ||
+		!q6core_is_adsp_ready()) {
 		dev_err(&pdev->dev, "Adsp is not loaded yet %d\n",
 			adsp_state);
 		return -EPROBE_DEFER;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2015-2018, 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2018, 2020-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -48,6 +48,8 @@
 #define WSA8810_NAME_1 "wsa881x.20170211"
 #define WSA8810_NAME_2 "wsa881x.20170212"
 #define SDM660_SOC_MSM_ID 0x13D
+#define SDM660_SOC_SDA_ID 0x144
+
 static int msm_ext_spk_control = 1;
 static struct wcd_mbhc_config *wcd_mbhc_cfg_ptr;
 
@@ -1294,9 +1296,10 @@ static int msm_adsp_power_up_config(struct snd_soc_component *component,
 		goto err_fail;
 	}
 
-	if (socinfo_get_id() == SDM660_SOC_MSM_ID)
+	if (socinfo_get_id() == SDM660_SOC_MSM_ID ||
+		socinfo_get_id() == SDM660_SOC_SDA_ID) {
 		msm_snd_interrupt_config(pdata);
-
+	}
 	ret = msm_afe_set_config(component);
 	if (ret)
 		pr_err("%s: Failed to set AFE config. err %d\n",

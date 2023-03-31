@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/*
- * Copyright (c) 2015-2017, 2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  */
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/io.h>
@@ -16,13 +16,16 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/tlv.h>
+#include <linux/regulator/consumer.h>
 #include <dsp/q6afe-v2.h>
+#include <dsp/q6core.h>
 #include <ipc/apr.h>
 #include <soc/internal.h>
+#include <dsp/audio_notifier.h>
 #include "sdm660-cdc-registers.h"
 #include "msm-digital-cdc.h"
 #include "msm-cdc-common.h"
-#include <asoc/sdm660-common.h>
+#include "../../msm8952.h"
 
 #define DRV_NAME "msm_digital_codec"
 #define MCLK_RATE_9P6MHZ        9600000
@@ -32,8 +35,15 @@
 #define CF_MIN_3DB_75HZ			0x1
 #define CF_MIN_3DB_150HZ		0x2
 
-#define DEC_SVA 5
 #define MSM_DIG_CDC_VERSION_ENTRY_SIZE 32
+#define MAX_ON_DEMAND_DIG_SUPPLY_NAME_LENGTH 64
+#define CODEC_DT_MAX_PROP_SIZE 40
+
+/*
+ * 200 Milliseconds sufficient for DSP bring up in the lpass
+ * after Sub System Restart
+ */
+#define ADSP_STATE_READY_TIMEOUT_MS 200
 
 static unsigned long rx_digital_gain_reg[] = {
 	MSM89XX_CDC_CORE_RX1_VOL_CTL_B2_CTL,
@@ -46,7 +56,6 @@ static unsigned long tx_digital_gain_reg[] = {
 	MSM89XX_CDC_CORE_TX2_VOL_CTL_GAIN,
 	MSM89XX_CDC_CORE_TX3_VOL_CTL_GAIN,
 	MSM89XX_CDC_CORE_TX4_VOL_CTL_GAIN,
-	MSM89XX_CDC_CORE_TX5_VOL_CTL_GAIN,
 };
 
 #define SDM660_TX_UNMUTE_DELAY_MS 40
@@ -59,12 +68,45 @@ static const DECLARE_TLV_DB_SCALE(digital_gain, 0, 1, 0);
 struct snd_soc_component *registered_digcodec;
 struct hpf_work tx_hpf_work[NUM_DECIMATORS];
 
+static int msm_dig_cdc_enable_on_demand_supply(
+			struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *kcontrol, int event);
+static char on_demand_supply_name[][MAX_ON_DEMAND_DIG_SUPPLY_NAME_LENGTH] = {
+	"cdc-vdd-digital",
+};
 /* Codec supports 2 IIR filters */
 enum {
 	IIR1 = 0,
 	IIR2,
 	IIR_MAX,
 };
+
+/*
+ * msm_digcdc_mclk_enable - add mclk support in digital codec
+ * @codec: codec instance
+ * @mclk_enable: mclk enable/disable
+ * @dapm: check for dapm widget
+ */
+int msm_digcdc_mclk_enable(struct snd_soc_component *component,
+			int mclk_enable, bool dapm)
+{
+	dev_dbg(component->dev, "%s: mclk_enable = %u, dapm = %d\n",
+			__func__, mclk_enable, dapm);
+	if (mclk_enable) {
+		snd_soc_component_update_bits(component,
+			MSM89XX_CDC_CORE_CLK_MCLK_CTL, 0x01, 0x01);
+		snd_soc_component_update_bits(component,
+			MSM89XX_CDC_CORE_TOP_CTL, 0x01, 0x01);
+	} else {
+		snd_soc_component_update_bits(component,
+			MSM89XX_CDC_CORE_TOP_CTL, 0x01, 0x00);
+		snd_soc_component_update_bits(component,
+			MSM89XX_CDC_CORE_CLK_MCLK_CTL, 0x01, 0x00);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(msm_digcdc_mclk_enable);
 
 static int msm_digcdc_clock_control(bool flag)
 {
@@ -78,27 +120,23 @@ static int msm_digcdc_clock_control(bool flag)
 	if (flag) {
 		mutex_lock(&pdata->cdc_int_mclk0_mutex);
 		if (atomic_read(&pdata->int_mclk0_enabled) == false) {
-			if (pdata->native_clk_set)
-				pdata->digital_cdc_core_clk.clk_freq_in_hz =
-							NATIVE_MCLK_RATE;
-			else
-				pdata->digital_cdc_core_clk.clk_freq_in_hz =
+			if (msm_dig_cdc->regmap->cache_only == true)
+				return ret;
+			pdata->digital_cdc_core_clk.clk_freq_in_hz =
 							DEFAULT_MCLK_RATE;
 			pdata->digital_cdc_core_clk.enable = 1;
 			ret = afe_set_lpass_clock_v2(
-						AFE_PORT_ID_INT0_MI2S_RX,
+						AFE_PORT_ID_PRIMARY_MI2S_RX,
 						&pdata->digital_cdc_core_clk);
 			if (ret < 0) {
 				pr_err("%s:failed to enable the MCLK\n",
 				       __func__);
 				/*
 				 * Avoid access to lpass register
-				 * as clock enable failed during SSR/PDR.
+				 * as clock enable failed during SSR.
 				 */
 				msm_dig_cdc->regmap->cache_only = true;
 				return ret;
-			} else {
-				msm_dig_cdc->regmap->cache_only = false;
 			}
 			pr_debug("enabled digital codec core clk\n");
 			atomic_set(&pdata->int_mclk0_enabled, true);
@@ -164,7 +202,7 @@ static int msm_dig_cdc_put_dec_enum(struct snd_kcontrol *kcontrol,
 		goto out;
 	}
 
-	dec_num = strpbrk(dec_name, "12345");
+	dec_num = strpbrk(dec_name, "12");
 	if (dec_num == NULL) {
 		dev_err(component->dev, "%s: Invalid DEC selected\n", __func__);
 		ret = -EINVAL;
@@ -185,11 +223,7 @@ static int msm_dig_cdc_put_dec_enum(struct snd_kcontrol *kcontrol,
 	switch (decimator) {
 	case 1:
 	case 2:
-	case 3:
-	case 4:
-	case 5:
-		if ((dec_mux == 4) || (dec_mux == 5) ||
-		    (dec_mux == 6) || (dec_mux == 7))
+		if ((dec_mux == 4) || (dec_mux == 5))
 			adc_dmic_sel = 0x1;
 		else
 			adc_dmic_sel = 0x0;
@@ -204,11 +238,8 @@ static int msm_dig_cdc_put_dec_enum(struct snd_kcontrol *kcontrol,
 	tx_mux_ctl_reg =
 		MSM89XX_CDC_CORE_TX1_MUX_CTL + 32 * (decimator - 1);
 
-	if (decimator == DEC_SVA)
-		tx_mux_ctl_reg = MSM89XX_CDC_CORE_TX5_MUX_CTL;
-
-	snd_soc_component_update_bits(component, tx_mux_ctl_reg,
-					0x1, adc_dmic_sel);
+	snd_soc_component_update_bits(component, tx_mux_ctl_reg, 0x1,
+							adc_dmic_sel);
 
 	ret = snd_soc_dapm_put_enum_double(kcontrol, ucontrol);
 
@@ -305,7 +336,7 @@ static int msm_dig_cdc_codec_config_compander(
 		if ((comp_ch_bits_set & 0x03) == 0x00) {
 			snd_soc_component_update_bits(component,
 				MSM89XX_CDC_CORE_COMP0_B2_CTL, 0x0F, 0x05);
-			 snd_soc_component_update_bits(component,
+			snd_soc_component_update_bits(component,
 				MSM89XX_CDC_CORE_CLK_RX_B2_CTL, 0x01, 0x00);
 		}
 	}
@@ -319,13 +350,11 @@ static int msm_dig_cdc_codec_config_compander(
  * @codec: codec pointer
  *
  */
-void msm_dig_cdc_hph_comp_cb(
-	int (*codec_hph_comp_gpio)(bool enable,
-				struct snd_soc_component *component),
-	struct snd_soc_component *component)
+void msm_dig_cdc_hph_comp_cb(int (*codec_hph_comp_gpio)(bool enable,
+					struct snd_soc_component *component),
+					struct snd_soc_component *component)
 {
-	struct msm_dig_priv *dig_cdc =
-			snd_soc_component_get_drvdata(component);
+	struct msm_dig_priv *dig_cdc = snd_soc_component_get_drvdata(component);
 
 	pr_debug("%s: Enter\n", __func__);
 	dig_cdc->codec_hph_comp_gpio = codec_hph_comp_gpio;
@@ -420,7 +449,7 @@ static int msm_dig_cdc_put_iir_enable_audio_mixer(
 					struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *component =
-					snd_soc_kcontrol_component(kcontrol);
+				snd_soc_kcontrol_component(kcontrol);
 	int iir_idx = ((struct soc_multi_mixer_control *)
 					kcontrol->private_value)->reg;
 	int band_idx = ((struct soc_multi_mixer_control *)
@@ -479,9 +508,11 @@ static uint32_t get_iir_band_coeff(struct snd_soc_component *component,
 
 	/* Mask bits top 2 bits since they are reserved */
 	value |= ((snd_soc_component_read32(component,
-					(MSM89XX_CDC_CORE_IIR1_COEF_B2_CTL
-					+ 64 * iir_idx)) & 0x3f) << 24);
+		(MSM89XX_CDC_CORE_IIR1_COEF_B2_CTL + 64 * iir_idx)) & 0x3f)
+		<< 24);
+
 	return value;
+
 }
 
 static void set_iir_band_coeff(struct snd_soc_component *component,
@@ -512,7 +543,7 @@ static int msm_dig_cdc_get_iir_band_audio_mixer(
 					struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *component =
-					snd_soc_kcontrol_component(kcontrol);
+				snd_soc_kcontrol_component(kcontrol);
 	int iir_idx = ((struct soc_multi_mixer_control *)
 					kcontrol->private_value)->reg;
 	int band_idx = ((struct soc_multi_mixer_control *)
@@ -612,15 +643,13 @@ static void tx_hpf_corner_freq_callback(struct work_struct *work)
 	tx_mux_ctl_reg = MSM89XX_CDC_CORE_TX1_MUX_CTL +
 			(hpf_work->decimator - 1) * 32;
 
-	if (hpf_work->decimator == DEC_SVA)
-		tx_mux_ctl_reg = MSM89XX_CDC_CORE_TX5_MUX_CTL;
-
 	dev_dbg(component->dev, "%s(): decimator %u hpf_cut_of_freq 0x%x\n",
 		 __func__, hpf_work->decimator, (unsigned int)hpf_cut_of_freq);
-	msm_dig_cdc->update_clkdiv(msm_dig_cdc->handle, 0x51);
+	if (msm_dig_cdc->update_clkdiv)
+		msm_dig_cdc->update_clkdiv(msm_dig_cdc->handle, 0x51);
 
-	snd_soc_component_update_bits(component, tx_mux_ctl_reg,
-					0x30, hpf_cut_of_freq << 4);
+	snd_soc_component_update_bits(component,
+		tx_mux_ctl_reg, 0x30, hpf_cut_of_freq << 4);
 }
 
 static int msm_dig_cdc_codec_set_iir_gain(struct snd_soc_dapm_widget *w,
@@ -652,8 +681,9 @@ static int msm_dig_cdc_compander_get(struct snd_kcontrol *kcontrol,
 				     struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *component =
-					snd_soc_kcontrol_component(kcontrol);
-	struct msm_dig_priv *dig_cdc = snd_soc_component_get_drvdata(component);
+				snd_soc_kcontrol_component(kcontrol);
+	struct msm_dig_priv *dig_cdc =
+				snd_soc_component_get_drvdata(component);
 	int comp_idx = ((struct soc_multi_mixer_control *)
 					kcontrol->private_value)->reg;
 	int rx_idx = ((struct soc_multi_mixer_control *)
@@ -817,14 +847,13 @@ static int msm_dig_cdc_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *component =
 				snd_soc_dapm_to_component(w->dapm);
-	struct msm_dig_priv *dig_cdc =
-				snd_soc_component_get_drvdata(component);
+	struct msm_dig_priv *dig_cdc = snd_soc_component_get_drvdata(component);
 	u8  dmic_clk_en;
 	u16 dmic_clk_reg;
 	s32 *dmic_clk_cnt;
 	unsigned int dmic;
 	int ret;
-	char *dmic_num = strpbrk(w->name, "1234");
+	char *dmic_num = strpbrk(w->name, "12");
 
 	if (dmic_num == NULL) {
 		dev_err(component->dev, "%s: Invalid DMIC\n", __func__);
@@ -848,18 +877,9 @@ static int msm_dig_cdc_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 			"%s() event %d DMIC%d dmic_1_2_clk_cnt %d\n",
 			__func__, event,  dmic, *dmic_clk_cnt);
 		break;
-	case 3:
-	case 4:
-		dmic_clk_en = 0x01;
-		dmic_clk_cnt = &(dig_cdc->dmic_3_4_clk_cnt);
-		dmic_clk_reg = MSM89XX_CDC_CORE_CLK_DMIC_B2_CTL;
-		dev_dbg(component->dev,
-			"%s() event %d DMIC%d dmic_3_4_clk_cnt %d\n",
-			__func__, event,  dmic, *dmic_clk_cnt);
-		break;
 	default:
-		dev_err(component->dev, "%s: Invalid DMIC Selection\n",
-				__func__);
+		dev_err(component->dev,
+			"%s: Invalid DMIC Selection\n", __func__);
 		return -EINVAL;
 	}
 
@@ -922,7 +942,7 @@ static int msm_dig_cdc_codec_enable_dec(struct snd_soc_dapm_widget *w,
 		goto out;
 	}
 
-	dec_num = strpbrk(dec_name, "12345");
+	dec_num = strpbrk(dec_name, "1234");
 	if (dec_num == NULL) {
 		dev_err(component->dev, "%s: Invalid Decimator\n", __func__);
 		ret = -EINVAL;
@@ -945,8 +965,7 @@ static int msm_dig_cdc_codec_enable_dec(struct snd_soc_dapm_widget *w,
 		dec_reset_reg = MSM89XX_CDC_CORE_CLK_TX_RESET_B1_CTL;
 		offset = 0;
 	} else {
-		dev_err(component->dev, "%s: Error, incorrect dec\n",
-				__func__);
+		dev_err(component->dev, "%s: Error, incorrect dec\n", __func__);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -955,16 +974,24 @@ static int msm_dig_cdc_codec_enable_dec(struct snd_soc_dapm_widget *w,
 			 32 * (decimator - 1);
 	tx_mux_ctl_reg = MSM89XX_CDC_CORE_TX1_MUX_CTL +
 			  32 * (decimator - 1);
-	if (decimator == DEC_SVA) {
-		tx_vol_ctl_reg = MSM89XX_CDC_CORE_TX5_VOL_CTL_CFG;
-		tx_mux_ctl_reg = MSM89XX_CDC_CORE_TX5_MUX_CTL;
-	}
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		if (decimator == 3 || decimator == 4) {
+			/* for WSA_VI */
+			snd_soc_component_update_bits(component,
+				MSM89XX_CDC_CORE_CLK_DMIC_B2_CTL,
+					0xFF, 0x5);
+			snd_soc_component_update_bits(component,
+				MSM89XX_CDC_CORE_TX1_DMIC_CTL +
+					(decimator - 1) * 0x20, 0x7, 0x2);
+			snd_soc_component_update_bits(component,
+				MSM89XX_CDC_CORE_TX1_DMIC_CTL +
+					(decimator - 1) * 0x20, 0x7, 0x2);
+		}
 		/* Enableable TX digital mute */
-		snd_soc_component_update_bits(component, tx_vol_ctl_reg,
-						0x01, 0x01);
+		snd_soc_component_update_bits(component,
+					tx_vol_ctl_reg, 0x01, 0x01);
 		for (i = 0; i < NUM_DECIMATORS; i++) {
 			if (decimator == i + 1)
 				msm_dig_cdc->dec_active[i] = true;
@@ -982,15 +1009,15 @@ static int msm_dig_cdc_codec_enable_dec(struct snd_soc_dapm_widget *w,
 
 			/* set cut of freq to CF_MIN_3DB_150HZ (0x1); */
 			snd_soc_component_update_bits(component,
-							tx_mux_ctl_reg, 0x30,
-							CF_MIN_3DB_150HZ << 4);
+				tx_mux_ctl_reg, 0x30, CF_MIN_3DB_150HZ << 4);
 		}
-		msm_dig_cdc->update_clkdiv(msm_dig_cdc->handle, 0x42);
+		if (msm_dig_cdc->update_clkdiv)
+			msm_dig_cdc->update_clkdiv(msm_dig_cdc->handle, 0x42);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* enable HPF */
 		snd_soc_component_update_bits(component, tx_mux_ctl_reg,
-						0x08, 0x00);
+								0x08, 0x00);
 
 		schedule_delayed_work(
 			    &msm_dig_cdc->tx_mute_dwork[decimator - 1].dwork,
@@ -1011,28 +1038,40 @@ static int msm_dig_cdc_codec_enable_dec(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		snd_soc_component_update_bits(component, tx_vol_ctl_reg,
-						0x01, 0x01);
+								0x01, 0x01);
 		msleep(20);
 		snd_soc_component_update_bits(component, tx_mux_ctl_reg,
-						0x08, 0x08);
+								0x08, 0x08);
 		cancel_delayed_work_sync(&tx_hpf_work[decimator - 1].dwork);
 		cancel_delayed_work_sync(
 			&msm_dig_cdc->tx_mute_dwork[decimator - 1].dwork);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		snd_soc_component_update_bits(component, dec_reset_reg,
-						1 << w->shift, 1 << w->shift);
-		snd_soc_component_update_bits(component, dec_reset_reg,
-						1 << w->shift, 0x0);
-		snd_soc_component_update_bits(component, tx_mux_ctl_reg,
-						0x08, 0x08);
+		snd_soc_component_update_bits(component,
+			dec_reset_reg, 1 << w->shift, 1 << w->shift);
+		snd_soc_component_update_bits(component,
+			dec_reset_reg, 1 << w->shift, 0x0);
+		snd_soc_component_update_bits(component,
+			tx_mux_ctl_reg, 0x08, 0x08);
 		snd_soc_component_update_bits(component, tx_mux_ctl_reg, 0x30,
 			(tx_hpf_work[decimator - 1].tx_hpf_cut_of_freq) << 4);
 		snd_soc_component_update_bits(component, tx_vol_ctl_reg,
-						0x01, 0x00);
+								0x01, 0x00);
 		for (i = 0; i < NUM_DECIMATORS; i++) {
 			if (decimator == i + 1)
 				msm_dig_cdc->dec_active[i] = false;
+		}
+		if (decimator == 3 || decimator == 4) {
+			/* for WSA_VI */
+			snd_soc_component_update_bits(component,
+				MSM89XX_CDC_CORE_CLK_DMIC_B2_CTL,
+				0xFF, 0x0);
+			snd_soc_component_update_bits(component,
+				MSM89XX_CDC_CORE_TX1_DMIC_CTL +
+				(decimator - 1) * 0x20, 0x7, 0x0);
+			snd_soc_component_update_bits(component,
+				MSM89XX_CDC_CORE_TX1_DMIC_CTL +
+				(decimator - 1) * 0x20, 0x7, 0x0);
 		}
 		break;
 	}
@@ -1051,6 +1090,7 @@ static int msm_dig_cdc_event_notify(struct notifier_block *block,
 				snd_soc_component_get_drvdata(component);
 	struct msm_asoc_mach_data *pdata = NULL;
 	int ret = -EINVAL;
+	struct msm_cap_mode *capmode = NULL;
 
 	pdata = snd_soc_card_get_drvdata(component->card);
 
@@ -1058,11 +1098,7 @@ static int msm_dig_cdc_event_notify(struct notifier_block *block,
 	case DIG_CDC_EVENT_CLK_ON:
 		snd_soc_component_update_bits(component,
 				MSM89XX_CDC_CORE_CLK_PDM_CTL, 0x03, 0x03);
-		if (pdata->mclk_freq == MCLK_RATE_12P288MHZ ||
-		    pdata->native_clk_set)
-			snd_soc_component_update_bits(component,
-				MSM89XX_CDC_CORE_TOP_CTL, 0x01, 0x00);
-		else if (pdata->mclk_freq == MCLK_RATE_9P6MHZ)
+		if (pdata->mclk_freq == MCLK_RATE_9P6MHZ)
 			snd_soc_component_update_bits(component,
 				MSM89XX_CDC_CORE_TOP_CTL, 0x01, 0x01);
 		snd_soc_component_update_bits(component,
@@ -1138,6 +1174,9 @@ static int msm_dig_cdc_event_notify(struct notifier_block *block,
 		break;
 	case DIG_CDC_EVENT_SSR_DOWN:
 		regcache_cache_only(msm_dig_cdc->regmap, true);
+		mutex_lock(&pdata->cdc_int_mclk0_mutex);
+		atomic_set(&pdata->int_mclk0_enabled, false);
+		mutex_unlock(&pdata->cdc_int_mclk0_mutex);
 		break;
 	case DIG_CDC_EVENT_SSR_UP:
 		regcache_cache_only(msm_dig_cdc->regmap, false);
@@ -1146,7 +1185,7 @@ static int msm_dig_cdc_event_notify(struct notifier_block *block,
 		mutex_lock(&pdata->cdc_int_mclk0_mutex);
 		pdata->digital_cdc_core_clk.enable = 1;
 		ret = afe_set_lpass_clock_v2(
-					AFE_PORT_ID_INT0_MI2S_RX,
+					AFE_PORT_ID_PRIMARY_MI2S_RX,
 					&pdata->digital_cdc_core_clk);
 		if (ret < 0) {
 			pr_err("%s:failed to enable the MCLK\n",
@@ -1161,9 +1200,14 @@ static int msm_dig_cdc_event_notify(struct notifier_block *block,
 		mutex_lock(&pdata->cdc_int_mclk0_mutex);
 		pdata->digital_cdc_core_clk.enable = 0;
 		afe_set_lpass_clock_v2(
-				AFE_PORT_ID_INT0_MI2S_RX,
+				AFE_PORT_ID_PRIMARY_MI2S_RX,
 				&pdata->digital_cdc_core_clk);
 		mutex_unlock(&pdata->cdc_int_mclk0_mutex);
+		break;
+	case DIG_CDC_EVENT_CAP_CONFIGURE:
+		capmode = (struct msm_cap_mode *)data;
+		capmode->micbias1_cap_mode = pdata->micbias1_cap_mode;
+		capmode->micbias2_cap_mode = pdata->micbias2_cap_mode;
 		break;
 	case DIG_CDC_EVENT_INVALID:
 	default:
@@ -1190,6 +1234,12 @@ static ssize_t msm_dig_codec_version_read(struct snd_info_entry *entry,
 
 	switch (msm_dig->version) {
 	case DRAX_CDC:
+	case DIANGU:
+	case CAJON_2_0:
+	case CAJON:
+	case CONGA:
+	case TOMBAK_2_0:
+	case TOMBAK_1_0:
 		len = snprintf(buffer, sizeof(buffer), "SDM660-CDC_1_0\n");
 		break;
 	default:
@@ -1203,10 +1253,103 @@ static struct snd_info_entry_ops msm_dig_codec_info_ops = {
 	.read = msm_dig_codec_version_read,
 };
 
+static int digt_cdc_notifer_service_cb(struct notifier_block *nb,
+				unsigned long opcode, void *ptr)
+{
+	struct msm_dig_priv *dig_cdc_priv = container_of(nb,
+						struct msm_dig_priv,
+						service_nb);
+	struct snd_soc_component *component = dig_cdc_priv->component;
+	bool adsp_ready = false;
+	unsigned long timeout;
+	int ret;
+	static bool initial_boot = true;
+	struct msm_asoc_mach_data *pdata = NULL;
+	struct audio_notifier_cb_data *cb_data = ptr;
+	struct msm_dig_priv *msm_dig_cdc =
+			snd_soc_component_get_drvdata(component);
+
+	pdata = snd_soc_card_get_drvdata(component->card);
+	pr_debug("%s: opcode 0x%lx, service=%d\n", __func__, opcode,
+			cb_data->service);
+
+	switch (opcode) {
+	case AUDIO_NOTIFIER_SERVICE_DOWN:
+		if (initial_boot &&
+			cb_data->service == AUDIO_NOTIFIER_PDR_SERVICE) {
+			initial_boot = false;
+			break;
+		}
+		dev_dbg(component->dev,
+			"ADSP is about to power down. teardown/reset codec\n");
+
+		regcache_cache_only(msm_dig_cdc->regmap, true);
+		mutex_lock(&pdata->cdc_int_mclk0_mutex);
+		atomic_set(&pdata->int_mclk0_enabled, false);
+		mutex_unlock(&pdata->cdc_int_mclk0_mutex);
+		snd_soc_card_change_online_state(component->card, 0);
+		break;
+
+	case AUDIO_NOTIFIER_SERVICE_UP:
+		if (initial_boot &&
+			cb_data->service == AUDIO_NOTIFIER_PDR_SERVICE)
+			initial_boot = false;
+		dev_dbg(component->dev,
+			"ADSP is about to power up. bring up codec\n");
+
+		adsp_ready = q6core_is_adsp_ready();
+		if (!adsp_ready) {
+			timeout = jiffies +
+				  msecs_to_jiffies(ADSP_STATE_READY_TIMEOUT_MS);
+			do {
+				if (!q6core_is_adsp_ready())
+					continue;
+				adsp_ready = true;
+			} while (!adsp_ready && time_after(timeout, jiffies));
+		}
+
+		if (!adsp_ready) {
+			dev_err(component->dev,
+				"%s: DSP isn't ready\n", __func__);
+			break;
+		}
+
+		dev_dbg(component->dev, "%s: DSP is ready\n", __func__);
+
+		regcache_cache_only(msm_dig_cdc->regmap, false);
+		regcache_mark_dirty(msm_dig_cdc->regmap);
+
+		mutex_lock(&pdata->cdc_int_mclk0_mutex);
+		pdata->digital_cdc_core_clk.enable = 1;
+		ret = afe_set_lpass_clock_v2(
+					AFE_PORT_ID_PRIMARY_MI2S_RX,
+					&pdata->digital_cdc_core_clk);
+		if (ret < 0) {
+			pr_err("%s: failed to enable the MCLK\n",
+			       __func__);
+			mutex_unlock(&pdata->cdc_int_mclk0_mutex);
+			break;
+		}
+		mutex_unlock(&pdata->cdc_int_mclk0_mutex);
+		regcache_sync(msm_dig_cdc->regmap);
+		mutex_lock(&pdata->cdc_int_mclk0_mutex);
+		pdata->digital_cdc_core_clk.enable = 0;
+		afe_set_lpass_clock_v2(AFE_PORT_ID_PRIMARY_MI2S_RX,
+			&pdata->digital_cdc_core_clk);
+		mutex_unlock(&pdata->cdc_int_mclk0_mutex);
+		snd_soc_card_change_online_state(component->card, 1);
+		break;
+
+	default:
+		break;
+	}
+	return NOTIFY_OK;
+}
+
 /*
  * msm_dig_codec_info_create_codec_entry - creates msm_dig module
  * @codec_root: The parent directory
- * @codec: Codec instance
+ * @component: Component instance
  *
  * Creates msm_dig module and version entry under the given
  * parent directory.
@@ -1262,6 +1405,29 @@ int msm_dig_codec_info_create_codec_entry(struct snd_info_entry *codec_root,
 }
 EXPORT_SYMBOL(msm_dig_codec_info_create_codec_entry);
 
+static void msm_dig_cdc_update_micbias_regulator(
+				const struct msm_dig_priv *dig_cdc,
+				const char *name,
+				struct on_demand_dig_supply *micbias_supply)
+{
+	int i;
+
+	for (i = 0; i < dig_cdc->num_of_supplies; i++) {
+		if (dig_cdc->supplies[i].supply &&
+				!strcmp(dig_cdc->supplies[i].supply, name)) {
+			micbias_supply->supply =
+				dig_cdc->supplies[i].consumer;
+			micbias_supply->min_uv = dig_cdc->regulator[i].min_uv;
+			micbias_supply->max_uv = dig_cdc->regulator[i].max_uv;
+			micbias_supply->optimum_ua =
+				dig_cdc->regulator[i].optimum_ua;
+			return;
+		}
+	}
+
+	dev_dbg(dig_cdc->dev, "Error: regulator not found:%s\n", name);
+}
+
 static void sdm660_tx_mute_update_callback(struct work_struct *work)
 {
 	struct tx_mute_work *tx_mute_dwork;
@@ -1276,20 +1442,16 @@ static void sdm660_tx_mute_update_callback(struct work_struct *work)
 	dig_cdc = tx_mute_dwork->dig_cdc;
 	component = dig_cdc->component;
 
-	for (i = 0; i < NUM_DECIMATORS; i++) {
+	for (i = 0; i < (NUM_DECIMATORS - 1); i++) {
 		if (dig_cdc->dec_active[i])
 			decimator = i + 1;
-		if (decimator && decimator <= NUM_DECIMATORS) {
+		if (decimator && decimator < NUM_DECIMATORS) {
 			/* unmute decimators corresponding to Tx DAI's*/
 			tx_vol_ctl_reg =
 				MSM89XX_CDC_CORE_TX1_VOL_CTL_CFG +
 					32 * (decimator - 1);
-			if (decimator == DEC_SVA)
-				tx_vol_ctl_reg =
-					MSM89XX_CDC_CORE_TX5_VOL_CTL_CFG;
-
-			snd_soc_component_update_bits(component, tx_vol_ctl_reg,
-					0x01, 0x00);
+				snd_soc_component_update_bits(component,
+					tx_vol_ctl_reg, 0x01, 0x00);
 		}
 		decimator = 0;
 	}
@@ -1303,7 +1465,6 @@ static int msm_dig_cdc_soc_probe(struct snd_soc_component *component)
 	int i, ret;
 
 	msm_dig_cdc->component = component;
-
 	snd_soc_add_component_controls(component, compander_kcontrols,
 			ARRAY_SIZE(compander_kcontrols));
 
@@ -1333,6 +1494,28 @@ static int msm_dig_cdc_soc_probe(struct snd_soc_component *component)
 			return ret;
 		}
 	}
+
+	/* no_analog_codec, i.e, only digital codec is enabled, need to
+	 * register notifier to monitor the adsp status
+	 */
+	if (msm_dig_cdc->no_analog_codec) {
+		msm_dig_cdc->service_nb.notifier_call =
+				digt_cdc_notifer_service_cb;
+		ret = audio_notifier_register("msm_digit_cdc",
+					      AUDIO_NOTIFIER_ADSP_DOMAIN,
+					      &msm_dig_cdc->service_nb);
+		if (ret < 0) {
+			pr_err("%s: Audio notifier register failed ret = %d\n",
+				__func__, ret);
+			return ret;
+		}
+	}
+
+	msm_dig_cdc_update_micbias_regulator(
+			msm_dig_cdc,
+			on_demand_supply_name[ON_DEMAND_DIGITAL],
+			&msm_dig_cdc->on_demand_list[ON_DEMAND_DIGITAL]);
+	atomic_set(&msm_dig_cdc->on_demand_list[ON_DEMAND_DIGITAL].ref, 0);
 	registered_digcodec = component;
 
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1 Playback");
@@ -1368,25 +1551,12 @@ static const struct snd_soc_dapm_route audio_dig_map[] = {
 
 	{"I2S TX1", NULL, "TX_I2S_CLK"},
 	{"I2S TX2", NULL, "TX_I2S_CLK"},
-	{"I2S TX3", NULL, "TX_I2S_CLK"},
-	{"I2S TX4", NULL, "TX_I2S_CLK"},
-	{"I2S TX5", NULL, "TX_I2S_CLK"},
-	{"I2S TX6", NULL, "TX_I2S_CLK"},
+	{"AIF2 VI", NULL, "TX_I2S_CLK"},
 
 	{"I2S TX1", NULL, "DEC1 MUX"},
 	{"I2S TX2", NULL, "DEC2 MUX"},
-	{"I2S TX3", NULL, "I2S TX2 INP1"},
-	{"I2S TX4", NULL, "I2S TX2 INP2"},
-	{"I2S TX5", NULL, "DEC3 MUX"},
-	{"I2S TX6", NULL, "I2S TX3 INP2"},
-
-	{"I2S TX2 INP1", "RX_MIX1", "RX1 MIX2"},
-	{"I2S TX2 INP1", "DEC3", "DEC3 MUX"},
-	{"I2S TX2 INP2", "RX_MIX2", "RX2 MIX2"},
-	{"I2S TX2 INP2", "RX_MIX3", "RX3 MIX1"},
-	{"I2S TX2 INP2", "DEC4", "DEC4 MUX"},
-	{"I2S TX3 INP2", "DEC4", "DEC4 MUX"},
-	{"I2S TX3 INP2", "DEC5", "DEC5 MUX"},
+	{"AIF2 VI", NULL, "DEC3 MUX"},
+	{"AIF2 VI", NULL, "DEC4 MUX"},
 
 	{"PDM_OUT_RX1", NULL, "RX1 CHAIN"},
 	{"PDM_OUT_RX2", NULL, "RX2 CHAIN"},
@@ -1458,8 +1628,6 @@ static const struct snd_soc_dapm_route audio_dig_map[] = {
 		/* Decimator Inputs */
 	{"DEC1 MUX", "DMIC1", "DMIC1"},
 	{"DEC1 MUX", "DMIC2", "DMIC2"},
-	{"DEC1 MUX", "DMIC3", "DMIC3"},
-	{"DEC1 MUX", "DMIC4", "DMIC4"},
 	{"DEC1 MUX", "ADC1", "ADC1_IN"},
 	{"DEC1 MUX", "ADC2", "ADC2_IN"},
 	{"DEC1 MUX", "ADC3", "ADC3_IN"},
@@ -1467,63 +1635,22 @@ static const struct snd_soc_dapm_route audio_dig_map[] = {
 
 	{"DEC2 MUX", "DMIC1", "DMIC1"},
 	{"DEC2 MUX", "DMIC2", "DMIC2"},
-	{"DEC2 MUX", "DMIC3", "DMIC3"},
-	{"DEC2 MUX", "DMIC4", "DMIC4"},
 	{"DEC2 MUX", "ADC1", "ADC1_IN"},
 	{"DEC2 MUX", "ADC2", "ADC2_IN"},
 	{"DEC2 MUX", "ADC3", "ADC3_IN"},
 	{"DEC2 MUX", NULL, "CDC_CONN"},
 
-	{"DEC3 MUX", "DMIC1", "DMIC1"},
-	{"DEC3 MUX", "DMIC2", "DMIC2"},
 	{"DEC3 MUX", "DMIC3", "DMIC3"},
-	{"DEC3 MUX", "DMIC4", "DMIC4"},
-	{"DEC3 MUX", "ADC1", "ADC1_IN"},
-	{"DEC3 MUX", "ADC2", "ADC2_IN"},
-	{"DEC3 MUX", "ADC3", "ADC3_IN"},
-	{"DEC3 MUX", NULL, "CDC_CONN"},
-
-	{"DEC4 MUX", "DMIC1", "DMIC1"},
-	{"DEC4 MUX", "DMIC2", "DMIC2"},
-	{"DEC4 MUX", "DMIC3", "DMIC3"},
 	{"DEC4 MUX", "DMIC4", "DMIC4"},
-	{"DEC4 MUX", "ADC1", "ADC1_IN"},
-	{"DEC4 MUX", "ADC2", "ADC2_IN"},
-	{"DEC4 MUX", "ADC3", "ADC3_IN"},
+	{"DEC3 MUX", NULL, "CDC_CONN"},
 	{"DEC4 MUX", NULL, "CDC_CONN"},
-
-	{"DEC5 MUX", "DMIC1", "DMIC1"},
-	{"DEC5 MUX", "DMIC2", "DMIC2"},
-	{"DEC5 MUX", "DMIC3", "DMIC3"},
-	{"DEC5 MUX", "DMIC4", "DMIC4"},
-	{"DEC5 MUX", "ADC1", "ADC1_IN"},
-	{"DEC5 MUX", "ADC2", "ADC2_IN"},
-	{"DEC5 MUX", "ADC3", "ADC3_IN"},
-	{"DEC5 MUX", NULL, "CDC_CONN"},
 
 	{"IIR1", NULL, "IIR1 INP1 MUX"},
 	{"IIR1 INP1 MUX", "DEC1", "DEC1 MUX"},
 	{"IIR1 INP1 MUX", "DEC2", "DEC2 MUX"},
-	{"IIR1 INP1 MUX", "DEC3", "DEC3 MUX"},
-	{"IIR1 INP1 MUX", "DEC4", "DEC4 MUX"},
 	{"IIR2", NULL, "IIR2 INP1 MUX"},
 	{"IIR2 INP1 MUX", "DEC1", "DEC1 MUX"},
 	{"IIR2 INP1 MUX", "DEC2", "DEC2 MUX"},
-	{"IIR1 INP1 MUX", "DEC3", "DEC3 MUX"},
-	{"IIR1 INP1 MUX", "DEC4", "DEC4 MUX"},
-};
-
-
-static const char * const i2s_tx2_inp1_text[] = {
-	"ZERO", "RX_MIX1", "DEC3"
-};
-
-static const char * const i2s_tx2_inp2_text[] = {
-	"ZERO", "RX_MIX2", "RX_MIX3", "DEC4"
-};
-
-static const char * const i2s_tx3_inp2_text[] = {
-	"DEC4", "DEC5"
 };
 
 static const char * const rx_mix1_text[] = {
@@ -1535,25 +1662,20 @@ static const char * const rx_mix2_text[] = {
 };
 
 static const char * const dec_mux_text[] = {
-	"ZERO", "ADC1", "ADC2", "ADC3", "DMIC1", "DMIC2", "DMIC3", "DMIC4"
+	"ZERO", "ADC1", "ADC2", "ADC3", "DMIC1", "DMIC2"
+};
+
+static const char * const dec3_mux_text[] = {
+	"ZERO", "DMIC3"
+};
+
+static const char * const dec4_mux_text[] = {
+	"ZERO", "DMIC4"
 };
 
 static const char * const iir_inp1_text[] = {
-	"ZERO", "DEC1", "DEC2", "RX1", "RX2", "RX3", "DEC3", "DEC4"
+	"ZERO", "DEC1", "DEC2", "RX1", "RX2", "RX3"
 };
-
-/* I2S TX MUXes */
-static const struct soc_enum i2s_tx2_inp1_chain_enum =
-	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_TX_I2S_SD1_CTL,
-		2, 3, i2s_tx2_inp1_text);
-
-static const struct soc_enum i2s_tx2_inp2_chain_enum =
-	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_TX_I2S_SD1_CTL,
-		0, 4, i2s_tx2_inp2_text);
-
-static const struct soc_enum i2s_tx3_inp2_chain_enum =
-	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_TX_I2S_SD1_CTL,
-		4, 2, i2s_tx3_inp2_text);
 
 /* RX1 MIX1 */
 static const struct soc_enum rx_mix1_inp1_chain_enum =
@@ -1607,31 +1729,27 @@ static const struct soc_enum rx3_mix1_inp3_chain_enum =
 /* DEC */
 static const struct soc_enum dec1_mux_enum =
 	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_TX_B1_CTL,
-		0, 8, dec_mux_text);
+		0, 6, dec_mux_text);
 
 static const struct soc_enum dec2_mux_enum =
 	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_TX_B1_CTL,
-		3, 8, dec_mux_text);
+		3, 6, dec_mux_text);
 
 static const struct soc_enum dec3_mux_enum =
-	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_TX_B2_CTL,
-		0, 8, dec_mux_text);
+	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_TX3_MUX_CTL,
+		0, ARRAY_SIZE(dec3_mux_text), dec3_mux_text);
 
 static const struct soc_enum dec4_mux_enum =
-	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_TX_B2_CTL,
-		3, 8, dec_mux_text);
-
-static const struct soc_enum decsva_mux_enum =
-	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_TX_B3_CTL,
-		0, 8, dec_mux_text);
+	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_TX4_MUX_CTL,
+		0, ARRAY_SIZE(dec4_mux_text), dec4_mux_text);
 
 static const struct soc_enum iir1_inp1_mux_enum =
 	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_EQ1_B1_CTL,
-		0, 8, iir_inp1_text);
+		0, 6, iir_inp1_text);
 
 static const struct soc_enum iir2_inp1_mux_enum =
 	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_CONN_EQ2_B1_CTL,
-		0, 8, iir_inp1_text);
+		0, 6, iir_inp1_text);
 
 /*cut of frequency for high pass filter*/
 static const char * const cf_text[] = {
@@ -1664,22 +1782,10 @@ static const struct snd_kcontrol_new dec2_mux =
 	MSM89XX_DEC_ENUM("DEC2 MUX Mux", dec2_mux_enum);
 
 static const struct snd_kcontrol_new dec3_mux =
-	MSM89XX_DEC_ENUM("DEC3 MUX Mux", dec3_mux_enum);
+	SOC_DAPM_ENUM("DEC3 MUX Mux", dec3_mux_enum);
 
 static const struct snd_kcontrol_new dec4_mux =
-	MSM89XX_DEC_ENUM("DEC4 MUX Mux", dec4_mux_enum);
-
-static const struct snd_kcontrol_new decsva_mux =
-	MSM89XX_DEC_ENUM("DEC5 MUX Mux", decsva_mux_enum);
-
-static const struct snd_kcontrol_new i2s_tx2_inp1_mux =
-	SOC_DAPM_ENUM("I2S TX2 INP1 Mux", i2s_tx2_inp1_chain_enum);
-
-static const struct snd_kcontrol_new i2s_tx2_inp2_mux =
-	SOC_DAPM_ENUM("I2S TX2 INP2 Mux", i2s_tx2_inp2_chain_enum);
-
-static const struct snd_kcontrol_new i2s_tx3_inp2_mux =
-	SOC_DAPM_ENUM("I2S TX3 INP2 Mux", i2s_tx3_inp2_chain_enum);
+	SOC_DAPM_ENUM("DEC4 MUX Mux", dec4_mux_enum);
 
 static const struct snd_kcontrol_new iir1_inp1_mux =
 	SOC_DAPM_ENUM("IIR1 INP1 Mux", iir1_inp1_mux_enum);
@@ -1724,10 +1830,7 @@ static const struct snd_soc_dapm_widget msm_dig_dapm_widgets[] = {
 
 	SND_SOC_DAPM_AIF_OUT("I2S TX1", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("I2S TX2", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("I2S TX3", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("I2S TX4", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("I2S TX5", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("I2S TX6", "AIF2 Capture", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("AIF2 VI", "AIF2 Capture", 0, SND_SOC_NOPM, 0, 0),
 
 	SND_SOC_DAPM_MIXER_E("RX1 MIX2", MSM89XX_CDC_CORE_CLK_RX_B1_CTL,
 			     MSM89XX_RX1, 0, NULL, 0,
@@ -1802,12 +1905,6 @@ static const struct snd_soc_dapm_widget msm_dig_dapm_widgets[] = {
 		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
 		SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 
-	SND_SOC_DAPM_MUX_E("DEC5 MUX",
-		MSM89XX_CDC_CORE_CLK_TX_CLK_EN_B1_CTL, 4, 0,
-		&decsva_mux, msm_dig_cdc_codec_enable_dec,
-		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
-		SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
-
 	/* Sidetone */
 	SND_SOC_DAPM_MUX("IIR1 INP1 MUX", SND_SOC_NOPM, 0, 0, &iir1_inp1_mux),
 	SND_SOC_DAPM_PGA_E("IIR1", MSM89XX_CDC_CORE_CLK_SD_CTL, 0, 0, NULL, 0,
@@ -1822,13 +1919,11 @@ static const struct snd_soc_dapm_widget msm_dig_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("TX_I2S_CLK",
 		MSM89XX_CDC_CORE_CLK_TX_I2S_CTL, 4, 0, NULL, 0),
 
-
-	SND_SOC_DAPM_MUX("I2S TX2 INP1", SND_SOC_NOPM, 0, 0,
-			&i2s_tx2_inp1_mux),
-	SND_SOC_DAPM_MUX("I2S TX2 INP2", SND_SOC_NOPM, 0, 0,
-			&i2s_tx2_inp2_mux),
-	SND_SOC_DAPM_MUX("I2S TX3 INP2", SND_SOC_NOPM, 0, 0,
-			&i2s_tx3_inp2_mux),
+	SND_SOC_DAPM_SUPPLY("DIGITAL_REGULATOR", SND_SOC_NOPM,
+		ON_DEMAND_DIGITAL, 0,
+		msm_dig_cdc_enable_on_demand_supply,
+		SND_SOC_DAPM_PRE_PMU |
+		SND_SOC_DAPM_POST_PMD),
 
 	/* Digital Mic Inputs */
 	SND_SOC_DAPM_ADC_E("DMIC1", NULL, SND_SOC_NOPM, 0, 0,
@@ -1839,14 +1934,8 @@ static const struct snd_soc_dapm_widget msm_dig_dapm_widgets[] = {
 		msm_dig_cdc_codec_enable_dmic, SND_SOC_DAPM_PRE_PMU |
 		SND_SOC_DAPM_POST_PMD),
 
-	SND_SOC_DAPM_ADC_E("DMIC3", NULL, SND_SOC_NOPM, 0, 0,
-		msm_dig_cdc_codec_enable_dmic, SND_SOC_DAPM_PRE_PMU |
-		SND_SOC_DAPM_POST_PMD),
-
-	SND_SOC_DAPM_ADC_E("DMIC4", NULL, SND_SOC_NOPM, 0, 0,
-		msm_dig_cdc_codec_enable_dmic, SND_SOC_DAPM_PRE_PMU |
-		SND_SOC_DAPM_POST_PMD),
-
+	SND_SOC_DAPM_INPUT("DMIC3"),
+	SND_SOC_DAPM_INPUT("DMIC4"),
 	SND_SOC_DAPM_INPUT("ADC1_IN"),
 	SND_SOC_DAPM_INPUT("ADC2_IN"),
 	SND_SOC_DAPM_INPUT("ADC3_IN"),
@@ -1867,9 +1956,6 @@ static const struct soc_enum cf_dec3_enum =
 static const struct soc_enum cf_dec4_enum =
 	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_TX4_MUX_CTL, 4, 3, cf_text);
 
-static const struct soc_enum cf_decsva_enum =
-	SOC_ENUM_SINGLE(MSM89XX_CDC_CORE_TX5_MUX_CTL, 4, 3, cf_text);
-
 static const struct snd_kcontrol_new msm_dig_snd_controls[] = {
 	SOC_SINGLE_SX_TLV("DEC1 Volume",
 		MSM89XX_CDC_CORE_TX1_VOL_CTL_GAIN,
@@ -1882,9 +1968,6 @@ static const struct snd_kcontrol_new msm_dig_snd_controls[] = {
 		0, -84, 40, digital_gain),
 	SOC_SINGLE_SX_TLV("DEC4 Volume",
 		  MSM89XX_CDC_CORE_TX4_VOL_CTL_GAIN,
-		0, -84, 40, digital_gain),
-	SOC_SINGLE_SX_TLV("DEC5 Volume",
-		  MSM89XX_CDC_CORE_TX5_VOL_CTL_GAIN,
 		0, -84, 40, digital_gain),
 
 	SOC_SINGLE_SX_TLV("IIR1 INP1 Volume",
@@ -1992,7 +2075,6 @@ static const struct snd_kcontrol_new msm_dig_snd_controls[] = {
 	SOC_ENUM("TX2 HPF cut off", cf_dec2_enum),
 	SOC_ENUM("TX3 HPF cut off", cf_dec3_enum),
 	SOC_ENUM("TX4 HPF cut off", cf_dec4_enum),
-	SOC_ENUM("TX5 HPF cut off", cf_decsva_enum),
 	SOC_SINGLE("TX1 HPF Switch",
 		MSM89XX_CDC_CORE_TX1_MUX_CTL, 3, 1, 0),
 	SOC_SINGLE("TX2 HPF Switch",
@@ -2001,9 +2083,226 @@ static const struct snd_kcontrol_new msm_dig_snd_controls[] = {
 		MSM89XX_CDC_CORE_TX3_MUX_CTL, 3, 1, 0),
 	SOC_SINGLE("TX4 HPF Switch",
 		MSM89XX_CDC_CORE_TX4_MUX_CTL, 3, 1, 0),
-	SOC_SINGLE("TX5 HPF Switch",
-		MSM89XX_CDC_CORE_TX5_MUX_CTL, 3, 1, 0),
 };
+
+static int msm_dig_cdc_enable_on_demand_supply(
+		struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	int ret = 0;
+	const char *err_msg = "failed for micbias with err =";
+	struct snd_soc_component *component =
+				snd_soc_dapm_to_component(w->dapm);
+	struct msm_dig_priv *msm_dig_cdc =
+				snd_soc_component_get_drvdata(component);
+	struct on_demand_dig_supply *supply;
+
+	if (w->shift >= ON_DEMAND_DIG_SUPPLIES_MAX) {
+		dev_err(component->dev,
+			"%s: error index >= MAX on demand supplies", __func__);
+		ret = -EINVAL;
+		goto out;
+	}
+	dev_dbg(component->dev, "%s: supply: %s event: %d ref: %d\n",
+		__func__, on_demand_supply_name[w->shift], event,
+		atomic_read(&msm_dig_cdc->on_demand_list[w->shift].ref));
+
+	supply = &msm_dig_cdc->on_demand_list[w->shift];
+	if (!supply->supply) {
+		dev_err(component->dev, "%s: err supply not present ond for %d",
+			__func__, w->shift);
+		goto out;
+	}
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		if (atomic_inc_return(&supply->ref) == 1) {
+			ret = regulator_set_voltage(supply->supply,
+						supply->min_uv,
+						supply->max_uv);
+			if (ret) {
+				dev_err(component->dev,
+				"Setting regulator voltage(en) %s %d\n",
+					err_msg, ret);
+				goto out;
+			}
+			ret = regulator_set_load(supply->supply,
+						supply->optimum_ua);
+			if (ret < 0) {
+				dev_err(component->dev,
+				"Setting regulator optimum mode(en) %s %d\n",
+					err_msg, ret);
+				goto out;
+			}
+			ret = regulator_enable(supply->supply);
+			if (ret)
+				dev_err(component->dev,
+					"%s: Failed to enable %s\n", __func__,
+					on_demand_supply_name[w->shift]);
+		}
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		if (atomic_read(&supply->ref) == 0) {
+			dev_dbg(component->dev,
+				"%s: %s supply has been disabled.\n",
+				__func__, on_demand_supply_name[w->shift]);
+			goto out;
+		}
+		if (atomic_dec_return(&supply->ref) == 0) {
+			ret = regulator_disable(supply->supply);
+			if (ret)
+				dev_err(component->dev,
+					"%s: Failed to disable %s\n",
+					__func__,
+					on_demand_supply_name[w->shift]);
+			ret = regulator_set_voltage(supply->supply,
+					0,
+					supply->max_uv);
+			if (ret) {
+				dev_err(component->dev,
+				"Setting regulator voltage(dis) %s %d\n",
+					err_msg, ret);
+				goto out;
+			}
+			ret = regulator_set_load(supply->supply, 0);
+			if (ret < 0)
+				dev_err(component->dev,
+				"Setting regulator optimum mode(dis) %s %d\n",
+					err_msg, ret);
+		}
+		break;
+	default:
+		break;
+	}
+out:
+	return ret;
+}
+
+static int msm_digital_cdc_init_supplies(struct msm_dig_priv *msm_cdc)
+{
+	int ret;
+	int i;
+	const char *err_msg1 = "Setting regulator voltage";
+	const char *err_msg2 = "Setting regulator optimum mode";
+
+	msm_cdc->supplies = devm_kzalloc(msm_cdc->dev,
+					sizeof(struct regulator_bulk_data) *
+					ARRAY_SIZE(msm_cdc->regulator),
+					GFP_KERNEL);
+	if (!msm_cdc->supplies) {
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	msm_cdc->num_of_supplies = 0;
+
+	if (ARRAY_SIZE(msm_cdc->regulator) > MAX_REGULATOR) {
+		dev_err(msm_cdc->dev, "%s: Array Size out of bound\n",
+			__func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(msm_cdc->regulator); i++) {
+		if (msm_cdc->regulator[i].name) {
+			msm_cdc->supplies[i].supply =
+						msm_cdc->regulator[i].name;
+			msm_cdc->num_of_supplies++;
+		}
+	}
+
+	ret = devm_regulator_bulk_get(msm_cdc->dev,
+				      msm_cdc->num_of_supplies,
+				      msm_cdc->supplies);
+	if (ret != 0) {
+		dev_err(msm_cdc->dev,
+			"Failed to get supplies: err = %d\n",
+			ret);
+		goto err_supplies;
+	}
+
+	for (i = 0; i < msm_cdc->num_of_supplies; i++) {
+		if (regulator_count_voltages(
+			msm_cdc->supplies[i].consumer) <= 0)
+			continue;
+		ret = regulator_set_voltage(
+					msm_cdc->supplies[i].consumer,
+					msm_cdc->regulator[i].min_uv,
+					msm_cdc->regulator[i].max_uv);
+		if (ret) {
+			dev_err(msm_cdc->dev,
+				"%s failed for regulator %s err = %d\n",
+				err_msg1, msm_cdc->supplies[i].supply, ret);
+			goto err_supplies;
+		}
+		ret = regulator_set_load(msm_cdc->supplies[i].consumer,
+				msm_cdc->regulator[i].optimum_ua);
+		if (ret < 0) {
+			dev_err(msm_cdc->dev,
+				"%s failed for regulator %s err = %d\n",
+				err_msg2, msm_cdc->supplies[i].supply, ret);
+			goto err_supplies;
+		} else {
+			ret = 0;
+		}
+	}
+
+	return ret;
+
+err_supplies:
+err:
+	return ret;
+}
+
+static int msm_digital_cdc_dt_parse_vreg_info(struct device *dev,
+	struct dig_cdc_regulator *vreg, const char *vreg_name)
+{
+	int len, ret = 0;
+	const __be32 *prop;
+	char prop_name[CODEC_DT_MAX_PROP_SIZE];
+	struct device_node *regnode = NULL;
+	u32 prop_val;
+
+	snprintf(prop_name, CODEC_DT_MAX_PROP_SIZE, "%s-supply",
+			vreg_name);
+	regnode = of_parse_phandle(dev->of_node, prop_name, 0);
+
+	if (!regnode) {
+		dev_err(dev, "Looking up %s property in node %s failed\n",
+			prop_name, dev->of_node->full_name);
+		return -ENODEV;
+	}
+
+	dev_dbg(dev, "Looking up %s property in node %s\n",
+		prop_name, dev->of_node->full_name);
+
+	vreg->name = vreg_name;
+
+	snprintf(prop_name, CODEC_DT_MAX_PROP_SIZE,
+		"qcom,%s-voltage", vreg_name);
+	prop = of_get_property(dev->of_node, prop_name, &len);
+
+	if (!prop || (len != (2 * sizeof(__be32)))) {
+		dev_err(dev, "%s %s property\n",
+			prop ? "invalid format" : "no", prop_name);
+		return -EINVAL;
+	}
+	vreg->min_uv = be32_to_cpup(&prop[0]);
+	vreg->max_uv = be32_to_cpup(&prop[1]);
+
+	snprintf(prop_name, CODEC_DT_MAX_PROP_SIZE,
+		"qcom,%s-current", vreg_name);
+
+	ret = of_property_read_u32(dev->of_node, prop_name, &prop_val);
+	if (ret) {
+		dev_err(dev, "Looking up %s property in node %s failed",
+			prop_name, dev->of_node->full_name);
+		return -EFAULT;
+	}
+	vreg->optimum_ua = prop_val;
+	dev_dbg(dev, "%s: vol=[%d %d]uV, curr=[%d]uA\n", vreg->name,
+		vreg->min_uv, vreg->max_uv, vreg->optimum_ua);
+	return 0;
+}
 
 static struct snd_soc_dai_ops msm_dig_dai_ops = {
 	.hw_params = msm_dig_cdc_hw_params,
@@ -2040,18 +2339,6 @@ static struct snd_soc_dai_driver msm_codec_dais[] = {
 		 .ops = &msm_dig_dai_ops,
 	},
 	{
-		.name = "msm_dig_cdc_dai_tx2",
-		.id = AIF3_SVA,
-		.capture = { /* Support maximum range */
-			.stream_name = "AIF2 Capture",
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000_48000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
-		},
-		 .ops = &msm_dig_dai_ops,
-	},
-	{
 		.name = "msm_dig_cdc_dai_vifeed",
 		.id = AIF2_VIFEED,
 		.capture = { /* Support maximum range */
@@ -2081,7 +2368,7 @@ static int msm_dig_cdc_resume(struct snd_soc_component *component)
 	return 0;
 }
 
-static const struct snd_soc_component_driver soc_msm_dig_codec = {
+const struct snd_soc_component_driver soc_msm_dig_codec = {
 	.name = DRV_NAME,
 	.probe  = msm_dig_cdc_soc_probe,
 	.remove = msm_dig_cdc_soc_remove,
@@ -2112,23 +2399,128 @@ const struct regmap_config msm_digital_regmap_config = {
 	.max_register = MSM89XX_CDC_CORE_MAX_REGISTER,
 };
 
+static bool msm_digital_cdc_populate_dt_pdata(
+					struct device *dev,
+					struct msm_dig_priv *dig_priv)
+{
+	int ret, ond_cnt, i, idx = 0;
+	const char *name = NULL;
+	const char *ond_prop_name = "qcom,cdc-on-demand-supplies";
+
+	ond_cnt = of_property_count_strings(dev->of_node, ond_prop_name);
+	if (ond_cnt < 0)
+		ond_cnt = 0;
+
+	if (ond_cnt > ARRAY_SIZE(dig_priv->regulator)) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	for (i = 0; i < ond_cnt; i++, idx++) {
+		ret = of_property_read_string_index(dev->of_node, ond_prop_name,
+							i, &name);
+		if (ret) {
+			dev_err(dev, "%s: err parsing on_demand for %s idx %d\n",
+				__func__, ond_prop_name, i);
+			goto err;
+		}
+
+		dev_dbg(dev, "%s: Found on-demand cdc supply %s\n", __func__,
+			name);
+		ret = msm_digital_cdc_dt_parse_vreg_info(dev,
+						&dig_priv->regulator[idx],
+						name);
+		if (ret) {
+			dev_err(dev, "%s: err parsing vreg on_demand for %s idx %d\n",
+				__func__, name, idx);
+			goto err;
+		}
+	}
+
+	return true;
+err:
+	dev_err(dev, "%s: Failed to populate DT data ret = %d\n",
+		__func__, ret);
+	return false;
+}
+
+static void msm_digital_cdc_disable_supplies(struct msm_dig_priv *msm_cdc)
+{
+	int i;
+
+	if (!msm_cdc->supplies)
+		return;
+
+	regulator_bulk_disable(msm_cdc->num_of_supplies,
+			       msm_cdc->supplies);
+	for (i = 0; i < msm_cdc->num_of_supplies; i++) {
+		if (regulator_count_voltages(
+				msm_cdc->supplies[i].consumer) <= 0)
+			continue;
+		regulator_set_voltage(msm_cdc->supplies[i].consumer, 0,
+				msm_cdc->regulator[i].max_uv);
+		regulator_set_load(msm_cdc->supplies[i].consumer, 0);
+	}
+	regulator_bulk_free(msm_cdc->num_of_supplies,
+			    msm_cdc->supplies);
+	devm_kfree(msm_cdc->dev, msm_cdc->supplies);
+}
+
 static int msm_dig_cdc_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret = -EINVAL;
 	u32 dig_cdc_addr;
 	struct msm_dig_priv *msm_dig_cdc;
-	struct dig_ctrl_platform_data *pdata;
+	struct dig_ctrl_platform_data *pdata = NULL;
+	int adsp_state = 0;
+
+	adsp_state = apr_get_subsys_state();
+	if ((adsp_state != APR_SUBSYS_LOADED) || (!q6core_is_adsp_ready())) {
+		dev_err(&pdev->dev, "Adsp is not loaded yet %d\n",
+			adsp_state);
+		return -EPROBE_DEFER;
+	}
+	device_init_wakeup(&pdev->dev, true);
 
 	msm_dig_cdc = devm_kzalloc(&pdev->dev, sizeof(struct msm_dig_priv),
 			      GFP_KERNEL);
 	if (!msm_dig_cdc)
 		return -ENOMEM;
-	pdata = dev_get_platdata(&pdev->dev);
-	if (!pdata) {
-		dev_err(&pdev->dev, "%s: pdata from parent is NULL\n",
-			__func__);
-		ret = -EINVAL;
-		goto rtn;
+	msm_dig_cdc->dev = &pdev->dev;
+	if (pdev->dev.of_node == NULL)
+		return -EINVAL;
+
+	if (pdev->dev.of_node)
+		msm_dig_cdc->no_analog_codec = of_property_read_bool(
+					pdev->dev.of_node,
+					"qcom,no-analog-codec");
+	if (msm_dig_cdc->no_analog_codec) {
+		dev_dbg(&pdev->dev, "%s:Platform data from device tree\n",
+				__func__);
+		if (msm_digital_cdc_populate_dt_pdata(&pdev->dev,
+							msm_dig_cdc)) {
+			ret = msm_digital_cdc_init_supplies(
+							msm_dig_cdc);
+			if (ret) {
+				dev_err(&pdev->dev,
+				"%s: Fail to enable Codec supplies\n",
+				__func__);
+				goto rtn;
+			}
+		}
+	} else {
+		pdata = dev_get_platdata(&pdev->dev);
+		if (!pdata) {
+			dev_err(&pdev->dev, "%s: pdata from parent is NULL\n",
+					__func__);
+			ret = -EINVAL;
+			goto err_supplies;
+		}
+		msm_dig_cdc->update_clkdiv = pdata->update_clkdiv;
+		msm_dig_cdc->set_compander_mode = pdata->set_compander_mode;
+		msm_dig_cdc->get_cdc_version = pdata->get_cdc_version;
+		msm_dig_cdc->handle = pdata->handle;
+		msm_dig_cdc->register_notifier = pdata->register_notifier;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "reg",
@@ -2136,37 +2528,46 @@ static int msm_dig_cdc_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "%s: could not find %s entry in dt\n",
 			__func__, "reg");
-		return ret;
+		goto err_supplies;
 	}
 
 	msm_dig_cdc->dig_base = ioremap(dig_cdc_addr,
 					MSM89XX_CDC_CORE_MAX_REGISTER);
 	if (msm_dig_cdc->dig_base == NULL) {
 		dev_err(&pdev->dev, "%s ioremap failed\n", __func__);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_supplies;
 	}
 	msm_dig_cdc->regmap =
 		devm_regmap_init_mmio_clk(&pdev->dev, NULL,
 			msm_dig_cdc->dig_base, &msm_digital_regmap_config);
 
-	msm_dig_cdc->update_clkdiv = pdata->update_clkdiv;
-	msm_dig_cdc->set_compander_mode = pdata->set_compander_mode;
-	msm_dig_cdc->get_cdc_version = pdata->get_cdc_version;
-	msm_dig_cdc->handle = pdata->handle;
-	msm_dig_cdc->register_notifier = pdata->register_notifier;
 
 	dev_set_drvdata(&pdev->dev, msm_dig_cdc);
-	snd_soc_register_component(&pdev->dev, &soc_msm_dig_codec,
+	ret = snd_soc_register_component(&pdev->dev, &soc_msm_dig_codec,
 				msm_codec_dais, ARRAY_SIZE(msm_codec_dais));
+	if (ret) {
+		dev_err(&pdev->dev,
+			"%s:snd_soc_register_component failed with error %d\n",
+			__func__, ret);
+		goto err_supplies;
+	}
 	dev_dbg(&pdev->dev, "%s: registered DIG CODEC 0x%x\n",
 			__func__, dig_cdc_addr);
+	return ret;
+err_supplies:
+	if (msm_dig_cdc->no_analog_codec)
+		msm_digital_cdc_disable_supplies(msm_dig_cdc);
 rtn:
 	return ret;
 }
 
 static int msm_dig_cdc_remove(struct platform_device *pdev)
 {
+	struct msm_dig_priv *msm_cdc = dev_get_drvdata(&pdev->dev);
+
 	snd_soc_unregister_component(&pdev->dev);
+	msm_digital_cdc_disable_supplies(msm_cdc);
 	return 0;
 }
 
@@ -2195,7 +2596,7 @@ static int msm_dig_suspend(struct device *dev)
 				&pdata->disable_int_mclk0_work);
 			mutex_lock(&pdata->cdc_int_mclk0_mutex);
 			pdata->digital_cdc_core_clk.enable = 0;
-			afe_set_lpass_clock_v2(AFE_PORT_ID_INT0_MI2S_RX,
+			afe_set_lpass_clock_v2(AFE_PORT_ID_PRIMARY_MI2S_RX,
 						&pdata->digital_cdc_core_clk);
 			atomic_set(&pdata->int_mclk0_enabled, false);
 			mutex_unlock(&pdata->cdc_int_mclk0_mutex);
