@@ -2,51 +2,51 @@
 
 # auto-detect subdirs
 ifeq ($(CONFIG_ARCH_KONA), y)
-include $(srctree)/techpack/camera/config/konacamera.conf
+include $(srctree)/techpack/camera-bengal/config/konacamera.conf
 endif
 
 ifeq ($(CONFIG_ARCH_LITO), y)
-include $(srctree)/techpack/camera/config/litocamera.conf
+include $(srctree)/techpack/camera-bengal/config/litocamera.conf
 endif
 
 ifeq ($(CONFIG_ARCH_BENGAL), y)
-include $(srctree)/techpack/camera/config/bengalcamera.conf
+include $(srctree)/techpack/camera-bengal/config/bengalcamera.conf
 endif
 
 ifeq ($(CONFIG_ARCH_KHAJE), y)
-include $(srctree)/techpack/camera/config/khajecamera.conf
+include $(srctree)/techpack/camera-bengal/config/khajecamera.conf
 endif
 
 ifeq ($(CONFIG_ARCH_KONA), y)
 LINUXINCLUDE    += \
-		-include $(srctree)/techpack/camera/config/konacameraconf.h
+		-include $(srctree)/techpack/camera-bengal/config/konacameraconf.h
 endif
 
 ifeq ($(CONFIG_ARCH_LITO), y)
 LINUXINCLUDE    += \
-		-include $(srctree)/techpack/camera/config/litocameraconf.h
+		-include $(srctree)/techpack/camera-bengal/config/litocameraconf.h
 endif
 
 ifeq ($(CONFIG_ARCH_BENGAL), y)
 LINUXINCLUDE    += \
-		-include $(srctree)/techpack/camera/config/bengalcameraconf.h
+		-include $(srctree)/techpack/camera-bengal/config/bengalcameraconf.h
 endif
 
 ifeq ($(CONFIG_ARCH_KHAJE), y)
 LINUXINCLUDE    += \
-		-include $(srctree)/techpack/camera/config/khajecameraconf.h
+		-include $(srctree)/techpack/camera-bengal/config/khajecameraconf.h
 endif
 
 ifdef CONFIG_SPECTRA_CAMERA
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE     += \
-                -I$(srctree)/techpack/camera/include/uapi
+                -I$(srctree)/techpack/camera-bengal/include/uapi
 
 # Use LINUXINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option
 LINUXINCLUDE    += \
-                -I$(srctree)/techpack/camera/include/uapi \
-                -I$(srctree)/techpack/camera/include
+                -I$(srctree)/techpack/camera-bengal/include/uapi \
+                -I$(srctree)/techpack/camera-bengal/include
 obj-y += drivers/
 else
 $(info Target not found)
