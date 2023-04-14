@@ -4411,7 +4411,7 @@ static ssize_t f2fs_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 		return -EOPNOTSUPP;
 
 	if (trace_f2fs_dataread_start_enabled()) {
-		char *p = f2fs_kmalloc(F2FS_I_SB(inode), PATH_MAX, GFP_KERNEL);
+		char *p = f2fs_getname(F2FS_I_SB(inode));
 		char *path;
 
 		if (!p)
@@ -4419,14 +4419,14 @@ static ssize_t f2fs_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 
 		path = dentry_path_raw(file_dentry(iocb->ki_filp), p, PATH_MAX);
 		if (IS_ERR(path)) {
-			kfree(p);
+			f2fs_putname(p);
 			goto skip_read_trace;
 		}
 
 		trace_f2fs_dataread_start(inode, iocb->ki_pos,
 					iov_iter_count(iter),
 					current->pid, path, current->comm);
-		kfree(p);
+		f2fs_putname(p);
 	}
 skip_read_trace:
 	ret = generic_file_read_iter(iocb, iter);
@@ -4576,8 +4576,7 @@ static ssize_t f2fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 		ret = preallocated;
 	} else {
 		if (trace_f2fs_datawrite_start_enabled()) {
-			char *p = f2fs_kmalloc(F2FS_I_SB(inode),
-						PATH_MAX, GFP_KERNEL);
+			char *p = f2fs_getname(F2FS_I_SB(inode));
 			char *path;
 
 			if (!p)
@@ -4585,12 +4584,12 @@ static ssize_t f2fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 			path = dentry_path_raw(file_dentry(iocb->ki_filp),
 								p, PATH_MAX);
 			if (IS_ERR(path)) {
-				kfree(p);
+				f2fs_putname(p);
 				goto skip_write_trace;
 			}
 			trace_f2fs_datawrite_start(inode, orig_pos, orig_count,
 					current->pid, path, current->comm);
-			kfree(p);
+			f2fs_putname(p);
 		}
 skip_write_trace:
 		ret = __generic_file_write_iter(iocb, from);
