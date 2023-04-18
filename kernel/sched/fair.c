@@ -4463,30 +4463,6 @@ bias_to_this_cpu(struct task_struct *p, int cpu, int start_cpu)
 	return base_test && start_cap_test;
 }
 
-#ifdef CONFIG_SCHED_WALT
-static inline bool task_fits_capacity(struct task_struct *p,
-					long capacity,
-					int cpu)
-{
-	unsigned int margin;
-
-	/*
-	 * Derive upmigration/downmigrate margin wrt the src/dest CPU.
-	 */
-	if (capacity_orig_of(task_cpu(p)) > capacity_orig_of(cpu))
-		margin = sched_capacity_margin_down[cpu];
-	else
-		margin = sched_capacity_margin_up[task_cpu(p)];
-
-	return capacity * 1024 > uclamp_task_util(p) * margin;
-}
-#else
-static inline int task_fits_capacity(struct task_struct *p, long capacity)
-{
-	return fits_capacity(uclamp_task_util(p), capacity);
-}
-#endif
-
 static inline int util_fits_cpu(unsigned long util,
 				unsigned long uclamp_min,
 				unsigned long uclamp_max,
@@ -4610,6 +4586,14 @@ static inline int util_fits_cpu(unsigned long util,
 	return fits;
 }
 
+static inline int task_fits_cpu(struct task_struct *p, int cpu)
+{
+	unsigned long uclamp_min = uclamp_eff_value(p, UCLAMP_MIN);
+	unsigned long uclamp_max = uclamp_eff_value(p, UCLAMP_MAX);
+	unsigned long util = task_util_est(p);
+	return util_fits_cpu(util, uclamp_min, uclamp_max, cpu);
+}
+
 static inline bool task_fits_max(struct task_struct *p, int cpu)
 {
 #ifdef CONFIG_SCHED_WALT
@@ -4631,7 +4615,7 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 			return false;
 	}
 
-	return task_fits_capacity(p, capacity, cpu);
+        return task_fits_cpu(p, cpu);
 #else
 	return false;
 #endif
@@ -4646,7 +4630,7 @@ static inline bool task_demand_fits(struct task_struct *p, int cpu)
 	if (capacity == max_capacity)
 		return true;
 
-	return task_fits_capacity(p, capacity, cpu);
+        return task_fits_cpu(p, cpu);
 #else
 	return false;
 #endif
@@ -4719,7 +4703,7 @@ static inline void update_misfit_status(struct task_struct *p, struct rq *rq)
 		return;
 	}
 
-	if (task_fits_capacity(p, capacity_of(cpu_of(rq)))) {
+	if (task_fits_cpu(p, cpu_of(rq))) {
 		rq->misfit_task_load = 0;
 		return;
 	}
@@ -7374,15 +7358,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 			 * capacity margin.
 			 */
 			new_util = max(min_util, new_util);
-			if ((!(prefer_idle && idle_cpu(i)) &&
-			    new_util > capacity_orig) ||
-			     (is_min_capacity_cpu(i) &&
-#ifdef CONFIG_SCHED_WALT
-			      !task_fits_capacity(p, capacity_orig, i)))
-#else
-                              !task_fits_capacity(p, capacity_orig)))
-#endif
-				continue;
 
 			/*
 			 * Pre-compute the maximum possible capacity we expect
@@ -9221,7 +9196,7 @@ static int detach_tasks(struct lb_env *env)
 
 		case migrate_misfit:
 			/* This is not a misfit task */
-			if (task_fits_capacity(p, capacity_of(env->src_cpu)))
+			if (task_fits_cpu(p, env->src_cpu))
 				goto next;
 
 			env->imbalance = 0;
@@ -10227,6 +10202,10 @@ static inline void update_sg_wakeup_stats(struct sched_domain *sd,
 
 	memset(sgs, 0, sizeof(*sgs));
 
+	/* Assume that task can't fit any CPU of the group */
+	if (sd->flags & SD_ASYM_CPUCAPACITY)
+		sgs->group_misfit_task_load = 1;
+
 	for_each_cpu(i, sched_group_span(group)) {
 		struct rq *rq = cpu_rq(i);
 		unsigned int local;
@@ -10246,12 +10225,12 @@ static inline void update_sg_wakeup_stats(struct sched_domain *sd,
 		if (!nr_running && idle_cpu_without(i, p))
 			sgs->idle_cpus++;
 
-	}
+		/* Check if task fits in the CPU */
+		if (sd->flags & SD_ASYM_CPUCAPACITY &&
+		    sgs->group_misfit_task_load &&
+		    task_fits_cpu(p, i))
+			sgs->group_misfit_task_load = 0;
 
-	/* Check if task fits in the group */
-	if (sd->flags & SD_ASYM_CPUCAPACITY &&
-	    !task_fits_capacity(p, group->sgc->max_capacity)) {
-		sgs->group_misfit_task_load = 1;
 	}
 
 	sgs->group_capacity = group->sgc->capacity;
