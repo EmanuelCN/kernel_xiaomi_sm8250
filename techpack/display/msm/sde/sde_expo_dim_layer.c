@@ -33,7 +33,7 @@ static int interpolate(int x, int xa, int xb, int ya, int yb)
 	return ya + factor + plus + sub;
 }
 
-static int brightness_to_alpha(uint8_t brightness)
+static int brightness_to_alpha(uint16_t brightness)
 {
 	int level = ARRAY_SIZE(brightness_alpha_lut);
 	int index, alpha;
@@ -57,7 +57,7 @@ static int brightness_to_alpha(uint8_t brightness)
 	return alpha;
 }
 
-static void set_dim_layer_exposure(uint8_t brightness, struct dsi_display *display)
+static void set_dim_layer_exposure(uint16_t brightness, struct dsi_display *display)
 {
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *state;
@@ -85,7 +85,7 @@ static void set_dim_layer_exposure(uint8_t brightness, struct dsi_display *displ
 uint32_t expo_map_dim_level(uint32_t level, struct dsi_display *display)
 {
 	uint32_t override_level, brightness;
-	uint8_t dim_brightness;
+	uint16_t dim_brightness;
 
 	if (level < DIM_THRES_LEVEL) {
 		override_level = DIM_THRES_LEVEL;
@@ -94,7 +94,7 @@ uint32_t expo_map_dim_level(uint32_t level, struct dsi_display *display)
 	}
 
 	brightness = level / BACKLIGHT_DIM_SCALE;
-	dim_brightness = brightness > U8_MAX ? U8_MAX : brightness;
+	dim_brightness = brightness > U16_MAX ? U16_MAX : brightness;
 
 	set_dim_layer_exposure(dim_brightness, display);
 
