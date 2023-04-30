@@ -141,7 +141,7 @@ static inline u64 cfs_rq_clock_pelt(struct cfs_rq *cfs_rq)
 #else
 
 static inline int
-update_cfs_rq_load_avg(u64 now, struct cfs_rq *cfs_rq)
+update_cfs_rq_load_avg(u64 now, struct cfs_rq *cfs_rq, bool update_freq)
 {
 	return 0;
 }
