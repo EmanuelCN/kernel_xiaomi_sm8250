@@ -2881,7 +2881,8 @@ int adreno_dispatcher_idle(struct adreno_device *adreno_dev)
 	 * Ensure that this function is not called when dispatcher
 	 * mutex is held and device is started
 	 */
-	if (mutex_is_locked(&dispatcher->mutex))
+	if (mutex_is_locked(&dispatcher->mutex) &&
+		(__mutex_owner(&dispatcher->mutex) == current))
 		return -EDEADLK;
 
 	adreno_get_gpu_halt(adreno_dev);
