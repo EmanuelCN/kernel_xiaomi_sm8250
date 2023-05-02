@@ -281,7 +281,7 @@ static struct mem_entry_stats mem_stats[] = {
 #endif
 };
 
-#ifdef CONFIG_QCOM_KGSL_RECLAIM
+#ifdef CONFIG_PROCESS_RECLAIM
 static struct device_attribute dev_attr_max_reclaim_limit = {
 	.attr = { .name = "max_reclaim_limit", .mode = 0644 },
 	.show = kgsl_proc_max_reclaim_limit_show,
@@ -417,7 +417,7 @@ static const struct attribute *drv_attr_list[] = {
 	&dev_attr_mapped.attr,
 	&dev_attr_mapped_max.attr,
 	&dev_attr_full_cache_threshold.attr,
-#ifdef CONFIG_QCOM_KGSL_RECLAIM
+#ifdef CONFIG_PROCESS_RECLAIM
 	&dev_attr_max_reclaim_limit.attr,
 #endif
 	NULL,
