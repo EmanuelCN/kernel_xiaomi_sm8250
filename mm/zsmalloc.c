@@ -360,7 +360,7 @@ static void cache_free_handle(struct zs_pool *pool, unsigned long handle)
 
 static struct zspage *cache_alloc_zspage(struct zs_pool *pool, gfp_t flags)
 {
- 	return kmem_cache_zalloc(pool->zspage_cachep,
+	return kmem_cache_alloc(pool->zspage_cachep,
 			flags & ~(__GFP_HIGHMEM|__GFP_MOVABLE|__GFP_CMA));
 }
 
@@ -1086,6 +1086,7 @@ static struct zspage *alloc_zspage(struct zs_pool *pool,
 	if (unlikely(!zspage))
 		return NULL;
 
+	memset(zspage, 0, sizeof(struct zspage));
 	zspage->magic = ZSPAGE_MAGIC;
 	migrate_lock_init(zspage);
 
