@@ -236,21 +236,6 @@ static int lpm_starting_cpu(unsigned int cpu)
 	return 0;
 }
 
-static void calculate_next_wakeup(uint32_t *next_wakeup_us,
-				  uint32_t next_event_us,
-				  uint32_t lvl_latency_us,
-				  s64 sleep_us)
-{
-	if (!next_event_us)
-		return;
-
-	if (next_event_us < lvl_latency_us)
-		return;
-
-	if (next_event_us < sleep_us)
-		*next_wakeup_us = next_event_us - lvl_latency_us;
-}
-
 static unsigned int get_next_online_cpu(bool from_idle)
 {
 	unsigned int cpu;
@@ -900,7 +885,6 @@ static const struct platform_s2idle_ops lpm_s2idle_ops = {
 static int lpm_probe(struct platform_device *pdev)
 {
 	int ret;
-	unsigned int cpu;
 	struct kobject *module_kobj = NULL;
 
 	get_online_cpus();
