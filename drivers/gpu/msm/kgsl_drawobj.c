@@ -901,7 +901,6 @@ int kgsl_drawobj_add_timeline(struct kgsl_device_private *dev_priv,
 			goto err;
 		}
 
-		trace_kgsl_drawobj_timeline(val.timeline, val.seqno);
 		timelineobj->timelines[i].seqno = val.seqno;
 
 		src += cmd.timelines_size;
