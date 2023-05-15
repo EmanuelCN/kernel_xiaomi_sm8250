@@ -14,7 +14,6 @@
 #include <linux/iommu.h>
 #include <linux/iopoll.h>
 #include <linux/of.h>
-#include <linux/pm_qos.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
@@ -2093,14 +2092,6 @@ static int venus_hfi_core_init(void *device)
 
 	__set_ubwc_config(device);
 
-	if (dev->res->pm_qos_latency_us) {
-#ifdef CONFIG_SMP
-		dev->qos.type = PM_QOS_REQ_AFFINE_IRQ;
-		dev->qos.irq = dev->hal_data->irq;
-#endif
-		pm_qos_add_request(&dev->qos, PM_QOS_CPU_DMA_LATENCY,
-				dev->res->pm_qos_latency_us);
-	}
 	d_vpr_h("Core inited successfully\n");
 	mutex_unlock(&dev->lock);
 	return rc;
@@ -2126,9 +2117,6 @@ static int venus_hfi_core_release(void *dev)
 
 	mutex_lock(&device->lock);
 	d_vpr_h("Core releasing\n");
-	if (device->res->pm_qos_latency_us &&
-		pm_qos_request_active(&device->qos))
-		pm_qos_remove_request(&device->qos);
 
 	__resume(device, DEFAULT_SID);
 	__set_state(device, VENUS_STATE_DEINIT);
@@ -4396,10 +4384,6 @@ static inline int __suspend(struct venus_hfi_device *device)
 
 	d_vpr_h("Entering suspend\n");
 
-	if (device->res->pm_qos_latency_us &&
-		pm_qos_request_active(&device->qos))
-		pm_qos_remove_request(&device->qos);
-
 	rc = __tzbsp_set_video_state(TZBSP_VIDEO_STATE_SUSPEND, DEFAULT_SID);
 	if (rc) {
 		d_vpr_e("Failed to suspend video core %d\n", rc);
@@ -4461,15 +4445,6 @@ static inline int __resume(struct venus_hfi_device *device, u32 sid)
 	if (rc) {
 		s_vpr_e(sid, "Failed to reset venus core\n");
 		goto err_reset_core;
-	}
-
-	if (device->res->pm_qos_latency_us) {
-#ifdef CONFIG_SMP
-		device->qos.type = PM_QOS_REQ_AFFINE_IRQ;
-		device->qos.irq = device->hal_data->irq;
-#endif
-		pm_qos_add_request(&device->qos, PM_QOS_CPU_DMA_LATENCY,
-				device->res->pm_qos_latency_us);
 	}
 
 	__sys_set_debug(device, (msm_vidc_debug & FW_LOGMASK) >> FW_LOGSHIFT,
