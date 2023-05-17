@@ -1059,6 +1059,46 @@ static void _dsi_display_setup_misr(struct dsi_display *display)
 	}
 }
 
+static u32 interpolated(uint32_t x, uint32_t xa, uint32_t xb,
+		uint32_t ya, uint32_t yb)
+{
+	return ya + (yb - ya) * (x - xa) / (xb - xa);
+}
+
+struct blbl {
+        u32 bl;
+        u32 aod_bl;
+};
+
+struct blbl aod_bl_lut[] = {
+	{0, 1},
+	{10, 1},
+	{40, 9},
+	{90, 30},
+	{120, 40},
+};
+
+u32 dsi_panel_get_aod_bl(struct dsi_display *display)
+{
+        u32 cur_bl = display->panel->bl_config.bl_level;
+	int i;
+
+	for (i = 0; i < 5; i++)
+                if (aod_bl_lut[i].bl >= cur_bl)
+                        break;
+        if (i == 0)
+                return aod_bl_lut[i].aod_bl;
+
+        if (i == 4)
+                return aod_bl_lut[i - 1].aod_bl;
+
+        return interpolated(cur_bl,
+                           aod_bl_lut[i - 1].bl,
+                           aod_bl_lut[i].bl,
+                           aod_bl_lut[i - 1].aod_bl,
+                           aod_bl_lut[i].aod_bl);
+}
+
 int dsi_display_set_power(struct drm_connector *connector,
 		int power_mode, void *disp)
 {
@@ -1100,6 +1140,8 @@ int dsi_display_set_power(struct drm_connector *connector,
 	case SDE_MODE_DPMS_LP2:
 		mi_cfg->in_aod = true;
 		mi_drm_notifier_call_chain(MI_DRM_EARLY_EVENT_BLANK, &notify_data);
+		dsi_panel_set_backlight(display->panel, dsi_panel_get_aod_bl(display));
+		usleep_range(20000, 30000);
 		rc = dsi_panel_set_lp2(display->panel);
 		if (mi_cfg->unset_doze_brightness)
 			dsi_panel_set_doze_brightness(display->panel,
