@@ -8,7 +8,6 @@
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/soc/qcom/llcc-qcom.h>
-#include <linux/pm_qos.h>
 
 #include "sde_hw_mdss.h"
 #include "sde_hw_catalog.h"
