@@ -37,6 +37,8 @@
 #define MAX_PROP_SIZE		   32
 #define VDDP_REF_CLK_MIN_UV        1200000
 #define VDDP_REF_CLK_MAX_UV        1200000
+/* TODO: further tuning for this parameter may be required */
+#define UFS_QCOM_PM_QOS_UNVOTE_TIMEOUT_US	(10000) /* microseconds */
 
 #define UFS_QCOM_DEFAULT_DBG_PRINT_EN	\
 	(UFS_QCOM_DBG_PRINT_REGS_EN | UFS_QCOM_DBG_PRINT_TEST_BUS_EN)
@@ -1760,7 +1762,8 @@ static void ufs_qcom_pm_qos_unvote_work(struct work_struct *work)
 	group->state = PM_QOS_UNVOTED;
 	ufs_spin_unlock_irqrestore(host->hba->host->host_lock, flags);
 
-	pm_qos_update_request(&group->req, PM_QOS_DEFAULT_VALUE);
+	pm_qos_update_request_timeout(&group->req,
+		group->latency_us, UFS_QCOM_PM_QOS_UNVOTE_TIMEOUT_US);
 }
 
 static ssize_t ufs_qcom_pm_qos_enable_show(struct device *dev,
