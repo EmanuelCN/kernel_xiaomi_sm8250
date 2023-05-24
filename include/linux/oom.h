@@ -126,22 +126,6 @@ extern struct task_struct *find_lock_task_mm(struct task_struct *p);
 
 extern void dump_tasks(struct mem_cgroup *memcg,
 		       const nodemask_t *nodemask);
-
-#ifdef CONFIG_HAVE_USERSPACE_LOW_MEMORY_KILLER
-extern bool should_ulmk_retry(gfp_t gfp);
-extern void ulmk_update_last_kill(void);
-extern void ulmk_watchdog_fn(struct timer_list *t);
-extern void ulmk_watchdog_pet(struct timer_list *t);
-#else
-static inline bool should_ulmk_retry(gfp_t gfp)
-{
-	return false;
-}
-static inline void ulmk_update_last_kill(void) {}
-static inline void ulmk_watchdog_fn(struct timer_list *t) {}
-static inline void ulmk_watchdog_pet(struct timer_list *t) {}
-#endif
-
 /* sysctls */
 extern int sysctl_oom_dump_tasks;
 extern int sysctl_oom_kill_allocating_task;
@@ -150,6 +134,4 @@ extern int sysctl_reap_mem_on_sigkill;
 
 /* calls for LMK reaper */
 extern void add_to_oom_reaper(struct task_struct *p);
-extern void check_panic_on_foreground_kill(struct task_struct *p);
-#define ULMK_MAGIC "lmkd"
 #endif /* _INCLUDE_LINUX_OOM_H */
