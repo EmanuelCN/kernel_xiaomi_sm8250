@@ -140,7 +140,6 @@
 #include <linux/file.h>
 #include <linux/poll.h>
 #include <linux/psi.h>
-#include <linux/oom.h>
 #include "sched.h"
 
 #define CREATE_TRACE_POINTS
@@ -578,12 +577,8 @@ static u64 update_triggers(struct psi_group *group, u64 now)
 			continue;
 
 		/* Generate an event */
-		if (cmpxchg(&t->event, 0, 1) == 0) {
-			if (!strcmp(t->comm, ULMK_MAGIC))
-				mod_timer(&t->wdog_timer, jiffies +
-					  nsecs_to_jiffies(2 * t->win.size));
+		if (cmpxchg(&t->event, 0, 1) == 0)
 			wake_up_interruptible(&t->event_wait);
-		}
 		t->last_event_time = now;
 	}
 
@@ -593,73 +588,6 @@ static u64 update_triggers(struct psi_group *group, u64 now)
 				sizeof(group->polling_total));
 
 	return now + group->poll_min_period;
-}
-
-/*
- * Allows sending more than one event per window.
- */
-void psi_emergency_trigger(void)
-{
-	struct psi_group *group = &psi_system;
-	struct psi_trigger *t;
-	u64 now;
-
-	if (static_branch_likely(&psi_disabled))
-		return;
-
-	/*
-	 * In unlikely case that OOM was triggered while adding/
-	 * removing triggers.
-	 */
-	if (!mutex_trylock(&group->trigger_lock))
-		return;
-
-	now = sched_clock();
-	list_for_each_entry(t, &group->triggers, node) {
-		if (strcmp(t->comm, ULMK_MAGIC))
-			continue;
-
-		/* Generate an event */
-		if (cmpxchg(&t->event, 0, 1) == 0) {
-			mod_timer(&t->wdog_timer, jiffies +
-					  nsecs_to_jiffies(2 * t->win.size));
-			wake_up_interruptible(&t->event_wait);
-		}
-		t->last_event_time = now;
-	}
-	mutex_unlock(&group->trigger_lock);
-}
-
-/*
- * Return true if any trigger is active.
- */
-bool psi_is_trigger_active(void)
-{
-	struct psi_group *group = &psi_system;
-	struct psi_trigger *t;
-	bool trigger_active = false;
-	u64 now;
-
-	if (static_branch_likely(&psi_disabled))
-		return false;
-
-	/*
-	 * In unlikely case that OOM was triggered while adding/
-	 * removing triggers.
-	 */
-	if (!mutex_trylock(&group->trigger_lock))
-		return true;
-
-	now = sched_clock();
-	list_for_each_entry(t, &group->triggers, node) {
-		if (strcmp(t->comm, ULMK_MAGIC))
-			continue;
-
-		if (now <= t->last_event_time + t->win.size)
-			trigger_active = true;
-	}
-	mutex_unlock(&group->trigger_lock);
-	return trigger_active;
 }
 
 /*
@@ -1161,8 +1089,6 @@ struct psi_trigger *psi_trigger_create(struct psi_group *group,
 	t->event = 0;
 	t->last_event_time = 0;
 	init_waitqueue_head(&t->event_wait);
-	get_task_comm(t->comm, current);
-	timer_setup(&t->wdog_timer, ulmk_watchdog_fn, TIMER_DEFERRABLE);
 
 	mutex_lock(&group->trigger_lock);
 
@@ -1240,7 +1166,6 @@ void psi_trigger_destroy(struct psi_trigger *t)
 		}
 	}
 
-	del_timer_sync(&t->wdog_timer);
 	mutex_unlock(&group->trigger_lock);
 
 	/*
@@ -1283,11 +1208,8 @@ __poll_t psi_trigger_poll(void **trigger_ptr,
 
 	poll_wait(file, &t->event_wait, wait);
 
-	if (cmpxchg(&t->event, 1, 0) == 1) {
+	if (cmpxchg(&t->event, 1, 0) == 1)
 		ret |= EPOLLPRI;
-		if (!strcmp(t->comm, ULMK_MAGIC))
-			ulmk_watchdog_pet(&t->wdog_timer);
-	}
 
 	return ret;
 }
