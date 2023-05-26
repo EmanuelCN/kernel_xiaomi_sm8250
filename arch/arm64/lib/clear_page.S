@@ -25,6 +25,7 @@
  * Parameters:
  *	x0 - dest
  */
+	.p2align 4
 SYM_FUNC_START_PI(clear_page)
 	mrs	x1, dczid_el0
 	and	w1, w1, #0xf
