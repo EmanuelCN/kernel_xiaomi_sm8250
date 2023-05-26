@@ -750,9 +750,8 @@ int dsi_display_hbm_set_disp_param(struct drm_connector *connector,
 int dsi_display_esd_irq_ctrl(struct dsi_display *display,
 		bool enable);
 
-#ifdef CONFIG_OSSFOD
 struct dsi_display *get_main_display(void);
-
+#ifdef CONFIG_OSSFOD
 void dsi_display_set_fod_ui(struct dsi_display *display, bool status);
 #endif
 
