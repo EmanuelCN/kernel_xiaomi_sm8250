@@ -223,6 +223,7 @@ static int f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 	const struct unicode_map *um = sb->s_encoding;
 	struct fscrypt_str decrypted_name = FSTR_INIT(NULL, de_name_len);
 	struct qstr entry = QSTR_INIT(de_name, de_name_len);
+	unsigned char decname_onstack[SZ_128] __aligned(sizeof(long));
 	int res;
 
 	if (IS_ENCRYPTED(dir)) {
@@ -232,9 +233,13 @@ static int f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 		if (WARN_ON_ONCE(!fscrypt_has_encryption_key(dir)))
 			return false;
 
-		decrypted_name.name = kmalloc(de_name_len, GFP_KERNEL);
-		if (!decrypted_name.name)
-			return false;
+		if (de_name_len <= sizeof(decname_onstack)) {
+			decrypted_name.name = decname_onstack;
+		} else {
+			decrypted_name.name = kmalloc(de_name_len, GFP_KERNEL);
+			if (!decrypted_name.name)
+                        	return false;
+		}
 		res = fscrypt_fname_disk_to_usr(dir, 0, 0, &encrypted_name,
 						&decrypted_name);
 		if (res < 0)
@@ -255,7 +260,8 @@ static int f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 			res = memcmp(name->name, entry.name, name->len);
 	}
 out:
-	kfree(decrypted_name.name);
+	if (decrypted_name.name != decname_onstack)
+		kfree(decrypted_name.name);
 	return res == 0;
 }
 #endif /* CONFIG_UNICODE */
