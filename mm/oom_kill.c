@@ -55,7 +55,6 @@ int sysctl_panic_on_oom =
 IS_ENABLED(CONFIG_DEBUG_PANIC_ON_OOM) ? 2 : 0;
 int sysctl_oom_kill_allocating_task;
 int sysctl_oom_dump_tasks;
-int sysctl_reap_mem_on_sigkill;
 
 /*
  * Serializes oom killer invocations (out_of_memory()) from all contexts to
@@ -646,21 +645,13 @@ static int oom_reaper(void *unused)
 
 static void wake_oom_reaper(struct task_struct *tsk)
 {
-	/*
-	 * Move the lock here to avoid scenario of queuing
-	 * the same task by both OOM killer and any other SIGKILL
-	 * path.
-	 */
-	spin_lock(&oom_reaper_lock);
-
 	/* mm is already queued? */
-	if (test_and_set_bit(MMF_OOM_REAP_QUEUED, &tsk->signal->oom_mm->flags)) {
-		spin_unlock(&oom_reaper_lock);
+	if (test_and_set_bit(MMF_OOM_REAP_QUEUED, &tsk->signal->oom_mm->flags))
 		return;
-	}
 
 	get_task_struct(tsk);
 
+	spin_lock(&oom_reaper_lock);
 	tsk->oom_reaper_list = oom_reaper_list;
 	oom_reaper_list = tsk;
 	spin_unlock(&oom_reaper_lock);
@@ -680,16 +671,6 @@ static inline void wake_oom_reaper(struct task_struct *tsk)
 }
 #endif /* CONFIG_MMU */
 
-static void __mark_oom_victim(struct task_struct *tsk)
-{
-	struct mm_struct *mm = tsk->mm;
-
-	if (!cmpxchg(&tsk->signal->oom_mm, NULL, mm)) {
-		mmgrab(tsk->signal->oom_mm);
-		set_bit(MMF_OOM_VICTIM, &mm->flags);
-	}
-}
-
 /**
  * mark_oom_victim - mark the given task as OOM victim
  * @tsk: task to mark
@@ -702,13 +683,18 @@ static void __mark_oom_victim(struct task_struct *tsk)
  */
 static void mark_oom_victim(struct task_struct *tsk)
 {
+	struct mm_struct *mm = tsk->mm;
+
 	WARN_ON(oom_killer_disabled);
 	/* OOM killer might race with memcg OOM */
 	if (test_and_set_tsk_thread_flag(tsk, TIF_MEMDIE))
 		return;
 
 	/* oom_mm is bound to the signal struct life time. */
-	__mark_oom_victim(tsk);
+	if (!cmpxchg(&tsk->signal->oom_mm, NULL, mm)) {
+		mmgrab(tsk->signal->oom_mm);
+		set_bit(MMF_OOM_VICTIM, &mm->flags);
+	}
 
 	/*
 	 * Make sure that the task is woken up from uninterruptible sleep
@@ -1187,33 +1173,4 @@ void pagefault_out_of_memory(void)
 
 	if (__ratelimit(&pfoom_rs))
 		pr_warn("Huh VM_FAULT_OOM leaked out to the #PF handler. Retrying PF\n");
-}
-
-void add_to_oom_reaper(struct task_struct *p)
-{
-	static DEFINE_RATELIMIT_STATE(reaper_rs, DEFAULT_RATELIMIT_INTERVAL,
-						 DEFAULT_RATELIMIT_BURST);
-
-	if (!sysctl_reap_mem_on_sigkill)
-		return;
-
-	p = find_lock_task_mm(p);
-	if (!p)
-		return;
-
-	get_task_struct(p);
-	if (task_will_free_mem(p)) {
-		__mark_oom_victim(p);
-		wake_oom_reaper(p);
-	}
-
-	task_unlock(p);
-
-	if (!strcmp(current->comm, ULMK_MAGIC) && __ratelimit(&reaper_rs)
-			&& p->signal->oom_score_adj == 0) {
-		show_mem(SHOW_MEM_FILTER_NODES, NULL);
-		show_mem_call_notifiers();
-	}
-
-	put_task_struct(p);
 }
