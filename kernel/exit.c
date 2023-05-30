@@ -801,10 +801,13 @@ void profile_task_exit(struct task_struct *tsk)
 }
 #endif
 
+void dead_special_task(void);
 void __noreturn do_exit(long code)
 {
 	struct task_struct *tsk = current;
 	int group_dead;
+
+	dead_special_task();
 
 	/*
 	 * We can get here from a kernel oops, sometimes with preemption off.
