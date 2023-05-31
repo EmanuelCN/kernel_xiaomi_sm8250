@@ -4620,43 +4620,9 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 		if (WARN_ON_ONCE(!load))
 			load = 1;
 		lag = div_s64(lag, load);
-
-		vruntime -= lag;
 	}
 
-	if (sched_feat(FAIR_SLEEPERS)) {
-
-		/* sleeps up to a single latency don't count. */
-		if (!initial) {
-			unsigned long thresh;
-
-			if (se_is_idle(se))
-				thresh = sysctl_sched_min_granularity;
-			else
-				thresh = sysctl_sched_latency;
-
-			/*
-			 * Halve their sleep time's effect, to allow
-			 * for a gentler effect of sleepers:
-			 */
-			if (sched_feat(GENTLE_FAIR_SLEEPERS))
-				thresh >>= 1;
-
-			vruntime -= thresh;
-		}
-
-		/*
-		 * Pull vruntime of the entity being placed to the base level of
-		 * cfs_rq, to prevent boosting it if placed backwards.  If the entity
-		 * slept for a long time, don't even try to compare its vruntime with
-		 * the base as it may be too far off and the comparison may get
-		 * inversed due to s64 overflow.
-		 */
-		if (!entity_is_long_sleeper(se))
-			vruntime = max_vruntime(se->vruntime, vruntime);
-	}
-
-	se->vruntime = vruntime;
+	se->vruntime = vruntime - lag;
 
 	/*
 	 * When joining the competition; the exisiting tasks will be,
