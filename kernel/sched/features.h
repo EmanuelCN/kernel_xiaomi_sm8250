@@ -1,14 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 
 /*
- * Only give sleepers 50% of their service deficit. This allows
- * them to run sooner, but does not allow tons of sleepers to
- * rip the spread apart.
- */
-#define SCHED_FEAT_FAIR_SLEEPERS 1
-#define SCHED_FEAT_GENTLE_FAIR_SLEEPERS 1
-
-/*
  * Using the avg_vruntime, do the right thing and preserve lag across
  * sleep+wake cycles. EEVDF placement strategy #1, #2 if disabled.
  */
