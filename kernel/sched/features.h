@@ -7,12 +7,6 @@
 #define SCHED_FEAT_GENTLE_FAIR_SLEEPERS 1
 
 /*
- * Place new tasks ahead so that they do not starve already running
- * tasks
- */
-#define SCHED_FEAT_START_DEBIT 1
-
-/*
  * Prefer to schedule the task we woke last (assuming it failed
  * wakeup-preemption), since its likely going to consume data we
  * touched, increases cache locality.
