@@ -632,7 +632,7 @@ static void sched_debug_header(struct seq_file *m)
 	SEQ_printf(m, "  .%-40s: %Ld\n", #x, (long long)(x))
 #define PN(x) \
 	SEQ_printf(m, "  .%-40s: %Ld.%06ld\n", #x, SPLIT_NS(x))
-	PN(sysctl_sched_min_granularity);
+	PN(sysctl_sched_base_slice);
 	P(sysctl_sched_child_runs_first);
 #ifdef CONFIG_SCHED_WALT
 	P(sched_init_task_load_windows);
