@@ -1536,17 +1536,15 @@ QDF_STATUS wma_process_hal_pwr_dbg_cmd(WMA_HANDLE handle,
 	return status;
 }
 
-static QDF_STATUS wma_discard_fw_event(struct scheduler_msg *msg)
+static void wma_discard_fw_event(struct scheduler_msg *msg)
 {
 	if (!msg->bodyptr)
-		return QDF_STATUS_E_INVAL;
+		return;
 
 	qdf_mem_free(msg->bodyptr);
 	msg->bodyptr = NULL;
 	msg->bodyval = 0;
 	msg->type = 0;
-
-	return QDF_STATUS_SUCCESS;
 }
 
 QDF_STATUS
