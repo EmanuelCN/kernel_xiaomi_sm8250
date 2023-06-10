@@ -1036,7 +1036,7 @@ static int verify_get_property(struct power_supply *psy, enum power_supply_prope
 		break;
 	case POWER_SUPPLY_PROP_ROMID:
 		ret = Read_RomID(mi_romid);
-		ds_err("get RomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
+		ds_dbg("get RomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
 				mi_romid[0], mi_romid[1], mi_romid[2], mi_romid[3],
 				mi_romid[4], mi_romid[5], mi_romid[6], mi_romid[7]);
 		memcpy(val->arrayval, mi_romid, 8);
@@ -1045,7 +1045,7 @@ static int verify_get_property(struct power_supply *psy, enum power_supply_prope
 		break;
 	case POWER_SUPPLY_PROP_CHIP_OK:
 		ret = Read_RomID(mi_romid);
-		ds_err("get chip_ok read RomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
+		ds_dbg("get chip_ok read RomID = %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
 				mi_romid[0], mi_romid[1], mi_romid[2], mi_romid[3],
 				mi_romid[4], mi_romid[5], mi_romid[6], mi_romid[7]);
 		if ((mi_romid[0] == 0x9f) && (mi_romid[6] == 0x04) && ((mi_romid[5] & 0xf0) == 0xf0))
