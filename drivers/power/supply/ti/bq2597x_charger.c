@@ -2148,32 +2148,32 @@ static void bq2597x_dump_important_regs(struct bq2597x *bq)
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0A, &val);
 	if (!ret)
-		bq_err("dump converter state Reg [%02X] = 0x%02X\n",
+		bq_dbg("dump converter state Reg [%02X] = 0x%02X\n",
 				BQ2597X_REG_0A, val);
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0D, &val);
 	if (!ret)
-		bq_err("dump int stat Reg[%02X] = 0x%02X\n",
+		bq_dbg("dump int stat Reg[%02X] = 0x%02X\n",
 				BQ2597X_REG_0D, val);
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0E, &val);
 	if (!ret)
-		bq_err("dump int flag Reg[%02X] = 0x%02X\n",
+		bq_dbg("dump int flag Reg[%02X] = 0x%02X\n",
 				BQ2597X_REG_0E, val);
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_10, &val);
 	if (!ret)
-		bq_err("dump fault stat Reg[%02X] = 0x%02X\n",
+		bq_dbg("dump fault stat Reg[%02X] = 0x%02X\n",
 				BQ2597X_REG_10, val);
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_11, &val);
 	if (!ret)
-		bq_err("dump fault flag Reg[%02X] = 0x%02X\n",
+		bq_dbg("dump fault flag Reg[%02X] = 0x%02X\n",
 				BQ2597X_REG_11, val);
 
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_2D, &val);
 	if (!ret)
-		bq_err("dump regulation flag Reg[%02X] = 0x%02X\n",
+		bq_dbg("dump regulation flag Reg[%02X] = 0x%02X\n",
 				BQ2597X_REG_2D, val);
 }
 
