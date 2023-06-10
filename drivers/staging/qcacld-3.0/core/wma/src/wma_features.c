@@ -2388,7 +2388,7 @@ wma_wake_reason_ap_assoc_lost(t_wma_handle *wma, void *event, uint32_t len)
 	return 0;
 }
 
-static const char *wma_vdev_type_str(uint32_t vdev_type)
+static const char __maybe_unused *wma_vdev_type_str(uint32_t vdev_type)
 {
 	switch (vdev_type) {
 	case WMI_VDEV_TYPE_AP:

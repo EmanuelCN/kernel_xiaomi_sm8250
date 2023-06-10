@@ -104,7 +104,7 @@
 #define wma_nofl_debug(params...) \
 	QDF_TRACE_DEBUG_NO_FL(QDF_MODULE_ID_WMA, params)
 
-#define WMA_DEBUG_ALWAYS
+// #define WMA_DEBUG_ALWAYS
 
 #ifdef WMA_DEBUG_ALWAYS
 #define WMA_LOGA(params ...) \
