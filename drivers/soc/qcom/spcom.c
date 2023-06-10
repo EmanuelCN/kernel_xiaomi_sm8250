@@ -71,7 +71,6 @@
 	if (spcom_ipc_log_context)					\
 		ipc_log_string(spcom_ipc_log_context, _x);		\
 	} while (0)
-
 #define spcom_pr_err(_fmt, ...) do {					\
 	pr_err(_fmt, ##__VA_ARGS__);					\
 	spcom_ipc_log_string("%s" pr_fmt(_fmt), "", ##__VA_ARGS__);	\
@@ -98,7 +97,6 @@
 	spcom_ipc_log_string("%s" pr_fmt(_fmt), "", ##__VA_ARGS__);	\
 	} while (0)
 #endif
-
 /**
  * Request buffer size.
  * Any large data (multiply of 4KB) is provided by temp buffer in DDR.
@@ -275,7 +273,6 @@ struct spcom_device {
 /* Device Driver State */
 static struct spcom_device *spcom_dev;
 static void *spcom_ipc_log_context;
-
 /* error registers shared with SPU */
 static u32 spcom_rmb_error_reg_addr;
 /* Physical address of SP2SOC RMB shared register */
@@ -2562,12 +2559,12 @@ static int spcom_probe(struct platform_device *pdev)
 		pr_err("create character device failed\n");
 		goto fail_reg_chardev;
 	}
-
+#ifdef CONFIG_IPC_LOGGING
 	spcom_ipc_log_context = ipc_log_context_create(SPCOM_LOG_PAGE_CNT,
 						       "spcom", 0);
 	if (!spcom_ipc_log_context)
 		pr_err("Unable to create IPC log context\n");
-
+#endif
 	spcom_pr_dbg("Driver Initialization ok\n");
 	return 0;
 fail_reg_chardev:
