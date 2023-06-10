@@ -859,7 +859,7 @@ static int pd_send_ext_msg(struct usbpd *pd, u8 msg_type,
 				pd->tx_msgid[sop], num_objs, pd->spec_rev) |
 			PD_MSG_HDR_EXTENDED;
 		pd->tx_msgid[sop] = (pd->tx_msgid[sop] + 1) & PD_MAX_MSG_ID;
-		usbpd_info(&pd->dev, "send ext msg pd->tx_msgid[sop]:%d,hdr:%x\n", pd->tx_msgid[sop], hdr);
+		usbpd_dbg(&pd->dev, "send ext msg pd->tx_msgid[sop]:%d,hdr:%x\n", pd->tx_msgid[sop], hdr);
 		ret = pd_phy_write(hdr, chunked_payload,
 				num_objs * sizeof(u32), sop);
 		if (ret) {
@@ -3801,7 +3801,7 @@ static void usbpd_sm(struct work_struct *w)
 	struct rx_msg *rx_msg = NULL;
 	unsigned long flags;
 
-	usbpd_err(&pd->dev, "typec mode:%d, pr:%d, handle state %s\n",
+	usbpd_dbg(&pd->dev, "typec mode:%d, pr:%d, handle state %s\n",
 			pd->typec_mode, pd->current_pr,
 			usbpd_state_strings[pd->current_state]);
 
