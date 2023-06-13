@@ -8007,6 +8007,7 @@ void set_rq_offline(struct rq *rq)
 	if (rq->online) {
 		const struct sched_class *class;
 
+		update_rq_clock(rq);
 		for_each_class(class) {
 			if (class->rq_offline)
 				class->rq_offline(rq);
@@ -8145,7 +8146,6 @@ int sched_cpu_deactivate(unsigned int cpu)
 
 	rq_lock_irqsave(rq, &rf);
 	if (rq->rd) {
-		update_rq_clock(rq);
 		BUG_ON(!cpumask_test_cpu(cpu, rq->rd->span));
 		set_rq_offline(rq);
 	}
