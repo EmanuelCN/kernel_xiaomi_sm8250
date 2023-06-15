@@ -3015,9 +3015,6 @@
 			just as if they had also been called out in the
 			rcu_nocbs= boot parameter.
 
-			Note that this argument takes precedence over
-			the CONFIG_RCU_NOCB_CPU_DEFAULT_ALL option.
-
 	noiotrap	[SH] Disables trapped I/O port accesses.
 
 	noirqdebug	[X86-32] Disables the code which attempts to detect and
@@ -3723,9 +3720,6 @@
 			real-time workloads.  It can also improve energy
 			efficiency for asymmetric multiprocessors.
 
-			Note that this argument takes precedence over
-			the CONFIG_RCU_NOCB_CPU_DEFAULT_ALL option.
-
 	rcu_nocb_poll	[KNL]
 			Rather than requiring that offloaded CPUs
 			(specified by rcu_nocbs= above) explicitly
@@ -3799,11 +3793,6 @@
 			pressure to page allocator, also it makes the
 			whole algorithm to behave better in low memory
 			condition.
-
-	rcutree.rcu_delay_page_cache_fill_msec= [KNL]
-			Set the page-cache refill delay (in milliseconds)
-			in response to low-memory conditions.  The range
-			of permitted values is in the range 0:100000.
 
 	rcutree.jiffies_till_first_fqs= [KNL]
 			Set delay from grace-period initialization to
@@ -4089,10 +4078,6 @@
 
 	rcutorture.verbose= [KNL]
 			Enable additional printk() statements.
-
-	rcupdate.boot_end_delay= [KNL]
-			Minimum time in milliseconds that must elapse
-			before the boot sequence can be marked complete.
 
 	rcupdate.rcu_cpu_stall_ftrace_dump= [KNL]
 			Dump ftrace buffer after reporting RCU CPU
