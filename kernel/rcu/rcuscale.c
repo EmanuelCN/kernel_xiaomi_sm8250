@@ -374,7 +374,7 @@ rcu_scale_writer(void *arg)
 	sched_setscheduler_nocheck(current, SCHED_FIFO, &sp);
 
 	if (holdoff)
-		schedule_timeout_uninterruptible(holdoff * HZ);
+		schedule_timeout_idle(holdoff * HZ);
 
 	/*
 	 * Wait until rcu_end_inkernel_boot() is called for normal GP tests
