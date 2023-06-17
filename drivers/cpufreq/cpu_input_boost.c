@@ -411,7 +411,6 @@ static int __init cpu_input_boost_init(void)
 	int ret;
 
 	b->cpu_notif.notifier_call = cpu_notifier_cb;
-	b->cpu_notif.priority = INT_MAX - 2;
 	ret = cpufreq_register_notifier(&b->cpu_notif, CPUFREQ_POLICY_NOTIFIER);
 	if (ret) {
 		pr_err("Failed to register cpufreq notifier, err: %d\n", ret);
