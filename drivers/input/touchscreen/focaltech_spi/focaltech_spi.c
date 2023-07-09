@@ -3,7 +3,6 @@
  * FocalTech TouchScreen driver.
  *
  * Copyright (c) 2012-2020, FocalTech Systems, Ltd., all rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -40,16 +39,16 @@
 /*****************************************************************************
 * Private constant and macro definitions using #define
 *****************************************************************************/
-#define SPI_RETRY_NUMBER            3
-#define CS_HIGH_DELAY               150 /* unit: us */
-#define SPI_BUF_LENGTH              256
+#define SPI_RETRY_NUMBER 3
+#define CS_HIGH_DELAY 150 /* unit: us */
+#define SPI_BUF_LENGTH 256
 
-#define DATA_CRC_EN                 0x20
-#define WRITE_CMD                   0x00
-#define READ_CMD                    (0x80 | DATA_CRC_EN)
+#define DATA_CRC_EN 0x20
+#define WRITE_CMD 0x00
+#define READ_CMD (0x80 | DATA_CRC_EN)
 
-#define SPI_DUMMY_BYTE              3
-#define SPI_HEADER_LENGTH           6   /*CRC*/
+#define SPI_DUMMY_BYTE 3
+#define SPI_HEADER_LENGTH 6 /*CRC*/
 /*****************************************************************************
 * Private enumerations, structures and unions using typedef
 *****************************************************************************/
@@ -78,7 +77,7 @@ static int fts_spi_transfer(u8 *tx_buf, u8 *rx_buf, u32 len)
 	struct spi_transfer xfer = {
 		.tx_buf = tx_buf,
 		.rx_buf = rx_buf,
-		.len    = len,
+		.len = len,
 	};
 
 	spi_message_init(&msg);
@@ -106,7 +105,7 @@ static void crckermit(u8 *data, u32 len, u16 *crc_out)
 	u32 j = 0;
 	u16 crc = 0xFFFF;
 
-	for ( i = 0; i < len; i++) {
+	for (i = 0; i < len; i++) {
 		crc ^= data[i];
 		for (j = 0; j < 8; j++) {
 			if (crc & 0x01)
@@ -186,15 +185,16 @@ int fts_write(u8 *writebuf, u32 writelen)
 		if ((0 == ret) && ((rxbuf[3] & 0xA0) == 0)) {
 			break;
 		} else {
-			FTS_DEBUG("data write(addr:%x),status:%x,retry:%d,ret:%d",
-					  writebuf[0], rxbuf[3], i, ret);
+			FTS_DEBUG(
+				"data write(addr:%x),status:%x,retry:%d,ret:%d",
+				writebuf[0], rxbuf[3], i, ret);
 			ret = -EIO;
 			udelay(CS_HIGH_DELAY);
 		}
 	}
 	if (ret < 0) {
 		FTS_ERROR("data write(addr:%x) fail,status:%x,ret:%d",
-				  writebuf[0], rxbuf[3], ret);
+			  writebuf[0], rxbuf[3], ret);
 	}
 
 err_write:
@@ -281,16 +281,18 @@ int fts_read(u8 *cmd, u32 cmdlen, u8 *data, u32 datalen)
 			if (ctrl & DATA_CRC_EN) {
 				ret = rdata_check(&rxbuf[dp], txlen - dp);
 				if (ret < 0) {
-					FTS_DEBUG("data read(addr:%x) crc abnormal,retry:%d",
-							  cmd[0], i);
+					FTS_DEBUG(
+						"data read(addr:%x) crc abnormal,retry:%d",
+						cmd[0], i);
 					udelay(CS_HIGH_DELAY);
 					continue;
 				}
 			}
 			break;
 		} else {
-			FTS_DEBUG("data read(addr:%x) status:%x,retry:%d,ret:%d",
-					  cmd[0], rxbuf[3], i, ret);
+			FTS_DEBUG(
+				"data read(addr:%x) status:%x,retry:%d,ret:%d",
+				cmd[0], rxbuf[3], i, ret);
 			ret = -EIO;
 			udelay(CS_HIGH_DELAY);
 		}
@@ -298,8 +300,8 @@ int fts_read(u8 *cmd, u32 cmdlen, u8 *data, u32 datalen)
 
 	if (ret < 0) {
 		FTS_ERROR("data read(addr:%x) %s,status:%x,ret:%d", cmd[0],
-				  (i >= SPI_RETRY_NUMBER) ? "crc abnormal" : "fail",
-				  rxbuf[3], ret);
+			  (i >= SPI_RETRY_NUMBER) ? "crc abnormal" : "fail",
+			  rxbuf[3], ret);
 	}
 
 err_read:
