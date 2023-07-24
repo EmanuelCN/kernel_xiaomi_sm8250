@@ -24,6 +24,7 @@ config GENERIC_IRQ_SHOW_LEVEL
 # Supports effective affinity mask
 config GENERIC_IRQ_EFFECTIVE_AFF_MASK
        bool
+       depends on !ARM64
 
 # Facility to allocate a hardware interrupt. This is legacy support
 # and should not be used in new code. Use irq domains instead.
