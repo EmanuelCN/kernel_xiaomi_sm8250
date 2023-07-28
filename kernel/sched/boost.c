@@ -248,8 +248,6 @@ int sched_set_boost(int type)
 {
 	int ret = 0;
 
-	return 0;
-
 	mutex_lock(&boost_mutex);
 	if (verify_boost_params(type))
 		_sched_set_boost(type);
