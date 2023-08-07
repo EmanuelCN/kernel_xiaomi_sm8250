@@ -7105,6 +7105,10 @@ static int get_start_cpu(struct task_struct *p, bool sync_boost)
 			rd->max_cap_orig_cpu : rd->mid_cap_orig_cpu;
 	}
 
+	if (start_cpu == rd->mid_cap_orig_cpu &&
+			!task_demand_fits(p, start_cpu))
+		start_cpu = rd->max_cap_orig_cpu;
+
 	return start_cpu;
 }
 
@@ -7134,7 +7138,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 	struct sched_group *sg;
 	int best_active_cpu = -1;
 	int best_idle_cpu = -1;
-	bool idle_fit_cpu_found = false;
 	int best_prioritized_cpu = -1;
 	int target_cpu = -1;
 	int backup_cpu = -1;
@@ -7259,19 +7262,11 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 				prioritized_task && !is_min_capacity_cpu(i) &&
 				per_cpu(prioritized_task_nr, i) == 0;
 
-			if (!(prefer_idle && idle_cpu(i)) &&
-			    !best_prioritized_candidate &&
-			    new_util > capacity_orig)
-				continue;
-
-			/*
-			 * If start cpu is mid core, we don't want to loop
-			 * back to little cores, unless the task prefers
-			 * idle cpu and could not find one in mid/max core.
-			 */
-			if (!(prefer_idle && idle_fit_cpu_found == false) &&
-			    is_min_capacity_cpu(i) &&
-			    !task_fits_capacity(p, capacity_orig, i))
+			if ((!(prefer_idle && idle_cpu(i)) &&
+			     !best_prioritized_candidate &&
+			     new_util > capacity_orig) ||
+			    (is_min_capacity_cpu(i) &&
+			     !task_fits_capacity(p, capacity_orig, i)))
 				continue;
 
 			/*
@@ -7359,11 +7354,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 					target_capacity = capacity_orig;
 					shallowest_idle_cstate = idle_idx;
 					best_idle_util = new_util;
-
-					if (is_min_capacity_cpu(start_cpu) ==
-					    is_min_capacity_cpu(i))
-						idle_fit_cpu_found = true;
-
 					best_idle_cpu = i;
 					continue;
 				}
