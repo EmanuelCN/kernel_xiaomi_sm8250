@@ -2102,10 +2102,6 @@ static int smb5_usb_main_get_prop(struct power_supply *psy,
 		break;
 	/* Use this property to report SMB health */
 	case POWER_SUPPLY_PROP_HEALTH:
-		if (chg->use_bq_pump) {
-			rc = val->intval = -ENODATA;
-			break;
-		}
 		rc = val->intval = smblib_get_prop_smb_health(chg);
 		break;
 	/* Use this property to report overheat status */
@@ -4063,10 +4059,9 @@ static int smb5_init_connector_type(struct smb_charger *chg)
 	 */
 	if (chg->chg_param.smb_version == PMI632_SUBTYPE) {
 		schgm_flash_init(chg);
+		smblib_rerun_apsd_if_required(chg);
 	}
 
-	smblib_rerun_apsd_if_required(chg);
-	
 	return 0;
 
 }
