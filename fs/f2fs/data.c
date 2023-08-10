@@ -3986,6 +3986,7 @@ static ssize_t f2fs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 
 	if (rw == WRITE) {
 		if (err > 0) {
+			f2fs_update_time(sbi, REQ_TIME);
 			f2fs_update_iostat(F2FS_I_SB(inode), APP_DIRECT_IO,
 									err);
 			if (!do_opu)
