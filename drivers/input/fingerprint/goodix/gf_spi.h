@@ -88,7 +88,6 @@ struct gf_ioc_chip_info {
 #define GF_IOC_DISABLE_SPI_CLK		_IO(GF_IOC_MAGIC, 6)
 #define GF_IOC_ENABLE_POWER			_IO(GF_IOC_MAGIC, 7)
 #define GF_IOC_DISABLE_POWER		_IO(GF_IOC_MAGIC, 8)
-#define GF_IOC_INPUT_KEY_EVENT		_IOW(GF_IOC_MAGIC, 9, struct gf_key)
 #define GF_IOC_ENTER_SLEEP_MODE		_IO(GF_IOC_MAGIC, 10)
 #define GF_IOC_GET_FW_INFO			_IOR(GF_IOC_MAGIC, 11, uint8_t)
 #define GF_IOC_REMOVE				_IO(GF_IOC_MAGIC, 12)
