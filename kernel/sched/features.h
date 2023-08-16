@@ -6,6 +6,7 @@
  */
 #define SCHED_FEAT_PLACE_LAG 1
 #define SCHED_FEAT_PLACE_DEADLINE_INITIAL 1
+#define SCHED_FEAT_RUN_TO_PARITY 1
 
 /*
  * Prefer to schedule the task we woke last (assuming it failed
