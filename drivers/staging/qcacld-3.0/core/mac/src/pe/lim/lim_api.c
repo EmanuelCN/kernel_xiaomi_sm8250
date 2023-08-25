@@ -87,6 +87,8 @@ struct pe_hang_event_fixed_param {
 	uint8_t limprevsmestate;
 } qdf_packed;
 
+struct p2p_protocol_callbacks;
+
 static void __lim_init_bss_vars(struct mac_context *mac)
 {
 	qdf_mem_zero((void *)mac->lim.gpSession,
