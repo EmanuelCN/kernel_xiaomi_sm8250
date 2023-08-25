@@ -43,6 +43,8 @@ struct p2p_app_set_ps {
 	uint8_t ps_selection;
 };
 
+struct p2p_ps_config;
+
 int wlan_hdd_cfg80211_remain_on_channel(struct wiphy *wiphy,
 					struct wireless_dev *wdev,
 					struct ieee80211_channel *chan,
