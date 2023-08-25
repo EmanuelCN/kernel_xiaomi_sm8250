@@ -110,8 +110,6 @@ struct wmi_ext_dbg_msg {
 };
 #endif /*WMI_EXT_DBG */
 
-#ifdef WMI_INTERFACE_EVENT_LOGGING
-
 #ifndef WMI_EVENT_DEBUG_MAX_ENTRY
 #define WMI_EVENT_DEBUG_MAX_ENTRY (1024)
 #endif
@@ -290,8 +288,6 @@ enum WMI_RECORD_TYPE {
 	WMI_CMD = 1,
 	WMI_EVT = 2,
 };
-
-#endif /*WMI_INTERFACE_EVENT_LOGGING */
 
 #ifdef WLAN_OPEN_SOURCE
 struct fwdebug {
