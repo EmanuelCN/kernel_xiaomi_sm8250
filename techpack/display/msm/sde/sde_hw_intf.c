@@ -620,15 +620,6 @@ static int sde_hw_intf_get_vsync_info(struct sde_hw_intf *intf,
 
 	c = &intf->hw;
 
-	if (!wr_ptr_only) {
-		val = SDE_REG_READ(c, INTF_TEAR_VSYNC_INIT_VAL);
-		info->rd_ptr_init_val = val & 0xffff;
-
-		val = SDE_REG_READ(c, INTF_TEAR_INT_COUNT_VAL);
-		info->rd_ptr_frame_count = (val & 0xffff0000) >> 16;
-		info->rd_ptr_line_count = val & 0xffff;
-	}
-
 	val = SDE_REG_READ(c, INTF_TEAR_LINE_COUNT);
 	info->wr_ptr_line_count = val & 0xffff;
 
