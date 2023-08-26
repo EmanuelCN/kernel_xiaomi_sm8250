@@ -620,10 +620,9 @@ static int _sde_encoder_phys_cmd_poll_write_pointer_started(
 		return ret;
 
 	SDE_DEBUG_CMDENC(cmd_enc,
-			"pp:%d intf:%d rd_ptr %d wr_ptr %d\n",
+			"pp:%d intf:%d wr_ptr %d\n",
 			phys_enc->hw_pp->idx - PINGPONG_0,
 			phys_enc->hw_intf->idx - INTF_0,
-			info.rd_ptr_line_count,
 			info.wr_ptr_line_count);
 	SDE_EVT32_VERBOSE(DRMID(phys_enc->parent),
 			phys_enc->hw_pp->idx - PINGPONG_0,
