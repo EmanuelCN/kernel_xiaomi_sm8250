@@ -268,9 +268,6 @@ static int poll_adreno_gmu_reg(struct adreno_device *adreno_dev,
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct gmu_device *gmu = KGSL_GMU_DEVICE(device);
 	unsigned long timeout = jiffies + msecs_to_jiffies(timeout_ms);
-	u64 ts1, ts2;
-
-	ts1 = gmu_core_dev_read_ao_counter(device);
 
 	while (time_is_after_jiffies(timeout)) {
 		adreno_read_gmureg(adreno_dev, offset_name, &val);
@@ -279,16 +276,13 @@ static int poll_adreno_gmu_reg(struct adreno_device *adreno_dev,
 		usleep_range(10, 100);
 	}
 
-	ts2 = gmu_core_dev_read_ao_counter(device);
-
 	/* Check one last time */
 	adreno_read_gmureg(adreno_dev, offset_name, &val);
 	if ((val & mask) == expected_val)
 		return 0;
 
 	dev_err(&gmu->pdev->dev,
-			"Timed out waiting for HFI response. Wait start=%llx end=%llx\n",
-			ts1, ts2);
+			"Timed out waiting for HFI response.\n");
 
 	return -ETIMEDOUT;
 }

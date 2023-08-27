@@ -231,6 +231,5 @@ int gmu_core_dev_ifpc_store(struct kgsl_device *device, unsigned int val);
 void gmu_core_dev_prepare_stop(struct kgsl_device *device);
 int gmu_core_dev_wait_for_active_transition(struct kgsl_device *device);
 void gmu_core_dev_cooperative_reset(struct kgsl_device *device);
-u64 gmu_core_dev_read_ao_counter(struct kgsl_device *device);
 
 #endif /* __KGSL_GMU_CORE_H */
