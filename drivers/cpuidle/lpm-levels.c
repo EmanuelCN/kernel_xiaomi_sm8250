@@ -1285,6 +1285,50 @@ unlock_and_return:
 	return state_id;
 }
 
+static int psci_enter_idle(struct cpuidle_device *dev, struct lpm_cpu *cpu,
+			    int idx, bool from_idle)
+{
+	int affinity_level = 0, state_id = 0, power_state = 0;
+	bool success = false;
+	/*
+	 * idx = 0 is the default LPM state
+	 */
+
+	if (!idx) {
+		if (cpu->bias)
+			biastimer_start(cpu->bias);
+		cpuidle_set_idle_cpu(dev->cpu);
+		stop_critical_timings();
+		cpu_do_idle();
+		start_critical_timings();
+		cpuidle_clear_idle_cpu(dev->cpu);
+		return true;
+	}
+
+	if (cpu->levels[idx].use_bc_timer) {
+		if (tick_broadcast_enter())
+			return success;
+	}
+
+	state_id = get_cluster_id(cpu->parent, &affinity_level, from_idle);
+	power_state = PSCI_POWER_STATE(cpu->levels[idx].is_reset);
+	affinity_level = PSCI_AFFINITY_LEVEL(affinity_level);
+	state_id += power_state + affinity_level + cpu->levels[idx].psci_id;
+
+	cpuidle_set_idle_cpu(dev->cpu);
+	stop_critical_timings();
+
+	success = !arm_cpuidle_suspend(state_id);
+
+	start_critical_timings();
+	cpuidle_clear_idle_cpu(dev->cpu);
+
+	if (cpu->levels[idx].use_bc_timer)
+		tick_broadcast_exit();
+
+	return success;
+}
+
 static bool psci_enter_sleep(struct lpm_cpu *cpu, int idx, bool from_idle)
 {
 	int affinity_level = 0, state_id = 0, power_state = 0;
@@ -1401,9 +1445,7 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 	if (need_resched())
 		goto exit;
 
-	cpuidle_set_idle_cpu(dev->cpu);
-	success = psci_enter_sleep(cpu, idx, true);
-	cpuidle_clear_idle_cpu(dev->cpu);
+	success = psci_enter_idle(dev, cpu, idx, true);
 
 exit:
 	end_time = ktime_to_ns(ktime_get());
