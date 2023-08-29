@@ -397,6 +397,8 @@ static int parse_power_params(struct device_node *dn, struct power_params *pwr)
 	ret = lpm_of_read_u32(dn, "qcom,min-residency-us",
 			      &pwr->min_residency, true);
 
+	pwr->local_timer_stop = of_property_read_bool(dn, "local-timer-stop");
+
 	return ret;
 }
 
