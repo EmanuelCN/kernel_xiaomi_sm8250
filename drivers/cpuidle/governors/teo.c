@@ -213,17 +213,10 @@ static DEFINE_PER_CPU(struct teo_cpu, teo_cpus);
  * @cpu: Target CPU
  * @cpu_data: Governor CPU data for the target CPU
  */
-#ifdef CONFIG_SMP
-static bool teo_cpu_is_utilized(int cpu, struct teo_cpu *cpu_data)
-{
-	return sched_cpu_util(cpu) > cpu_data->util_threshold;
-}
-#else
 static bool teo_cpu_is_utilized(int cpu, struct teo_cpu *cpu_data)
 {
 	return false;
 }
-#endif
 
 /**
  * teo_update - Update CPU metrics after wakeup.
