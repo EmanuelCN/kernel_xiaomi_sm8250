@@ -721,8 +721,7 @@ static int generate_sched_domains(cpumask_var_t **domains,
 					 housekeeping_cpumask(HK_FLAG_DOMAIN))))
 			continue;
 
-		if (is_sched_load_balance(cp) &&
-		    !cpumask_empty(cp->effective_cpus))
+		if (is_sched_load_balance(cp))
 			csa[csn++] = cp;
 
 		/* skip @cp's subtree */
