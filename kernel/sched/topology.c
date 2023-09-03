@@ -347,7 +347,14 @@ static bool build_perf_domains(const struct cpumask *cpu_map)
 	if (!sysctl_sched_energy_aware)
 		goto free;
 
-	/* EAS is enabled for asymmetric CPU capacity topologies. */
+	/*
+	 * EAS gets disabled when there are no asymmetric capacity
+	 * CPUs in the system. For example, all big CPUs are
+	 * hotplugged out on a b.L system. We want EAS enabled
+	 * all the time to get both power and perf benefits. Apply
+	 * this policy when WALT is enabled.
+	 */
+#ifndef CONFIG_SCHED_WALT
 	if (!per_cpu(sd_asym_cpucapacity, cpu)) {
 		if (sched_debug()) {
 			pr_info("rd %*pbl: CPUs do not have asymmetric capacities\n",
@@ -355,6 +362,7 @@ static bool build_perf_domains(const struct cpumask *cpu_map)
 		}
 		goto free;
 	}
+#endif
 
 	for_each_cpu(i, cpu_map) {
 		/* Skip already covered CPUs. */
@@ -639,22 +647,6 @@ static void update_top_cache_domain(int cpu)
 	rcu_assign_pointer(per_cpu(sd_asym_packing, cpu), sd);
 
 	sd = lowest_flag_domain(cpu, SD_ASYM_CPUCAPACITY);
-	/*
-	 * EAS gets disabled when there are no asymmetric capacity
-	 * CPUs in the system. For example, all big CPUs are
-	 * hotplugged out on a b.L system. We want EAS enabled
-	 * all the time to get both power and perf benefits. So,
-	 * lets assign sd_asym_cpucapacity to the only available
-	 * sched domain. This is also important for a single cluster
-	 * systems which wants to use EAS.
-	 *
-	 * Setting sd_asym_cpucapacity() to a sched domain which
-	 * has all symmetric capacity CPUs is technically incorrect but
-	 * works well for us in getting EAS enabled all the time.
-	 */
-	if (!sd)
-		sd = cpu_rq(cpu)->sd;
-
 	rcu_assign_pointer(per_cpu(sd_asym_cpucapacity, cpu), sd);
 }
 
@@ -1934,12 +1926,15 @@ next_level:
 static int
 build_sched_domains(const struct cpumask *cpu_map, struct sched_domain_attr *attr)
 {
-	enum s_alloc alloc_state;
+	enum s_alloc alloc_state = sa_none;
 	struct sched_domain *sd;
 	struct s_data d;
 	int i, ret = -ENOMEM;
 	struct sched_domain_topology_level *tl_asym;
 	bool has_asym = false;
+
+	if (WARN_ON(cpumask_empty(cpu_map)))
+		goto error;
 
 	alloc_state = __visit_domain_allocation_hell(&d, cpu_map);
 	if (alloc_state != sa_rootdomain)
@@ -2043,7 +2038,7 @@ build_sched_domains(const struct cpumask *cpu_map, struct sched_domain_attr *att
 	rcu_read_unlock();
 
 	if (has_asym)
-		static_branch_inc_cpuslocked(&sched_asym_cpucapacity);
+		static_branch_enable_cpuslocked(&sched_asym_cpucapacity);
 
 	ret = 0;
 error:
@@ -2134,11 +2129,7 @@ int sched_init_domains(const struct cpumask *cpu_map)
  */
 static void detach_destroy_domains(const struct cpumask *cpu_map)
 {
-	unsigned int cpu = cpumask_any(cpu_map);
 	int i;
-
-	if (rcu_access_pointer(per_cpu(sd_asym_cpucapacity, cpu)))
-		static_branch_dec_cpuslocked(&sched_asym_cpucapacity);
 
 	rcu_read_lock();
 	for_each_cpu(i, cpu_map)
