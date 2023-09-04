@@ -77,7 +77,6 @@ int suid_dumpable = 0;
 static LIST_HEAD(formats);
 static DEFINE_RWLOCK(binfmt_lock);
 
-#define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/vendor.qti.hardware.display.composer-service"
 #define ZYGOTE32_BIN "/system/bin/app_process32"
 #define ZYGOTE64_BIN "/system/bin/app_process64"
 static struct task_struct *zygote32_task;
@@ -1895,12 +1894,6 @@ static int __do_execve_file(int fd, struct filename *filename,
 			zygote32_task = current;
 		else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
                         zygote64_task = current;
-		else if (unlikely(!strncmp(filename->name,
-					   HWCOMPOSER_BIN_PREFIX,
-					   strlen(HWCOMPOSER_BIN_PREFIX)))) {
-			current->flags |= PF_PERF_CRITICAL;
-			set_cpus_allowed_ptr(current, cpu_perf_mask);
-		}
 	}
 
 	/* execve succeeded */
