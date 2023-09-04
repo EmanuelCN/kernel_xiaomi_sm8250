@@ -5123,15 +5123,12 @@ int kgsl_request_irq(struct platform_device *pdev, const  char *name,
 		irq_handler_t handler, void *data)
 {
 	int ret, num = platform_get_irq_byname(pdev, name);
-	unsigned long irqflags = IRQF_TRIGGER_HIGH;
 
 	if (num < 0)
 		return num;
 
-	if (!strcmp(name, "kgsl_3d0_irq"))
-		irqflags |= IRQF_PERF_AFFINE;
-
-	ret = devm_request_irq(&pdev->dev, num, handler, irqflags, name, data);
+	ret = devm_request_irq(&pdev->dev, num, handler, IRQF_TRIGGER_HIGH,
+		name, data);
 
 	if (ret)
 		dev_err(&pdev->dev, "Unable to get interrupt %s: %d\n",
@@ -5413,8 +5410,8 @@ static int __init kgsl_core_init(void)
 
 	kthread_init_worker(&kgsl_driver.worker);
 
-	kgsl_driver.worker_thread = kthread_run_perf_critical(cpu_perf_mask,
-		kthread_worker_fn, &kgsl_driver.worker, "kgsl_worker_thread");
+	kgsl_driver.worker_thread = kthread_run(kthread_worker_fn,
+		&kgsl_driver.worker, "kgsl_worker_thread");
 
 	if (IS_ERR(kgsl_driver.worker_thread)) {
 		pr_err("kgsl: unable to start kgsl thread\n");
