@@ -2750,8 +2750,7 @@ int drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 	 */
 	struct pm_qos_request req = {
 		.type = PM_QOS_REQ_AFFINE_CORES,
-		.cpus_affine = ATOMIC_INIT(BIT(raw_smp_processor_id()) |
-					   *cpumask_bits(cpu_prime_mask))
+		.cpus_affine = ATOMIC_INIT(BIT(raw_smp_processor_id()))
 	};
 	int ret;
 
