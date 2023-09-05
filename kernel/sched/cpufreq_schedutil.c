@@ -109,6 +109,10 @@ static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
 		return true;
 	}
 
+	/* If the last frequency wasn't set yet then we can still amend it */
+	if (sg_policy->work_in_progress)
+		return true;
+
 	/* No need to recalculate next freq for min_rate_limit_us
 	 * at least. However we might still decide to further rate
 	 * limit once frequency change direction is decided, according
@@ -149,10 +153,17 @@ static bool sugov_up_down_rate_limit(struct sugov_policy *sg_policy, u64 time,
 static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 				   unsigned int next_freq)
 {
+
+	/*
+	 * If a work is in progress then it means the last frequency wasn't set
+	 * yet, so we can still change our mind and set a different frequency.
+	 */
+	bool ignore_rate_limit = sg_policy->work_in_progress;
+
 	if (sg_policy->next_freq == next_freq)
 		return false;
 
-	if (sugov_up_down_rate_limit(sg_policy, time, next_freq)) {
+	if (!ignore_rate_limit && sugov_up_down_rate_limit(sg_policy, time, next_freq)) {
 		/* Restore cached freq as next_freq is not changed */
 		sg_policy->cached_raw_freq = sg_policy->prev_cached_raw_freq;
 		return false;
