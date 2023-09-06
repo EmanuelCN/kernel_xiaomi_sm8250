@@ -354,6 +354,7 @@ void thread_group_cputime(struct task_struct *tsk, struct task_cputime *times)
 	done_seqretry_irqrestore(&sig->stats_lock, seq, flags);
 	rcu_read_unlock();
 }
+EXPORT_SYMBOL_GPL(thread_group_cputime);
 
 #ifdef CONFIG_IRQ_TIME_ACCOUNTING
 /*
