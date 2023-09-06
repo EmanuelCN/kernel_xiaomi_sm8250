@@ -45,6 +45,66 @@ static int convert_prio(int prio)
 	return cpupri;
 }
 
+static inline int __cpupri_find(struct cpupri *cp, struct task_struct *p,
+				struct cpumask *lowest_mask, int idx)
+{
+	struct cpupri_vec *vec  = &cp->pri_to_cpu[idx];
+	int skip = 0;
+
+	if (!atomic_read(&(vec)->count))
+		skip = 1;
+	/*
+	 * When looking at the vector, we need to read the counter,
+	 * do a memory barrier, then read the mask.
+	 *
+	 * Note: This is still all racey, but we can deal with it.
+	 *  Ideally, we only want to look at masks that are set.
+	 *
+	 *  If a mask is not set, then the only thing wrong is that we
+	 *  did a little more work than necessary.
+	 *
+	 *  If we read a zero count but the mask is set, because of the
+	 *  memory barriers, that can only happen when the highest prio
+	 *  task for a run queue has left the run queue, in which case,
+	 *  it will be followed by a pull. If the task we are processing
+	 *  fails to find a proper place to go, that pull request will
+	 *  pull this task if the run queue is running at a lower
+	 *  priority.
+	 */
+	smp_rmb();
+
+	/* Need to do the rmb for every iteration */
+	if (skip)
+		return 0;
+
+	if (cpumask_any_and(&p->cpus_allowed, vec->mask) >= nr_cpu_ids)
+		return 0;
+
+	if (lowest_mask) {
+		cpumask_and(lowest_mask, &p->cpus_allowed, vec->mask);
+		cpumask_andnot(lowest_mask, lowest_mask,
+			       cpu_isolated_mask);
+		/*
+		 * We have to ensure that we have at least one bit
+		 * still set in the array, since the map could have
+		 * been concurrently emptied between the first and
+		 * second reads of vec->mask.  If we hit this
+		 * condition, simply act as though we never hit this
+		 * priority level and continue on.
+		 */
+		if (cpumask_empty(lowest_mask))
+			return 0;
+	}
+
+	return 1;
+}
+
+int cpupri_find(struct cpupri *cp, struct task_struct *p,
+		struct cpumask *lowest_mask)
+{
+	return cpupri_find_fitness(cp, p, lowest_mask, NULL);
+}
+
 /**
  * drop_nopreempt_cpus - remove a cpu from the mask if it is likely
  *			 non-preemptible
@@ -67,7 +127,7 @@ drop_nopreempt_cpus(struct cpumask *lowest_mask)
 }
 
 /**
- * cpupri_find - find the best (lowest-pri) CPU in the system
+ * cpupri_find_fitness - find the best (lowest-pri) CPU in the system
  * @cp: The cpupri context
  * @p: The task
  * @lowest_mask: A mask to fill in with selected CPUs (or NULL)
@@ -81,69 +141,44 @@ drop_nopreempt_cpus(struct cpumask *lowest_mask)
  *
  * Return: (int)bool - CPUs were found
  */
-int cpupri_find(struct cpupri *cp, struct task_struct *p,
-		struct cpumask *lowest_mask)
+int cpupri_find_fitness(struct cpupri *cp, struct task_struct *p,
+		struct cpumask *lowest_mask,
+		bool (*fitness_fn)(struct task_struct *p, int cpu))
 {
-	int idx = 0;
 	int task_pri = convert_prio(p->prio);
-	bool drop_nopreempts = task_pri <= MAX_RT_PRIO;
+	bool drop_nopreempts = task_pri > CPUPRI_NORMAL;
+	int idx, cpu;
 
 	BUG_ON(task_pri >= CPUPRI_NR_PRIORITIES);
 
 retry:
 	for (idx = 0; idx < task_pri; idx++) {
-		struct cpupri_vec *vec  = &cp->pri_to_cpu[idx];
-		int skip = 0;
 
-		if (!atomic_read(&(vec)->count))
-			skip = 1;
-		/*
-		 * When looking at the vector, we need to read the counter,
-		 * do a memory barrier, then read the mask.
-		 *
-		 * Note: This is still all racey, but we can deal with it.
-		 *  Ideally, we only want to look at masks that are set.
-		 *
-		 *  If a mask is not set, then the only thing wrong is that we
-		 *  did a little more work than necessary.
-		 *
-		 *  If we read a zero count but the mask is set, because of the
-		 *  memory barriers, that can only happen when the highest prio
-		 *  task for a run queue has left the run queue, in which case,
-		 *  it will be followed by a pull. If the task we are processing
-		 *  fails to find a proper place to go, that pull request will
-		 *  pull this task if the run queue is running at a lower
-		 *  priority.
-		 */
-		smp_rmb();
-
-		/* Need to do the rmb for every iteration */
-		if (skip)
+		if (!__cpupri_find(cp, p, lowest_mask, idx))
 			continue;
 
-		if (cpumask_any_and(&p->cpus_allowed, vec->mask) >= nr_cpu_ids)
-			continue;
+		if (!lowest_mask || !fitness_fn)
+			return 1;
 
-		if (lowest_mask) {
-			cpumask_and(lowest_mask, &p->cpus_allowed, vec->mask);
-			cpumask_andnot(lowest_mask, lowest_mask,
-				       cpu_isolated_mask);
-			if (drop_nopreempts)
-				drop_nopreempt_cpus(lowest_mask);
-			/*
-			 * We have to ensure that we have at least one bit
-			 * still set in the array, since the map could have
-			 * been concurrently emptied between the first and
-			 * second reads of vec->mask.  If we hit this
-			 * condition, simply act as though we never hit this
-			 * priority level and continue on.
-			 */
-			if (cpumask_any(lowest_mask) >= nr_cpu_ids)
-				continue;
+		if (drop_nopreempts)
+			drop_nopreempt_cpus(lowest_mask);
+
+		/* Ensure the capacity of the CPUs fit the task */
+		for_each_cpu(cpu, lowest_mask) {
+			if (!fitness_fn(p, cpu))
+				cpumask_clear_cpu(cpu, lowest_mask);
 		}
+
+		/*
+		 * If no CPU at the current priority can fit the task
+		 * continue looking
+		 */
+		if (cpumask_empty(lowest_mask))
+			continue;
 
 		return 1;
 	}
+
 	/*
 	 * If we can't find any non-preemptible cpu's, retry so we can
 	 * find the lowest priority target and avoid priority inversion.
@@ -152,6 +187,27 @@ retry:
 		drop_nopreempts = false;
 		goto retry;
 	}
+
+	/*
+	 * If we failed to find a fitting lowest_mask, kick off a new search
+	 * but without taking into account any fitness criteria this time.
+	 *
+	 * This rule favours honouring priority over fitting the task in the
+	 * correct CPU (Capacity Awareness being the only user now).
+	 * The idea is that if a higher priority task can run, then it should
+	 * run even if this ends up being on unfitting CPU.
+	 *
+	 * The cost of this trade-off is not entirely clear and will probably
+	 * be good for some workloads and bad for others.
+	 *
+	 * The main idea here is that if some CPUs were overcommitted, we try
+	 * to spread which is what the scheduler traditionally did. Sys admins
+	 * must do proper RT planning to avoid overloading the system if they
+	 * really care.
+	 */
+	if (fitness_fn)
+		return cpupri_find(cp, p, lowest_mask);
+
 	return 0;
 }
 
