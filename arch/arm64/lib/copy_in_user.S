@@ -31,45 +31,47 @@
  * Returns:
  *	x0 - bytes not copied
  */
-	.macro ldrb1 reg, ptr, val
-	uao_user_alternative 9998f, ldrb, ldtrb, \reg, \ptr, \val
+	.macro ldrb1 ptr, regB, val
+	uao_user_alternative 9998f, ldrb, ldtrb, \ptr, \regB, \val
 	.endm
 
-	.macro strb1 reg, ptr, val
-	uao_user_alternative 9998f, strb, sttrb, \reg, \ptr, \val
+	.macro strb1 ptr, regB, val
+	uao_user_alternative 9998f, strb, sttrb, \ptr, \regB, \val
 	.endm
 
-	.macro ldrh1 reg, ptr, val
-	uao_user_alternative 9997f, ldrh, ldtrh, \reg, \ptr, \val
+	.macro ldrh1 ptr, regB, val
+	uao_user_alternative 9997f, ldrh, ldtrh, \ptr, \regB, \val
 	.endm
 
-	.macro strh1 reg, ptr, val
-	uao_user_alternative 9997f, strh, sttrh, \reg, \ptr, \val
+	.macro strh1 ptr, regB, val
+	uao_user_alternative 9997f, strh, sttrh, \ptr, \regB, \val
 	.endm
 
-	.macro ldr1 reg, ptr, val
-	uao_user_alternative 9997f, ldr, ldtr, \reg, \ptr, \val
+	.macro ldr1 ptr, regB, val
+	uao_user_alternative 9997f, ldr, ldtr, \ptr, \regB, \val
 	.endm
 
-	.macro str1 reg, ptr, val
-	uao_user_alternative 9997f, str, sttr, \reg, \ptr, \val
+	.macro str1 ptr, regB, val
+	uao_user_alternative 9997f, str, sttr, \ptr, \regB, \val
 	.endm
 
-	.macro ldp1 reg1, reg2, ptr, val
-	uao_ldp 9997f, \reg1, \reg2, \ptr, \val
+	.macro ldp1 ptr, regB, regC, val
+	uao_ldp 9997f, \ptr, \regB, \regC, \val
 	.endm
 
-	.macro stp1 reg1, reg2, ptr, val
-	uao_stp 9997f, \reg1, \reg2, \ptr, \val
+	.macro stp1 ptr, regB, regC, val
+	uao_stp 9997f, \ptr, \regB, \regC, \val
 	.endm
 
 end	.req	x5
 srcin	.req	x15
 
 ENTRY(__arch_copy_in_user)
+	uaccess_enable_not_uao x3, x4, x5
 	add	end, x0, x2
 	mov	srcin, x1
 #include "copy_template.S"
+	uaccess_disable_not_uao x3, x4
 	mov	x0, #0
 	ret
 ENDPROC(__arch_copy_in_user)
@@ -83,5 +85,6 @@ USER(9998f, ldtrb tmp1w, [srcin])
 USER(9998f, sttrb tmp1w, [dst])
 	add	dst, dst, #1
 9998:	sub	x0, end, dst			// bytes not copied
+	uaccess_disable_not_uao x3, x4
 	ret
 	.previous

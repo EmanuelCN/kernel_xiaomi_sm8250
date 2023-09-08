@@ -636,7 +636,7 @@ static int pil_init_image_trusted(struct pil_desc *pil,
 		return -ENOMEM;
 	}
 
-	memcpy_toio((void __iomem *)mdata_buf, metadata, size);
+	memcpy(mdata_buf, metadata, size);
 
 	desc.args[0] = d->pas_id;
 	desc.args[1] = mdata_phys;

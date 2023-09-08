@@ -78,7 +78,6 @@ config ARM64
 	select CLONE_BACKWARDS
 	select COMMON_CLK
 	select CPU_PM if (SUSPEND || CPU_IDLE)
-	select CRC32
 	select DCACHE_WORD_ACCESS
 	select DMA_DIRECT_OPS
 	select EDAC_SUPPORT
@@ -1370,9 +1369,6 @@ config ARM64_UAO
 	  The feature is detected at runtime, the kernel will use the
 	  regular load/store instructions if the cpu does not implement the
 	  feature.
-
-config AS_HAS_ARMV8_2
-       def_bool $(cc-option,-Wa$(comma)-march=armv8.2-a)
 
 config ARM64_PMEM
 	bool "Enable support for persistent memory"
