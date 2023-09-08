@@ -25,7 +25,7 @@
  * Parameters:
  *	x0 - dest
  */
-SYM_FUNC_START_PI(clear_page)
+ENTRY(clear_page)
 	mrs	x1, dczid_el0
 	and	w1, w1, #0xf
 	mov	x2, #4
@@ -36,4 +36,4 @@ SYM_FUNC_START_PI(clear_page)
 	tst	x0, #(PAGE_SIZE - 1)
 	b.ne	1b
 	ret
-SYM_FUNC_END_PI(clear_page)
+ENDPROC(clear_page)
