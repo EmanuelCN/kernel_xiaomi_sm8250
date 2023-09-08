@@ -28,16 +28,16 @@ static DEFINE_PER_CPU(struct llist_head, lazy_list);
  */
 static bool irq_work_claim(struct irq_work *work)
 {
-	int flags, oflags, nflags;
+	unsigned long flags, oflags, nflags;
 
 	/*
 	 * Start with our best wish as a premise but only trust any
 	 * flag value after cmpxchg() result.
 	 */
-	flags = atomic_read(&work->flags) & ~IRQ_WORK_PENDING;
+	flags = work->flags & ~IRQ_WORK_PENDING;
 	for (;;) {
 		nflags = flags | IRQ_WORK_CLAIMED;
-		oflags = atomic_cmpxchg(&work->flags, flags, nflags);
+		oflags = cmpxchg(&work->flags, flags, nflags);
 		if (oflags == flags)
 			break;
 		if (oflags & IRQ_WORK_PENDING)
@@ -60,7 +60,7 @@ void __weak arch_irq_work_raise(void)
 static void __irq_work_queue_local(struct irq_work *work)
 {
 	/* If the work is "lazy", handle it from next tick if any */
-	if (atomic_read(&work->flags) & IRQ_WORK_LAZY) {
+	if (work->flags & IRQ_WORK_LAZY) {
 		if (llist_add(&work->llnode, this_cpu_ptr(&lazy_list)) &&
 		    tick_nohz_tick_stopped())
 			arch_irq_work_raise();
@@ -142,7 +142,7 @@ static void irq_work_run_list(struct llist_head *list)
 {
 	struct irq_work *work, *tmp;
 	struct llist_node *llnode;
-	int flags;
+	unsigned long flags;
 
 	BUG_ON(!irqs_disabled());
 
@@ -158,17 +158,15 @@ static void irq_work_run_list(struct llist_head *list)
 		 * to claim that work don't rely on us to handle their data
 		 * while we are in the middle of the func.
 		 */
-		flags = atomic_read(&work->flags) & ~IRQ_WORK_PENDING;
-		atomic_xchg(&work->flags, flags);
+		flags = work->flags & ~IRQ_WORK_PENDING;
+		xchg(&work->flags, flags);
 
-		lockdep_irq_work_enter(work);
 		work->func(work);
-		lockdep_irq_work_exit(work);
 		/*
 		 * Clear the BUSY bit and return to the free state if
 		 * no-one else claimed it meanwhile.
 		 */
-		(void)atomic_cmpxchg(&work->flags, flags, flags & ~IRQ_WORK_BUSY);
+		(void)cmpxchg(&work->flags, flags, flags & ~IRQ_WORK_BUSY);
 	}
 }
 
@@ -200,7 +198,7 @@ void irq_work_sync(struct irq_work *work)
 {
 	lockdep_assert_irqs_enabled();
 
-	while (atomic_read(&work->flags) & IRQ_WORK_BUSY)
+	while (work->flags & IRQ_WORK_BUSY)
 		cpu_relax();
 }
 EXPORT_SYMBOL_GPL(irq_work_sync);
