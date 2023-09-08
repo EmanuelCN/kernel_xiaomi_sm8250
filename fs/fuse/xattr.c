@@ -25,15 +25,15 @@ int fuse_setxattr(struct inode *inode, const char *name, const void *value,
 	memset(&inarg, 0, sizeof(inarg));
 	inarg.size = size;
 	inarg.flags = flags;
-	args.opcode = FUSE_SETXATTR;
-	args.nodeid = get_node_id(inode);
-	args.in_numargs = 3;
-	args.in_args[0].size = sizeof(inarg);
-	args.in_args[0].value = &inarg;
-	args.in_args[1].size = strlen(name) + 1;
-	args.in_args[1].value = name;
-	args.in_args[2].size = size;
-	args.in_args[2].value = value;
+	args.in.h.opcode = FUSE_SETXATTR;
+	args.in.h.nodeid = get_node_id(inode);
+	args.in.numargs = 3;
+	args.in.args[0].size = sizeof(inarg);
+	args.in.args[0].value = &inarg;
+	args.in.args[1].size = strlen(name) + 1;
+	args.in.args[1].value = name;
+	args.in.args[2].size = size;
+	args.in.args[2].value = value;
 	err = fuse_simple_request(fc, &args);
 	if (err == -ENOSYS) {
 		fc->no_setxattr = 1;
@@ -60,22 +60,22 @@ ssize_t fuse_getxattr(struct inode *inode, const char *name, void *value,
 
 	memset(&inarg, 0, sizeof(inarg));
 	inarg.size = size;
-	args.opcode = FUSE_GETXATTR;
-	args.nodeid = get_node_id(inode);
-	args.in_numargs = 2;
-	args.in_args[0].size = sizeof(inarg);
-	args.in_args[0].value = &inarg;
-	args.in_args[1].size = strlen(name) + 1;
-	args.in_args[1].value = name;
+	args.in.h.opcode = FUSE_GETXATTR;
+	args.in.h.nodeid = get_node_id(inode);
+	args.in.numargs = 2;
+	args.in.args[0].size = sizeof(inarg);
+	args.in.args[0].value = &inarg;
+	args.in.args[1].size = strlen(name) + 1;
+	args.in.args[1].value = name;
 	/* This is really two different operations rolled into one */
-	args.out_numargs = 1;
+	args.out.numargs = 1;
 	if (size) {
-		args.out_argvar = true;
-		args.out_args[0].size = size;
-		args.out_args[0].value = value;
+		args.out.argvar = 1;
+		args.out.args[0].size = size;
+		args.out.args[0].value = value;
 	} else {
-		args.out_args[0].size = sizeof(outarg);
-		args.out_args[0].value = &outarg;
+		args.out.args[0].size = sizeof(outarg);
+		args.out.args[0].value = &outarg;
 	}
 	ret = fuse_simple_request(fc, &args);
 	if (!ret && !size)
@@ -113,6 +113,9 @@ ssize_t fuse_listxattr(struct dentry *entry, char *list, size_t size)
 	struct fuse_getxattr_out outarg;
 	ssize_t ret;
 
+	if (fuse_is_bad(inode))
+		return -EIO;
+
 	if (!fuse_allow_current_process(fc))
 		return -EACCES;
 
@@ -121,20 +124,20 @@ ssize_t fuse_listxattr(struct dentry *entry, char *list, size_t size)
 
 	memset(&inarg, 0, sizeof(inarg));
 	inarg.size = size;
-	args.opcode = FUSE_LISTXATTR;
-	args.nodeid = get_node_id(inode);
-	args.in_numargs = 1;
-	args.in_args[0].size = sizeof(inarg);
-	args.in_args[0].value = &inarg;
+	args.in.h.opcode = FUSE_LISTXATTR;
+	args.in.h.nodeid = get_node_id(inode);
+	args.in.numargs = 1;
+	args.in.args[0].size = sizeof(inarg);
+	args.in.args[0].value = &inarg;
 	/* This is really two different operations rolled into one */
-	args.out_numargs = 1;
+	args.out.numargs = 1;
 	if (size) {
-		args.out_argvar = true;
-		args.out_args[0].size = size;
-		args.out_args[0].value = list;
+		args.out.argvar = 1;
+		args.out.args[0].size = size;
+		args.out.args[0].value = list;
 	} else {
-		args.out_args[0].size = sizeof(outarg);
-		args.out_args[0].value = &outarg;
+		args.out.args[0].size = sizeof(outarg);
+		args.out.args[0].value = &outarg;
 	}
 	ret = fuse_simple_request(fc, &args);
 	if (!ret && !size)
@@ -157,11 +160,11 @@ int fuse_removexattr(struct inode *inode, const char *name)
 	if (fc->no_removexattr)
 		return -EOPNOTSUPP;
 
-	args.opcode = FUSE_REMOVEXATTR;
-	args.nodeid = get_node_id(inode);
-	args.in_numargs = 1;
-	args.in_args[0].size = strlen(name) + 1;
-	args.in_args[0].value = name;
+	args.in.h.opcode = FUSE_REMOVEXATTR;
+	args.in.h.nodeid = get_node_id(inode);
+	args.in.numargs = 1;
+	args.in.args[0].size = strlen(name) + 1;
+	args.in.args[0].value = name;
 	err = fuse_simple_request(fc, &args);
 	if (err == -ENOSYS) {
 		fc->no_removexattr = 1;
@@ -178,6 +181,9 @@ static int fuse_xattr_get(const struct xattr_handler *handler,
 			 struct dentry *dentry, struct inode *inode,
 			 const char *name, void *value, size_t size)
 {
+	if (fuse_is_bad(inode))
+		return -EIO;
+
 	return fuse_getxattr(inode, name, value, size);
 }
 
@@ -186,6 +192,9 @@ static int fuse_xattr_set(const struct xattr_handler *handler,
 			  const char *name, const void *value, size_t size,
 			  int flags)
 {
+	if (fuse_is_bad(inode))
+		return -EIO;
+
 	if (!value)
 		return fuse_removexattr(inode, name);
 
