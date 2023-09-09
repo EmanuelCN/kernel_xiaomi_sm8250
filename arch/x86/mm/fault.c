@@ -273,7 +273,7 @@ static inline pmd_t *vmalloc_sync_one(pgd_t *pgd, unsigned long address)
 	return pmd_k;
 }
 
-static void vmalloc_sync(void)
+void vmalloc_sync_all(void)
 {
 	unsigned long address;
 
@@ -298,16 +298,6 @@ static void vmalloc_sync(void)
 		}
 		spin_unlock(&pgd_lock);
 	}
-}
-
-void vmalloc_sync_mappings(void)
-{
-	vmalloc_sync();
-}
-
-void vmalloc_sync_unmappings(void)
-{
-	vmalloc_sync();
 }
 
 /*
@@ -412,21 +402,9 @@ out:
 
 #else /* CONFIG_X86_64: */
 
-void vmalloc_sync_mappings(void)
+void vmalloc_sync_all(void)
 {
-	/*
-	 * 64-bit mappings might allocate new p4d/pud pages
-	 * that need to be propagated to all tasks' PGDs.
-	 */
 	sync_global_pgds(VMALLOC_START & PGDIR_MASK, VMALLOC_END);
-}
-
-void vmalloc_sync_unmappings(void)
-{
-	/*
-	 * Unmappings never allocate or free p4d/pud pages.
-	 * No work is required here.
-	 */
 }
 
 /*
