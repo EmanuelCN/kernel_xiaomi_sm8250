@@ -9851,12 +9851,12 @@ static int idle_cpu_without(int cpu, struct task_struct *p)
 	 * impact of p on cpu must be used instead. The updated nr_running
 	 * be computed and tested before calling idle_cpu_without().
 	 */
-
+#if SCHED_FEAT_TTWU_QUEUE
 #ifdef CONFIG_SMP
 	if (!llist_empty(&rq->wake_list))
 		return 0;
 #endif
-
+#endif
 	return 1;
 }
 
