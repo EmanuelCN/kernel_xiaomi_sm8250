@@ -6,22 +6,6 @@
 	qcom,msm-id = <356 0x20000>;
 };
 
-&CPU4 {
-	dynamic-power-coefficient = <340>;
-};
-
-&CPU5 {
-	dynamic-power-coefficient = <340>;
-};
-
-&CPU6 {
-	dynamic-power-coefficient = <340>;
-};
-
-&CPU7 {
-	dynamic-power-coefficient = <409>;
-};
-
 &clock_camcc {
 	compatible = "qcom,camcc-kona-v2", "syscon";
 };
