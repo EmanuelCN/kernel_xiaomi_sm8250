@@ -7545,7 +7545,7 @@ check_prev:
 	 * This check is at the end because there's no way to know which cluster
 	 * the best CPU will belong to until the final best CPU is found.
 	 */
-	if (best_cpu != prev_cpu && cpumask_test_cpu(prev_cpu, &allowed) &&
+	if (cpumask_test_cpu(prev_cpu, &candidates) &&
 	    cpu_util[prev_cpu] == cpu_util[best_cpu] &&
 	    exit_lat[prev_cpu] == exit_lat[best_cpu] &&
 	    energy[prev_cpu] == energy[best_cpu] &&
