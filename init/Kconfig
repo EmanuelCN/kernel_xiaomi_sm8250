@@ -807,6 +807,15 @@ config PELT_UTIL_HALFLIFE_8
 
 endchoice
 
+config PELT_COMPATIBILITY_LAYER
+	bool "Compatibility layer for Qualcomm performance HALs"
+	depends on !SCHED_WALT
+	help
+	  This option enables a non-operational compatibility layer for use in
+	  lieu of Window Assisted Load Tracking on systems which expect it.
+
+	  If unsure, say N.
+
 endmenu # FAIR Scheduler tunables"
 
 #
