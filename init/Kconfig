@@ -1415,6 +1415,7 @@ endchoice
 
 config HAVE_LD_DEAD_CODE_DATA_ELIMINATION
 	bool
+	default y
 	help
 	  This requires that the arch annotates or otherwise protects
 	  its external entry points from being discarded. Linker scripts
@@ -1426,10 +1427,11 @@ config HAVE_LD_DEAD_CODE_DATA_ELIMINATION
 config LD_DEAD_CODE_DATA_ELIMINATION
 	bool "Dead code and data elimination (EXPERIMENTAL)"
 	depends on HAVE_LD_DEAD_CODE_DATA_ELIMINATION
-	depends on EXPERT
-	depends on !(FUNCTION_TRACER && CC_IS_GCC && GCC_VERSION < 40800)
-	depends on $(cc-option,-ffunction-sections -fdata-sections)
-	depends on $(ld-option,--gc-sections)
+	default y
+#	depends on EXPERT
+#	depends on !(FUNCTION_TRACER && CC_IS_GCC && GCC_VERSION < 40800)
+#	depends on $(cc-option,-ffunction-sections -fdata-sections)
+#	depends on $(ld-option,--gc-sections)
 	help
 	  Enable this if you want to do dead code and data elimination with
 	  the linker by compiling with -ffunction-sections -fdata-sections,
