@@ -2421,7 +2421,7 @@ cppflags-$(CONFIG_FEATURE_PKTLOG) +=     -DFEATURE_PKTLOG
 
 ifeq ($(CONFIG_WLAN_NAPI), y)
 cppflags-y += -DFEATURE_NAPI
-cppflags-y += -DHIF_IRQ_AFFINITY
+#cppflags-y += -DHIF_IRQ_AFFINITY
 ifeq ($(CONFIG_WLAN_NAPI_DEBUG), y)
 cppflags-y += -DFEATURE_NAPI_DEBUG
 endif
