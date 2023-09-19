@@ -246,7 +246,6 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_OS_TYPE_ANDROID=6 \
 		-DPTT_SOCK_SVC_ENABLE \
 		-Wall\
-		-Werror\
 		-D__linux__
 
 ifeq (y, $(filter y,$(CONFIG_BOARD_LMI) $(CONFIG_BOARD_MUNCH)))
