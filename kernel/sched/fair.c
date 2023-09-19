@@ -787,7 +787,6 @@ static u64 sched_vslice(struct cfs_rq *cfs_rq, struct sched_entity *se)
 #include "pelt.h"
 #ifdef CONFIG_SMP
 
-static int select_idle_sibling(struct task_struct *p, int prev_cpu, int cpu);
 static unsigned long task_h_load(struct task_struct *p);
 static unsigned long capacity_of(int cpu);
 
@@ -6042,155 +6041,6 @@ static unsigned long cpu_avg_load_per_task(int cpu)
 	return 0;
 }
 
-static void record_wakee(struct task_struct *p)
-{
-	/*
-	 * Only decay a single time; tasks that have less then 1 wakeup per
-	 * jiffy will not have built up many flips.
-	 */
-	if (time_after(jiffies, current->wakee_flip_decay_ts + HZ)) {
-		current->wakee_flips >>= 1;
-		current->wakee_flip_decay_ts = jiffies;
-	}
-
-	if (current->last_wakee != p) {
-		current->last_wakee = p;
-		current->wakee_flips++;
-	}
-}
-
-/*
- * Detect M:N waker/wakee relationships via a switching-frequency heuristic.
- *
- * A waker of many should wake a different task than the one last awakened
- * at a frequency roughly N times higher than one of its wakees.
- *
- * In order to determine whether we should let the load spread vs consolidating
- * to shared cache, we look for a minimum 'flip' frequency of llc_size in one
- * partner, and a factor of lls_size higher frequency in the other.
- *
- * With both conditions met, we can be relatively sure that the relationship is
- * non-monogamous, with partner count exceeding socket size.
- *
- * Waker/wakee being client/server, worker/dispatcher, interrupt source or
- * whatever is irrelevant, spread criteria is apparent partner count exceeds
- * socket size.
- */
-static int wake_wide(struct task_struct *p, int sibling_count_hint)
-{
-	unsigned int master = current->wakee_flips;
-	unsigned int slave = p->wakee_flips;
-	int llc_size = this_cpu_read(sd_llc_size);
-
-	if (sibling_count_hint >= llc_size)
-		return 1;
-
-	if (master < slave)
-		swap(master, slave);
-	if (slave < llc_size || master < slave * llc_size)
-		return 0;
-	return 1;
-}
-
-/*
- * The purpose of wake_affine() is to quickly determine on which CPU we can run
- * soonest. For the purpose of speed we only consider the waking and previous
- * CPU.
- *
- * wake_affine_idle() - only considers 'now', it check if the waking CPU is
- *			cache-affine and is (or	will be) idle.
- *
- * wake_affine_weight() - considers the weight to reflect the average
- *			  scheduling latency of the CPUs. This seems to work
- *			  for the overloaded case.
- */
-static int
-wake_affine_idle(int this_cpu, int prev_cpu, int sync)
-{
-	/*
-	 * If this_cpu is idle, it implies the wakeup is from interrupt
-	 * context. Only allow the move if cache is shared. Otherwise an
-	 * interrupt intensive workload could force all tasks onto one
-	 * node depending on the IO topology or IRQ affinity settings.
-	 *
-	 * If the prev_cpu is idle and cache affine then avoid a migration.
-	 * There is no guarantee that the cache hot data from an interrupt
-	 * is more important than cache hot data on the prev_cpu and from
-	 * a cpufreq perspective, it's better to have higher utilisation
-	 * on one CPU.
-	 */
-	if (available_idle_cpu(this_cpu) && cpus_share_cache(this_cpu, prev_cpu))
-		return available_idle_cpu(prev_cpu) ? prev_cpu : this_cpu;
-
-	if (sync && cpu_rq(this_cpu)->nr_running == 1)
-		return this_cpu;
-
-	return nr_cpumask_bits;
-}
-
-static int
-wake_affine_weight(struct sched_domain *sd, struct task_struct *p,
-		   int this_cpu, int prev_cpu, int sync)
-{
-	s64 this_eff_load, prev_eff_load;
-	unsigned long task_load;
-
-	this_eff_load = target_load(this_cpu, sd->wake_idx);
-
-	if (sync) {
-		unsigned long current_load = task_h_load(current);
-
-		if (current_load > this_eff_load)
-			return this_cpu;
-
-		this_eff_load -= current_load;
-	}
-
-	task_load = task_h_load(p);
-
-	this_eff_load += task_load;
-	if (sched_feat(WA_BIAS))
-		this_eff_load *= 100;
-	this_eff_load *= capacity_of(prev_cpu);
-
-	prev_eff_load = source_load(prev_cpu, sd->wake_idx);
-	prev_eff_load -= task_load;
-	if (sched_feat(WA_BIAS))
-		prev_eff_load *= 100 + (sd->imbalance_pct - 100) / 2;
-	prev_eff_load *= capacity_of(this_cpu);
-
-	/*
-	 * If sync, adjust the weight of prev_eff_load such that if
-	 * prev_eff == this_eff that select_idle_sibling() will consider
-	 * stacking the wakee on top of the waker if no other CPU is
-	 * idle.
-	 */
-	if (sync)
-		prev_eff_load += 1;
-
-	return this_eff_load < prev_eff_load ? this_cpu : nr_cpumask_bits;
-}
-
-static int wake_affine(struct sched_domain *sd, struct task_struct *p,
-		       int this_cpu, int prev_cpu, int sync)
-{
-	int target = nr_cpumask_bits;
-
-	if (sched_feat(WA_IDLE))
-		target = wake_affine_idle(this_cpu, prev_cpu, sync);
-
-	if (sched_feat(WA_WEIGHT) && target == nr_cpumask_bits)
-		target = wake_affine_weight(sd, p, this_cpu, prev_cpu, sync);
-
-	schedstat_inc(p->se.statistics.nr_wakeups_affine_attempts);
-	if (target == nr_cpumask_bits)
-		return prev_cpu;
-
-	schedstat_inc(sd->ttwu_move_affine);
-	schedstat_inc(p->se.statistics.nr_wakeups_affine);
-	return target;
-}
-
 #ifdef CONFIG_SCHED_TUNE
 struct reciprocal_value schedtune_spc_rdiv;
 
@@ -6841,14 +6691,6 @@ next:
 		target = best_idle_cpu;
 
 	return target;
-}
-
-static int select_idle_sibling(struct task_struct *p, int prev, int target)
-{
-	if (!sysctl_sched_cstate_aware)
-		return __select_idle_sibling(p, prev, target);
-
-	return select_idle_sibling_cstate_aware(p, prev, target);
 }
 
 /*
@@ -7571,10 +7413,7 @@ static int
 select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_flags,
 		    int sibling_count_hint)
 {
-	struct sched_domain *tmp, *sd = NULL;
 	int cpu = smp_processor_id();
-	int new_cpu = prev_cpu;
-	int want_affine = 0;
 	int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
         int _wake_cap = wake_cap(p, cpu, prev_cpu);
         int _cpus_allowed = cpumask_test_cpu(cpu, &p->cpus_allowed);
