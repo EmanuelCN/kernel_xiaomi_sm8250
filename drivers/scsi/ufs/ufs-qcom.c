@@ -2365,15 +2365,30 @@ static void ufs_qcom_dump_dbg_regs(struct ufs_hba *hba, bool no_sleep)
 		return;
 
 	/* sleep a bit intermittently as we are dumping too much data */
-	udelay(1000);
+	if (!oops_in_progress)
+		usleep_range(1000, 1100);
+	else
+		udelay(1000);
 	ufs_qcom_testbus_read(hba);
-	udelay(1000);
+	if (!oops_in_progress)
+		usleep_range(1000, 1100);
+	else
+		udelay(1000);
 	ufs_qcom_print_unipro_testbus(hba);
-	udelay(1000);
+	if (!oops_in_progress)
+		usleep_range(1000, 1100);
+	else
+		udelay(1000);
 	ufs_qcom_print_utp_hci_testbus(hba);
-	udelay(1000);
+	if (!oops_in_progress)
+		usleep_range(1000, 1100);
+	else
+		udelay(1000);
 	ufs_qcom_phy_dbg_register_dump(phy);
-	udelay(1000);
+	if (!oops_in_progress)
+		usleep_range(1000, 1100);
+	else
+		udelay(1000);
 }
 
 static u32 ufs_qcom_get_user_cap_mode(struct ufs_hba *hba)
