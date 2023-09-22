@@ -603,7 +603,7 @@ struct lpm_cluster *parse_cluster(struct device_node *node,
 	INIT_LIST_HEAD(&c->child);
 	INIT_LIST_HEAD(&c->cpu);
 	c->parent = parent;
-	raw_spin_lock_init(&c->sync_lock);
+	spin_lock_init(&c->sync_lock);
 	c->min_child_level = NR_LPM_LEVELS;
 
 	for_each_child_of_node(node, n) {
