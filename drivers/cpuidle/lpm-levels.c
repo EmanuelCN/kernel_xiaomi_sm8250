@@ -40,6 +40,7 @@
 #include "lpm-levels.h"
 #include <trace/events/power.h>
 #include "../clk/clk.h"
+#include "../../kernel/sched/sched.h"
 #define CREATE_TRACE_POINTS
 #include <trace/events/trace_msm_low_power.h>
 
@@ -1294,7 +1295,7 @@ static int psci_enter_idle(struct cpuidle_device *dev, struct lpm_cpu *cpu,
 	 * idx = 0 is the default LPM state
 	 */
 
-	if (!idx) {
+	if (!idx || is_reserved(dev->cpu)) {
 		if (cpu->bias)
 			biastimer_start(cpu->bias);
 		stop_critical_timings();
