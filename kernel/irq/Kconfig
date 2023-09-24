@@ -161,7 +161,7 @@ config IRQ_SBALANCE
 if IRQ_SBALANCE
 config IRQ_SBALANCE_POLL_MSEC
 	int "Polling interval in milliseconds"
-	default 3000
+	default 20000
 	help
 	  Perform IRQ balancing every X milliseconds.
 
