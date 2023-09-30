@@ -64,11 +64,11 @@
 				qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
 				qcom,mdss-mdp-transfer-time-us = <14000>;
 				qcom,mdss-dsi-on-command = [
-					/* Sleep Out, Wait 10 ms */
-					05 01 00 00 0A 00 01 11
+					/* 1 Sleep Out */
+					05 01 00 00 0A 00 02 11 00            /* Sleep Out */
 					/* 3 Common Setting */
 					/* 3.1 TE(Vsync) On/Off */
-					15 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
+					39 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
 					/* DSC Setting */
 					39 01 00 00 00 00 02 9D 01            /* Compression Enable */
 					39 01 00 00 00 00 81 9E               /* PPS Setting */
@@ -147,9 +147,9 @@
 					39 01 00 00 00 00 02 53 20
 					39 01 00 00 00 00 03 51 00 00             /* Write Display Brightness */
 					/* 5 Display On */
-					05 01 00 00 00 00 01 29
+					05 01 00 00 00 00 02 29 00
 					/* 60hz Frequency Select*/
-					15 01 00 00 00 00 02 60 00];
+					39 01 00 00 00 00 02 60 00];
 				qcom,mdss-dsi-off-command = [
 					05 01 00 00 14 00 02 28 00
 					/* Default Frequency Setting */
@@ -212,11 +212,11 @@
 				qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
 				qcom,mdss-mdp-transfer-time-us = <7000>;
 				qcom,mdss-dsi-on-command = [
-					/* Sleep Out, Wait 10 ms */
-					05 01 00 00 0A 00 01 11
+					/* 1 Sleep Out */
+					05 01 00 00 0A 00 02 11 00            /* Sleep Out */
 					/* 3 Common Setting */
 					/* 3.1 TE(Vsync) On/Off */
-					15 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
+					39 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
 					/* DSC Setting */
 					39 01 00 00 00 00 02 9D 01            /* Compression Enable */
 					39 01 00 00 00 00 81 9E               /* PPS Setting */
@@ -295,9 +295,9 @@
 					39 00 00 00 00 00 02 53 20
 					39 01 00 00 00 00 03 51 00 00           /* Write Display Brightness */
 					/* 5 Display On */
-					05 01 00 00 00 00 01 29
+					05 01 00 00 00 00 02 29 00
 					/* 120hz Frequency Select*/
-					15 01 00 00 00 00 02 60 10];
+					39 01 00 00 00 00 02 60 10];
 				qcom,mdss-dsi-off-command = [
 					05 01 00 00 14 00 02 28 00
 					/* Default Frequency Setting */
@@ -351,8 +351,8 @@
 	mi,mdss-dsi-panel-hbm-off-51-index = <1>;
 	mi,esd-err-irq-gpio = <&tlmm 51 0x2001>;
 	mi,mdss-panel-on-dimming-delay = <120>;
-	// mi,mdss-dsi-pan-enable-smart-fps;
-	// mi,mdss-dsi-smart-fps-max_framerate = <120>;
+	mi,mdss-dsi-pan-enable-smart-fps;
+	mi,mdss-dsi-smart-fps-max_framerate = <120>;
 	mi,mdss-dsi-panel-hbm-brightness = <1>;
 	mi,mdss-dsi-panel-dc-threshold = <440>;
 	mi,mdss-dsi-panel-max-brightness-clone = <8191>;
