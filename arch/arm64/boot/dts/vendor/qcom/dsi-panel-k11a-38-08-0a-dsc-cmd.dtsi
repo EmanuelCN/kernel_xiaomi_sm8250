@@ -12,7 +12,7 @@
 		qcom,dsi-ctrl-num = <0>;
 		qcom,dsi-phy-num = <0>;
 
-		qcom,mdss-dsi-traffic-mode = "burst_mode";
+		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
 		qcom,mdss-dsi-lane-map = "lane_map_0123";
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
@@ -22,7 +22,7 @@
 		qcom,mdss-dsi-lane-3-state;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
-		qcom,mdss-dsi-reset-sequence = <0 12>, <1 10>;
+		qcom,mdss-dsi-reset-sequence = <0 12>, <1 15>;
 		qcom,mdss-dsi-reset-powerdown-delay = <10>;
 		qcom,mdss-pan-physical-width-dimension = <70>;
 		qcom,mdss-pan-physical-height-dimension = <155>;
@@ -42,6 +42,9 @@
 		qcom,mdss-dsi-panel-blackness-level = <3230>;
 
 		qcom,bl-update-flag = "delay_until_first_frame";
+
+		qcom,mdss-dsi-t-clk-post = <0x1F>;
+		qcom,mdss-dsi-t-clk-pre = <0x1A>;
 
 		qcom,mdss-dsi-display-timings {
 			timing@0{
@@ -196,34 +199,25 @@
 				qcom,mdss-dsi-panel-framerate = <120>;
 				qcom,mdss-dsi-panel-width = <1080>;
 				qcom,mdss-dsi-panel-height = <2400>;
-				qcom,mdss-dsi-h-front-porch = <16>;
-				qcom,mdss-dsi-h-back-porch = <8>;
-				qcom,mdss-dsi-h-pulse-width = <8>;
+				qcom,mdss-dsi-h-front-porch = <92>;
 				qcom,mdss-dsi-h-sync-skew = <0>;
-				qcom,mdss-dsi-v-back-porch = <8>;
-				qcom,mdss-dsi-v-front-porch = <4>;
-				qcom,mdss-dsi-v-pulse-width = <4>;
+				qcom,mdss-dsi-h-back-porch = <92>;
+				qcom,mdss-dsi-h-pulse-width = <92>;
 				qcom,mdss-dsi-h-sync-pulse = <0>;
-				qcom,mdss-dsi-h-left-border = <0>;
-				qcom,mdss-dsi-h-right-border = <0>;
-				qcom,mdss-dsi-v-top-border = <0>;
-				qcom,mdss-dsi-v-bottom-border = <0>;
-				qcom,mdss-dsi-panel-clockrate = <1100000000>;
-				qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
-				qcom,mdss-mdp-transfer-time-us = <7000>;
+				qcom,mdss-dsi-v-back-porch = <12>;
+				qcom,mdss-dsi-v-front-porch = <4>;
+				qcom,mdss-dsi-v-pulse-width = <8>;
+				qcom,mdss-dsi-panel-clockrate = <1110000000>;
+                                qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
+				qcom,mdss-mdp-transfer-time-us = <7533>;
 				qcom,mdss-dsi-on-command = [
-					/* 1 Sleep Out */
-					05 01 00 00 0A 00 02 11 00            /* Sleep Out */
-					/* 3 Common Setting */
-					/* 3.1 TE(Vsync) On/Off */
-					39 01 00 00 00 00 02 35 00            /* TE On(Vsync) */
 					/* DSC Setting */
-					39 01 00 00 00 00 02 9D 01            /* Compression Enable */
-					39 01 00 00 00 00 81 9E               /* PPS Setting */
+					39 01 00 00 00 00 02 9D 01				/* Compression Enable */
+					39 01 00 00 00 00 81 9E					/* PPS Setting */
 					11 00 00 89 30 80 09 60
-					04 38 00 08 02 1C 02 1C
-					02 00 02 0E 00 20 00 BB
-					00 07 00 0C 0D B7 0C B7
+					04 38 00 1E 02 1C 02 1C
+					02 00 02 0E 00 20 02 E3
+					00 07 00 0C 03 50 03 64
 					18 00 10 F0 03 0C 20 00
 					06 0B 0B 33 0E 1C 2A 38
 					46 54 62 69 70 77 79 7B
@@ -236,15 +230,66 @@
 					00 00 00 00 00 00 00 00
 					00 00 00 00 00 00 00 00
 					00 00 00 00 00 00 00 00
-					/* 3.2 CASET/PASET Setting */
-					39 00 00 00 00 00 05 2A 00 00 04 37     /* CASET */
-					39 01 00 00 00 00 05 2B 00 00 09 5F     /* PASET */
-					/* 3.3 11Bit Dimming Setting */
+					/* Sleep Out, Wait 10 ms */
+					05 01 00 00 0A 00 01 11
+					/* Set Dimming frames to 8 */
 					39 01 00 00 00 00 03 F0 5A 5A
-					39 00 00 00 00 00 02 B0 01            /* Global para */
-					39 01 00 00 00 00 02 B7 4F            /* 11Bit Dimming On*/
+					15 01 00 00 00 00 02 B0 06
+					15 01 00 00 00 00 02 B7 08
+					/* VREG 6.4V */
+					39 00 00 00 00 00 04 B0 00 31 F4
+					39 00 00 00 00 00 06 F4 13 13 13 13 13
+					/* Delete Toggle */
+					39 00 00 00 00 00 04 B0 00 58 94
+					39 00 00 00 00 00 05 94 0C 60 0C 60
+					/* VLIN1 7.9V */
+					39 00 00 00 00 00 04 B0 00 12 B1
+					39 00 00 00 00 00 02 B1 08
+					/* VGH 7.4V */
+					39 00 00 00 00 00 04 B0 00 0E F4
+					39 00 00 00 00 00 06 F4 18 18 18 18 18
+					/* TE on */
+					15 01 00 00 00 00 02 35 00
+					/* MIC Setting */
+					39 01 00 00 00 00 08 
+					DF 00 00 00 01 95 80 0C
 					39 01 00 00 00 00 03 F0 A5 A5
-					/* 3.4 Err FG Setting*/
+					/* Vsync Setting */
+					39 01 00 00 00 00 03 F0 5A 5A
+					15 01 00 00 00 00 02 B0 01
+					15 01 00 00 00 00 02 E6 01
+					39 01 00 00 00 00 03 F0 A5 A5
+					/* SAP Setting */
+					39 01 00 00 00 00 03 F0 5A 5A
+					15 01 00 00 00 00 02 B0 03
+					39 01 00 00 00 00 03 D4 10 10
+					15 01 00 00 00 00 02 F7 03
+					39 01 00 00 00 00 03 F0 A5 A5
+					/* FFC MIPI Clock Setting */
+					39 01 00 00 00 00 03 F0 5A 5A
+					39 01 00 00 00 00 03 FC 5A 5A
+					15 01 00 00 00 00 02 E9 10
+					15 00 00 00 00 00 02 B0 16
+					39 00 00 00 00 00 03 D1 2E 1E	/* HFP/RR Setting */
+					15 01 00 00 00 00 02 60 10		/* 120HZ Tranzition */
+					15 00 00 00 00 00 02 F7 0F		/* Panel Update */
+					39 01 00 00 00 00 03 F0 A5 A5
+					39 01 00 00 00 00 03 FC A5 A5
+					/* CASET/PASET Setting */
+					39 01 00 00 00 00 05 2A 00 00 04 37
+					39 01 00 00 00 00 05 2B 00 00 09 5F
+					/* Sync Setting */
+					39 01 00 00 00 00 03 F0 5A 5A
+					15 00 00 00 00 00 02 B0 0B
+					39 00 00 00 00 00 03 D8 59 70				 	// 0x59 0x70 : 120/60 Hz
+					15 00 00 00 00 00 02 F7 0F
+					39 01 00 00 00 00 03 F0 A5 A5
+					/* VREG 6.8V */
+					39 01 00 00 00 00 03 F0 5A 5A
+					39 00 00 00 00 00 04 B0 00 31 F4
+					39 00 00 00 00 00 06 F4 17 17 17 17 17
+					39 01 00 00 00 00 03 F0 A5 A5
+					/* FG Setting */
 					39 01 00 00 00 00 03 F0 5A 5A
 					39 00 00 00 00 00 02 B0 02
 					39 00 00 00 00 00 05 EC 00 C0 C3 43
@@ -253,83 +298,62 @@
 					39 00 00 00 00 00 02 B0 06
 					39 01 00 00 00 00 02 E4 D0
 					39 01 00 00 00 00 03 F0 A5 A5
-					/* 3.5 Ripple improvement Setting*/
+					/* PWM Settings */
 					39 01 00 00 00 00 03 F0 5A 5A
-					39 00 00 00 00 00 02 B0 36
-					39 00 00 00 00 00 02 D3 0F
-					39 01 00 00 00 00 02 F7 03
+					39 01 00 00 00 00 03 B0 28 F2
+					39 01 00 00 00 00 02 F2 CC
+					39 01 00 00 00 00 04 B0 01 F2 65
+					39 01 00 00 00 00 03 65 01 C4
+					39 01 00 00 00 00 04 B0 01 D2 65
+					39 01 00 00 00 00 03 65 01 C4
+					39 01 00 00 00 00 04 B0 02 33 65
+					39 01 00 00 00 00 04 65 01 02 22
+					39 01 00 00 00 00 04 B0 02 38 65
+					39 01 00 00 00 00 05 65 01 00 01 00
+					39 01 00 00 00 00 04 B0 00 28 F2
+					39 01 00 00 00 00 02 F2 C4
 					39 01 00 00 00 00 03 F0 A5 A5
-					/* 3.6 OFC (MIPI 1100Mbps/Lane, OSC 108.5Mhz)*/
-					39 01 00 00 00 00 03 F0 5A 5A
-					39 01 00 00 00 00 03 FC 5A 5A
-					39 00 00 00 00 00 02 B0 01
-					39 00 00 00 00 00 04 E4 A6 75 A3
-					39 01 00 00 00 00 0F E9 11 75 A6 75 A3 8D 06 20 8C A2 4E 00 32 32
-					39 01 00 00 00 00 03 FC A5 A5
-					39 01 00 00 00 00 03 F0 A5 A5
-					/* tsp_vsync tsp_hsync*/
-					39 01 00 00 00 00 03 F0 5A 5A
-					39 00 00 00 00 00 04 DF 83 00 10
-					39 00 00 00 00 00 02 B0 01
-					39 01 00 00 00 00 02 E6 01
-					39 01 00 00 00 00 03 F0 A5 A5
-					/* flicker */
-					39 00 00 00 00 00 03 F0 5A 5A
-					39 00 00 00 00 00 02 B0 08
-					39 00 00 00 00 00 02 D4 05
-					39 01 00 00 00 00 03 F0 A5 A5
-					/* 3.7 Hporch Setting */
-					39 01 00 00 00 00 03 F0 5A 5A
-					39 01 00 00 00 00 03 FC 5A 5A
-					39 00 00 00 00 00 02 B0 16
-					39 01 00 00 00 00 02 D1 2E
-					39 01 00 00 00 00 03 FC A5 A5
-					39 01 00 00 5A 00 03 F0 A5 A5
-					/* Dimming Setting*/
-					39 01 00 00 00 00 03 F0 5A 5A
-					39 00 00 00 00 00 02 B0 06
-					39 00 00 00 00 00 02 B7 10              /* Dimming Speed Setting : 0x10 : 16Frames*/
-					39 00 00 00 00 00 02 B0 05
-					39 01 00 00 00 00 02 B7 93              /* 0x93 : ELVSS DIM ON */
-					39 01 00 00 00 00 03 F0 A5 A5
-					39 00 00 00 00 00 02 53 20
-					39 01 00 00 00 00 03 51 00 00           /* Write Display Brightness */
-					/* 5 Display On */
-					05 01 00 00 00 00 02 29 00
-					/* 120hz Frequency Select*/
-					39 01 00 00 00 00 02 60 10];
+					/* Brightness Setting */
+					15 01 00 00 6E 00 02 53 28
+					05 01 00 00 00 00 01 29
+				];
 				qcom,mdss-dsi-off-command = [
-					05 01 00 00 14 00 02 28 00
-					/* Default Frequency Setting */
-					39 01 00 00 00 00 02 53 20
-					05 01 00 00 78 00 02 10 00];
+					05 01 00 00 20 00 01 28       /* display off */
+					05 01 00 00 78 00 01 10       /* sleep in */
+				];
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 				qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
 				qcom,mdss-dsi-timing-switch-command = [
-					39 00 00 00 00 00 02 60 10
-					39 00 00 00 00 00 03 F0 5A 5A
-					39 00 00 00 00 00 03 FC 5A 5A
-					39 00 00 00 00 00 02 B0 16
-					39 00 00 00 00 00 02 D1 2E
-					39 00 00 00 00 00 03 FC A5 A5
-					39 01 00 00 00 00 03 F0 A5 A5];
+					/* write ctl 120hz */
+					39 01 00 00 00 00 03 F0 5A 5A
+					39 01 00 00 00 00 02 60 10
+					39 00 00 00 00 00 02 F7 0F
+					39 01 00 00 00 00 03 F0 A5 A5
+				];
 				qcom,mdss-dsi-timing-switch-command-state = "dsi_lp_mode";
 
-				qcom,mdss-dsi-nolp-command = [
+				qcom,mdss-dsi-lp1-command = [
+					05 01 00 00 00 00 01 28
 					39 01 00 00 00 00 03 F0 5A 5A
-					39 00 00 00 00 00 02 B0 0A
-					39 00 00 00 00 00 02 EE 06
-					39 00 00 00 00 00 02 B0 0B
-					39 00 00 00 00 00 03 D8 59 70
-					39 00 00 00 00 00 02 60 10
-					39 00 00 00 00 00 03 FC 5A 5A
-					39 00 00 00 00 00 02 B0 16
-					39 00 00 00 00 00 02 D1 2E
-					39 00 00 00 00 00 03 FC A5 A5
-					39 01 00 00 00 00 02 53 28
-					39 01 00 00 09 00 03 F0 A5 A5
+					/* HLPM on: 50nit */
+					15 01 00 00 00 00 02 60 10
+					15 01 00 00 01 00 02 53 22
+					15 00 00 00 00 00 02 F7 0F
+					39 01 00 00 11 00 03 F0 A5 A5
 				];
+
+				qcom,mdss-dsi-nolp-command = [
+					05 01 00 00 00 00 01 28
+					39 01 00 00 00 00 03 F0 5A 5A
+					/* HLPM off */
+					15 01 00 00 00 00 02 60 10
+					15 01 00 00 01 00 02 53 28
+					15 00 00 00 00 00 02 F7 0F
+					39 01 00 00 22 00 03 F0 A5 A5
+					05 01 00 00 00 00 01 29
+				];
+
 				qcom,mdss-dsi-nolp-command-state = "dsi_lp_mode";
 
 				qcom,compression-mode = "dsc";
@@ -339,6 +363,15 @@
 				qcom,mdss-dsc-bit-per-component = <8>;
 				qcom,mdss-dsc-bit-per-pixel = <8>;
 				qcom,mdss-dsc-block-prediction-enable;
+
+				qcom,mdss-dsi-panel-phy-timings = [
+					00 24 0A 0A 26 25 09
+					0A 06 02 04 00 1E 1A
+				];
+
+				/* 1xLM, 1xDSC Enc, 1xDSI Intf */
+				qcom,display-topology = <1 1 1>;
+				qcom,default-topology-index = <0>;
 			};
 		};
 	};
