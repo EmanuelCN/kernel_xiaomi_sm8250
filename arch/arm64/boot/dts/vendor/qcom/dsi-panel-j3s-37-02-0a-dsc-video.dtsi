@@ -1,5 +1,4 @@
 /* Copyright (c) 2015, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -43,7 +42,7 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-reset-sequence = <1 2>, <0 10>, <1 5>, <0 1>, <1 10>;
 		qcom,mdss-pan-physical-width-dimension = <70>;
-		qcom,mdss-pan-physical-height-dimension = <155>;
+		qcom,mdss-pan-physical-height-dimension = <154>;
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,bl-update-flag = "delay_until_first_frame";
 		qcom,disp-panel-offon-mode-enabled;
@@ -52,11 +51,11 @@
 			17000 15500 30000 8000 3000>;
 		qcom,mdss-dsi-panel-peak-brightness = <4200000>;
 		qcom,mdss-dsi-panel-blackness-level = <3230>;
-		qcom,mdss-dsi-qsync-min-refresh-rate = <60>;
+		/* qcom,mdss-dsi-qsync-min-refresh-rate = <60>; */
 		qcom,mdss-dsi-pan-enable-dynamic-fps;
 		qcom,mdss-dsi-pan-fps-update =
 				"dfps_immediate_porch_mode_vfp";
-		qcom,dsi-supported-dfps-list = <144 120 90 60>;
+		qcom,dsi-supported-dfps-list = <144 120 90 60 50 48 30>;
 
 		qcom,mdss-dsi-display-timings {
 			timing@0{
@@ -229,7 +228,7 @@
 	mi,esd-err-irq-gpio = <&tlmm 51 0x2002>; /* trig-flags: falling-0x0002 rasing-0x0001*/
 	mi,mdss-dsi-panel-xy-coordinate = <0x6 0x18>;
 	mi,mdss-dsi-panel-max-luminance = <0x6 0x4>;
-	// mi,mdss-dsi-pan-enable-smart-fps;
+	mi,mdss-dsi-pan-enable-smart-fps;
 	mi,mdss-dsi-panel-max-brightness-clone = <8191>;
 
 	qcom,mdss-dsi-display-timings {
