@@ -68,8 +68,8 @@ int kgsl_allocate_user(struct kgsl_device *device,
 
 void kgsl_get_memory_usage(char *str, size_t len, uint64_t memflags);
 
-int kgsl_sharedmem_page_alloc_user(struct kgsl_device *device,
-				struct kgsl_memdesc *memdesc, uint64_t size);
+int kgsl_sharedmem_page_alloc_user(struct kgsl_memdesc *memdesc,
+				uint64_t size);
 
 void kgsl_free_secure_page(struct page *page);
 
@@ -404,12 +404,10 @@ unsigned int kgsl_gfp_mask(unsigned int page_order);
  * kgsl_zero_page() - zero out a page
  * @p: pointer to the struct page
  * @order: order of the page
- * @dev: Pointer to the device
  *
  * Map a page into kernel and zero it out
  */
-void kgsl_zero_page(struct page *page, unsigned int order,
-					struct device *dev);
+void kgsl_zero_page(struct page *page, unsigned int order);
 
 /**
  * kgsl_flush_page - flush a page
