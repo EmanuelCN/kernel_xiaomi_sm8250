@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2002,2007-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/sched/clock.h>
@@ -565,7 +566,7 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 
 	if (gpudev->preemption_pre_ibsubmit &&
 			adreno_is_preemption_enabled(adreno_dev))
-		total_sizedwords += 27;
+		total_sizedwords += 31;
 
 	if (gpudev->preemption_post_ibsubmit &&
 			adreno_is_preemption_enabled(adreno_dev))
@@ -945,7 +946,6 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	struct kgsl_memobj_node *ib;
 	unsigned int numibs = 0;
 	unsigned int *link;
-	unsigned int link_onstack[SZ_256] __aligned(sizeof(long));
 	unsigned int *cmds;
 	struct kgsl_context *context;
 	struct adreno_context *drawctxt;
@@ -1073,14 +1073,10 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	if (gpudev->ccu_invalidate)
 		dwords += 4;
 
-	if (dwords <= ARRAY_SIZE(link_onstack)) {
-		link = link_onstack;
-	} else {
-		link = kcalloc(dwords, sizeof(unsigned int), GFP_KERNEL);
-		if (!link) {
-			ret = -ENOMEM;
-			goto done;
-		}
+	link = kvcalloc(dwords, sizeof(unsigned int), GFP_KERNEL);
+	if (!link) {
+		ret = -ENOMEM;
+		goto done;
 	}
 
 	cmds = link;
@@ -1210,8 +1206,7 @@ done:
 	trace_kgsl_issueibcmds(device, context->id, numibs, drawobj->timestamp,
 			drawobj->flags, ret, drawctxt->type);
 
-	if (link != link_onstack)
-		kfree(link);
+	kvfree(link);
 	return ret;
 }
 

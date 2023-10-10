@@ -424,8 +424,54 @@ static void kgsl_sync_fence_callback(struct dma_fence *fence,
 	}
 }
 
+static void kgsl_get_fence_names(struct dma_fence *fence,
+	struct event_fence_info *info_ptr)
+{
+	unsigned int num_fences;
+	struct dma_fence **fences;
+	struct dma_fence_array *array;
+	int i;
+
+	if (!info_ptr)
+		return;
+
+	array = to_dma_fence_array(fence);
+
+	if (array != NULL) {
+		num_fences = array->num_fences;
+		fences = array->fences;
+	} else {
+		num_fences = 1;
+		fences = &fence;
+	}
+
+	info_ptr->fences = kcalloc(num_fences, sizeof(struct fence_info),
+			GFP_ATOMIC);
+	if (info_ptr->fences == NULL)
+		return;
+
+	info_ptr->num_fences = num_fences;
+
+	for (i = 0; i < num_fences; i++) {
+		struct dma_fence *f = fences[i];
+		struct fence_info *fi = &info_ptr->fences[i];
+		int len;
+
+		len =  scnprintf(fi->name, sizeof(fi->name), "%s %s",
+			f->ops->get_driver_name(f),
+			f->ops->get_timeline_name(f));
+
+		if (f->ops->fence_value_str) {
+			len += scnprintf(fi->name + len, sizeof(fi->name) - len,
+				": ");
+			f->ops->fence_value_str(f, fi->name + len,
+				sizeof(fi->name) - len);
+		}
+	}
+}
+
 struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
-	bool (*func)(void *priv), void *priv)
+	bool (*func)(void *priv), void *priv, struct event_fence_info *info_ptr)
 {
 	struct kgsl_sync_fence_cb *kcb;
 	struct dma_fence *fence;
@@ -434,11 +480,6 @@ struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
 	fence = sync_file_get_fence(fd);
 	if (fence == NULL)
 		return ERR_PTR(-EINVAL);
-
-	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
-		dma_fence_put(fence);
-		return NULL;
-	}
 
 	/* create the callback */
 	kcb = kzalloc(sizeof(*kcb), GFP_ATOMIC);
@@ -450,6 +491,8 @@ struct kgsl_sync_fence_cb *kgsl_sync_fence_async_wait(int fd,
 	kcb->fence = fence;
 	kcb->priv = priv;
 	kcb->func = func;
+
+	kgsl_get_fence_names(fence, info_ptr);
 
 	/* if status then error or signaled */
 	status = dma_fence_add_callback(fence, &kcb->fence_cb,
@@ -593,10 +636,9 @@ static void kgsl_syncsource_cleanup(struct kgsl_process_private *private,
 				struct kgsl_syncsource *syncsource)
 {
 	struct kgsl_syncsource_fence *sfence, *next;
-	unsigned long flags;
 
 	/* Signal all fences to release any callbacks */
-	spin_lock_irqsave(&syncsource->lock, flags);
+	spin_lock(&syncsource->lock);
 
 	list_for_each_entry_safe(sfence, next, &syncsource->child_list_head,
 				child_list) {
@@ -604,7 +646,7 @@ static void kgsl_syncsource_cleanup(struct kgsl_process_private *private,
 		list_del_init(&sfence->child_list);
 	}
 
-	spin_unlock_irqrestore(&syncsource->lock, flags);
+	spin_unlock(&syncsource->lock);
 
 	/* put reference from syncsource creation */
 	kgsl_syncsource_put(syncsource);
@@ -644,7 +686,6 @@ long kgsl_ioctl_syncsource_create_fence(struct kgsl_device_private *dev_priv,
 	struct kgsl_syncsource_fence *sfence = NULL;
 	struct sync_file *sync_file = NULL;
 	int fd = -1;
-	unsigned long flags;
 
 	/*
 	 * Take a refcount that is released when the fence is released
@@ -686,9 +727,9 @@ long kgsl_ioctl_syncsource_create_fence(struct kgsl_device_private *dev_priv,
 
 	param->fence_fd = fd;
 
-	spin_lock_irqsave(&syncsource->lock, flags);
+	spin_lock(&syncsource->lock);
 	list_add_tail(&sfence->child_list, &syncsource->child_list_head);
-	spin_unlock_irqrestore(&syncsource->lock, flags);
+	spin_unlock(&syncsource->lock);
 out:
 	/*
 	 * We're transferring ownership of the fence to the sync file.
@@ -715,9 +756,8 @@ static int kgsl_syncsource_signal(struct kgsl_syncsource *syncsource,
 {
 	struct kgsl_syncsource_fence *sfence, *next;
 	int ret = -EINVAL;
-	unsigned long flags;
 
-	spin_lock_irqsave(&syncsource->lock, flags);
+	spin_lock(&syncsource->lock);
 
 	list_for_each_entry_safe(sfence, next, &syncsource->child_list_head,
 				child_list) {
@@ -730,7 +770,7 @@ static int kgsl_syncsource_signal(struct kgsl_syncsource *syncsource,
 		}
 	}
 
-	spin_unlock_irqrestore(&syncsource->lock, flags);
+	spin_unlock(&syncsource->lock);
 
 	return ret;
 }
