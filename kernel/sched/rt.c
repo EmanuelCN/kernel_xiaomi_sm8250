@@ -2026,9 +2026,11 @@ retry:
 		 */
 		push_task = get_push_task(rq);
 		if (push_task) {
+			preempt_disable();
 			raw_spin_unlock(&rq->lock);
 			stop_one_cpu_nowait(rq->cpu, push_cpu_stop,
 					    push_task, &rq->push_work);
+			preempt_enable();
 			raw_spin_lock(&rq->lock);
 		}
 
@@ -2368,9 +2370,11 @@ skip:
 		double_unlock_balance(this_rq, src_rq);
 
 		if (push_task) {
+                        preempt_disable();
 			raw_spin_unlock(&this_rq->lock);
 			stop_one_cpu_nowait(src_rq->cpu, push_cpu_stop,
 					    push_task, &src_rq->push_work);
+                        preempt_enable();
 			raw_spin_lock(&this_rq->lock);
 		}
 	}
