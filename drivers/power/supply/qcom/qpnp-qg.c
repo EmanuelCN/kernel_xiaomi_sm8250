@@ -3886,7 +3886,7 @@ static int qg_alg_init(struct qpnp_qg *chip)
 					"qcom,cl-disable");
 
 	/*Return if capacity learning is disabled*/
-	if (chip->dt.cl_disable)
+	if (!chip->dt.cl_disable)
 		return 0;
 
 	cl = devm_kzalloc(chip->dev, sizeof(*cl), GFP_KERNEL);
