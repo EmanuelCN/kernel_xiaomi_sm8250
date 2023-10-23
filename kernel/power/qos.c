@@ -318,15 +318,19 @@ static inline int pm_qos_set_value_for_cpus(struct pm_qos_request *new_req,
 			continue;
 
 		for_each_cpu(cpu, to_cpumask(&affected_cpus)) {
-			if (qos_val[cpu] > req->node.prio)
+			if (qos_val[cpu] > req->node.prio) {
 				qos_val[cpu] = req->node.prio;
+				if (cpus)
+					*cpus |= BIT(cpu);
+			}
 		}
 	}
 
 	for_each_cpu(cpu, to_cpumask(&new_req_cpus)) {
 		if (c->target_per_cpu[cpu] != qos_val[cpu]) {
 			c->target_per_cpu[cpu] = qos_val[cpu];
-			*cpus |= BIT(cpu);
+			if (cpus)
+				*cpus |= BIT(cpu);
 		}
 	}
 
