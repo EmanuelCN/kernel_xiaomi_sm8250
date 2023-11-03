@@ -36,8 +36,6 @@
 
 #include <trace/events/thermal.h>
 
-#define USE_LMH_DEV    0
-
 /*
  * Cooling state <-> CPUFreq frequency
  *
@@ -442,18 +440,10 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 	 * can handle the CPU freq mitigation, if not, notify cpufreq
 	 * framework.
 	 */
-	if (USE_LMH_DEV && cpufreq_cdev->plat_ops &&
-		cpufreq_cdev->plat_ops->ceil_limit) {
-		cpufreq_cdev->plat_ops->ceil_limit(cpufreq_cdev->policy->cpu,
-							clip_freq);
-		get_online_cpus();
-		cpufreq_update_policy(cpufreq_cdev->policy->cpu);
-		put_online_cpus();
-	} else {
-		get_online_cpus();
-		cpufreq_update_policy(cpufreq_cdev->policy->cpu);
-		put_online_cpus();
-	}
+	get_online_cpus();
+	cpufreq_update_policy(cpufreq_cdev->policy->cpu);
+	put_online_cpus();
+
 	return 0;
 }
 
