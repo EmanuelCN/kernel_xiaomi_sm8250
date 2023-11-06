@@ -850,8 +850,13 @@ static int LZ4_decompress_safe_continue(LZ4_streamDecode_t *LZ4_streamDecode,
 	if (lz4sd->prefixSize == 0) {
 		/* The first call, no dictionary yet. */
 		assert(lz4sd->extDictSize == 0);
-		result = LZ4_decompress_safe(source, dest,
-			compressedSize, maxOutputSize);
+#if defined(CONFIG_ARM64) && defined(CONFIG_KERNEL_MODE_NEON)
+		result = LZ4_arm64_decompress_safe(source, dest, compressedSize,
+						   maxOutputSize, false);
+#else
+		result = LZ4_decompress_safe(source, dest, compressedSize,
+					     maxOutputSize);
+#endif
 		if (result <= 0)
 			return result;
 		lz4sd->prefixSize = result;
