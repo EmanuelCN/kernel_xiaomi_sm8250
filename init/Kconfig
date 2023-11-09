@@ -139,8 +139,8 @@ config INLINE_OPTIMIZATION
 config POLLY_CLANG
 	bool "Use Clang Polly optimizations"
 	default y
-	depends on CC_IS_CLANG && $(cc-option, -mllvm -polly)
-	depends on !COMPILE_TEST
+#	depends on CC_IS_CLANG && $(cc-option, -mllvm -polly)
+#	depends on !COMPILE_TEST
 	help
 	  This option enables Clang's polyhedral loop optimizer known as
 	  Polly. Polly is able to optimize various loops throughout the
