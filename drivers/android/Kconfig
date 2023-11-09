@@ -120,7 +120,7 @@ endif
 
 config ANDROID_KABI_RESERVE
 	bool "Android KABI reserve padding"
-	default y
+	default n
 	help
 	  This option enables the padding that the Android GKI kernel adds
 	  to many different kernel structures to support an in-kernel stable ABI
