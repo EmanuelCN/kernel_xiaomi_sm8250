@@ -56,7 +56,8 @@ config ZRAM_DEF_COMP
 
 config ZRAM_ENTROPY
 	bool "Use entropy optimization for zram"
-	depends on ZRAM && ZRAM_DEF_COMP_ZSTD
+	depends on ZRAM
+	default y
 	help
 	  With this feature, entropy will be calculated for each page.
 	  Pages above ZRAM_ENTROPY_THRESHOLD entropy will be
@@ -66,7 +67,7 @@ config ZRAM_ENTROPY
 config ZRAM_ENTROPY_THRESHOLD
 	int
 	depends on ZRAM && ZRAM_ENTROPY
-	default 100000 if ZRAM_DEF_COMP_ZSTD
+	default 100000
 	help
 	  Pages with entropy above ZRAM_ENTROPY_THRESHOLD will be stored
 	  uncompressed. The default value was chosen as a result a lot of
