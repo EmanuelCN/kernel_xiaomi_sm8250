@@ -896,9 +896,6 @@ static ssize_t pm_freeze_timeout_store(struct kobject *kobj,
 {
 	unsigned long val;
 
-	if (IS_ENABLED(CONFIG_ANDROID))
-		return n;
-
 	if (kstrtoul(buf, 10, &val))
 		return -EINVAL;
 
