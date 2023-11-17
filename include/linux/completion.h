@@ -100,6 +100,8 @@ static inline void reinit_completion(struct completion *x)
 	x->done = 0;
 }
 
+extern long wait_for_common(struct completion *x, long timeout, int state);
+extern long wait_for_common_io(struct completion *x, long timeout, int state);
 extern void wait_for_completion(struct completion *);
 extern void wait_for_completion_io(struct completion *);
 extern int wait_for_completion_interruptible(struct completion *x);
