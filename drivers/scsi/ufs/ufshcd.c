@@ -4132,7 +4132,6 @@ out:
 		add_lrbp->cmd = NULL;
 		clear_bit_unlock(add_tag, &hba->lrb_in_use);
 		ufshcd_release_all(hba);
-		ufshcd_vops_pm_qos_req_end(hba, pre_cmd->request, true);
 		ufsf_hpb_end_pre_req(hba->ufsf, pre_cmd->request);
 	}
 #endif
