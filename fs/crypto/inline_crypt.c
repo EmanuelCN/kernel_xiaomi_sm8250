@@ -103,7 +103,6 @@ int fscrypt_select_encryption_impl(struct fscrypt_info *ci,
 	enum blk_crypto_mode_num crypto_mode = ci->ci_mode->blk_crypto_mode;
 	unsigned int dun_bytes;
 	struct request_queue **devs;
-	struct request_queue *devs_onstack;
 	int num_devs;
 	int i;
 
@@ -145,13 +144,10 @@ int fscrypt_select_encryption_impl(struct fscrypt_info *ci,
 	}
 
 	num_devs = fscrypt_get_num_devices(sb);
-	if (num_devs == 1) {
-		devs = &devs_onstack;
-	} else {
-		devs = kmalloc_array(num_devs, sizeof(*devs), GFP_KERNEL);
-		if (!devs)
-			return -ENOMEM;
-	}
+	devs = kmalloc_array(num_devs, sizeof(*devs), GFP_NOFS);
+	if (!devs)
+		return -ENOMEM;
+
 	fscrypt_get_devices(sb, num_devs, devs);
 
 	dun_bytes = fscrypt_get_dun_bytes(ci);
@@ -167,9 +163,7 @@ int fscrypt_select_encryption_impl(struct fscrypt_info *ci,
 
 	ci->ci_inlinecrypt = true;
 out_free_devs:
-	if (devs != &devs_onstack)
-		kfree(devs);
-
+	kfree(devs);
 	return 0;
 }
 
@@ -193,7 +187,7 @@ int fscrypt_prepare_inline_crypt_key(struct fscrypt_prepared_key *prep_key,
 	if (WARN_ON(num_devs < 1))
 		return -EINVAL;
 
-	blk_key = kzalloc(struct_size(blk_key, devs, num_devs), GFP_KERNEL);
+	blk_key = kzalloc(struct_size(blk_key, devs, num_devs), GFP_NOFS);
 	if (!blk_key)
 		return -ENOMEM;
 

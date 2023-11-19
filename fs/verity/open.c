@@ -142,16 +142,44 @@ static int compute_file_digest(struct fsverity_hash_alg *hash_alg,
 }
 
 /*
- * Create a new fsverity_info from the given fsverity_descriptor (with optional
- * appended signature), and check the signature if present.  The
- * fsverity_descriptor must have already undergone basic validation.
+ * Validate the given fsverity_descriptor and create a new fsverity_info from
+ * it.  The signature (if present) is also checked.
  */
 struct fsverity_info *fsverity_create_info(const struct inode *inode,
-					   struct fsverity_descriptor *desc,
-					   size_t desc_size)
+					   void *_desc, size_t desc_size)
 {
+	struct fsverity_descriptor *desc = _desc;
 	struct fsverity_info *vi;
 	int err;
+
+	if (desc_size < sizeof(*desc)) {
+		fsverity_err(inode, "Unrecognized descriptor size: %zu bytes",
+			     desc_size);
+		return ERR_PTR(-EINVAL);
+	}
+
+	if (desc->version != 1) {
+		fsverity_err(inode, "Unrecognized descriptor version: %u",
+			     desc->version);
+		return ERR_PTR(-EINVAL);
+	}
+
+	if (memchr_inv(desc->__reserved, 0, sizeof(desc->__reserved))) {
+		fsverity_err(inode, "Reserved bits set in descriptor");
+		return ERR_PTR(-EINVAL);
+	}
+
+	if (desc->salt_size > sizeof(desc->salt)) {
+		fsverity_err(inode, "Invalid salt_size: %u", desc->salt_size);
+		return ERR_PTR(-EINVAL);
+	}
+
+	if (le64_to_cpu(desc->data_size) != inode->i_size) {
+		fsverity_err(inode,
+			     "Wrong data_size: %llu (desc) != %lld (inode)",
+			     le64_to_cpu(desc->data_size), inode->i_size);
+		return ERR_PTR(-EINVAL);
+	}
 
 	vi = kmem_cache_zalloc(fsverity_info_cachep, GFP_KERNEL);
 	if (!vi)
@@ -193,20 +221,11 @@ out:
 void fsverity_set_info(struct inode *inode, struct fsverity_info *vi)
 {
 	/*
-	 * Multiple tasks may race to set ->i_verity_info, so use
-	 * cmpxchg_release().  This pairs with the smp_load_acquire() in
-	 * fsverity_get_info().  I.e., here we publish ->i_verity_info with a
-	 * RELEASE barrier so that other tasks can ACQUIRE it.
+	 * Multiple processes may race to set ->i_verity_info, so use cmpxchg.
+	 * This pairs with the READ_ONCE() in fsverity_get_info().
 	 */
-	if (cmpxchg_release(&inode->i_verity_info, NULL, vi) != NULL) {
-		/* Lost the race, so free the fsverity_info we allocated. */
+	if (cmpxchg(&inode->i_verity_info, NULL, vi) != NULL)
 		fsverity_free_info(vi);
-		/*
-		 * Afterwards, the caller may access ->i_verity_info directly,
-		 * so make sure to ACQUIRE the winning fsverity_info.
-		 */
-		(void)fsverity_get_info(inode);
-	}
 }
 
 void fsverity_free_info(struct fsverity_info *vi)
@@ -217,57 +236,15 @@ void fsverity_free_info(struct fsverity_info *vi)
 	kmem_cache_free(fsverity_info_cachep, vi);
 }
 
-static bool validate_fsverity_descriptor(struct inode *inode,
-					 const struct fsverity_descriptor *desc,
-					 size_t desc_size)
+/* Ensure the inode has an ->i_verity_info */
+static int ensure_verity_info(struct inode *inode)
 {
-	if (desc_size < sizeof(*desc)) {
-		fsverity_err(inode, "Unrecognized descriptor size: %zu bytes",
-			     desc_size);
-		return false;
-	}
-
-	if (desc->version != 1) {
-		fsverity_err(inode, "Unrecognized descriptor version: %u",
-			     desc->version);
-		return false;
-	}
-
-	if (memchr_inv(desc->__reserved, 0, sizeof(desc->__reserved))) {
-		fsverity_err(inode, "Reserved bits set in descriptor");
-		return false;
-	}
-
-	if (desc->salt_size > sizeof(desc->salt)) {
-		fsverity_err(inode, "Invalid salt_size: %u", desc->salt_size);
-		return false;
-	}
-
-	if (le64_to_cpu(desc->data_size) != inode->i_size) {
-		fsverity_err(inode,
-			     "Wrong data_size: %llu (desc) != %lld (inode)",
-			     le64_to_cpu(desc->data_size), inode->i_size);
-		return false;
-	}
-
-	if (le32_to_cpu(desc->sig_size) > desc_size - sizeof(*desc)) {
-		fsverity_err(inode, "Signature overflows verity descriptor");
-		return false;
-	}
-
-	return true;
-}
-
-/*
- * Read the inode's fsverity_descriptor (with optional appended signature) from
- * the filesystem, and do basic validation of it.
- */
-int fsverity_get_descriptor(struct inode *inode,
-			    struct fsverity_descriptor **desc_ret,
-			    size_t *desc_size_ret)
-{
-	int res;
+	struct fsverity_info *vi = fsverity_get_info(inode);
 	struct fsverity_descriptor *desc;
+	int res;
+
+	if (vi)
+		return 0;
 
 	res = inode->i_sb->s_vop->get_verity_descriptor(inode, NULL, 0);
 	if (res < 0) {
@@ -286,46 +263,20 @@ int fsverity_get_descriptor(struct inode *inode,
 	res = inode->i_sb->s_vop->get_verity_descriptor(inode, desc, res);
 	if (res < 0) {
 		fsverity_err(inode, "Error %d reading verity descriptor", res);
-		kfree(desc);
-		return res;
+		goto out_free_desc;
 	}
 
-	if (!validate_fsverity_descriptor(inode, desc, res)) {
-		kfree(desc);
-		return -EINVAL;
-	}
-
-	*desc_ret = desc;
-	*desc_size_ret = res;
-	return 0;
-}
-
-/* Ensure the inode has an ->i_verity_info */
-static int ensure_verity_info(struct inode *inode)
-{
-	struct fsverity_info *vi = fsverity_get_info(inode);
-	struct fsverity_descriptor *desc;
-	size_t desc_size;
-	int err;
-
-	if (vi)
-		return 0;
-
-	err = fsverity_get_descriptor(inode, &desc, &desc_size);
-	if (err)
-		return err;
-
-	vi = fsverity_create_info(inode, desc, desc_size);
+	vi = fsverity_create_info(inode, desc, res);
 	if (IS_ERR(vi)) {
-		err = PTR_ERR(vi);
+		res = PTR_ERR(vi);
 		goto out_free_desc;
 	}
 
 	fsverity_set_info(inode, vi);
-	err = 0;
+	res = 0;
 out_free_desc:
 	kfree(desc);
-	return err;
+	return res;
 }
 
 /**
