@@ -82,13 +82,15 @@ static inline void pmd_free(struct mm_struct *mm, pmd_t *pmd)
 
 #endif /* __PAGETABLE_PMD_FOLDED */
 
-static inline pte_t *pte_alloc_one_kernel(struct mm_struct *mm)
+static inline pte_t *pte_alloc_one_kernel(struct mm_struct *mm,
+	unsigned long address)
 {
 	return (pte_t *)__get_free_page(
 		GFP_KERNEL | __GFP_RETRY_MAYFAIL | __GFP_ZERO);
 }
 
-static inline struct page *pte_alloc_one(struct mm_struct *mm)
+static inline struct page *pte_alloc_one(struct mm_struct *mm,
+	unsigned long address)
 {
 	struct page *pte;
 
