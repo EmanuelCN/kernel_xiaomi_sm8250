@@ -695,10 +695,10 @@ void free_pgtables(struct mmu_gather *tlb, struct vm_area_struct *vma,
 	}
 }
 
-int __pte_alloc(struct mm_struct *mm, pmd_t *pmd)
+int __pte_alloc(struct mm_struct *mm, pmd_t *pmd, unsigned long address)
 {
 	spinlock_t *ptl;
-	pgtable_t new = pte_alloc_one(mm);
+	pgtable_t new = pte_alloc_one(mm, address);
 	if (!new)
 		return -ENOMEM;
 
@@ -729,9 +729,9 @@ int __pte_alloc(struct mm_struct *mm, pmd_t *pmd)
 	return 0;
 }
 
-int __pte_alloc_kernel(pmd_t *pmd)
+int __pte_alloc_kernel(pmd_t *pmd, unsigned long address)
 {
-	pte_t *new = pte_alloc_one_kernel(&init_mm);
+	pte_t *new = pte_alloc_one_kernel(&init_mm, address);
 	if (!new)
 		return -ENOMEM;
 
@@ -1345,17 +1345,6 @@ int copy_page_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	return ret;
 }
 
-/* Whether we should zap all COWed (private) pages too */
-static inline bool should_zap_cows(struct zap_details *details)
-{
-	/* By default, zap all pages */
-	if (!details)
-		return true;
-
-	/* Or, we zap COWed pages only if the caller wants to */
-	return !details->check_mapping;
-}
-
 static unsigned long zap_pte_range(struct mmu_gather *tlb,
 				struct vm_area_struct *vma, pmd_t *pmd,
 				unsigned long addr, unsigned long end,
@@ -1447,19 +1436,17 @@ again:
 			continue;
 		}
 
+		/* If details->check_mapping, we leave swap entries. */
+		if (unlikely(details))
+			continue;
+
 		entry = pte_to_swp_entry(ptent);
-		if (!non_swap_entry(entry)) {
-			/* Genuine swap entry, hence a private anon page */
-			if (!should_zap_cows(details))
-				continue;
+		if (!non_swap_entry(entry))
 			rss[MM_SWAPENTS]--;
-		} else if (is_migration_entry(entry)) {
+		else if (is_migration_entry(entry)) {
 			struct page *page;
 
 			page = migration_entry_to_page(entry);
-			if (details && details->check_mapping &&
-			    details->check_mapping != page_rmapping(page))
-				continue;
 			rss[mm_counter(page)]--;
 		}
 		if (unlikely(!free_swap_and_cache(entry)))
@@ -3356,7 +3343,7 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
 			ret = VM_FAULT_RETRY;
 			goto out;
 		} else {
-			page = swapin_readahead(entry, GFP_HIGHUSER_MOVABLE | __GFP_CMA,
+			page = swapin_readahead(entry, GFP_HIGHUSER_MOVABLE,
 						vmf);
 			swapcache = page;
 		}
@@ -3550,7 +3537,7 @@ static vm_fault_t do_anonymous_page(struct vm_fault *vmf)
 	 *
 	 * Here we only have down_read(mmap_sem).
 	 */
-	if (pte_alloc(vma->vm_mm, vmf->pmd))
+	if (pte_alloc(vma->vm_mm, vmf->pmd, vmf->address))
 		return VM_FAULT_OOM;
 
 	/* See the comment in pte_alloc_one_map() */
@@ -3677,7 +3664,8 @@ static vm_fault_t __do_fault(struct vm_fault *vmf)
 	 *				# flush A, B to clear the writeback
 	 */
 	if (pmd_none(*vmf->pmd) && !vmf->prealloc_pte) {
-		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm_mm);
+		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm_mm,
+						  vmf->address);
 		if (!vmf->prealloc_pte)
 			return VM_FAULT_OOM;
 		smp_wmb(); /* See comment in __pte_alloc() */
@@ -3689,20 +3677,11 @@ static vm_fault_t __do_fault(struct vm_fault *vmf)
 		return ret;
 
 	if (unlikely(PageHWPoison(vmf->page))) {
-		struct page *page = vmf->page;
-		vm_fault_t poisonret = VM_FAULT_HWPOISON;
-		if (ret & VM_FAULT_LOCKED) {
-			if (page_mapped(page))
-				unmap_mapping_pages(page_mapping(page),
-						    page->index, 1, false);
-			/* Retry if a clean page was removed from the cache. */
-			if (invalidate_inode_page(page))
-				poisonret = VM_FAULT_NOPAGE;
-			unlock_page(page);
-		}
-		put_page(page);
+		if (ret & VM_FAULT_LOCKED)
+			unlock_page(vmf->page);
+		put_page(vmf->page);
 		vmf->page = NULL;
-		return poisonret;
+		return VM_FAULT_HWPOISON;
 	}
 
 	if (unlikely(!(ret & VM_FAULT_LOCKED)))
@@ -3741,7 +3720,7 @@ static vm_fault_t pte_alloc_one_map(struct vm_fault *vmf)
 		pmd_populate(vma->vm_mm, vmf->pmd, vmf->prealloc_pte);
 		spin_unlock(vmf->ptl);
 		vmf->prealloc_pte = NULL;
-	} else if (unlikely(pte_alloc(vma->vm_mm, vmf->pmd))) {
+	} else if (unlikely(pte_alloc(vma->vm_mm, vmf->pmd, vmf->address))) {
 		return VM_FAULT_OOM;
 	}
 map_pte:
@@ -3821,7 +3800,7 @@ static vm_fault_t do_set_pmd(struct vm_fault *vmf, struct page *page)
 	 * related to pte entry. Use the preallocated table for that.
 	 */
 	if (arch_needs_pgtable_deposit() && !vmf->prealloc_pte) {
-		vmf->prealloc_pte = pte_alloc_one(vma->vm_mm);
+		vmf->prealloc_pte = pte_alloc_one(vma->vm_mm, vmf->address);
 		if (!vmf->prealloc_pte)
 			return VM_FAULT_OOM;
 		smp_wmb(); /* See comment in __pte_alloc() */
@@ -4071,7 +4050,8 @@ static vm_fault_t do_fault_around(struct vm_fault *vmf)
 			start_pgoff + nr_pages - 1);
 
 	if (pmd_none(*vmf->pmd)) {
-		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm_mm);
+		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm_mm,
+						  vmf->address);
 		if (!vmf->prealloc_pte)
 			goto out;
 		smp_wmb(); /* See comment in __pte_alloc() */
@@ -4386,6 +4366,11 @@ static inline vm_fault_t wp_huge_pmd(struct vm_fault *vmf, pmd_t orig_pmd)
 	__split_huge_pmd(vmf->vma, vmf->pmd, vmf->address, false, NULL);
 
 	return VM_FAULT_FALLBACK;
+}
+
+static inline bool vma_is_accessible(struct vm_area_struct *vma)
+{
+	return vma->vm_flags & (VM_READ | VM_EXEC | VM_WRITE);
 }
 
 static vm_fault_t create_huge_pud(struct vm_fault *vmf)
@@ -5526,8 +5511,6 @@ long copy_huge_page_from_user(struct page *dst_page,
 		ret_val -= (PAGE_SIZE - rc);
 		if (rc)
 			break;
-
-		flush_dcache_page(subpage);
 
 		cond_resched();
 	}

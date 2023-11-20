@@ -250,19 +250,13 @@ static inline void unlock_anon_vma_root(struct anon_vma *root)
  * Attach the anon_vmas from src to dst.
  * Returns 0 on success, -ENOMEM on failure.
  *
- * anon_vma_clone() is called by __vma_split(), __split_vma(), copy_vma() and
- * anon_vma_fork(). The first three want an exact copy of src, while the last
- * one, anon_vma_fork(), may try to reuse an existing anon_vma to prevent
- * endless growth of anon_vma. Since dst->anon_vma is set to NULL before call,
- * we can identify this case by checking (!dst->anon_vma && src->anon_vma).
- *
- * If (!dst->anon_vma && src->anon_vma) is true, this function tries to find
- * and reuse existing anon_vma which has no vmas and only one child anon_vma.
- * This prevents degradation of anon_vma hierarchy to endless linear chain in
- * case of constantly forking task. On the other hand, an anon_vma with more
- * than one child isn't reused even if there was no alive vma, thus rmap
- * walker has a good chance of avoiding scanning the whole hierarchy when it
- * searches where page is mapped.
+ * If dst->anon_vma is NULL this function tries to find and reuse existing
+ * anon_vma which has no vmas and only one child anon_vma. This prevents
+ * degradation of anon_vma hierarchy to endless linear chain in case of
+ * constantly forking task. On the other hand, an anon_vma with more than one
+ * child isn't reused even if there was no alive vma, thus rmap walker has a
+ * good chance of avoiding scanning the whole hierarchy when it searches where
+ * page is mapped.
  */
 int anon_vma_clone(struct vm_area_struct *dst, struct vm_area_struct *src)
 {
@@ -292,8 +286,8 @@ int anon_vma_clone(struct vm_area_struct *dst, struct vm_area_struct *src)
 		 * will always reuse it. Root anon_vma is never reused:
 		 * it has self-parent reference and at least one child.
 		 */
-		if (!dst->anon_vma && src->anon_vma &&
-		    anon_vma != src->anon_vma && anon_vma->degree < 2)
+		if (!dst->anon_vma && anon_vma != src->anon_vma &&
+				anon_vma->degree < 2)
 			dst->anon_vma = anon_vma;
 	}
 	if (dst->anon_vma)
@@ -1599,30 +1593,7 @@ static bool try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 
 			/* MADV_FREE page check */
 			if (!PageSwapBacked(page)) {
-				int ref_count, map_count;
-
-				/*
-				 * Synchronize with gup_pte_range():
-				 * - clear PTE; barrier; read refcount
-				 * - inc refcount; barrier; read PTE
-				 */
-				smp_mb();
-
-				ref_count = page_ref_count(page);
-				map_count = page_mapcount(page);
-
-				/*
-				 * Order reads for page refcount and dirty flag
-				 * (see comments in __remove_mapping()).
-				 */
-				smp_rmb();
-
-				/*
-				 * The only page refs must be one from isolation
-				 * plus the rmap(s) (dropped by discard:).
-				 */
-				if (ref_count == 1 + map_count &&
-				    !PageDirty(page)) {
+				if (!PageDirty(page)) {
 					/* Invalidate as we cleared the pte */
 					mmu_notifier_invalidate_range(mm,
 						address, address + PAGE_SIZE);
@@ -1698,9 +1669,23 @@ discard:
 	return ret;
 }
 
+bool is_vma_temporary_stack(struct vm_area_struct *vma)
+{
+	int maybe_stack = vma->vm_flags & (VM_GROWSDOWN | VM_GROWSUP);
+
+	if (!maybe_stack)
+		return false;
+
+	if ((vma->vm_flags & VM_STACK_INCOMPLETE_SETUP) ==
+						VM_STACK_INCOMPLETE_SETUP)
+		return true;
+
+	return false;
+}
+
 static bool invalid_migration_vma(struct vm_area_struct *vma, void *arg)
 {
-	return vma_is_temporary_stack(vma);
+	return is_vma_temporary_stack(vma);
 }
 
 static int page_not_mapped(struct page *page)

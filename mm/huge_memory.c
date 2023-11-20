@@ -574,7 +574,7 @@ static vm_fault_t __do_huge_pmd_anonymous_page(struct vm_fault *vmf,
 		return VM_FAULT_FALLBACK;
 	}
 
-	pgtable = pte_alloc_one(vma->vm_mm);
+	pgtable = pte_alloc_one(vma->vm_mm, haddr);
 	if (unlikely(!pgtable)) {
 		ret = VM_FAULT_OOM;
 		goto release;
@@ -698,7 +698,7 @@ vm_fault_t do_huge_pmd_anonymous_page(struct vm_fault *vmf)
 		pgtable_t pgtable;
 		struct page *zero_page;
 		vm_fault_t ret;
-		pgtable = pte_alloc_one(vma->vm_mm);
+		pgtable = pte_alloc_one(vma->vm_mm, haddr);
 		if (unlikely(!pgtable))
 			return VM_FAULT_OOM;
 		zero_page = mm_get_huge_zero_page(vma->vm_mm);
@@ -809,7 +809,7 @@ vm_fault_t vmf_insert_pfn_pmd(struct vm_fault *vmf, pfn_t pfn, bool write)
 		return VM_FAULT_SIGBUS;
 
 	if (arch_needs_pgtable_deposit()) {
-		pgtable = pte_alloc_one(vma->vm_mm);
+		pgtable = pte_alloc_one(vma->vm_mm, addr);
 		if (!pgtable)
 			return VM_FAULT_OOM;
 	}
@@ -965,7 +965,7 @@ int copy_huge_pmd(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	if (!vma_is_anonymous(vma))
 		return 0;
 
-	pgtable = pte_alloc_one(dst_mm);
+	pgtable = pte_alloc_one(dst_mm, addr);
 	if (unlikely(!pgtable))
 		goto out;
 
@@ -1831,12 +1831,18 @@ static pmd_t move_soft_dirty_pmd(pmd_t pmd)
 }
 
 bool move_huge_pmd(struct vm_area_struct *vma, unsigned long old_addr,
-		  unsigned long new_addr, pmd_t *old_pmd, pmd_t *new_pmd)
+		  unsigned long new_addr, unsigned long old_end,
+		  pmd_t *old_pmd, pmd_t *new_pmd)
 {
 	spinlock_t *old_ptl, *new_ptl;
 	pmd_t pmd;
 	struct mm_struct *mm = vma->vm_mm;
 	bool force_flush = false;
+
+	if ((old_addr & ~HPAGE_PMD_MASK) ||
+	    (new_addr & ~HPAGE_PMD_MASK) ||
+	    old_end - old_addr < HPAGE_PMD_SIZE)
+		return false;
 
 	/*
 	 * The destination pmd shouldn't be established, free_pgtables()
