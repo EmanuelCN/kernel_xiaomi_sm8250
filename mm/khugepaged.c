@@ -304,6 +304,8 @@ struct attribute_group khugepaged_attr_group = {
 };
 #endif /* CONFIG_SYSFS */
 
+#define VM_NO_KHUGEPAGED (VM_SPECIAL | VM_HUGETLB)
+
 int hugepage_madvise(struct vm_area_struct *vma,
 		     unsigned long *vm_flags, int advice)
 {
@@ -413,7 +415,7 @@ static bool hugepage_vma_check(struct vm_area_struct *vma,
 	}
 	if (!vma->anon_vma || vma->vm_ops)
 		return false;
-	if (vma_is_temporary_stack(vma))
+	if (is_vma_temporary_stack(vma))
 		return false;
 	return !(vm_flags & VM_NO_KHUGEPAGED);
 }
