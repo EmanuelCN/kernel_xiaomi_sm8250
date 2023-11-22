@@ -2778,14 +2778,22 @@ int f2fs_quota_sync(struct super_block *sb, int type)
 		 *  f2fs_dquot_commit
 		 *			      block_operation
 		 *			      f2fs_down_read(quota_sem)
+		 *
+		 * However, we cannot use the cp_rwsem to prevent this
+		 * deadlock, as the cp_rwsem is taken for read inside the
+		 * f2fs_dquot_commit code, and rwsem is not recursive.
+		 *
+		 * We therefore use a special lock to synchronize
+		 * f2fs_quota_sync with block_operations, as this is the only
+		 * place where such recursion occurs.
 		 */
-		f2fs_lock_op(sbi);
+		f2fs_down_read(&sbi->cp_quota_rwsem);
 		f2fs_down_read(&sbi->quota_sem);
 
 		ret = f2fs_quota_sync_file(sbi, cnt);
 
 		f2fs_up_read(&sbi->quota_sem);
-		f2fs_unlock_op(sbi);
+		f2fs_up_read(&sbi->cp_quota_rwsem);
 
 		if (!f2fs_sb_has_quota_ino(sbi))
 			inode_unlock(dqopt->files[cnt]);
@@ -4129,6 +4137,7 @@ try_onemore:
 	spin_lock_init(&sbi->stat_lock);
 	init_f2fs_rwsem(&sbi->cp_rwsem);
 	init_f2fs_rwsem(&sbi->quota_sem);
+	init_f2fs_rwsem(&sbi->cp_quota_rwsem);
 	init_waitqueue_head(&sbi->cp_wait);
 	spin_lock_init(&sbi->error_lock);
 

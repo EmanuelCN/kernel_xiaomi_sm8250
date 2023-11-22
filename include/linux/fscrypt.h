@@ -174,7 +174,6 @@ static inline struct page *fscrypt_pagecache_page(struct page *bounce_page)
 }
 
 void fscrypt_free_bounce_page(struct page *bounce_page);
-int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags);
 
 /* policy.c */
 int fscrypt_ioctl_set_policy(struct file *filp, const void __user *arg);

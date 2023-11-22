@@ -35,8 +35,6 @@
 #include "gc.h"
 #include "iostat.h"
 #include <trace/events/f2fs.h>
-#include <trace/events/android_fs.h>
-#include <uapi/linux/f2fs.h>
 
 static vm_fault_t f2fs_filemap_fault(struct vm_fault *vmf)
 {
@@ -277,15 +275,6 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
 
 	trace_f2fs_sync_file_enter(inode);
 
-	if (trace_android_fs_fsync_start_enabled()) {
-		char *path, pathbuf[MAX_TRACE_PATHBUF_LEN];
-
-		path = android_fstrace_get_pathname(pathbuf,
-				MAX_TRACE_PATHBUF_LEN, inode);
-		trace_android_fs_fsync_start(inode,
-				current->pid, path, current->comm);
-	}
-
 	if (S_ISDIR(inode->i_mode))
 		goto go_write;
 
@@ -411,8 +400,6 @@ out:
 		bdev_clear_turbo_write(sbi->sb->s_bdev);
 #endif
 	trace_f2fs_sync_file_exit(inode, cp_reason, datasync, ret);
-	trace_android_fs_fsync_end(inode, start, end - start);
-
 	return ret;
 }
 
@@ -2189,16 +2176,6 @@ static int f2fs_ioc_start_atomic_write(struct file *filp, bool truncate)
 	f2fs_i_size_write(fi->cow_inode, isize);
 
 	f2fs_up_write(&fi->i_gc_rwsem[WRITE]);
-
-	isize = i_size_read(inode);
-	fi->original_i_size = isize;
-	if (truncate) {
-		set_inode_flag(inode, FI_ATOMIC_REPLACE);
-		truncate_inode_pages_final(inode->i_mapping);
-		f2fs_i_size_write(inode, 0);
-		isize = 0;
-	}
-	f2fs_i_size_write(fi->cow_inode, isize);
 
 	f2fs_update_time(sbi, REQ_TIME);
 	fi->atomic_write_task = current;

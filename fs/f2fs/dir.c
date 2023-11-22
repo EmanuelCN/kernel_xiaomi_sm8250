@@ -95,7 +95,7 @@ int f2fs_init_casefolded_name(const struct inode *dir,
 		if ((int)fname->cf_name.len <= 0) {
 			kmem_cache_free(f2fs_cf_name_slab, fname->cf_name.name);
 			fname->cf_name.name = NULL;
-			if (sb_has_enc_strict_mode(dir->i_sb))
+			if (sb_has_strict_encoding(sb))
 				return -EINVAL;
 			/* fall back to treating name as opaque byte sequence */
 		}
@@ -231,14 +231,14 @@ static int f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 			FSTR_INIT((u8 *)de_name, de_name_len);
 
 		if (WARN_ON_ONCE(!fscrypt_has_encryption_key(dir)))
-			return false;
+			return -EINVAL;
 
 		if (de_name_len <= sizeof(decname_onstack)) {
 			decrypted_name.name = decname_onstack;
 		} else {
 			decrypted_name.name = kmalloc(de_name_len, GFP_KERNEL);
 			if (!decrypted_name.name)
-                        	return false;
+				return -ENOMEM;
 		}
 		res = fscrypt_fname_disk_to_usr(dir, 0, 0, &encrypted_name,
 						&decrypted_name);
@@ -249,20 +249,21 @@ static int f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 	}
 
 	res = utf8_strncasecmp_folded(um, name, &entry);
-	if (res < 0) {
-		/*
-		 * In strict mode, ignore invalid names.  In non-strict mode,
-		 * fall back to treating them as opaque byte sequences.
-		 */
-		if (sb_has_enc_strict_mode(sb) || name->len != entry.len)
-			res = 1;
-		else
-			res = memcmp(name->name, entry.name, name->len);
+	/*
+	 * In strict mode, ignore invalid names.  In non-strict mode,
+	 * fall back to treating them as opaque byte sequences.
+	 */
+	if (res < 0 && !sb_has_strict_encoding(sb)) {
+		res = name->len == entry.len &&
+				memcmp(name->name, entry.name, name->len) == 0;
+	} else {
+		/* utf8_strncasecmp_folded returns 0 on match */
+		res = (res == 0);
 	}
 out:
 	if (decrypted_name.name != decname_onstack)
 		kfree(decrypted_name.name);
-	return res == 0;
+	return res;
 }
 #endif /* CONFIG_UNICODE */
 
