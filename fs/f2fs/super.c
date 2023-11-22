@@ -2116,6 +2116,7 @@ static void default_options(struct f2fs_sb_info *sbi, bool remount)
 	/* init some FS parameters */
 	if (!remount) {
 		set_opt(sbi, READ_EXTENT_CACHE);
+		set_opt(sbi, AGE_EXTENT_CACHE);
 		clear_opt(sbi, DISABLE_CHECKPOINT);
 
 		if (f2fs_hw_support_discard(sbi) || f2fs_hw_should_discard(sbi))
