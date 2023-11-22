@@ -305,8 +305,14 @@ static int lz4_decompress_pages(struct decompress_io_ctx *dic)
 {
 	int ret;
 
+#if defined(CONFIG_ARM64) && defined(CONFIG_KERNEL_MODE_NEON)
+	ret = LZ4_arm64_decompress_safe(dic->cbuf->cdata, dic->rbuf,
+						dic->clen, dic->rlen, false);
+#else
 	ret = LZ4_decompress_safe(dic->cbuf->cdata, dic->rbuf,
 						dic->clen, dic->rlen);
+#endif
+
 	if (ret < 0) {
 		printk_ratelimited("%sF2FS-fs (%s): lz4 decompress failed, ret:%d\n",
 				KERN_ERR, F2FS_I_SB(dic->inode)->sb->s_id, ret);
@@ -1040,7 +1046,7 @@ retry:
 		if (ret)
 			goto out;
 		if (bio)
-			f2fs_submit_bio(sbi, bio, DATA);
+			__submit_bio(sbi, bio, DATA);
 
 		ret = f2fs_init_compress_ctx(cc);
 		if (ret)
@@ -1188,7 +1194,7 @@ static int f2fs_write_compressed_pages(struct compress_ctx *cc,
 		.submitted = false,
 		.io_type = io_type,
 		.io_wbc = wbc,
-		.encrypted = f2fs_encrypted_file(cc->inode),
+		.encrypted = fscrypt_inode_uses_fs_layer_crypto(cc->inode),
 	};
 	struct dnode_of_data dn;
 	struct node_info ni;
@@ -1264,8 +1270,7 @@ static int f2fs_write_compressed_pages(struct compress_ctx *cc,
 			err = f2fs_encrypt_one_page(&fio);
 			if (err)
 				goto out_destroy_crypt;
-			if (fscrypt_inode_uses_fs_layer_crypto(inode))
-				cc->cpages[i] = fio.encrypted_page;
+			cc->cpages[i] = fio.encrypted_page;
 		}
 	}
 
@@ -1304,7 +1309,7 @@ static int f2fs_write_compressed_pages(struct compress_ctx *cc,
 
 		f2fs_bug_on(fio.sbi, blkaddr == NULL_ADDR);
 
-		if (fio.encrypted && fscrypt_inode_uses_fs_layer_crypto(inode))
+		if (fio.encrypted)
 			fio.encrypted_page = cc->cpages[i - 1];
 		else
 			fio.compressed_page = cc->cpages[i - 1];

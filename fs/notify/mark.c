@@ -115,8 +115,6 @@ static __u32 *fsnotify_conn_mask_p(struct fsnotify_mark_connector *conn)
 		return &fsnotify_conn_inode(conn)->i_fsnotify_mask;
 	else if (conn->type == FSNOTIFY_OBJ_TYPE_VFSMOUNT)
 		return &fsnotify_conn_mount(conn)->mnt_fsnotify_mask;
-	else if (conn->type == FSNOTIFY_OBJ_TYPE_SB)
-		return &fsnotify_conn_sb(conn)->s_fsnotify_mask;
 	return NULL;
 }
 
@@ -197,8 +195,6 @@ static void *fsnotify_detach_connector_from_object(
 		atomic_long_inc(&inode->i_sb->s_fsnotify_inode_refs);
 	} else if (conn->type == FSNOTIFY_OBJ_TYPE_VFSMOUNT) {
 		fsnotify_conn_mount(conn)->mnt_fsnotify_mask = 0;
-	} else if (conn->type == FSNOTIFY_OBJ_TYPE_SB) {
-		fsnotify_conn_sb(conn)->s_fsnotify_mask = 0;
 	}
 
 	rcu_assign_pointer(*(conn->obj), NULL);
@@ -438,7 +434,7 @@ void fsnotify_free_mark(struct fsnotify_mark *mark)
 void fsnotify_destroy_mark(struct fsnotify_mark *mark,
 			   struct fsnotify_group *group)
 {
-	mutex_lock_nested(&group->mark_mutex, SINGLE_DEPTH_NESTING);
+	mutex_lock(&group->mark_mutex);
 	fsnotify_detach_mark(mark);
 	mutex_unlock(&group->mark_mutex);
 	fsnotify_free_mark(mark);
@@ -707,7 +703,7 @@ void fsnotify_clear_marks_by_group(struct fsnotify_group *group,
 	 * move marks to free to to_free list in one go and then free marks in
 	 * to_free list one by one.
 	 */
-	mutex_lock_nested(&group->mark_mutex, SINGLE_DEPTH_NESTING);
+	mutex_lock(&group->mark_mutex);
 	list_for_each_entry_safe(mark, lmark, &group->marks_list, g_list) {
 		if ((1U << mark->connector->type) & type_mask)
 			list_move(&mark->g_list, &to_free);
@@ -716,7 +712,7 @@ void fsnotify_clear_marks_by_group(struct fsnotify_group *group,
 
 clear:
 	while (1) {
-		mutex_lock_nested(&group->mark_mutex, SINGLE_DEPTH_NESTING);
+		mutex_lock(&group->mark_mutex);
 		if (list_empty(head)) {
 			mutex_unlock(&group->mark_mutex);
 			break;
