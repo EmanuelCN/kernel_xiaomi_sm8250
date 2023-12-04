@@ -77,20 +77,54 @@ EXPORT_SYMBOL_GPL(pm_power_off);
 void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
 EXPORT_SYMBOL_GPL(arm_pm_restart);
 
+static DEFINE_PER_CPU(struct hrtimer, wfi_timer);
+s64 teo_wfi_timeout_us(void);
+
 /*
  * This is our default idle handler.
  */
 void arch_cpu_idle(void)
 {
+	s64 wfi_timeout_us = teo_wfi_timeout_us();
+	struct hrtimer *timer = NULL;
+
+	/*
+	 * If the tick is stopped, arm a timer to ensure that the CPU doesn't
+	 * stay in WFI too long and burn power. That way, the CPU will be woken
+	 * up so it can enter a deeper idle state instead of staying in WFI.
+	 */
+	if (wfi_timeout_us) {
+		/* Use TEO's estimated sleep duration with some slack added */
+		timer = this_cpu_ptr(&wfi_timer);
+		hrtimer_start(timer, ns_to_ktime(wfi_timeout_us * NSEC_PER_USEC),
+			      HRTIMER_MODE_REL_PINNED_SOFT);
+	}
+
 	/*
 	 * This should do all the clock switching and wait for interrupt
 	 * tricks
 	 */
 	trace_cpu_idle_rcuidle(1, smp_processor_id());
 	cpu_do_idle();
+
+	/* Cancel the timer if it was armed. This always succeeds. */
+	if (timer)
+		hrtimer_try_to_cancel(timer);
 	local_irq_enable();
 	trace_cpu_idle_rcuidle(PWR_EVENT_EXIT, smp_processor_id());
 }
+
+static int __init wfi_timer_init(void)
+{
+	int cpu;
+
+	/* No function is needed; the timer is canceled while IRQs are off */
+	for_each_possible_cpu(cpu)
+		hrtimer_init(&per_cpu(wfi_timer, cpu), CLOCK_MONOTONIC,
+			     HRTIMER_MODE_REL_SOFT);
+	return 0;
+}
+pure_initcall(wfi_timer_init);
 
 void arch_cpu_idle_enter(void)
 {

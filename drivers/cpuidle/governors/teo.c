@@ -204,6 +204,7 @@ struct teo_cpu {
 	int recent_idx[NR_RECENT];
 	unsigned int tick_hits;
 	unsigned long util_threshold;
+	s64 wfi_timeout_us;
 };
 
 static DEFINE_PER_CPU(struct teo_cpu, teo_cpus);
@@ -618,7 +619,7 @@ end:
 	 */
 	if ((!(drv->states[idx].flags & CPUIDLE_FLAG_POLLING) &&
 	    duration_us >= TICK_USEC) || tick_nohz_tick_stopped())
-		return idx;
+		goto out;
 
 	/*
 	 * The tick is not going to be stopped, so if the target residency of
@@ -631,7 +632,33 @@ end:
 
 out_tick:
 	*stop_tick = false;
+out:
+	/*
+	 * Set a limit to how long the CPU can remain in WFI in case of a
+	 * misprediction that results in too much time spent in WFI. This way,
+	 * the CPU can be kicked out of WFI and enter a deeper idle state if a
+	 * deeper state fits within the residency requirement.
+	 */
+#define WFI_TIMEOUT_US 1 
+	cpu_data->wfi_timeout_us = 0;
+	if (drv->state_count > 1 && !idx && constraint_idx) {
+		if (*stop_tick)
+			delta_tick = ktime_to_us(cpu_data->sleep_length_ns);
+
+		if (delta_tick > duration_us &&
+		    (delta_tick - duration_us - WFI_TIMEOUT_US) >
+		    drv->states[1].target_residency)
+			cpu_data->wfi_timeout_us = duration_us + WFI_TIMEOUT_US;
+	}
+
 	return idx;
+}
+
+s64 teo_wfi_timeout_us(void)
+{
+	struct teo_cpu *cpu_data = this_cpu_ptr(&teo_cpus);
+
+	return cpu_data->wfi_timeout_us;
 }
 
 /**
