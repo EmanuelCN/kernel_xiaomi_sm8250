@@ -23,6 +23,8 @@
 #ifndef	__LINUX_USB_USBNET_H
 #define	__LINUX_USB_USBNET_H
 
+#include <linux/android_kabi.h>
+
 /* interface from usbnet core to each USB networking link we handle */
 struct usbnet {
 	/* housekeeping */
@@ -180,6 +182,9 @@ struct driver_info {
 	int		out;		/* tx endpoint */
 
 	unsigned long	data;		/* Misc driver specific data */
+
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
 };
 
 /* Minidrivers are just drivers using the "usbnet" core as a powerful
