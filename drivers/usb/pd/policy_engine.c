@@ -859,7 +859,7 @@ static int pd_send_ext_msg(struct usbpd *pd, u8 msg_type,
 				pd->tx_msgid[sop], num_objs, pd->spec_rev) |
 			PD_MSG_HDR_EXTENDED;
 		pd->tx_msgid[sop] = (pd->tx_msgid[sop] + 1) & PD_MAX_MSG_ID;
-		usbpd_dbg(&pd->dev, "send ext msg pd->tx_msgid[sop]:%d,hdr:%x\n", pd->tx_msgid[sop], hdr);
+		usbpd_info(&pd->dev, "send ext msg pd->tx_msgid[sop]:%d,hdr:%x\n", pd->tx_msgid[sop], hdr);
 		ret = pd_phy_write(hdr, chunked_payload,
 				num_objs * sizeof(u32), sop);
 		if (ret) {
@@ -3801,7 +3801,7 @@ static void usbpd_sm(struct work_struct *w)
 	struct rx_msg *rx_msg = NULL;
 	unsigned long flags;
 
-	usbpd_dbg(&pd->dev, "typec mode:%d, pr:%d, handle state %s\n",
+	usbpd_err(&pd->dev, "typec mode:%d, pr:%d, handle state %s\n",
 			pd->typec_mode, pd->current_pr,
 			usbpd_state_strings[pd->current_state]);
 
@@ -4488,8 +4488,8 @@ static ssize_t select_pdo_store(struct device *dev,
 
 	/* use xiaomi pps control state machine */
 	if (pd->non_qcom_pps_ctr && pd->spec_rev == USBPD_REV_30) {
-		pr_info_ratelimited("PPS is controlled by ourself, return not support\n");
-		ret = -EINVAL;
+		usbpd_info(&pd->dev,
+			"PPS is controlled by ourself, return not support\n");
 		goto out;
 	}
 
@@ -5203,7 +5203,7 @@ static void usbpd_mi_vdm_received_cb(struct usbpd_svid_handler *hdlr, u32 vdm_hd
 	cmd = UVDM_HDR_CMD(vdm_hdr);
 
 	usbpd_dbg(&pd->dev, "hdlr->svid:0x%x, vdm_hdr:0x%x, num_vdos:%d, cmd:%d\n",
-			hdlr->svid, vdm_hdr, num_vdos, cmd);
+			hdlr->svid, vdm_hdr, num_vdos);
 
 	switch (cmd) {
 	case USBPD_UVDM_CHARGER_VERSION:

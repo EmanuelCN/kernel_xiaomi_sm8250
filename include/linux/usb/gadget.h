@@ -247,7 +247,7 @@ struct usb_ep_ops {
 
 	int (*fifo_status) (struct usb_ep *ep);
 	void (*fifo_flush) (struct usb_ep *ep);
-	int (*gsi_ep_op)(struct usb_ep *ep, void *op_data,
+	int (*gsi_ep_op) (struct usb_ep *ep, void *op_data,
 		enum gsi_ep_op op);
 
 };
@@ -396,7 +396,7 @@ static inline int usb_ep_fifo_status(struct usb_ep *ep)
 static inline void usb_ep_fifo_flush(struct usb_ep *ep)
 { }
 
-static int usb_gsi_ep_op(struct usb_ep *ep,
+static inline int usb_gsi_ep_op(struct usb_ep *ep,
 		struct usb_gsi_request *req, enum gsi_ep_op op)
 { return 0; }
 #endif /* USB_GADGET */
@@ -488,6 +488,8 @@ struct usb_gadget_ops {
  * @connected: True if gadget is connected.
  * @lpm_capable: If the gadget max_speed is FULL or HIGH, this flag
  *	indicates that it supports LPM as per the LPM ECN & errata.
+ * @remote_wakeup: Indicates if the host has enabled the remote_wakeup
+ * feature.
  *
  * Gadgets have a mostly-portable "gadget driver" implementing device
  * functions, handling all usb configurations and interfaces.  Gadget
@@ -543,13 +545,17 @@ struct usb_gadget {
 	unsigned			connected:1;
 	unsigned			lpm_capable:1;
 	unsigned			remote_wakeup:1;
-	bool				bam2bam_func_enabled;
-	u32				extra_buf_alloc;
-	bool				l1_supported;
-	bool				is_chipidea;
-	bool				self_powered;
 
+#ifdef __GENKSYMS__
 	ANDROID_KABI_RESERVE(1);
+#else
+	bool				bam2bam_func_enabled:1;
+	u32				extra_buf_alloc;
+	bool				l1_supported:1;
+	bool				is_chipidea:1;
+	bool				self_powered:1;
+#endif
+
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
@@ -701,7 +707,8 @@ static inline int usb_gadget_frame_number(struct usb_gadget *gadget)
 { return 0; }
 static inline int usb_gadget_wakeup(struct usb_gadget *gadget)
 { return 0; }
-static int usb_gadget_func_wakeup(struct usb_gadget *gadget, int interface_id)
+static inline int usb_gadget_func_wakeup(struct usb_gadget *gadget,
+					 int interface_id)
 { return 0; }
 static inline int usb_gadget_set_selfpowered(struct usb_gadget *gadget)
 { return 0; }
@@ -941,19 +948,6 @@ int usb_otg_descriptor_init(struct usb_gadget *gadget,
 		struct usb_descriptor_header *otg_desc);
 /*-------------------------------------------------------------------------*/
 
-/**
- * usb_func_ep_queue - queues (submits) an I/O request to a function endpoint.
- * This function is similar to the usb_ep_queue function, but in addition it
- * also checks whether the function is in Super Speed USB Function Suspend
- * state, and if so a Function Wake notification is sent to the host
- * (USB 3.0 spec, section 9.2.5.2).
- * @func: the function which issues the USB I/O request.
- * @ep:the endpoint associated with the request
- * @req:the request being submitted
- * @gfp_flags: GFP_* flags to use in case the lower level driver couldn't
- *	pre-allocate all necessary memory with the request.
- *
- */
 int usb_func_ep_queue(struct usb_function *func, struct usb_ep *ep,
 				struct usb_request *req, gfp_t gfp_flags);
 
