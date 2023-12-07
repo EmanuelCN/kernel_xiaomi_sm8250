@@ -1155,7 +1155,7 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 				&mgr->doneq[i].rot_kw, name);
 		kthread_init_work(&mgr->thread_priority_work,
 				rotator_thread_priority_worker);
-		kthread_queue_work(&mgr->commitq[i].rot_kw,
+		kthread_queue_work(&mgr->doneq[i].rot_kw,
 				&mgr->thread_priority_work);
 		kthread_flush_work(&mgr->thread_priority_work);
 		if (IS_ERR(mgr->doneq[i].rot_thread)) {
