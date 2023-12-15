@@ -3430,7 +3430,7 @@ void walt_irq_work(struct irq_work *irq_work)
 						cpu_online_mask);
 		num_cpus = cpumask_weight(&cluster_online_cpus);
 		for_each_cpu(cpu, &cluster_online_cpus) {
-			int flag = SCHED_CPUFREQ_WALT;
+			int flag = 0;
 
 			rq = cpu_rq(cpu);
 
