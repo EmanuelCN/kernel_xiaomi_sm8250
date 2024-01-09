@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * linux/kernel/power/swap.c
  *
@@ -8,6 +7,9 @@
  * Copyright (C) 1998,2001-2005 Pavel Machek <pavel@ucw.cz>
  * Copyright (C) 2006 Rafael J. Wysocki <rjw@sisk.pl>
  * Copyright (C) 2010-2012 Bojan Smojver <bojan@rexursive.com>
+ *
+ * This file is released under the GPLv2.
+ *
  */
 
 #define pr_fmt(fmt) "PM: " fmt
@@ -974,11 +976,12 @@ static int get_swap_reader(struct swap_map_handle *handle,
 	last = handle->maps = NULL;
 	offset = swsusp_header->image;
 	while (offset) {
-		tmp = kzalloc(sizeof(*handle->maps), GFP_KERNEL);
+		tmp = kmalloc(sizeof(*handle->maps), GFP_KERNEL);
 		if (!tmp) {
 			release_swap_reader(handle);
 			return -ENOMEM;
 		}
+		memset(tmp, 0, sizeof(*tmp));
 		if (!handle->maps)
 			handle->maps = tmp;
 		if (last)

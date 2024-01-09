@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * kernel/power/main.c - PM subsystem core functionality.
  *
  * Copyright (c) 2003 Patrick Mochel
  * Copyright (c) 2003 Open Source Development Lab
+ *
+ * This file is released under the GPLv2
+ *
  */
 
 #include <linux/export.h>
@@ -14,8 +16,6 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/suspend.h>
-#include <linux/syscalls.h>
-#include <linux/pm_runtime.h>
 
 #include "power.h"
 
@@ -50,19 +50,6 @@ void unlock_system_sleep(void)
 	mutex_unlock(&system_transition_mutex);
 }
 EXPORT_SYMBOL_GPL(unlock_system_sleep);
-
-void ksys_sync_helper(void)
-{
-	ktime_t start;
-	long elapsed_msecs;
-
-	start = ktime_get();
-	ksys_sync();
-	elapsed_msecs = ktime_to_ms(ktime_sub(ktime_get(), start));
-	pr_info("Filesystems sync: %ld.%03ld seconds\n",
-		elapsed_msecs / MSEC_PER_SEC, elapsed_msecs % MSEC_PER_SEC);
-}
-EXPORT_SYMBOL_GPL(ksys_sync_helper);
 
 /* Routines for PM-transition notifications */
 
@@ -255,69 +242,6 @@ static ssize_t pm_test_store(struct kobject *kobj, struct kobj_attribute *attr,
 power_attr(pm_test);
 #endif /* CONFIG_PM_SLEEP_DEBUG */
 
-#ifdef CONFIG_PM_SLEEP_MONITOR
-/* If set, devices will stuck at suspend for verification */
-static bool pm_hang_enabled;
-
-static int pm_notify_test(struct notifier_block *nb,
-			     unsigned long mode, void *_unused)
-{
-	pr_info("Jump into infinite loop now\n");
-
-	/* Suspend thread stuck at a loop forever */
-	for(;;)
-		;
-
-	pr_info("Fail to stuck at loop\n");
-
-	return 0;
-}
-
-static struct notifier_block pm_notify_nb = {
-	.notifier_call = pm_notify_test,
-};
-
-static ssize_t pm_hang_show(struct kobject *kobj, struct kobj_attribute *attr,
-			     char *buf)
-{
-	return snprintf(buf, 10, "%d\n", pm_hang_enabled);
-}
-
-static ssize_t pm_hang_store(struct kobject *kobj, struct kobj_attribute *attr,
-			      const char *buf, size_t n)
-{
-	unsigned long val;
-	int result;
-
-	if (kstrtoul(buf, 10, &val))
-		return -EINVAL;
-
-	if (val > 1)
-		return -EINVAL;
-
-	pm_hang_enabled = !!val;
-
-	if (pm_hang_enabled == true) {
-
-		result = register_pm_notifier(&pm_notify_nb);
-		if (result)
-			pr_warn("Can not register suspend notifier, return %d\n",
-				result);
-
-	} else {
-
-		result = unregister_pm_notifier(&pm_notify_nb);
-		if (result)
-			pr_warn("Can not unregister suspend notifier, return %d\n",
-				result);
-	}
-
-	return n;
-}
-
-power_attr(pm_hang);
-#endif
-
 static char *suspend_step_name(enum suspend_stat_step step)
 {
 	switch (step) {
@@ -479,12 +403,23 @@ static int suspend_stats_show(struct seq_file *s, void *unused)
 
 	return 0;
 }
-DEFINE_SHOW_ATTRIBUTE(suspend_stats);
+
+static int suspend_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, suspend_stats_show, NULL);
+}
+
+static const struct file_operations suspend_stats_operations = {
+	.open           = suspend_stats_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
 
 static int __init pm_debugfs_init(void)
 {
 	debugfs_create_file("suspend_stats", S_IFREG | S_IRUGO,
-			NULL, NULL, &suspend_stats_fops);
+			NULL, NULL, &suspend_stats_operations);
 	return 0;
 }
 
@@ -599,7 +534,71 @@ void __pm_pr_dbg(bool defer, const char *fmt, ...)
 static inline void pm_print_times_init(void) {}
 #endif /* CONFIG_PM_SLEEP_DEBUG */
 
+#ifdef CONFIG_PM_SLEEP_MONITOR
+/* If set, devices will stuck at suspend for verification */
+static bool pm_hang_enabled;
+
+static int pm_notify_test(struct notifier_block *nb,
+			     unsigned long mode, void *_unused)
+{
+	pr_info("Jump into infinite loop now\n");
+
+	/* Suspend thread stuck at a loop forever */
+	for(;;)
+		;
+
+	pr_info("Fail to stuck at loop\n");
+
+	return 0;
+}
+
+static struct notifier_block pm_notify_nb = {
+	.notifier_call = pm_notify_test,
+};
+
+static ssize_t pm_hang_show(struct kobject *kobj, struct kobj_attribute *attr,
+			     char *buf)
+{
+	return snprintf(buf, 10, "%d\n", pm_hang_enabled);
+}
+
+static ssize_t pm_hang_store(struct kobject *kobj, struct kobj_attribute *attr,
+			      const char *buf, size_t n)
+{
+	unsigned long val;
+	int result;
+
+	if (kstrtoul(buf, 10, &val))
+		return -EINVAL;
+
+	if (val > 1)
+		return -EINVAL;
+
+	pm_hang_enabled = !!val;
+
+	if (pm_hang_enabled == true) {
+
+		result = register_pm_notifier(&pm_notify_nb);
+		if (result)
+			pr_warn("Can not register suspend notifier, return %d\n",
+				result);
+
+	} else {
+
+		result = unregister_pm_notifier(&pm_notify_nb);
+		if (result)
+			pr_warn("Can not unregister suspend notifier, return %d\n",
+				result);
+	}
+
+	return n;
+}
+
+power_attr(pm_hang);
+#endif
+
 struct kobject *power_kobj;
+EXPORT_SYMBOL_GPL(power_kobj);
 
 /**
  * state - control system sleep states.

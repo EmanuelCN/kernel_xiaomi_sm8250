@@ -396,7 +396,6 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 			name = desc->action->name;
 
 		pr_warn("%s: %d triggered %s\n", __func__, irq, name);
-                log_irq_wakeup_reason(irq);
 	}
 }
 
