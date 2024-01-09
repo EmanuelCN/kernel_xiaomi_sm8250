@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved. */
-/* Copyright (C) 2021 XiaoMi, Inc. */
 
 #define pr_fmt(fmt) "%s " fmt, KBUILD_MODNAME
 
@@ -72,18 +71,6 @@
 #define ACCL_TYPE(addr)			((addr >> 16) & 0xF)
 #define NR_ACCL_TYPES			3
 
-#define rpmh_spin_lock(lock)				\
-do {	\
-	if (!oops_in_progress)\
-		spin_lock(lock);	\
-} while (0)
-
-#define rpmh_spin_unlock(lock)				\
-do {	\
-	if (!oops_in_progress)\
-		spin_unlock(lock);	\
-} while (0)
-
 static const char * const accl_str[] = {
 	"", "", "", "CLK", "VREG", "BUS",
 };
@@ -140,22 +127,22 @@ static int tcs_invalidate(struct rsc_drv *drv, int type)
 
 	tcs = get_tcs_of_type(drv, type);
 
-	rpmh_spin_lock(&tcs->lock);
+	spin_lock(&tcs->lock);
 	if (bitmap_empty(tcs->slots, MAX_TCS_SLOTS)) {
-		rpmh_spin_unlock(&tcs->lock);
+		spin_unlock(&tcs->lock);
 		return 0;
 	}
 
 	for (m = tcs->offset; m < tcs->offset + tcs->num_tcs; m++) {
 		if (!tcs_is_free(drv, m)) {
-			rpmh_spin_unlock(&tcs->lock);
+			spin_unlock(&tcs->lock);
 			return -EAGAIN;
 		}
 		write_tcs_reg_sync(drv, RSC_DRV_CMD_ENABLE, m, 0);
 		write_tcs_reg_sync(drv, RSC_DRV_CMD_WAIT_FOR_CMPL, m, 0);
 	}
 	bitmap_zero(tcs->slots, MAX_TCS_SLOTS);
-	rpmh_spin_unlock(&tcs->lock);
+	spin_unlock(&tcs->lock);
 
 	return 0;
 }
@@ -420,13 +407,11 @@ static int tcs_write(struct rsc_drv *drv, const struct tcs_request *msg)
 	if (IS_ERR(tcs))
 		return PTR_ERR(tcs);
 
-	if (!oops_in_progress)
-	       spin_lock_irqsave(&tcs->lock, flags);
-	rpmh_spin_lock(&drv->lock);
-
+	spin_lock_irqsave(&tcs->lock, flags);
+	spin_lock(&drv->lock);
 	if (msg->state == RPMH_ACTIVE_ONLY_STATE && drv->in_solver_mode) {
 		ret = -EINVAL;
-		rpmh_spin_unlock(&drv->lock);
+		spin_unlock(&drv->lock);
 		goto done_write;
 	}
 	/*
@@ -435,7 +420,7 @@ static int tcs_write(struct rsc_drv *drv, const struct tcs_request *msg)
 	 */
 	ret = check_for_req_inflight(drv, tcs, msg);
 	if (ret) {
-		rpmh_spin_unlock(&drv->lock);
+		spin_unlock(&drv->lock);
 		goto done_write;
 	}
 
@@ -451,12 +436,12 @@ static int tcs_write(struct rsc_drv *drv, const struct tcs_request *msg)
 
 	if (msg->state == RPMH_ACTIVE_ONLY_STATE && tcs->type != ACTIVE_TCS)
 		enable_tcs_irq(drv, tcs_id, true);
-	rpmh_spin_unlock(&drv->lock);
+	spin_unlock(&drv->lock);
+
 	__tcs_buffer_write(drv, tcs_id, 0, msg);
 	__tcs_trigger(drv, tcs_id, true);
 
 done_write:
-	if (!oops_in_progress)
 	spin_unlock_irqrestore(&tcs->lock, flags);
 	return ret;
 }
@@ -471,11 +456,10 @@ done_write:
  * Return: 0 on success, -EINVAL on error.
  * Note: This call blocks until a valid data is written to the TCS.
  */
-extern int in_long_press;
 int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg)
 {
 	int ret;
-	int count = 0;
+
 	if (!msg || !msg->cmds || !msg->num_cmds ||
 	    msg->num_cmds > MAX_RPMH_PAYLOAD) {
 		WARN_ON(1);
@@ -496,11 +480,6 @@ int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg)
 					    "PENDING" : "NOT PENDING");
 #endif /* QCOM_RPMH_QGKI_DEBUG */
 			udelay(10);
-			count++;
-		}
-		if ((count == 50000) && (in_long_press)) {
-			printk(KERN_ERR "Long Press :TCS Busy but log saved!");
-			break;
 		}
 	} while (ret == -EBUSY);
 
@@ -576,14 +555,12 @@ static int tcs_ctrl_write(struct rsc_drv *drv, const struct tcs_request *msg)
 	if (IS_ERR(tcs))
 		return PTR_ERR(tcs);
 
-	if (!oops_in_progress)
-	        spin_lock_irqsave(&tcs->lock, flags);
+	spin_lock_irqsave(&tcs->lock, flags);
 	/* find the TCS id and the command in the TCS to write to */
 	ret = find_slots(tcs, msg, &tcs_id, &cmd_id);
 	if (!ret)
 		__tcs_buffer_write(drv, tcs_id, cmd_id, msg);
-	if (!oops_in_progress)
-	        spin_unlock_irqrestore(&tcs->lock, flags);
+	spin_unlock_irqrestore(&tcs->lock, flags);
 
 	return ret;
 }
