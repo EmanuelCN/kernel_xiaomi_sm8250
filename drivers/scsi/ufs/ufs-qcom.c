@@ -907,17 +907,12 @@ out:
 static int ufs_qcom_full_reset(struct ufs_hba *hba)
 {
 	int ret = -ENOTSUPP;
-	bool reenable_intr = false;
 
 	if (!hba->core_reset) {
 		dev_err(hba->dev, "%s: failed, err = %d\n", __func__,
 				ret);
 		goto out;
 	}
-
-        reenable_intr = hba->is_irq_enabled;
-        disable_irq(hba->irq);
-        hba->is_irq_enabled = false;
 
 	ret = reset_control_assert(hba->core_reset);
 	if (ret) {
@@ -937,13 +932,6 @@ static int ufs_qcom_full_reset(struct ufs_hba *hba)
 	if (ret)
 		dev_err(hba->dev, "%s: core_reset deassert failed, err = %d\n",
 				__func__, ret);
-
-	usleep_range(1000, 1100);
-
-	if (reenable_intr) {
-                enable_irq(hba->irq);
-                hba->is_irq_enabled = true;
-        }
 
 out:
 	return ret;
@@ -1606,7 +1594,12 @@ static int ufs_qcom_setup_clocks(struct ufs_hba *hba, bool on,
 			atomic_set(&host->clks_on, on);
 
 	} else if (!on && (status == PRE_CHANGE)) {
-		if (!ufs_qcom_is_link_active(hba)) {
+		/*
+		 * If auto hibern8 is enabled then the link will already
+		 * be in hibern8 state and the ref clock can be gated.
+		 */
+		if ((ufshcd_is_auto_hibern8_enabled(hba) ||
+		    !ufs_qcom_is_link_active(hba))) {
 			/* disable device ref_clk */
 			ufs_qcom_dev_ref_clk_ctrl(host, false);
 
