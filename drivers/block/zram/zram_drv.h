@@ -30,15 +30,16 @@
 
 
 /*
- * ZRAM is mainly used for memory efficiency so we want to keep memory
- * footprint small and thus squeeze size and zram pageflags into a flags
- * member. The lower ZRAM_FLAG_SHIFT bits is for object size (excluding
- * header), which cannot be larger than PAGE_SIZE (requiring PAGE_SHIFT
- * bits), the higher bits are for zram_pageflags.
+ * The lower ZRAM_FLAG_SHIFT bits of table.flags is for
+ * object size (excluding header), the higher bits is for
+ * zram_pageflags.
  *
- * We use BUILD_BUG_ON() to make sure that zram pageflags don't overflow.
+ * zram is mainly used for memory efficiency so we want to keep memory
+ * footprint small so we can squeeze size and flags into a field.
+ * The lower ZRAM_FLAG_SHIFT bits is for object size (excluding header),
+ * the higher bits is for zram_pageflags.
  */
-#define ZRAM_FLAG_SHIFT (PAGE_SHIFT + 1)
+#define ZRAM_FLAG_SHIFT 24
 
 /* Flags for zram pages (table[page_no].flags) */
 enum zram_pageflags {
@@ -47,6 +48,7 @@ enum zram_pageflags {
 	ZRAM_SAME,	/* Page consists the same element */
 	ZRAM_WB,	/* page is stored on backing_device */
 	ZRAM_UNDER_WB,	/* page is under writeback */
+	ZRAM_HUGE,	/* Incompressible page */
 	ZRAM_IDLE,	/* not accessed page since last idle marking */
 
 	__NR_ZRAM_PAGEFLAGS,
@@ -61,7 +63,9 @@ struct zram_table_entry {
 		unsigned long element;
 	};
 	unsigned long flags;
+#ifdef CONFIG_ZRAM_MEMORY_TRACKING
 	ktime_t ac_time;
+#endif
 };
 
 struct zram_stats {
@@ -73,6 +77,7 @@ struct zram_stats {
 	atomic64_t invalid_io;	/* non-page-aligned I/O requests */
 	atomic64_t notify_free;	/* no. of swap slot free notifications */
 	atomic64_t same_pages;		/* no. of same element filled pages */
+	atomic64_t huge_pages;		/* no. of huge pages */
 	atomic64_t pages_stored;	/* no. of pages currently stored */
 	atomic_long_t max_used_pages;	/* no. of maximum pages stored */
 	atomic64_t writestall;		/* no. of write slow paths */
@@ -113,6 +118,7 @@ struct zram {
 	bool wb_limit_enable;
 	u64 bd_wb_limit;
 	struct block_device *bdev;
+	unsigned int old_block_size;
 	unsigned long *bitmap;
 	unsigned long nr_pages;
 #endif

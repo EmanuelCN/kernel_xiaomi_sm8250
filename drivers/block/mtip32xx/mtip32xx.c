@@ -1532,15 +1532,15 @@ static void mtip_dump_identify(struct mtip_port *port)
 	if (!port->identify_valid)
 		return;
 
-	strscpy(cbuf, (char *)(port->identify + 10), 21);
+	strlcpy(cbuf, (char *)(port->identify+10), 21);
 	dev_info(&port->dd->pdev->dev,
 		"Serial No.: %s\n", cbuf);
 
-	strscpy(cbuf, (char *)(port->identify + 23), 9);
+	strlcpy(cbuf, (char *)(port->identify+23), 9);
 	dev_info(&port->dd->pdev->dev,
 		"Firmware Ver.: %s\n", cbuf);
 
-	strscpy(cbuf, (char *)(port->identify + 27), 41);
+	strlcpy(cbuf, (char *)(port->identify+27), 41);
 	dev_info(&port->dd->pdev->dev, "Model: %s\n", cbuf);
 
 	dev_info(&port->dd->pdev->dev, "Security: %04x %s\n",
@@ -1556,13 +1556,13 @@ static void mtip_dump_identify(struct mtip_port *port)
 	pci_read_config_word(port->dd->pdev, PCI_REVISION_ID, &revid);
 	switch (revid & 0xFF) {
 	case 0x1:
-		strscpy(cbuf, "A0", 3);
+		strlcpy(cbuf, "A0", 3);
 		break;
 	case 0x3:
-		strscpy(cbuf, "A2", 3);
+		strlcpy(cbuf, "A2", 3);
 		break;
 	default:
-		strscpy(cbuf, "?", 2);
+		strlcpy(cbuf, "?", 2);
 		break;
 	}
 	dev_info(&port->dd->pdev->dev,
@@ -3861,7 +3861,7 @@ skip_create_disk:
 	set_capacity(dd->disk, capacity);
 
 	/* Enable the block device and add it to /dev */
-	device_add_disk(&dd->pdev->dev, dd->disk, NULL);
+	device_add_disk(&dd->pdev->dev, dd->disk);
 
 	dd->bdev = bdget_disk(dd->disk, 0);
 	/*
