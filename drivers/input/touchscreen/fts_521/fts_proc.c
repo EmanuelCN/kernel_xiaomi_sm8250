@@ -480,7 +480,7 @@ static ssize_t fts_driver_test_write(struct file *file, const char __user *buf,
 		case CMD_GETLIMITSFILE:
 			if (count - 2 - 1 > 1) {
 				numberParam = 2;
-				sscanf(p, "%100s", path);
+				sscanf(p, "%99s", path);
 			}
 			break;
 
