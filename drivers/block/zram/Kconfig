@@ -3,6 +3,7 @@ config ZRAM
 	tristate "Compressed RAM block device support"
 	depends on BLOCK && SYSFS && ZSMALLOC && CRYPTO
 	depends on CRYPTO_LZO || CRYPTO_ZSTD || CRYPTO_LZ4 || CRYPTO_LZ4HC || CRYPTO_842
+	default n
 	help
 	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
 	  Pages written to these disks are compressed and stored in memory
@@ -12,7 +13,7 @@ config ZRAM
 	  It has several use cases, for example: /tmp storage, use as swap
 	  disks and maybe many more.
 
-	  See Documentation/admin-guide/blockdev/zram.rst for more information.
+	  See Documentation/blockdev/zram.txt for more information.
 
 choice
 	prompt "Default zram compressor"
@@ -76,6 +77,7 @@ config ZRAM_ENTROPY_THRESHOLD
 config ZRAM_WRITEBACK
        bool "Write back incompressible or idle page to backing device"
        depends on ZRAM
+       default n
        help
 	 With incompressible page, there is no memory saving to keep it
 	 in memory. Instead, write it out to backing device.
@@ -85,7 +87,7 @@ config ZRAM_WRITEBACK
 	 With /sys/block/zramX/{idle,writeback}, application could ask
 	 idle page's writeback to the backing device to save in memory.
 
-	 See Documentation/admin-guide/blockdev/zram.rst for more information.
+	 See Documentation/blockdev/zram.txt for more information.
 
 config ZRAM_MEMORY_TRACKING
 	bool "Track zRam block status"
@@ -95,4 +97,4 @@ config ZRAM_MEMORY_TRACKING
 	  of zRAM. Admin could see the information via
 	  /sys/kernel/debug/zram/zramX/block_state.
 
-	  See Documentation/admin-guide/blockdev/zram.rst for more information.
+	  See Documentation/blockdev/zram.txt for more information.
