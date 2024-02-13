@@ -74,11 +74,6 @@ First Level Node - CAM CPAS device
    fuse_type: fuse feature is enable type or disable type
    hw_id: Hw id of the feature
 
-- custom-id
-  Usage: optinal
-  Value type <u32>
-  Definition: Custom id to differentiate same CPAS
-
 - interrupt-names
   Usage: optional
   Value type: <string>
