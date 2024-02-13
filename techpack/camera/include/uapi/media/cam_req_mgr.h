@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __UAPI_LINUX_CAM_REQ_MGR_H
@@ -51,6 +51,7 @@
 #define V4L_EVENT_CAM_REQ_MGR_SOF            0
 #define V4L_EVENT_CAM_REQ_MGR_ERROR          1
 #define V4L_EVENT_CAM_REQ_MGR_SOF_BOOT_TS    2
+#define V4L_EVENT_CAM_REQ_MGR_CUSTOM_EVT     3
 
 /* SOF Event status */
 #define CAM_REQ_MGR_SOF_EVENT_SUCCESS           0
@@ -206,6 +207,9 @@ struct cam_req_mgr_sched_request {
  * @sync_mode:           Input Param - Type of sync mode
  * @num_links:           Input Param - Num of links in sync mode (Valid only
  *                             when sync_mode is one of SYNC enabled modes)
+ * @init_timeout:        To account for INIT exposure settings
+ *                       If there is no change in exp settings
+ *                       field needs to assigned to 0
  * @link_hdls:           Input Param - Array of link handles to be in sync mode
  *                             (Valid only when sync_mode is one of SYNC
  *                             enabled modes)
@@ -259,6 +263,8 @@ struct cam_req_mgr_link_control {
 #define CAM_REQ_MGR_CACHE_OPS                   (CAM_COMMON_OPCODE_MAX + 12)
 #define CAM_REQ_MGR_LINK_CONTROL                (CAM_COMMON_OPCODE_MAX + 13)
 #define CAM_REQ_MGR_LINK_V2                     (CAM_COMMON_OPCODE_MAX + 14)
+#define CAM_REQ_MGR_REQUEST_DUMP                (CAM_COMMON_OPCODE_MAX + 15)
+
 /* end of cam_req_mgr opcodes */
 
 #define CAM_MEM_FLAG_HW_READ_WRITE              (1<<0)
@@ -415,12 +421,14 @@ struct cam_mem_cache_ops_cmd {
  * @CAM_REQ_MGR_ERROR_TYPE_BUFFER: Buffer was not filled, not fatal
  * @CAM_REQ_MGR_ERROR_TYPE_RECOVERY: Fatal error, can be recovered
  * @CAM_REQ_MGR_ERROR_TYPE_SOF_FREEZE: SOF freeze, can be recovered
+ * @CAM_REQ_MGR_ERROR_TYPE_FULL_RECOVERY: Full recovery, can be recovered
  */
 #define CAM_REQ_MGR_ERROR_TYPE_DEVICE           0
 #define CAM_REQ_MGR_ERROR_TYPE_REQUEST          1
 #define CAM_REQ_MGR_ERROR_TYPE_BUFFER           2
 #define CAM_REQ_MGR_ERROR_TYPE_RECOVERY         3
 #define CAM_REQ_MGR_ERROR_TYPE_SOF_FREEZE       4
+#define CAM_REQ_MGR_ERROR_TYPE_FULL_RECOVERY    5
 
 /**
  * struct cam_req_mgr_error_msg
@@ -460,10 +468,28 @@ struct cam_req_mgr_frame_msg {
 };
 
 /**
+ * struct cam_req_mgr_custom_msg
+ * @custom_type: custom type
+ * @request_id: request id of the frame
+ * @frame_id: frame id of the frame
+ * @timestamp: timestamp of the frame
+ * @link_hdl: link handle associated with this message
+ * @custom_data: custom data
+ */
+struct cam_req_mgr_custom_msg {
+	uint32_t custom_type;
+	uint64_t request_id;
+	uint64_t frame_id;
+	uint64_t timestamp;
+	int32_t  link_hdl;
+	uint64_t custom_data;
+};
+
+/**
  * struct cam_req_mgr_message
  * @session_hdl: session to which the frame belongs to
  * @reserved: reserved field
- * @u: union which can either be error or frame message
+ * @u: union which can either be error/frame/custom message
  */
 struct cam_req_mgr_message {
 	int32_t session_hdl;
@@ -471,6 +497,7 @@ struct cam_req_mgr_message {
 	union {
 		struct cam_req_mgr_error_msg err_msg;
 		struct cam_req_mgr_frame_msg frame_msg;
+		struct cam_req_mgr_custom_msg custom_msg;
 	} u;
 };
 #endif /* __UAPI_LINUX_CAM_REQ_MGR_H */

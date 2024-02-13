@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CAM_VFE170_150_H_
@@ -114,7 +115,7 @@ struct cam_vfe_top_ver2_reg_offset_module_ctrl zoom_170_150_reg = {
 };
 
 /*Check offsets and values*/
-static __maybe_unused struct cam_vfe_bus_ver2_stats_cfg_info stats_170_150_info  = {
+static struct cam_vfe_bus_ver2_stats_cfg_info stats_170_150_info  = {
 	.dmi_offset_info = {
 		.auto_increment = 0x00000100,
 		.cfg_offset     = 0x00000C24,
@@ -1043,6 +1044,7 @@ static struct cam_vfe_bus_ver2_hw_info vfe170_150_bus_hw_info = {
 			.max_height    = -1,
 		},
 	},
+	.support_consumed_addr = false,
 };
 
 struct cam_vfe_hw_info cam_vfe170_150_hw_info = {
