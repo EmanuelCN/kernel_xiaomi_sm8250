@@ -2072,6 +2072,11 @@ static int sde_kms_set_crtc_for_conn(struct drm_device *dev,
 	}
 
 	crtc_state = drm_atomic_get_crtc_state(state, enc->crtc);
+	if (IS_ERR(crtc_state)) {
+		SDE_ERROR("error %ld getting crtc %d state\n",
+			  PTR_ERR(crtc_state), DRMID(conn));
+                return -EINVAL;
+	}
 	conn_state = drm_atomic_get_connector_state(state, conn);
 	if (IS_ERR(conn_state)) {
 		SDE_ERROR("error %d getting connector %d state\n",
