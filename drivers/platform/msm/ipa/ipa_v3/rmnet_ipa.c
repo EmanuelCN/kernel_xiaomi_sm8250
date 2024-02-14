@@ -1127,8 +1127,10 @@ static int __ipa_wwan_open(struct net_device *dev)
 		reinit_completion(&wwan_ptr->resource_granted_completion);
 	wwan_ptr->device_status = WWAN_DEVICE_ACTIVE;
 
-	if (ipa3_rmnet_res.ipa_napi_enable)
+	if (ipa3_rmnet_res.ipa_napi_enable) {
+		dev_set_threaded(dev, true);
 		napi_enable(&(wwan_ptr->napi));
+	}
 	return 0;
 }
 
