@@ -85,11 +85,11 @@ enum sde_format_flags {
 #define SDE_VSYNC_SOURCE_INTF_1		4
 #define SDE_VSYNC_SOURCE_INTF_2		5
 #define SDE_VSYNC_SOURCE_INTF_3		6
-#define SDE_VSYNC_SOURCE_WD_TIMER_4	0x11
-#define SDE_VSYNC_SOURCE_WD_TIMER_3	0x12
-#define SDE_VSYNC_SOURCE_WD_TIMER_2	0x13
-#define SDE_VSYNC_SOURCE_WD_TIMER_1	0x14
-#define SDE_VSYNC_SOURCE_WD_TIMER_0	0x15
+#define SDE_VSYNC_SOURCE_WD_TIMER_4	11
+#define SDE_VSYNC_SOURCE_WD_TIMER_3	12
+#define SDE_VSYNC_SOURCE_WD_TIMER_2	13
+#define SDE_VSYNC_SOURCE_WD_TIMER_1	14
+#define SDE_VSYNC_SOURCE_WD_TIMER_0	15
 
 enum sde_hw_blk_type {
 	SDE_HW_BLK_TOP = 0,
@@ -553,6 +553,8 @@ struct sde_hw_cp_cfg {
 	u32 displayh;
 	struct sde_hw_dspp *dspp[DSPP_MAX];
 	bool broadcast_disabled;
+	u32 mi_dimlayer_type;
+	void *payload_clear;
 };
 
 /**
@@ -684,12 +686,18 @@ struct sde_hw_autorefresh {
  *        read and write pointers for command mode panels
  * @pp_idx:		Ping-pong block index
  * @intf_idx:		Interface block index
+ * @rd_ptr_init_val:	Value of rd pointer at vsync edge
+ * @rd_ptr_frame_count:	num frames sent since enabling interface
+ * @rd_ptr_line_count:	current line on panel (rd ptr)
  * @wr_ptr_line_count:	current line within pp fifo (wr ptr)
  * @intf_frame_count:	num frames read from intf
  */
 struct sde_hw_pp_vsync_info {
 	u32 pp_idx;
 	u32 intf_idx;
+	u32 rd_ptr_init_val;
+	u32 rd_ptr_frame_count;
+	u32 rd_ptr_line_count;
 	u32 wr_ptr_line_count;
 	u32 intf_frame_count;
 };

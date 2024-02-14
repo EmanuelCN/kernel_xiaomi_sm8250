@@ -30,16 +30,23 @@
 #include "dsi_parser.h"
 #include "msm_drv.h"
 
+#define DSI_READ_WRITE_PANEL_DEBUG 1
+
 #define DEFAULT_FOD_OFF_DIMMING_DELAY     170
 #define DEFAULT_FOD_OFF_ENTER_AOD_DELAY   300
 #define DISPPARAM_THERMAL_SET             0x1
+#define DEFAULT_CABC_WRITE_DELAY          3000
 
 #define MAX_VSYNC_COUNT                   200
+
+extern ssize_t mipi_dsi_dcs_write(struct mipi_dsi_device *dsi, u8 cmd, const void *data, size_t len);
+extern struct frame_stat fm_stat;
 
 enum doze_bkl {
 	DOZE_TO_NORMAL = 0,
 	DOZE_BRIGHTNESS_HBM,
 	DOZE_BRIGHTNESS_LBM,
+	DOZE_BRIGHTNESS_MAX,
 };
 
 enum bkl_dimming_state {
@@ -88,6 +95,31 @@ struct dc_cfg {
 	u8 exit_dc_lut[75];
 };
 
+struct dc_cfg_v2 {
+	bool read_done;
+	bool update_done;
+	int update_dc_on_reg_index;
+	int update_dc_off_reg_index;
+	u8 enter_dc_lut[75];
+	u8 exit_dc_lut[75];
+};
+
+enum dc_lut_state {
+	DC_LUT_D2,
+	DC_LUT_D4,
+	DC_LUT_MAX
+};
+
+enum fingerprint_status {
+	FINGERPRINT_NONE = 0,
+	ENROLL_START = 1,
+	ENROLL_STOP = 2,
+	AUTH_START = 3,
+	AUTH_STOP = 4,
+	HEART_RATE_START = 5,
+	HEART_RATE_STOP = 6,
+};
+
 struct lockdowninfo_cfg {
 	u8 lockdowninfo[16];
 	bool lockdowninfo_read_done;
@@ -112,6 +144,35 @@ typedef struct brightness_alpha {
 	uint32_t alpha;
 } brightness_alpha;
 
+struct gir_cfg {
+	bool update_done;
+	int update_index;
+	int update_index2;
+	u8 gir_param[4];
+};
+
+struct fod_lhbm_green_500nit_cfg {
+	bool update_done;
+	int update_index;
+	u8 fod_lhbm_green_500nit_param[2];
+};
+
+struct fod_lhbm_white_cfg {
+	bool update_done;
+	int update_index;
+	int lhbm_white_read_pre;
+	int lhbm_white_read_offset;
+	u8 fod_lhbm_white_param[6];
+};
+
+enum fod_lhbm_white_state {
+	FOD_LHBM_WHITE_1000NIT_GIROFF,
+	FOD_LHBM_WHITE_1000NIT_GIRON,
+	FOD_LHBM_WHITE_110NIT_GIROFF,
+	FOD_LHBM_WHITE_110NIT_GIRON,
+	FOD_LHBM_WHITE_MAX
+};
+
 struct dsi_panel_mi_cfg {
 	struct dsi_panel *dsi_panel;
 
@@ -128,6 +189,7 @@ struct dsi_panel_mi_cfg {
 	 */
 	bool bl_is_big_endian;
 	u32 last_bl_level;
+	u32 last_nonzero_bl_level;
 
 	/* indicate refresh frequency Fps gpio */
 	int disp_rate_gpio;
@@ -144,6 +206,8 @@ struct dsi_panel_mi_cfg {
 	/* dc read */
 	bool dc_update_flag;
 	struct dc_cfg dc_cfg;
+	bool dc_update_flag_v2;
+	struct dc_cfg_v2 dc_cfg_v2[DC_LUT_MAX];
 
 	/* white point coordinate info */
 	bool wp_read_enabled;
@@ -179,10 +243,14 @@ struct dsi_panel_mi_cfg {
 
 	struct delayed_work enter_aod_delayed_work;
 
+	struct delayed_work cabc_delayed_work;
+
 	bool hbm_enabled;
 	bool thermal_hbm_disabled;
 	bool fod_hbm_enabled;
 	bool fod_hbm_layer_enabled;
+	bool fod_skip_nolp;
+	bool fod_to_nolp;
 	u32 doze_brightness_state;
 	u32 unset_doze_brightness;
 	u32 fod_off_dimming_delay;
@@ -207,6 +275,8 @@ struct dsi_panel_mi_cfg {
 	u32 max_brightness_clone;
 	u32 aod_backlight;
 	uint32_t doze_brightness;
+	bool bl_wait_frame;
+	bool bl_enable;
 	bool is_tddi_flag;
 	bool tddi_doubleclick_flag;
 	bool panel_dead_flag;
@@ -230,7 +300,40 @@ struct dsi_panel_mi_cfg {
 	bool idle_mode_flag;
 
 	bool dither_enabled;
+	u32 cabc_current_status;
+	u32 cabc_temp_status;
 	int current_tp_code_fps;
+
+	bool local_hbm_enabled;
+	bool fod_lhbm_87reg_ctrl_flag;
+	u32 fod_lhbm_white_1000nit_87reg_index;
+	u32 fod_lhbm_white_110nit_87reg_index;
+	u32 fod_lhbm_green_500nit_87reg_index;
+	bool fod_lhbm_b2reg_ctrl_flag;
+	u32 fod_lhbm_white_1000nit_b2reg_index;
+	u32 fod_lhbm_white_110nit_b2reg_index;
+	bool local_hbm_cur_status;
+	bool fod_lhbm_low_brightness_enabled;
+	bool fod_lhbm_low_brightness_allow;
+	u32 fp_status;
+	int doze_hbm_dbv_level;
+	int doze_lbm_dbv_level;
+	int lhbm_target;
+	int pending_lhbm_state;
+	bool fod_lhbm_green_500nit_update_flag;
+	struct fod_lhbm_green_500nit_cfg fod_lhbm_green_500nit_cfg;
+	bool fod_lhbm_white_update_flag;
+	struct fod_lhbm_white_cfg fod_lhbm_white_cfg[FOD_LHBM_WHITE_MAX];
+	bool fod_anim_layer_enabled;
+	bool dim_fp_dbv_max_in_hbm_flag;
+
+	bool gir_update_flag;
+	struct gir_cfg gir_cfg;
+	bool gir_enabled;
+	bool request_gir_status;
+
+	bool nolp_b2reg_ctrl_flag;
+	u32 nolp_b2reg_index;
 };
 
 struct dsi_read_config {
@@ -254,6 +357,20 @@ struct calc_hw_vsync {
 	u64 measured_fps_x1000;
 };
 
+static inline const char *get_doze_brightness_name(__u32 doze_brightness)
+{
+	switch (doze_brightness) {
+	case DOZE_TO_NORMAL:
+		return "doze_to_normal";
+	case DOZE_BRIGHTNESS_HBM:
+		return "doze_brightness_high";
+	case DOZE_BRIGHTNESS_LBM:
+		return "doze_brightness_low";
+	default:
+		return "Unknown";
+	}
+}
+
 int dsi_panel_parse_esd_gpio_config(struct dsi_panel *panel);
 
 int dsi_panel_parse_mi_config(struct dsi_panel *panel,
@@ -264,6 +381,9 @@ void display_utc_time_marker(const char *format, ...);
 int dsi_panel_esd_irq_ctrl(struct dsi_panel *panel,
 				bool enable);
 
+int dsi_panel_esd_irq_ctrl_locked(struct dsi_panel *panel,
+			bool enable);
+
 int dsi_panel_write_cmd_set(struct dsi_panel *panel,
 				struct dsi_panel_cmd_set *cmd_sets);
 
@@ -273,6 +393,8 @@ int dsi_panel_read_cmd_set(struct dsi_panel *panel,
 int dsi_panel_write_mipi_reg(struct dsi_panel *panel, char *buf);
 
 ssize_t dsi_panel_read_mipi_reg(struct dsi_panel *panel, char *buf);
+
+bool dsi_panel_is_need_tx_cmd(u32 param);
 
 int dsi_panel_set_disp_param(struct dsi_panel *panel, u32 param);
 
@@ -289,6 +411,15 @@ int dsi_panel_write_gamma_cmd_set(struct dsi_panel *panel,
 int dsi_panel_read_dc_param(struct dsi_panel *panel);
 
 int dsi_panel_update_dc_param(struct dsi_panel *panel);
+
+int mi_dsi_panel_read_and_update_dc_param_v2(struct dsi_panel *panel);
+
+int mi_dsi_panel_read_and_update_gir_param(struct dsi_panel *panel);
+
+int mi_dsi_panel_read_and_update_lhbm_green_500nit_param(struct dsi_panel *panel);
+int mi_dsi_panel_read_lhbm_white_param(struct dsi_panel *panel);
+int mi_dsi_panel_read_lhbm_white_reg(struct dsi_panel *panel, int fod_lhbm_white_state);
+int mi_dsi_panel_update_lhbm_white_param(struct dsi_panel *panel, int fod_lhbm_white_state, int cmd_index);
 
 int dsi_panel_switch_disp_rate_gpio(struct dsi_panel *panel);
 
@@ -315,8 +446,20 @@ int dsi_panel_get_thermal_hbm_disabled(struct dsi_panel *panel,
 
 int dsi_panel_lockdowninfo_param_read(struct dsi_panel *panel);
 
+int dsi_panel_power_turn_off(bool on);
+
+int mi_dsi_panel_set_fod_brightness(struct mipi_dsi_device *dsi, u16 brightness);
+
 struct calc_hw_vsync *get_hw_calc_vsync_struct(int dsi_display_type);
 ssize_t calc_hw_vsync_info(struct dsi_panel *panel,
 				char *buf);
+
+#if DSI_READ_WRITE_PANEL_DEBUG
+int dsi_panel_procfs_init(struct dsi_panel *panel);
+int dsi_panel_procfs_deinit(struct dsi_panel *panel);
+#else
+static inline int dsi_panel_procfs_init(struct dsi_panel *panel) { return 0; }
+static inline int dsi_panel_procfs_deinit(struct dsi_panel *panel) { return 0; }
+#endif
 
 #endif /* _DSI_PANEL_MI_H_ */
