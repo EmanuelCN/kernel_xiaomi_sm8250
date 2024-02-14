@@ -942,7 +942,7 @@ static int cam_ois_get_data(struct cam_ois_ctrl_t *o_ctrl,
 	t_now = get_cycles();
 	boottime64 = (uint64_t)((ts64.tv_sec * 1000000000) + ts64.tv_nsec);
 
-#ifdef CONFIG_BOARD_PSYCHE
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_APOLLO)
 	if (o_ctrl->opcode.ois_get_data != 0) {
 		uint32_t ois_addr = (o_ctrl->opcode.ois_get_data & 0xFFFF0000) >> 16;
 		uint32_t ois_addr_type = o_ctrl->opcode.ois_get_data & 0xFFFF;
@@ -956,7 +956,7 @@ static int cam_ois_get_data(struct cam_ois_ctrl_t *o_ctrl,
 				OIS_DATA_ADDR, o_ctrl->ois_data.data,
 				CAMERA_SENSOR_I2C_TYPE_BYTE, CAMERA_SENSOR_I2C_TYPE_BYTE,
 				num_data);
-#ifdef CONFIG_BOARD_PSYCHE
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_APOLLO)
 	}
 #endif
 	o_ctrl->ois_data.data_timestamp = (uint64_t)(t_now*10000/192);//< QTimer Freq = 19.2 MHz
