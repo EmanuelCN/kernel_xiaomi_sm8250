@@ -743,7 +743,6 @@ enum sde_clk_ctrl_type {
 struct sde_clk_ctrl_reg {
 	u32 reg_off;
 	u32 bit_off;
-	int val;
 };
 
 /* struct sde_mdp_cfg : MDP TOP-BLK instance info
@@ -1162,6 +1161,9 @@ struct sde_sc_cfg {
  * @qos_refresh_count: total refresh count for possible different luts
  * @qos_refresh_rate: different refresh rates for luts
  * @cdp_cfg            cdp use case configurations
+ * @cpu_mask:          pm_qos cpu mask value
+ * @cpu_dma_latency:   pm_qos cpu dma latency value
+ * @cpu_irq_latency:   pm_qos cpu irq latency value
  * @axi_bus_width:     axi bus width value in bytes
  * @num_mnoc_ports:    number of mnoc ports
  */

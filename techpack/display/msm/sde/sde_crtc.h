@@ -288,8 +288,8 @@ struct sde_crtc_misr_info {
  * @ltm_lock        : Spinlock to protect ltm buffer_cnt, hist_en and ltm lists
  * @needs_hw_reset  : Initiate a hw ctl reset
  * @comp_ratio      : Compression ratio
- * @dspp_blob_info  : blob containing dspp hw capability information
  * @hist_irq_idx    : hist interrupt irq idx
+ * @dspp_blob_info  : blob containing dspp hw capability information
  */
 struct sde_crtc {
 	struct drm_crtc base;
@@ -380,15 +380,10 @@ struct sde_crtc {
 	int hist_irq_idx;
 
 	int comp_ratio;
+	uint32_t mi_dimlayer_type;
 
 	struct drm_property_blob *dspp_blob_info;
 };
-
-#ifdef CONFIG_DRM_SDE_EXPO
-enum sde_crtc_dirty_flags {
-	SDE_CRTC_DIRTY_DIM_LAYER_EXPO,
-};
-#endif
 
 #define to_sde_crtc(x) container_of(x, struct sde_crtc, base)
 
@@ -463,8 +458,8 @@ struct sde_crtc_mi_state {
  * @ds_cfg: Destination scaler config
  * @scl3_lut_cfg: QSEED3 lut config
  * @new_perf: new performance state being requested
- * @secure_session: Indicates the type of secure session
  * @mi_state: Mi part of crtc state
+ * @secure_session: Indicates the type of secure session
  */
 struct sde_crtc_state {
 	struct drm_crtc_state base;
@@ -487,9 +482,7 @@ struct sde_crtc_state {
 	uint64_t input_fence_timeout_ns;
 	uint32_t num_dim_layers;
 	struct sde_hw_dim_layer dim_layer[SDE_MAX_DIM_LAYERS];
-#ifdef CONFIG_OSSFOD
 	struct sde_hw_dim_layer *fod_dim_layer;
-#endif
 	uint32_t num_ds;
 	uint32_t num_ds_enabled;
 	bool ds_dirty;
@@ -497,13 +490,11 @@ struct sde_crtc_state {
 	struct sde_hw_scaler3_lut_cfg scl3_lut_cfg;
 
 	struct sde_core_perf_params new_perf;
-	int secure_session;
-	/* Mi crtc state */
+    /* Mi crtc state */
 	struct sde_crtc_mi_state mi_state;
 	uint32_t num_dim_layers_bank;
-#ifdef CONFIG_DRM_SDE_EXPO
-	struct sde_hw_dim_layer *exposure_dim_layer;
-#endif
+  
+	int secure_session;
 };
 
 enum sde_crtc_irq_state {

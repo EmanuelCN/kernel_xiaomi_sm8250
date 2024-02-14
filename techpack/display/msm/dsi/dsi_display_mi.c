@@ -41,25 +41,26 @@ static atomic64_t g_param = ATOMIC64_INIT(0);
 
 static char oled_pmic_id_str[4] = {0};
 static char oled_wp_info_str[32] = {0};
-static bool wp_info_cmdline_flag = 0;
+static bool wp_info_cmdline_flag;
 
 static int __init
-oled_pmic_id_setup (char *str)
+oled_pmic_id_setup(char *str)
 {
-	size_t count = ((strlen(str) > sizeof(oled_pmic_id_str)) ?
-					sizeof(oled_pmic_id_str): strlen(str));
-	strncpy(oled_pmic_id_str, str, count);
+	size_t count = ((strlen(str) >= sizeof(oled_pmic_id_str)) ?
+					sizeof(oled_pmic_id_str) - 1 : strlen(str));
+	strlcpy(oled_pmic_id_str, str, count);
+
 	return 1;
 }
 __setup("androidboot.oled_pmic_id=", oled_pmic_id_setup);
 
 
 static int __init
-oled_wp_info_setup (char *str)
+oled_wp_info_setup(char *str)
 {
-	size_t count = ((strlen(str) > sizeof(oled_wp_info_str)) ?
-					sizeof(oled_wp_info_str): strlen(str));
-	strncpy(oled_wp_info_str, str, count);
+	size_t count = ((strlen(str) >= sizeof(oled_wp_info_str)) ?
+					sizeof(oled_wp_info_str) - 1 : strlen(str));
+	strlcpy(oled_wp_info_str, str, count);
 	pr_info("androidboot.oled_wp=%s\n", oled_wp_info_str);
 	wp_info_cmdline_flag = 1;
 	return 1;
@@ -86,6 +87,12 @@ int dsi_display_set_disp_param(struct drm_connector *connector,
 	}
 
 	atomic64_set(&g_param, param_type);
+	if (sde_kms_is_suspend_blocked(display->drm_dev) &&
+		dsi_panel_is_need_tx_cmd(param_type)) {
+		pr_err("sde_kms is suspended, skip to set_disp_param\n");
+		return -EBUSY;
+	}
+
 	ret = dsi_panel_set_disp_param(display->panel, param_type);
 
 	return ret;
@@ -143,7 +150,7 @@ ssize_t dsi_display_read_mipi_reg(struct drm_connector *connector,
 ssize_t dsi_display_read_oled_pmic_id(struct drm_connector *connector,
 			char *buf)
 {
-	return snprintf(buf, PAGE_SIZE , "%s\n", oled_pmic_id_str);
+	return snprintf(buf, PAGE_SIZE, "%s\n", oled_pmic_id_str);
 }
 
 ssize_t dsi_display_read_panel_info(struct drm_connector *connector,
@@ -192,23 +199,22 @@ ssize_t dsi_display_read_wp_info(struct drm_connector *connector,
 	struct dsi_display *display = NULL;
 	struct dsi_bridge *c_bridge = NULL;
 
-	if (wp_info_cmdline_flag) {
-		return snprintf(buf, PAGE_SIZE , "%s\n", oled_wp_info_str);
-	} else {
-		if (!connector || !connector->encoder || !connector->encoder->bridge) {
-			pr_err("Invalid connector/encoder/bridge ptr\n");
-			return -EINVAL;
-		}
+	if (wp_info_cmdline_flag)
+		return snprintf(buf, PAGE_SIZE, "%s\n", oled_wp_info_str);
 
-		c_bridge =	to_dsi_bridge(connector->encoder->bridge);
-		display = c_bridge->display;
-		if (!display || !display->panel) {
-			pr_err("Invalid display/panel ptr\n");
-			return -EINVAL;
-		}
-
-		return dsi_panel_read_wp_info(display->panel, buf);
+	if (!connector || !connector->encoder || !connector->encoder->bridge) {
+		pr_err("Invalid connector/encoder/bridge ptr\n");
+		return -EINVAL;
 	}
+
+	c_bridge = to_dsi_bridge(connector->encoder->bridge);
+	display = c_bridge->display;
+	if (!display || !display->panel) {
+		pr_err("Invalid display/panel ptr\n");
+		return -EINVAL;
+	}
+
+	return dsi_panel_read_wp_info(display->panel, buf);
 }
 
 ssize_t dsi_display_read_dynamic_fps(struct drm_connector *connector,
@@ -233,12 +239,11 @@ ssize_t dsi_display_read_dynamic_fps(struct drm_connector *connector,
 
 	mutex_lock(&display->display_lock);
 	cur_mode = display->panel->cur_mode;
-	if (cur_mode) {
+	if (cur_mode)
 		ret = snprintf(buf, PAGE_SIZE, "%d\n", cur_mode->timing.refresh_rate);
-
-	} else {
+	else
 		ret = snprintf(buf, PAGE_SIZE, "%s\n", "null");
-	}
+
 	mutex_unlock(&display->display_lock);
 
 	return ret;
@@ -305,9 +310,8 @@ int dsi_display_read_gamma_param(struct drm_connector *connector)
 	}
 
 	rc = dsi_panel_read_gamma_param(display->panel);
-	if (rc) {
+	if (rc)
 		pr_err("Failed to read gamma para, rc=%d\n", rc);
-	}
 
 	return rc;
 }
@@ -341,14 +345,14 @@ int dsi_display_hbm_set_disp_param(struct drm_connector *connector,
 
 	c_conn = to_sde_connector(connector);
 
-	pr_debug("%s fod hbm command:0x%x \n", __func__, op_code);
+	pr_debug("%s fod hbm command:0x%x\n", __func__, op_code);
 
 	if (op_code == DISPPARAM_HBM_FOD_ON) {
 		rc = dsi_display_set_disp_param(connector, DISPPARAM_HBM_FOD_ON);
 	} else if (op_code == DISPPARAM_HBM_FOD_OFF) {
 		/* close HBM and restore DC */
 		rc = dsi_display_set_disp_param(connector, DISPPARAM_HBM_FOD_OFF);
-	} else if(op_code == DISPPARAM_DIMMING_OFF) {
+	} else if (op_code == DISPPARAM_DIMMING_OFF) {
 		rc = dsi_display_set_disp_param(connector, DISPPARAM_DIMMING_OFF);
 	} else if (op_code == DISPPARAM_HBM_BACKLIGHT_RESEND) {
 		rc = dsi_display_set_disp_param(connector, DISPPARAM_HBM_BACKLIGHT_RESEND);
@@ -356,6 +360,16 @@ int dsi_display_hbm_set_disp_param(struct drm_connector *connector,
 
 	return rc;
 }
+
+int dsi_display_count_set(struct drm_connector *connector, const char *buf)
+{
+	return 0;
+}
+ssize_t dsi_display_count_get(struct drm_connector *connector,	char *buf)
+{
+	return 0;
+}
+
 
 ssize_t dsi_display_fod_get(struct drm_connector *connector, char *buf)
 {
