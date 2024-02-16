@@ -4713,7 +4713,7 @@ static void cnss_mhi_notify_status(struct mhi_controller *mhi_ctrl, void *priv,
 {
 	struct cnss_pci_data *pci_priv = priv;
 	struct cnss_plat_data *plat_priv;
-	enum cnss_recovery_reason cnss_reason;
+	enum cnss_recovery_reason cnss_reason = 0;
 
 	if (!pci_priv) {
 		cnss_pr_err("pci_priv is NULL");

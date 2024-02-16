@@ -1269,7 +1269,7 @@ static u32 cfg80211_calculate_bitrate_he(struct rate_info *rate)
 	u32 rates_52[3]  =  {  18820000,  17777777,  16000000 };
 	u32 rates_26[3]  =  {   9411111,   8888888,   8000000 };
 	u64 tmp;
-	u32 result;
+	u32 result = 0;
 
 	if (WARN_ON_ONCE(rate->mcs > 11))
 		return 0;

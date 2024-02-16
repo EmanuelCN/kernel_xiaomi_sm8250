@@ -36,7 +36,7 @@ void frame_stat_notify(int data)
 
 void calc_fps(u64 duration, int input_event)
 {
-	ktime_t current_time_us;
+	ktime_t current_time_us = 0;
 	u64 fps, diff_us, diff, curr_fps, idle_fps;
 
 	if (!g_panel->mi_cfg.smart_fps_support || !fm_stat.enabled)

@@ -1397,7 +1397,7 @@ static int update_client_alc(struct msm_bus_client *client, unsigned int idx)
 {
 	int lnode, cur_idx;
 	uint64_t req_idle_time, req_fal, dual_idle_time, dual_fal,
-	cur_idle_time, cur_fal;
+	cur_idle_time = 0, cur_fal = 0;
 	int ret = 0;
 	struct msm_bus_scale_pdata *pdata;
 	struct device *src_dev;

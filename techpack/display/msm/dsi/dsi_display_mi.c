@@ -340,7 +340,7 @@ ssize_t dsi_display_print_gamma_param(struct drm_connector *connector, char *buf
 int dsi_display_hbm_set_disp_param(struct drm_connector *connector,
 				u32 op_code)
 {
-	int rc;
+	int rc = 0;
 	struct sde_connector *c_conn;
 
 	c_conn = to_sde_connector(connector);

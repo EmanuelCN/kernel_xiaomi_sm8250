@@ -1696,7 +1696,7 @@ static enum mhip_status_type ipa_mpm_start_stop_mhip_chan(
 	int probe_id,
 	enum ipa_mpm_start_stop_type start_stop)
 {
-	int ipa_ep_idx;
+	int ipa_ep_idx = 0;
 	struct ipa3_ep_context *ep;
 	bool is_start;
 	enum ipa_client_type ul_chan, dl_chan;
@@ -2829,7 +2829,7 @@ int ipa_mpm_mhip_xdci_pipe_enable(enum ipa_usb_teth_prot xdci_teth_prot)
 	int probe_id = IPA_MPM_MHIP_CH_ID_MAX;
 	int i;
 	enum ipa_mpm_mhip_client_type mhip_client;
-	enum mhip_status_type status;
+	enum mhip_status_type status = 0;
 	int pipe_idx;
 	bool is_acted = true;
 	int ret = 0;

@@ -988,7 +988,7 @@ static int msm_disable_all_modes(
 		struct drm_modeset_acquire_ctx *ctx)
 {
 	struct drm_atomic_state *state;
-	int ret, i;
+	int ret = 0, i;
 
 	state = drm_atomic_state_alloc(dev);
 	if (!state)

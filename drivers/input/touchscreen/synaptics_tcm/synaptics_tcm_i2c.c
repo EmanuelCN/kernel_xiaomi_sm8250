@@ -169,7 +169,7 @@ static int syna_tcm_i2c_alloc_mem(struct syna_tcm_hcd *tcm_hcd,
 static int syna_tcm_i2c_rmi_read(struct syna_tcm_hcd *tcm_hcd,
 		unsigned short addr, unsigned char *data, unsigned int length)
 {
-	int retval;
+	int retval = 0;
 	unsigned char address;
 	unsigned int attempt;
 	struct i2c_msg msg[2];
@@ -277,7 +277,7 @@ exit:
 static int syna_tcm_i2c_read(struct syna_tcm_hcd *tcm_hcd, unsigned char *data,
 		unsigned int length)
 {
-	int retval;
+	int retval = 0;
 	unsigned int attempt;
 	struct i2c_msg msg;
 	struct i2c_client *i2c = to_i2c_client(tcm_hcd->pdev->dev.parent);
@@ -315,7 +315,7 @@ exit:
 static int syna_tcm_i2c_write(struct syna_tcm_hcd *tcm_hcd, unsigned char *data,
 		unsigned int length)
 {
-	int retval;
+	int retval = 0;
 	unsigned int attempt;
 	struct i2c_msg msg;
 	struct i2c_client *i2c = to_i2c_client(tcm_hcd->pdev->dev.parent);

@@ -130,7 +130,7 @@ static ssize_t powerup_reason_show(struct kobject *kobj,
 			__func__, pu_reason, pu_reason_index);
 		goto out;
 	}
-	s += snprintf(s, 15, "unknown reboot\n");
+	s += snprintf(s, 16, "unknown reboot\n");
 out:
 	return (s - buf);
 }

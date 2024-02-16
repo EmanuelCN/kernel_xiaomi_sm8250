@@ -15,7 +15,7 @@
 static struct cam_hw_intf *cam_custom_hw_sub_mod_list
 	[CAM_CUSTOM_SUB_MOD_MAX_INSTANCES] = {0, 0};
 
-static char cam_custom_hw_sub_mod_name[8];
+static char cam_custom_hw_sub_mod_name[12];
 
 struct cam_custom_device_hw_info cam_custom_hw_info = {
 	.hw_ver = 0x0,

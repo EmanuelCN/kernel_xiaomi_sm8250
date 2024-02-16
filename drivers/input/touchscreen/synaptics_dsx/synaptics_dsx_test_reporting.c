@@ -3200,7 +3200,7 @@ static void test_set_data(void)
 static int test_set_controls(void)
 {
 	int retval;
-	unsigned char length;
+	unsigned char length = '\0';
 	unsigned char num_of_sensing_freqs;
 	unsigned short reg_addr = f54->control_base_addr;
 	struct f54_control *control = &f54->control;
