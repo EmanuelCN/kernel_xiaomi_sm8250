@@ -325,7 +325,7 @@ static int _determine_parent_and_update_div(struct clk_hw *hw,
 	const struct freq_tbl *f_curr;
 	bool update_rcg = false;
 	u32 old_cfg, cfg, mask, regval;
-	int ret, curr_src_index, next_src_index;
+	int ret = 0, curr_src_index, next_src_index;
 
 	/* Get the current parent for the current frequency */
 	f_curr = qcom_find_freq(rcg->freq_tbl, rcg->current_freq);

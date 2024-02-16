@@ -220,7 +220,7 @@ static long esoc_dev_ioctl(struct file *file, unsigned int cmd,
 						unsigned long arg)
 {
 	int err;
-	u32 esoc_cmd, status, req, evt;
+	u32 esoc_cmd, status, req = 0, evt;
 	struct esoc_uhandle *uhandle = file->private_data;
 	struct esoc_udev *esoc_udev = uhandle->esoc_udev;
 	struct esoc_clink *esoc_clink = uhandle->esoc_clink;

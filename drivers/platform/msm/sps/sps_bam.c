@@ -266,7 +266,7 @@ int sps_bam_enable(struct sps_bam *dev)
 {
 	u32 num_pipes;
 	u32 irq_mask;
-	int result;
+	int result = 0;
 	int rc;
 	int MTIenabled;
 

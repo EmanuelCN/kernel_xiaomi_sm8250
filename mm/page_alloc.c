@@ -3355,7 +3355,7 @@ struct page *rmqueue(struct zone *preferred_zone,
 			gfp_t gfp_flags, unsigned int alloc_flags,
 			int migratetype)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct page *page;
 
 	if (likely(order == 0)) {

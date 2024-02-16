@@ -507,7 +507,7 @@ static ssize_t cache_show(char *buf, int pretty)
 static ssize_t opmode_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	int length;
+	int length = 0;
 	ssize_t result;
 
 	struct mius_system_configuration_parameters_cache *cache =
@@ -522,7 +522,7 @@ static ssize_t opmode_show(struct device *dev,
 static ssize_t opmode_flags_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	int length;
+	int length = 0;
 	ssize_t result;
 	struct mius_system_configuration_parameters_cache *cache =
 				&mius_system_configuration_cache;
@@ -535,7 +535,7 @@ static ssize_t opmode_flags_show(struct device *dev,
 
 static ssize_t driver_version_show(char *buf)
 {
-	int length;
+	int length = 0;
 
 	length = snprintf(buf, PAGE_SIZE, "Driver version: %s-%s (%s)\n",
 				build_name, build_number, build_source_version);

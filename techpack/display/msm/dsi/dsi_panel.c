@@ -2842,7 +2842,7 @@ static int dsi_panel_parse_fod_dim_lut(struct dsi_panel *panel,
 	u32 *array;
 	int count;
 	int len;
-	int rc;
+	int rc = 0;
 	int i;
 
 	len = utils->count_u32_elems(utils->data, "mi,mdss-dsi-dimlayer-brightness-alpha-lut");

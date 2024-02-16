@@ -672,7 +672,7 @@ static int rndis_qc_set_alt(struct usb_function *f, unsigned int intf,
 	int src_connection_idx;
 	int dst_connection_idx;
 	enum usb_ctrl usb_bam_type;
-	int ret;
+	int ret = 0;
 
 	/* we know alt == 0 */
 

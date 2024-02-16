@@ -2013,8 +2013,8 @@ update_task_rq_cpu_cycles(struct task_struct *p, struct rq *rq, int event,
 			  u64 wallclock, u64 irqtime)
 {
 	u64 cur_cycles;
-	u64 cycles_delta;
-	u64 time_delta;
+	u64 cycles_delta = 0;
+	u64 time_delta = 0;
 	int cpu = cpu_of(rq);
 
 	lockdep_assert_held(&rq->lock);

@@ -3366,10 +3366,11 @@ static void msm_comm_print_mem_usage(struct msm_vidc_core *core)
 
 	d_vpr_e("Running instances - mem breakup:\n");
 	d_vpr_e(
-		"%4s|%4s|%24s|%24s|%24s|%24s|%24s|%10s|%10s|%10s|%10s|%10s|%10s|%10s\n",
-		"w", "h", "in", "extra_in", "out", "extra_out",
-		"out2", "scratch", "scratch_1", "scratch_2",
-		"persist", "persist_1", "recon", "total_kb");
+	    "%.5s|%.5s|%.7s|%.7s|%.7s|%.7s|%.7s|%.5s|%.5s|%.5s|%.8s|%.8s|%.8s|%.5s\n",
+	    "w", "h", "in", "extra_in", "out", "extra_out",
+	    "out2", "scratch", "scratch_1", "scratch_2",
+ 	    "persist", "persist_1", "recon", "total_kb");
+
 	mutex_lock(&core->lock);
 	list_for_each_entry(inst, &core->instances, list) {
 		dpb_cnt = dpb_size = total = 0;
@@ -3442,18 +3443,10 @@ static void msm_comm_print_mem_usage(struct msm_vidc_core *core)
 			sz_p1 * cnt_p1 + sz_r * cnt_r;
 		total = total >> 10;
 
-		s_vpr_e(inst->sid,
-			"%4d|%4d|%11u(%8ux%2u)|%11u(%8ux%2u)|%11u(%8ux%2u)|%11u(%8ux%2u)|%11u(%8ux%2u)|%10u|%10u|%10u|%10u|%10u|%10u|%10llu\n",
-			max(iplane->width, oplane->width),
-			max(iplane->height, oplane->height),
-			sz_i * cnt_i, sz_i, cnt_i,
-			sz_i_e * cnt_i, sz_i_e, cnt_i,
-			sz_o * cnt_o, sz_o, cnt_o,
-			sz_o_e * cnt_o, sz_o_e, cnt_o,
-			dpb_size * dpb_cnt, dpb_size, dpb_cnt,
-			sz_s * cnt_s, sz_s1 * cnt_s1,
-			sz_s2 * cnt_s2, sz_p * cnt_p, sz_p1 * cnt_p1,
-			sz_r * cnt_r, total);
+		s_vpr_e(inst->sid, "%4d|%4d|%7u(%5ux%2u)|%7u(%5ux%2u)|%7u(%5ux%2u)|%7u(%5ux%2u)|%llu\n",
+		        max(iplane->width, oplane->width), max(iplane->height, oplane->height),
+		        sz_i * cnt_i, sz_i_e * cnt_i, sz_o * cnt_o, sz_o_e * cnt_o,
+		        dpb_size * dpb_cnt, total);
 	}
 error:
 	mutex_unlock(&core->lock);
@@ -6567,18 +6560,16 @@ void print_vidc_buffer(u32 tag, const char *str, struct msm_vidc_inst *inst,
 			mbuf->vvb.flags, mbuf->vvb.vb2_buf.timestamp,
 			mbuf->smem[0].refcount, mbuf->flags);
 	else
-		dprintk(tag, inst->sid,
-			"%s: %s: idx %2d fd %d off %d daddr %x size %d filled %d flags 0x%x ts %lld refcnt %d mflags 0x%x, extradata: fd %d off %d daddr %x size %d filled %d refcnt %d\n",
-			str, vb2->type == INPUT_MPLANE ?
-			"OUTPUT" : "CAPTURE",
-			vb2->index, vb2->planes[0].m.fd,
-			vb2->planes[0].data_offset, mbuf->smem[0].device_addr,
-			vb2->planes[0].length, vb2->planes[0].bytesused,
-			mbuf->vvb.flags, mbuf->vvb.vb2_buf.timestamp,
-			mbuf->smem[0].refcount, mbuf->flags,
-			vb2->planes[1].m.fd, vb2->planes[1].data_offset,
-			mbuf->smem[1].device_addr, vb2->planes[1].length,
-			vb2->planes[1].bytesused, mbuf->smem[1].refcount);
+		dprintk(tag, inst->sid, "%s: %s: idx %2d fd %d off %d d %x sz %d fill %d fl %x ts %lld ref %d mf %x, ex: fd %d d %x sz %d f %d r %d\n",
+       			str, vb2->type == INPUT_MPLANE ? "OUT" : "CAP",
+        		vb2->index, vb2->planes[0].m.fd, vb2->planes[0].data_offset,
+        		mbuf->smem[0].device_addr, vb2->planes[0].length,
+        		vb2->planes[0].bytesused, mbuf->vvb.flags,
+        		mbuf->vvb.vb2_buf.timestamp, mbuf->smem[0].refcount,
+        		mbuf->flags, vb2->planes[1].m.fd,
+        		mbuf->smem[1].device_addr, vb2->planes[1].length,
+        		vb2->planes[1].bytesused, mbuf->smem[1].refcount);
+
 }
 
 void print_vb2_buffer(const char *str, struct msm_vidc_inst *inst,

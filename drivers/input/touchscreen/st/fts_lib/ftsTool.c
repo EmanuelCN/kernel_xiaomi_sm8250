@@ -84,10 +84,6 @@ int readB2(u16 address, u8 *outBuf, int len)
 	u8 readEvent[FIFO_EVENT_SIZE] = {0};
 	u8 cmd[4] = { FTS_CMD_REQU_FW_CONF, 0x00, 0x00, (u8)len };
 
-	if (readEvent == NULL) {
-		logError(1, "%s %s:ERROR %02X\n", tag, __func__, ERROR_ALLOC);
-		return ERROR_ALLOC;
-	}
 	u16ToU8_be(address, &cmd[1]);
 	temp = printHex("Command B2 = ", cmd, 4);
 	if (temp != NULL)

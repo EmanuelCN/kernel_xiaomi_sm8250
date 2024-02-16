@@ -2939,8 +2939,8 @@ static int _sde_crtc_check_dest_scaler_data(struct drm_crtc *crtc,
 	struct sde_crtc_state *cstate;
 	struct drm_display_mode *mode;
 	struct sde_kms *kms;
-	struct sde_hw_ds *hw_ds;
-	struct sde_hw_ds_cfg *cfg;
+	struct sde_hw_ds *hw_ds = NULL;
+	struct sde_hw_ds_cfg *cfg = NULL;
 	u32 ret = 0;
 	u32 num_ds_enable = 0, hdisplay = 0;
 	u32 max_in_width = 0, max_out_width = 0;
@@ -5000,7 +5000,7 @@ static int _sde_crtc_atomic_check_pstates(struct drm_crtc *crtc,
 	struct sde_crtc *sde_crtc;
 	struct sde_crtc_state *cstate;
 	struct sde_kms *kms;
-	struct drm_plane *plane;
+	struct drm_plane *plane = NULL;
 	struct drm_display_mode *mode;
 	int rc = 0, cnt = 0;
 
