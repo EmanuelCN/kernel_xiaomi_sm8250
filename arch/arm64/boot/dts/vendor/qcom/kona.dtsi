@@ -231,7 +231,7 @@
 			next-level-cache = <&L2_6>;
 			qcom,freq-domain = <&cpufreq_hw 1 4>;
 			capacity-dmips-mhz = <1023>;
-			dynamic-power-coefficient = <304>;
+			dynamic-power-coefficient = <340>;
 			L2_6: l2-cache {
 			      compatible = "arm,arch-cache";
 			      cache-level = <2>;
@@ -350,7 +350,7 @@
 	};
 
 	chosen {
-		bootargs = "noirqdebug nodebugmon rcupdate.rcu_expedited=1 rcu_nocbs=0-7 kpti=off cgroup_disable=pressure";
+		bootargs = "quiet noirqdebug nodebugmon rcupdate.rcu_expedited=1 rcu_nocbs=0-7 kpti=off cgroup_disable=pressure";
 	};
 
 	firmware: firmware {
@@ -380,17 +380,17 @@
 		#size-cells = <2>;
 		ranges;
 
-		hyp_mem: hyp_region {
+		hyp_mem: hyp_region@80000000 {
 			no-map;
 			reg = <0x0 0x80000000 0x0 0x600000>;
 		};
 
-		xbl_aop_mem: xbl_aop_region {
+		xbl_aop_mem: xbl_aop_region@80700000 {
 			no-map;
 			reg = <0x0 0x80700000 0x0 0x160000>;
 		};
 
-		cmd_db: reserved-memory {
+		cmd_db: reserved-memory@80860000 {
 			reg = <0x0 0x80860000 0x0 0x20000>;
 			compatible = "qcom,cmd-db";
 			no-map;
@@ -402,89 +402,89 @@
 			reg = <0x0 0x80880000 0x0 0x14000>;
 		};
 
-		smem_mem: smem_region {
+		smem_mem: smem_region@80900000 {
 			no-map;
 			reg = <0x0 0x80900000 0x0 0x200000>;
 		};
 
-		removed_mem: removed_region {
+		removed_mem: removed_region@80b00000 {
 			no-map;
 			reg = <0x0 0x80b00000 0x0 0x5300000>;
 		};
 
-		pil_camera_mem: pil_camera_region {
+		pil_camera_mem: pil_camera_region@86200000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x86200000 0x0 0x500000>;
 		};
 
-		pil_wlan_fw_mem: pil_wlan_fw_region {
+		pil_wlan_fw_mem: pil_wlan_fw_region@86700000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x86700000 0x0 0x100000>;
 		};
 
-		pil_ipa_fw_mem: pil_ipa_fw_region {
+		pil_ipa_fw_mem: pil_ipa_fw_region@86800000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x86800000 0x0 0x10000>;
 		};
 
-		pil_ipa_gsi_mem: pil_ipa_gsi_region {
+		pil_ipa_gsi_mem: pil_ipa_gsi_region@86810000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x86810000 0x0 0xa000>;
 		};
 
-		pil_gpu_mem: pil_gpu_region {
+		pil_gpu_mem: pil_gpu_region@8681a000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x8681a000 0x0 0x2000>;
 		};
 
-		pil_npu_mem: pil_npu_region {
+		pil_npu_mem: pil_npu_region@86900000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x86900000 0x0 0x500000>;
 		};
 
-		pil_video_mem: pil_video_region {
+		pil_video_mem: pil_video_region@86e00000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x86e00000 0x0 0x500000>;
 		};
 
-		pil_cvp_mem: pil_cvp_region {
+		pil_cvp_mem: pil_cvp_region@87300000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x87300000 0x0 0x500000>;
 		};
 
-		pil_cdsp_mem: pil_cdsp_region {
+		pil_cdsp_mem: pil_cdsp_region@87800000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x87800000 0x0 0x1400000>;
 		};
 
-		pil_slpi_mem: pil_slpi_region {
+		pil_slpi_mem: pil_slpi_region@88c00000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x88c00000 0x0 0x2f00000>;
 		};
 
-		pil_adsp_mem: pil_adsp_region {
+		pil_adsp_mem: pil_adsp_region@8bb00000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x8bb00000 0x0 0x2500000>;
 		};
 
-		pil_spss_mem: pil_spss_region {
+		pil_spss_mem: pil_spss_region@8e000000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x8e000000 0x0 0x100000>;
 		};
 
-		cdsp_secure_heap: cdsp_secure_heap {
+		cdsp_secure_heap: cdsp_secure_heap@8e100000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0x0 0x8e100000 0x0 0x4600000>;
@@ -1166,6 +1166,7 @@
 
 	cpu4_cpu_ddr_qoslat: qcom,cpu4-cpu-ddr-qoslat {
 		compatible = "qcom,devfreq-qoslat";
+		qcom,cpulist = <&CPU4 &CPU5 &CPU6 &CPU7>;
 		governor = "powersave";
 		operating-points-v2 = <&qoslat_opp_table>;
 		mboxes = <&qmp_aop 0>;
@@ -1176,6 +1177,7 @@
 		qcom,cpulist = <&CPU0 &CPU1 &CPU2 &CPU3>;
 
 		cpu0_cpu_l3_latmon: qcom,cpu0-cpu-l3-latmon {
+                        qcom,cpulist = <&CPU0 &CPU1 &CPU2 &CPU3>;
 			compatible = "qcom,arm-memlat-mon";
 			qcom,target-dev = <&cpu0_l3>;
 			qcom,cachemiss-ev = <0x17>;
@@ -1196,6 +1198,7 @@
 
 		cpu0_cpu_llcc_latmon: qcom,cpu0-cpu-llcc-latmon {
 			compatible = "qcom,arm-memlat-mon";
+                        qcom,cpulist = <&CPU0 &CPU1 &CPU2 &CPU3>;
 			qcom,target-dev = <&cpu0_cpu_llcc_lat>;
 			qcom,cachemiss-ev = <0x2A>;
 			qcom,core-dev-table =
@@ -1269,6 +1272,7 @@
 
 		cpu4_cpu_llcc_latmon: qcom,cpu4-cpu-llcc-latmon {
 			compatible = "qcom,arm-memlat-mon";
+                        qcom,cpulist = <&CPU4 &CPU5 &CPU6 &CPU7>;
 			qcom,target-dev = <&cpu4_cpu_llcc_lat>;
 			qcom,cachemiss-ev = <0x2A>;
 			qcom,core-dev-table =
@@ -1317,6 +1321,7 @@
 
 		cpu4_computemon: qcom,cpu4-computemon {
 			compatible = "qcom,arm-compute-mon";
+                        qcom,cpulist = <&CPU4 &CPU5 &CPU6 &CPU7>;
 			qcom,target-dev = <&cpu4_cpu_ddr_latfloor>;
 			ddr4-map {
 				qcom,ddr-type = <DDR_TYPE_LPDDR4X>;
@@ -1337,6 +1342,7 @@
 
 		cpu4_qoslatmon: qcom,cpu4-qoslatmon {
 			compatible = "qcom,arm-memlat-mon";
+                        qcom,cpulist = <&CPU4 &CPU5 &CPU6 &CPU7>;
 			qcom,target-dev = <&cpu4_cpu_ddr_qoslat>;
 			qcom,cachemiss-ev = <0x2A>;
 			qcom,core-dev-table =
@@ -3813,7 +3819,7 @@
 
 				msm_cdsp_rm: qcom,msm_cdsp_rm {
 					compatible = "qcom,msm-cdsp-rm";
-					qcom,qos-latency-us = <44>;
+					qcom,qos-latency-us = <67>;
 					qcom,qos-maxhold-ms = <20>;
 					qcom,compute-cx-limit-en;
 					qcom,compute-priority-mode = <2>;
@@ -5227,7 +5233,7 @@
 
 	qcom,cpufreq-table-0 =
 			<1171200>,
-			<1708800>,
+                        <1708800>,
 			<1804800>;
 
 	qcom,cpufreq-table-1 =
@@ -5251,6 +5257,7 @@
 			<2361600>,
 			<2457600>,
 			<2553600>,
+			<2649600>,
 			<2745600>,
 			<2841600>,
 			<3187200>;

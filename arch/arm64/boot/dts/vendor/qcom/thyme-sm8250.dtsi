@@ -257,7 +257,7 @@ And public attribution of xiaomi platforms(like J2S and so and)
 		fts,fod-ly = <1788>;
 		fts,fod-x-size = <238>;
 		fts,fod-y-size = <238>;
-		fts,default-fw-name = "st_fts_j2s_default.ftb";
+		fts,default-fw-name = "st_fts_j2.ftb";
 		fts,config-array-size = <1>;
 		fts,dump-click-count;
 		fts,support-fod;
@@ -541,7 +541,6 @@ And public attribution of xiaomi platforms(like J2S and so and)
 		mi,pd-battery-warm-th = <450>;
 		mi,use-qcom-gauge;
 		//mi,cp-sec-enable;
-		mi,pd-power-max = <33>; /*charge power max : 33W */
 	};
 
 	wc_dc {
@@ -634,7 +633,6 @@ And public attribution of xiaomi platforms(like J2S and so and)
 &pm8150b_pdphy {
 	vbus-supply = <&ext_5v_boost>;
 	mi,non-qcom-pps-ctrl;
-	mi,pd-power-max = <33>; /*charge power max : 33W */
 };
 
 &smb1390 {
