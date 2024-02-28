@@ -520,7 +520,7 @@ this file is for attribution only of alioth
 	status = "ok";
 	qcom,sec-charger-config = <0>;
 	qcom,usb-icl-ua = <3000000>;
-	qcom,fcc-max-ua = <5400000>;
+	qcom,fcc-max-ua = <6000000>;
 	qcom,fv-max-uv = <4460000>;
 	qcom,non-fcc-fv-max-uv = <4450000>;
 	qcom,dc-icl-ua = <1000000>;
@@ -529,12 +529,12 @@ this file is for attribution only of alioth
 	qcom,chg-term-current-ma = <(-220)>;
 	//qcom,step-charging-enable;
 	qcom,sw-jeita-enable;
-	qcom,chg-warm-th= <430>;
+	qcom,chg-warm-th= <480>;
 	qcom,chg-cool-th= <150>;
 	//qcom,suspend-input-on-debug-batt;
 	qcom,usbpd-phandle = <&pm8150b_pdphy>;
 	qcom,battery-data = <&alioth_batterydata>;
-	mi,six-pin-step-chg-params = <4250000  5400000
+	mi,six-pin-step-chg-params = <4250000  6000000
 				4450000  5400000
 				4460000  3536000>;
 	mi,six-pin-step-chg;
@@ -602,9 +602,9 @@ this file is for attribution only of alioth
 				   1600000 1600000 1400000 1200000 1100000 1050000 1000000
 				   950000 500000>;
 	qcom,thermal-fcc-pps-bq
-				= <5400000 5300000 5200000 4900000 4800000 4500000 4200000
-				   4000000 3800000 3500000 3200000 3000000 2500000 2000000
-				   1500000 1000000>;
+				= <6000000 5400000 5000000 4400000 4000000 3700000 3500000
+				   3000000 2800000 2500000 2000000 1500000 1000000 700000
+				   300000 100000>;
 };
 
 &pm8150b_fg {
@@ -655,7 +655,7 @@ this file is for attribution only of alioth
 		mi,qc3-bat-curr-max = <3600>;
 		mi,qc3-bus-volt-max = <12000>;
 		mi,qc3-bus-curr-max = <2100>;
-		mi,qc3-battery-warm-th = <430>;
+		mi,qc3-battery-warm-th = <480>;
 		mi,use-qcom-gauge;
 		mi,support-qc3p5-without-smb;
 		//mi,cp-sec-enable;
@@ -670,7 +670,7 @@ this file is for attribution only of alioth
 		mi,pd-bus-curr-max = <3000>;
 		mi,pd-bus-curr-compensate  = <50>;
 		mi,pd-non-ffc-bat-volt-max = <4450>;
-		mi,pd-battery-warm-th = <430>;
+		mi,pd-battery-warm-th = <480>;
 		mi,use-qcom-gauge;
 		//mi,cp-sec-enable;
 		mi,therm-level-threshold = <12>;
