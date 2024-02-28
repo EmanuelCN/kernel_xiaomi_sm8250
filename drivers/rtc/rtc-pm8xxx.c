@@ -543,7 +543,6 @@ static int pm8xxx_rtc_probe(struct platform_device *pdev)
 	if (IS_ERR(rtc_dd->rtc)) {
 		dev_err(&pdev->dev, "%s: RTC registration failed (%ld)\n",
 			__func__, PTR_ERR(rtc_dd->rtc));
-		device_init_wakeup(&pdev->dev, 0);
 		return PTR_ERR(rtc_dd->rtc);
 	}
 
