@@ -648,6 +648,15 @@ retry:
 		if (unlikely(err == -ENOENT)) {
 			void *page_kaddr;
 
+			/*
+			 * Return early due to mmap_lock contention only after
+			 * some pages are copied to ensure that jank sensitive
+			 * threads don't keep retrying for progress-critical
+			 * pages.
+			 */
+			if (copied && rwsem_is_contended(&dst_mm->mmap_sem))
+				break;
+
 			up_read(&dst_mm->mmap_sem);
 			BUG_ON(!page);
 
@@ -672,6 +681,9 @@ retry:
 
 			if (fatal_signal_pending(current))
 				err = -EINTR;
+
+			if (rwsem_is_contended(&dst_mm->mmap_sem))
+				err = -EAGAIN;
 		}
 		if (err)
 			break;
