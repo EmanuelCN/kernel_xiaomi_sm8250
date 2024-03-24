@@ -74,6 +74,7 @@ struct task_struct init_task
 	.policy		= SCHED_NORMAL,
 	.cpus_allowed	= CPU_MASK_ALL,
 	.user_cpus_ptr	= NULL,
+	.max_allowed_capacity	= SCHED_CAPACITY_SCALE,
 	.nr_cpus_allowed= NR_CPUS,
 	.cpus_requested	= CPU_MASK_ALL,
 	.mm		= NULL,
