@@ -10545,7 +10545,8 @@ next_group:
 		struct root_domain *rd = env->dst_rq->rd;
 
 		/* update overload indicator if we are at root domain */
-		WRITE_ONCE(rd->overload, sg_status & SG_OVERLOAD);
+		if (READ_ONCE(rd->overload) != (sg_status & SG_OVERLOAD))
+			WRITE_ONCE(rd->overload, sg_status & SG_OVERLOAD);
 
 		/* Update over-utilization (tipping point, U >= 0) indicator */
 		WRITE_ONCE(rd->overutilized, sg_status & SG_OVERUTILIZED);
