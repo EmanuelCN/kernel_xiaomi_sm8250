@@ -43,8 +43,6 @@
 #include <linux/compiler.h>
 #include <linux/posix-timers.h>
 #include <linux/livepatch.h>
-#include <linux/oom.h>
-#include <linux/capability.h>
 #include <linux/cgroup.h>
 
 #define CREATE_TRACE_POINTS
@@ -1387,15 +1385,8 @@ int group_send_sig_info(int sig, struct siginfo *info, struct task_struct *p,
 	ret = check_kill_permission(sig, info, p);
 	rcu_read_unlock();
 
-	if (!ret && sig) {
-		check_panic_on_foreground_kill(p);
+	if (!ret && sig)
 		ret = do_send_sig_info(sig, info, p, type);
-		if (capable(CAP_KILL) && sig == SIGKILL) {
-			if (!strcmp(current->comm, ULMK_MAGIC))
-				add_to_oom_reaper(p);
-			ulmk_update_last_kill();
-		}
-	}
 
 	return ret;
 }

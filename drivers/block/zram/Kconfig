@@ -2,7 +2,6 @@
 config ZRAM
 	tristate "Compressed RAM block device support"
 	depends on BLOCK && SYSFS && ZSMALLOC && CRYPTO
-	depends on CRYPTO_LZO || CRYPTO_ZSTD || CRYPTO_LZ4 || CRYPTO_LZ4HC || CRYPTO_842
 	default n
 	help
 	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
@@ -17,62 +16,28 @@ config ZRAM
 
 choice
 	prompt "Default zram compressor"
-	default ZRAM_DEF_COMP_LZORLE
+	default ZRAM_DEF_COMP_LZ4
 	depends on ZRAM
-
-config ZRAM_DEF_COMP_LZORLE
-	bool "lzo-rle"
-	depends on CRYPTO_LZO
-
-config ZRAM_DEF_COMP_ZSTD
-	bool "zstd"
-	depends on CRYPTO_ZSTD
-
-config ZRAM_DEF_COMP_LZ4
-	bool "lz4"
-	depends on CRYPTO_LZ4
 
 config ZRAM_DEF_COMP_LZO
 	bool "lzo"
-	depends on CRYPTO_LZO
+	select CRYPTO_LZO
 
-config ZRAM_DEF_COMP_LZ4HC
-	bool "lz4hc"
-	depends on CRYPTO_LZ4HC
+config ZRAM_DEF_COMP_ZSTD
+	bool "zstd"
+	select CRYPTO_ZSTD
 
-config ZRAM_DEF_COMP_842
-	bool "842"
-	depends on CRYPTO_842
+config ZRAM_DEF_COMP_LZ4
+	bool "lz4"
+	select CRYPTO_LZ4
 
 endchoice
 
 config ZRAM_DEF_COMP
 	string
-	default "lzo-rle" if ZRAM_DEF_COMP_LZORLE
+	default "lzo" if ZRAM_DEF_COMP_LZO
 	default "zstd" if ZRAM_DEF_COMP_ZSTD
 	default "lz4" if ZRAM_DEF_COMP_LZ4
-	default "lzo" if ZRAM_DEF_COMP_LZO
-	default "lz4hc" if ZRAM_DEF_COMP_LZ4HC
-	default "842" if ZRAM_DEF_COMP_842
-
-config ZRAM_ENTROPY
-	bool "Use entropy optimization for zram"
-	depends on ZRAM
-	default y
-	help
-	  With this feature, entropy will be calculated for each page.
-	  Pages above ZRAM_ENTROPY_THRESHOLD entropy will be
-	  stored uncompressed. Use this feature if you need a performance
-	  boost and a small loss in compression.
-
-config ZRAM_ENTROPY_THRESHOLD
-	int
-	depends on ZRAM && ZRAM_ENTROPY
-	default 100000
-	help
-	  Pages with entropy above ZRAM_ENTROPY_THRESHOLD will be stored
-	  uncompressed. The default value was chosen as a result a lot of
-	  experiments. You can try set your own value.
 
 config ZRAM_WRITEBACK
        bool "Write back incompressible or idle page to backing device"

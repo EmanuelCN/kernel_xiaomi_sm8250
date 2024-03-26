@@ -20,20 +20,19 @@
 
 static const char * const backends[] = {
 #if IS_ENABLED(CONFIG_CRYPTO_LZO)
-	"lzo",
-	"lzo-rle",
+	"lzo"
 #endif
 #if IS_ENABLED(CONFIG_CRYPTO_LZ4)
-	"lz4",
+	"lz4"
 #endif
 #if IS_ENABLED(CONFIG_CRYPTO_LZ4HC)
-	"lz4hc",
+	"lz4hc"
 #endif
 #if IS_ENABLED(CONFIG_CRYPTO_842)
-	"842",
+	"842"
 #endif
 #if IS_ENABLED(CONFIG_CRYPTO_ZSTD)
-	"zstd",
+	"zstd"
 #endif
 };
 
@@ -67,12 +66,6 @@ static int zcomp_strm_init(struct zcomp_strm *zstrm, struct zcomp *comp)
 
 bool zcomp_available_algorithm(const char *comp)
 {
-	int i;
-
-	i = sysfs_match_string(backends, comp);
-	if (i >= 0)
-		return true;
-
 	/*
 	 * Crypto does not ignore a trailing new line symbol,
 	 * so make sure you don't supply a string containing
@@ -218,6 +211,11 @@ struct zcomp *zcomp_create(const char *compress)
 	struct zcomp *comp;
 	int error;
 
+	/*
+	 * Crypto API will execute /sbin/modprobe if the compression module
+	 * is not loaded yet. We must do it here, otherwise we are about to
+	 * call /sbin/modprobe under CPU hot-plug lock.
+	 */
 	if (!zcomp_available_algorithm(compress))
 		return ERR_PTR(-EINVAL);
 
