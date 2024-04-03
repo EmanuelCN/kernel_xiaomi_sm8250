@@ -469,6 +469,7 @@ config HAVE_SCHED_AVG_IRQ
 	depends on SMP
 
 config SCHED_THERMAL_PRESSURE
+	default y
 	bool "Enable periodic averaging of thermal pressure"
 	depends on SMP
 
