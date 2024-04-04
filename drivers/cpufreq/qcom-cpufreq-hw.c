@@ -560,13 +560,11 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 			 */
 			if (i > 0 && c->table[i - 1].frequency ==
 					c->table[i].frequency) {
-				if (prev_cc == core_count) {
 					struct cpufreq_frequency_table *prev =
 								&c->table[i - 1];
 
 					if (prev_freq == CPUFREQ_ENTRY_INVALID)
 						prev->flags = CPUFREQ_BOOST_FREQ;
-				}
 				break;
 			}
 			invalidate_freq = false;
