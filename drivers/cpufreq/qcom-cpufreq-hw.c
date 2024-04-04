@@ -12,6 +12,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/pm_opp.h>
+#include <linux/qcom-cpufreq-hw.h>
 #include <linux/energy_model.h>
 #include <linux/sched.h>
 #include <linux/cpu_cooling.h>
@@ -137,21 +138,29 @@ static unsigned long limits_mitigation_notify(struct cpufreq_qcom *c,
 	struct cpufreq_policy *policy;
 	u32 cpu;
 	unsigned long freq;
+	unsigned long max_capacity, capacity;
+
+	cpu = cpumask_first(&c->related_cpus);
+	policy = cpufreq_cpu_get_raw(cpu);
+	capacity = max_capacity = arch_scale_cpu_capacity(cpu);
 
 	if (limit) {
 		freq = readl_relaxed(c->reg_bases[REG_DOMAIN_STATE]) &
 				GENMASK(7, 0);
 		freq = DIV_ROUND_CLOSEST_ULL(freq * c->xo_rate, 1000);
+		if (policy) {
+			capacity = freq * max_capacity;
+			capacity /= policy->cpuinfo.max_freq;
+		}
 	} else {
-		cpu = cpumask_first(&c->related_cpus);
-		policy = cpufreq_cpu_get_raw(cpu);
 		if (!policy)
 			freq = U32_MAX;
 		else
 			freq = policy->cpuinfo.max_freq;
 	}
 
-	sched_update_cpu_freq_min_max(&c->related_cpus, 0, freq);
+	arch_set_thermal_pressure(&c->related_cpus, min_t(unsigned long, 0,
+				  max_capacity - capacity));
 	trace_dcvsh_freq(cpumask_first(&c->related_cpus), freq);
 	c->dcvsh_freq_limit = freq;
 
@@ -245,7 +254,7 @@ done:
 	return IRQ_HANDLED;
 }
 
-static u64 qcom_cpufreq_get_cpu_cycle_counter(int cpu)
+u64 qcom_cpufreq_get_cpu_cycle_counter(int cpu)
 {
 	struct cpufreq_counter *cpu_counter;
 	struct cpufreq_qcom *cpu_domain;
@@ -278,6 +287,7 @@ static u64 qcom_cpufreq_get_cpu_cycle_counter(int cpu)
 
 	return cycle_counter_ret;
 }
+EXPORT_SYMBOL_GPL(qcom_cpufreq_get_cpu_cycle_counter);
 
 static int
 qcom_cpufreq_hw_target_index(struct cpufreq_policy *policy,
@@ -881,9 +891,6 @@ static int cpufreq_hw_register_cooling_device(struct platform_device *pdev)
 
 static int qcom_cpufreq_hw_driver_probe(struct platform_device *pdev)
 {
-	struct cpu_cycle_counter_cb cycle_counter_cb = {
-		.get_cpu_cycle_counter = qcom_cpufreq_get_cpu_cycle_counter,
-	};
 	int rc, cpu;
 
 	/* Get the bases of cpufreq for domains */
@@ -899,13 +906,6 @@ static int qcom_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	rc = cpufreq_register_driver(&cpufreq_qcom_hw_driver);
 	if (rc) {
 		dev_err(&pdev->dev, "CPUFreq HW driver failed to register\n");
-		return rc;
-	}
-
-
-	rc = register_cpu_cycle_counter_cb(&cycle_counter_cb);
-	if (rc) {
-		dev_err(&pdev->dev, "cycle counter cb failed to register\n");
 		return rc;
 	}
 
