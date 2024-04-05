@@ -914,18 +914,18 @@ static int sugov_init(struct cpufreq_policy *policy)
 	tunables->down_rate_limit_us = cpufreq_policy_transition_delay_us(policy);
 
 	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask)) {
-		tunables->up_rate_limit_us = 5000;
-		tunables->down_rate_limit_us = 5000;
+		tunables->up_rate_limit_us = 500;
+		tunables->down_rate_limit_us = 1000;
 	}
 
 	if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
-		tunables->up_rate_limit_us = 16000;
-		tunables->down_rate_limit_us = 4000;
+		tunables->up_rate_limit_us = 500;
+		tunables->down_rate_limit_us = 1000;
 	}
 
         if (cpumask_test_cpu(policy->cpu, cpu_prime_mask)) {
-                tunables->up_rate_limit_us = 16000;
-                tunables->down_rate_limit_us = 4000;
+                tunables->up_rate_limit_us = 500;
+                tunables->down_rate_limit_us = 1000;
         }
 
 	policy->governor_data = sg_policy;
