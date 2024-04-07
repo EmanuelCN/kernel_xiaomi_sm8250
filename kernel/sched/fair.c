@@ -3340,7 +3340,7 @@ static void reweight_entity(struct cfs_rq *cfs_rq, struct sched_entity *se,
 
 	enqueue_load_avg(cfs_rq, se);
 	if (se->on_rq) {
-                update_load_sub(&cfs_rq->load, se->load.weight);
+                update_load_add(&cfs_rq->load, se->load.weight);
 		enqueue_runnable_load_avg(cfs_rq, se);
 		if (!curr)
 			__enqueue_entity(cfs_rq, se);
