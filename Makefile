@@ -933,7 +933,7 @@ endif
 
 ifdef CONFIG_LTO_CLANG
 ifdef CONFIG_LTO_CLANG_THIN
-CC_FLAGS_LTO	+= -flto=thin -fsplit-lto-unit
+CC_FLAGS_LTO	+= -flto=thin -fsplit-lto-unit -funified-lto
 KBUILD_LDFLAGS	+= --thinlto-cache-dir=.thinlto-cache --thinlto-jobs=$(nproc --all)
 else
 CC_FLAGS_LTO	+= -flto
