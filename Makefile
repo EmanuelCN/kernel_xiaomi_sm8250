@@ -694,8 +694,9 @@ KBUILD_LDFLAGS  += -O2
 
 ifdef CONFIG_INLINE_OPTIMIZATION
 ifdef CONFIG_CC_IS_CLANG
-KBUILD_CFLAGS	+= -mllvm -inline-threshold=600
-KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=750
+KBUILD_CFLAGS	+= -mllvm -inline-threshold=2500
+KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=2000
+KBUILD_CFLAGS	+= -mllvm -unroll-threshold=1200
 else ifdef CONFIG_CC_IS_GCC
 KBUILD_CFLAGS	+= --param max-inline-insns-single=600
 KBUILD_CFLAGS	+= --param max-inline-insns-auto=750
