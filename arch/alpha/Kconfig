@@ -44,6 +44,13 @@ config MMU
 	bool
 	default y
 
+config RWSEM_GENERIC_SPINLOCK
+	bool
+
+config RWSEM_XCHGADD_ALGORITHM
+	bool
+	default y
+
 config ARCH_HAS_ILOG2_U32
 	bool
 	default n

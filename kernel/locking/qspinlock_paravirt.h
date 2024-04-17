@@ -49,6 +49,8 @@ enum vcpu_state {
 
 struct pv_node {
 	struct mcs_spinlock	mcs;
+	struct mcs_spinlock	__res[3];
+
 	int			cpu;
 	u8			state;
 };
@@ -279,7 +281,7 @@ static void pv_init_node(struct mcs_spinlock *node)
 {
 	struct pv_node *pn = (struct pv_node *)node;
 
-	BUILD_BUG_ON(sizeof(struct pv_node) > sizeof(struct qnode));
+	BUILD_BUG_ON(sizeof(struct pv_node) > 5*sizeof(struct mcs_spinlock));
 
 	pn->cpu = smp_processor_id();
 	pn->state = vcpu_running;
