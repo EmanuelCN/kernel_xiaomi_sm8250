@@ -1905,9 +1905,23 @@ const struct bpf_func_proto bpf_sock_hash_update_proto __weak;
 const struct bpf_func_proto bpf_get_current_cgroup_id_proto __weak;
 const struct bpf_func_proto bpf_get_local_storage_proto __weak;
 
+BPF_CALL_5(bpf_trace_printk_dummy, char *, fmt, u32, fmt_size, u64, arg1,
+	   u64, arg2, u64, arg3)
+{
+	return 0;
+}
+
+static const struct bpf_func_proto bpf_trace_printk_dummy_proto = {
+	.func		= bpf_trace_printk_dummy,
+	.gpl_only	= true,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_PTR_TO_MEM,
+	.arg2_type	= ARG_CONST_SIZE,
+};
+
 const struct bpf_func_proto * __weak bpf_get_trace_printk_proto(void)
 {
-	return NULL;
+	return &bpf_trace_printk_dummy_proto;
 }
 
 u64 __weak
