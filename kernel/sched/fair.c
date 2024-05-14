@@ -153,13 +153,6 @@ unsigned int sched_capacity_margin_up[CPU_NR] = {
 			[0 ... CPU_NR-1] = 1078}; /* ~5% margin */
 unsigned int sched_capacity_margin_down[CPU_NR] = {
 			[0 ... CPU_NR-1] = 1205}; /* ~15% margin */
-unsigned int sched_capacity_margin_up_boosted[CPU_NR] = {
-	3658, 3658, 3658, 3658, 1078, 1078, 1078, 1024
-}; /* 72% margin for small, 5% for big, 0% for big+ */
-unsigned int sched_capacity_margin_down_boosted[CPU_NR] = {
-	3658, 3658, 3658, 3658, 3658, 3658, 3658, 3658
-}; /* not used for small cores, 72% margin for big, 72% margin for big+ */
-
 #ifdef CONFIG_SCHED_WALT
 /* 1ms default for 20ms window size scaled to 1024 */
 unsigned int sysctl_sched_min_task_util_for_boost = 51;
@@ -4340,23 +4333,14 @@ static inline bool task_fits_capacity(struct task_struct *p,
 	unsigned int margin;
 
 	/*
-	 * Derive upmigration/downmigrate margin wrt the src/dest
-	 * CPU.
+	 * Derive upmigration/downmigrate margin wrt the src/dest CPU.
 	 */
 	if (capacity_orig_of(task_cpu(p)) > capacity_orig_of(cpu))
-		margin = schedtune_task_boost(p) > 0 &&
-			  !schedtune_prefer_high_cap(p) &&
-			   p->prio <= DEFAULT_PRIO ?
-			sched_capacity_margin_down_boosted[task_cpu(p)] :
-			sched_capacity_margin_down[task_cpu(p)];
+		margin = sched_capacity_margin_down[cpu];
 	else
-		margin = schedtune_task_boost(p) > 0 &&
-			  !schedtune_prefer_high_cap(p) &&
-			   p->prio <= DEFAULT_PRIO ?
-			sched_capacity_margin_up_boosted[task_cpu(p)] :
-			sched_capacity_margin_up[task_cpu(p)];
+		margin = sched_capacity_margin_up[task_cpu(p)];
 
-	return capacity * 1024 > uclamp_task(p) * margin;
+	return capacity * 1024 > uclamp_task_util(p) * margin;
 }
 
 static inline bool task_fits_max(struct task_struct *p, int cpu)
@@ -4370,8 +4354,9 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 
 	if (is_min_capacity_cpu(cpu)) {
 		if (task_boost_policy(p) == SCHED_BOOST_ON_BIG ||
-			task_boost > 0 ||
-			walt_should_kick_upmigrate(p, cpu))
+				task_boost > 0 ||
+				uclamp_boosted(p) ||
+				walt_should_kick_upmigrate(p, cpu))
 			return false;
 	} else { /* mid cap cpu */
 		if (task_boost > TASK_BOOST_ON_MID)
