@@ -165,6 +165,9 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync, bool rt
 		struct cpuidle_state *idle_state;
 		struct rq *rq = cpu_rq(cpu);
 
+		if (is_reserved(cpu))
+			continue;
+
 		/* Get the original, maximum _possible_ capacity of this CPU */
 		curr->cap_orig = arch_scale_cpu_capacity(cpu);
 
