@@ -173,4 +173,7 @@ extern int sched_energy_aware_handler(struct ctl_table *table, int write,
 				 loff_t *ppos);
 #endif
 
+#define LIB_PATH_LENGTH 512
+static char sched_lib_name[LIB_PATH_LENGTH];
+static unsigned int sched_lib_mask_force;
 #endif /* _LINUX_SCHED_SYSCTL_H */
