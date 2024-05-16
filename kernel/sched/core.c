@@ -6058,11 +6058,32 @@ out_unlock:
 	return retval;
 }
 
+static bool task_is_unity_game(struct task_struct *p)
+{
+	struct task_struct *t;
+	bool ret = false;
+
+	/* Filter for Android user applications (i.e., positive adj) */
+	if (p->signal->oom_score_adj >= 0) {
+		rcu_read_lock();
+		for_each_thread(p, t) {
+			/* Check for a UnityMain thread in the thread group */
+			if (!strcmp(t->comm, "UnityMain")) {
+				ret = true;
+				break;
+			}
+		}
+		rcu_read_unlock();
+	}
+
+	return ret;
+}
+
 long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 {
 	cpumask_var_t cpus_allowed, new_mask;
 	struct task_struct *p;
-	int retval;
+	int retval = 0;
 	int dest_cpu;
 	cpumask_t allowed_mask;
 
@@ -6077,6 +6098,20 @@ long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 	/* Prevent p going away */
 	get_task_struct(p);
 	rcu_read_unlock();
+
+	/*
+	 * Unity-based games like to shoot themselves in the foot by setting a
+	 * nonsense CPU affinity, restricting the game to a narrow set of CPU
+	 * cores that it thinks are the "big" cores in a heterogeneous CPU. It
+	 * assumes that CPUs only have two performance domains (clusters), and
+	 * therefore royally mucks up games' CPU affinities on CPUs which have
+	 * more than two performance domains.
+	 *
+	 * Check if the target task is part of a Unity-based game and silently
+	 * ignore the setaffinity request so that it can't sabotage itself.
+	 */
+	if (task_is_unity_game(p))
+		goto out_put_task;
 
 	if (p->flags & PF_NO_SETAFFINITY) {
 		retval = -EINVAL;
