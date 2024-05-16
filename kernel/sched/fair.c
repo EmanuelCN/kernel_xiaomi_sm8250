@@ -8559,14 +8559,9 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 	cfs_rq = cfs_rq_of(se);
 	update_curr(cfs_rq);
 
-	if (sched_feat(PREEMPT_SHORT) && pse->slice < se->slice &&
-	    entity_eligible(cfs_rq, pse) &&
-	    (s64)(pse->deadline - se->deadline) < 0 &&
-	    se->vlag == se->deadline) {
-		/* negate RUN_TO_PARITY */
-		se->vlag = se->deadline - 1;
-	}
-
+	/*
+	 * XXX pick_eevdf(cfs_rq) != se ?
+	 */
 	if (pick_eevdf(cfs_rq) == pse)
 		goto preempt;
 
