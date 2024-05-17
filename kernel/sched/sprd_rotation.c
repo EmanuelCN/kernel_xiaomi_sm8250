@@ -240,7 +240,7 @@ static int __init rotation_task_init(void)
 
 	for_each_possible_cpu(i) {
 		struct rotation_data *rd = &per_cpu(rotation_datas, i);
-		struct sched_param param = { .sched_priority = 49 };
+		struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
 		struct task_struct *thread;
 
 		thread = kthread_create(try_rotation_task, (void *)rd,
