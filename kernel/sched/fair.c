@@ -11346,9 +11346,9 @@ static int active_load_balance_cpu_stop(void *data)
 	struct sched_domain *sd = NULL;
 	struct task_struct *p = NULL;
 	struct rq_flags rf;
+#ifdef CONFIG_SCHED_WALT
 	struct task_struct *push_task = NULL;
 	int push_task_detached = 0;
-#ifdef CONFIG_SCHED_WALT
 	struct lb_env env = {
 		.sd                     = sd,
 		.dst_cpu                = target_cpu,
@@ -11449,13 +11449,13 @@ out_unlock:
 #endif
 
 	rq_unlock(busiest_rq, &rf);
-
+#ifdef CONFIG_SCHED_WALT
 	if (push_task) {
 		if (push_task_detached)
 			attach_one_task(target_rq, push_task);
 		put_task_struct(push_task);
 	}
-
+#endif
 	if (p)
 		attach_one_task(target_rq, p);
 
@@ -13060,7 +13060,9 @@ kick_active_balance(struct rq *rq, struct task_struct *p, int new_cpu)
 		rq->active_balance = 1;
 		rq->push_cpu = new_cpu;
 		get_task_struct(p);
+#ifdef CONFIG_SCHED_WALT
 		rq->push_task = p;
+#endif
 		rc = 1;
 	}
 	raw_spin_unlock_irqrestore(&rq->lock, flags);
