@@ -8349,25 +8349,9 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
 
 	if (sd_flag & SD_BALANCE_WAKE) {
-		int _cpus_allowed = cpumask_test_cpu(cpu, &p->cpus_allowed);
-
-		if (sysctl_sched_sync_hint_enable && sync && _cpus_allowed &&
-		    cpu_rq(cpu)->nr_running == 1 &&
-		    cpu_is_in_target_set(p, cpu)) {
-			return cpu;
-		}
-
 		record_wakee(p);
 
 		if (static_branch_unlikely(&sched_energy_present)) {
-			int high_cap_cpu =
-			     cpu_rq(cpu)->rd->mid_cap_orig_cpu != -1 ?
-			     cpu_rq(cpu)->rd->mid_cap_orig_cpu :
-			     cpu_rq(cpu)->rd->max_cap_orig_cpu;
-			bool sync_boost = sync && cpu >= high_cap_cpu;
-
-			if (uclamp_latency_sensitive(p) && !sched_feat(EAS_PREFER_IDLE) && !sync)
-				goto sd_loop;
 #ifdef CONFIG_SCHED_WALT
 			new_cpu = find_energy_efficient_cpu(p, prev_cpu, sync,
 							    sync_boost,
@@ -8388,7 +8372,6 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 #endif
 	}
 
-sd_loop:
 	rcu_read_lock();
 	for_each_domain(cpu, tmp) {
 		if (!(tmp->flags & SD_LOAD_BALANCE))
