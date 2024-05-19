@@ -1518,8 +1518,12 @@ static void yield_task_rt(struct rq *rq)
 static int find_lowest_rq(struct task_struct *task);
 
 static int
+#ifdef CONFIG_SCHED_WALT
 select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
-		  int sibling_count_hint)
+		 int sibling_count_hint)
+#else
+select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags)
+#endif
 {
 	struct task_struct *curr;
 	struct rq *rq;
@@ -1790,6 +1794,7 @@ static struct task_struct *pick_highest_pushable_task(struct rq *rq, int cpu)
 
 static DEFINE_PER_CPU(cpumask_var_t, local_cpu_mask);
 
+#ifdef CONFIG_SCHED_WALT
 static int rt_energy_aware_wake_cpu(struct task_struct *task)
 {
 	struct sched_domain *sd;
@@ -1893,6 +1898,12 @@ unlock:
 	rcu_read_unlock();
 	return best_cpu;
 }
+#else
+static inline int rt_energy_aware_wake_cpu(struct task_struct *task)
+{
+	return -1;
+}
+#endif
 
 static int find_lowest_rq(struct task_struct *task)
 {

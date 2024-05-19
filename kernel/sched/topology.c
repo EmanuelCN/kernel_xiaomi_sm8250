@@ -501,9 +501,10 @@ static int init_rootdomain(struct root_domain *rd)
 	if (cpupri_init(&rd->cpupri) != 0)
 		goto free_cpudl;
 
+#ifdef CONFIG_SCHED_WALT
 	rd->max_cap_orig_cpu = rd->min_cap_orig_cpu = -1;
 	rd->mid_cap_orig_cpu = -1;
-
+#endif
 	init_max_cpu_capacity(&rd->max_cpu_capacity);
 
 	return 0;
@@ -1138,17 +1139,21 @@ build_sched_groups(struct sched_domain *sd, int cpu)
 void init_sched_groups_capacity(int cpu, struct sched_domain *sd)
 {
 	struct sched_group *sg = sd->groups;
+#ifdef CONFIG_SCHED_WALT
 	cpumask_t avail_mask;
-
+#endif
 	WARN_ON(!sg);
 
 	do {
 		int cpu, max_cpu = -1;
 
+#ifdef CONFIG_SCHED_WALT
 		cpumask_andnot(&avail_mask, sched_group_span(sg),
 							cpu_isolated_mask);
 		sg->group_weight = cpumask_weight(&avail_mask);
-
+#else
+		sg->group_weight = cpumask_weight(sched_group_span(sg));
+#endif
 		if (!(sd->flags & SD_ASYM_PACKING))
 			goto next;
 
@@ -1994,11 +1999,12 @@ build_sched_domains(const struct cpumask *cpu_map, struct sched_domain_attr *att
 	/* Attach the domains */
 	rcu_read_lock();
 	for_each_cpu(i, cpu_map) {
+#ifdef CONFIG_SCHED_WALT
 		int max_cpu = READ_ONCE(d.rd->max_cap_orig_cpu);
 		int min_cpu = READ_ONCE(d.rd->min_cap_orig_cpu);
-
+#endif
 		sd = *per_cpu_ptr(d.sd, i);
-
+#ifdef CONFIG_SCHED_WALT
 		if ((max_cpu < 0) || (arch_scale_cpu_capacity(i) >
 				arch_scale_cpu_capacity(max_cpu)))
 			WRITE_ONCE(d.rd->max_cap_orig_cpu, i);
@@ -2006,10 +2012,11 @@ build_sched_domains(const struct cpumask *cpu_map, struct sched_domain_attr *att
 		if ((min_cpu < 0) || (arch_scale_cpu_capacity(i) <
 				arch_scale_cpu_capacity(min_cpu)))
 			WRITE_ONCE(d.rd->min_cap_orig_cpu, i);
-
+#endif
 		cpu_attach_domain(sd, d.rd, i);
 	}
 
+#ifdef CONFIG_SCHED_WALT
 	/* set the mid capacity cpu (assumes only 3 capacities) */
 	for_each_cpu(i, cpu_map) {
 		int max_cpu = READ_ONCE(d.rd->max_cap_orig_cpu);
@@ -2033,7 +2040,7 @@ build_sched_domains(const struct cpumask *cpu_map, struct sched_domain_attr *att
 		d.rd->max_cpu_capacity.cpu = d.rd->max_cap_orig_cpu;
 		d.rd->max_cpu_capacity.val = arch_scale_cpu_capacity(d.rd->max_cap_orig_cpu);
 	}
-
+#endif
 	rcu_read_unlock();
 
 	if (has_asym)

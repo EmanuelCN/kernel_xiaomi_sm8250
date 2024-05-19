@@ -917,11 +917,14 @@ struct root_domain {
 	 */
 	struct perf_domain	*pd;
 
+#ifdef CONFIG_SCHED_WALT
 	/* Vendor fields. */
 	/* First cpu with maximum and minimum original capacity */
 	int max_cap_orig_cpu, min_cap_orig_cpu;
 	/* First cpu with mid capacity */
 	int mid_cap_orig_cpu;
+#endif
+
 };
 
 extern struct root_domain def_root_domain;
@@ -1888,8 +1891,12 @@ struct sched_class {
 	void (*put_prev_task)(struct rq *rq, struct task_struct *p);
 
 #ifdef CONFIG_SMP
+#ifdef CONFIG_SCHED_WALT
 	int  (*select_task_rq)(struct task_struct *p, int task_cpu, int sd_flag, int flags,
 			       int subling_count_hint);
+#else
+	int  (*select_task_rq)(struct task_struct *p, int task_cpu, int sd_flag, int flags);
+#endif
 	void (*migrate_task_rq)(struct task_struct *p, int new_cpu);
 
 	void (*task_woken)(struct rq *this_rq, struct task_struct *task);
@@ -3204,17 +3211,8 @@ task_in_cum_window_demand(struct rq *rq, struct task_struct *p)
 }
 
 static inline bool hmp_capable(void) { return false; }
-static inline bool is_min_capacity_cpu(int cpu)
-{
-#ifdef CONFIG_SMP
-	int min_cpu = cpu_rq(cpu)->rd->min_cap_orig_cpu;
-
-	return unlikely(min_cpu == -1) ||
-		capacity_orig_of(cpu) == capacity_orig_of(min_cpu);
-#else
-	return true;
-#endif
-}
+static inline bool is_min_capacity_cpu(int cpu) { return true; }
+static inline bool is_max_capacity_cpu(int cpu) { return true; }
 
 static inline int asym_cap_siblings(int cpu1, int cpu2) { return 0; }
 
