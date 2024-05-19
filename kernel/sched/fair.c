@@ -9824,7 +9824,6 @@ void update_group_capacity(struct sched_domain *sd, int cpu)
 		for_each_cpu(cpu, sched_group_span(sdg)) {
 			unsigned long cpu_cap = capacity_of(cpu);
 
-			if (cpumask_test_cpu(cpu, cpu_isolated_mask))
 			capacity += cpu_cap;
 			min_capacity = min(cpu_cap, min_capacity);
 			max_capacity = max(cpu_cap, max_capacity);
@@ -9838,15 +9837,10 @@ void update_group_capacity(struct sched_domain *sd, int cpu)
 		group = child->groups;
 		do {
 			struct sched_group_capacity *sgc = group->sgc;
-			cpumask_t *cpus = sched_group_span(group);
 
-			if (!cpu_isolated(cpumask_first(cpus))) {
-				capacity += sgc->capacity;
-				min_capacity = min(sgc->min_capacity,
-							min_capacity);
-				max_capacity = max(sgc->max_capacity,
-							max_capacity);
-			}
+			capacity += sgc->capacity;
+			min_capacity = min(sgc->min_capacity, min_capacity);
+			max_capacity = max(sgc->max_capacity, max_capacity);
 			group = group->next;
 		} while (group != child->groups);
 	}
@@ -10921,7 +10915,9 @@ static int group_balance_cpu_not_isolated(struct sched_group *sg)
 	cpumask_t cpus;
 
 	cpumask_and(&cpus, sched_group_span(sg), group_balance_mask(sg));
+#ifdef CONFIG_SCHED_WALT
 	cpumask_andnot(&cpus, &cpus, cpu_isolated_mask);
+#endif
 	return cpumask_first(&cpus);
 }
 
@@ -11472,11 +11468,15 @@ static DEFINE_SPINLOCK(balancing);
  */
 void update_max_interval(void)
 {
-	cpumask_t avail_mask;
 	unsigned int available_cpus;
+#ifdef CONFIG_SCHED_WALT
+	cpumask_t avail_mask;
 
 	cpumask_andnot(&avail_mask, cpu_online_mask, cpu_isolated_mask);
 	available_cpus = cpumask_weight(&avail_mask);
+#else
+	available_cpus = num_online_cpus();
+#endif
 
 	max_load_balance_interval = HZ*available_cpus/10;
 }
@@ -11616,8 +11616,9 @@ static inline int find_energy_aware_new_ilb(void)
 
 	cpumask_and(&idle_cpus, nohz.idle_cpus_mask,
 			housekeeping_cpumask(HK_FLAG_MISC));
+#ifdef CONFIG_SCHED_WALT
 	cpumask_andnot(&idle_cpus, &idle_cpus, cpu_isolated_mask);
-
+#endif
 	sg = sd->groups;
 	do {
 		int i;
@@ -11756,9 +11757,15 @@ static void nohz_balancer_kick(struct rq *rq)
 	 * None are in tickless mode and hence no need for NOHZ idle load
 	 * balancing.
 	 */
+#ifdef CONFIG_SCHED_WALT
 	cpumask_andnot(&cpumask, nohz.idle_cpus_mask, cpu_isolated_mask);
 	if (cpumask_empty(&cpumask))
 		return;
+#else
+	cpumask_copy(&cpumask, nohz.idle_cpus_mask);
+	if (likely(!atomic_read(&nohz.nr_cpus)))
+		return;
+#endif
 
 	if (READ_ONCE(nohz.has_blocked) &&
 	    time_after(now, READ_ONCE(nohz.next_blocked)))
@@ -11971,9 +11978,11 @@ static bool _nohz_idle_balance(struct rq *this_rq, unsigned int flags,
 	 * store from nohz_balance_enter_idle().
 	 */
 	smp_mb();
-
+#ifdef CONFIG_SCHED_WALT
 	cpumask_andnot(&cpus, nohz.idle_cpus_mask, cpu_isolated_mask);
-
+#else
+	cpumask_copy(&cpus, nohz.idle_cpus_mask);
+#endif
 	for_each_cpu(balance_cpu, &cpus) {
 		if (balance_cpu == this_cpu || !idle_cpu(balance_cpu))
 			continue;
