@@ -1,26 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 
-#define pr_fmt(fmt)	"sprd-rotask: " fmt
-
-#include <linux/capability.h>
-#include <linux/cpu.h>
-#include <linux/cpumask.h>
-#include <linux/cpufreq.h>
-#include <trace/events/sched.h>
-#include <linux/kthread.h>
-#include <linux/kobject.h>
-#include <linux/init.h>
-#include <linux/percpu.h>
-#include <linux/version.h>
-#include <linux/sched.h>
-#include <linux/suspend.h>
 #include <linux/syscore_ops.h>
-#include <linux/sysfs.h>
-#include <linux/time64.h>
-#include <linux/topology.h>
-#include <uapi/linux/sched/types.h>
-
-#include "sched.h"
 
 /* ========================= define data struct =========================== */
 struct rotation_data {
@@ -49,23 +29,6 @@ DEFINE_PER_CPU_SHARED_ALIGNED(bool, cpu_reserved);
 static ktime_t ktime_last;
 static __read_mostly bool sched_ktime_suspended;
 
-#define task_fits_capacity(cap, max)	((cap) * 1280 < (max) * 1024)
-
-static inline  unsigned long capacity_of(int cpu)
-{
-	return cpu_rq(cpu)->cpu_capacity;
-}
-
-static inline unsigned long task_util_orig(struct task_struct *p)
-{
-	unsigned long util;
-	struct util_est ue = READ_ONCE(p->se.avg.util_est);
-
-	util = max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
-
-	return max(util, READ_ONCE(p->se.avg.util_avg));
-}
-
 /* core function */
 void check_for_task_rotation(struct rq *src_rq)
 {
@@ -88,7 +51,7 @@ void check_for_task_rotation(struct rq *src_rq)
 		struct task_struct *curr_task = rq->curr;
 
 		if (curr_task->sched_class == &fair_sched_class &&
-		    !task_fits_capacity(task_util_orig(curr_task), capacity_of(i)))
+		    !fits_capacity(task_util_est(curr_task), capacity_of(i)))
 			big_task += 1;
 	}
 	if (big_task < BIG_TASK_NUM)
@@ -101,7 +64,7 @@ void check_for_task_rotation(struct rq *src_rq)
 
 		if (!rq->misfit_task_load || is_reserved(i) ||
 		    curr_task->sched_class != &fair_sched_class ||
-		    task_fits_capacity(task_util_orig(curr_task), capacity_of(i)))
+		    fits_capacity(task_util_est(curr_task), capacity_of(i)))
 			continue;
 
 		wait = wc - curr_task->last_enqueue_ts;

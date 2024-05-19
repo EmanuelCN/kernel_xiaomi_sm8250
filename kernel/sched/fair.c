@@ -13612,3 +13612,7 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 }
 
 #endif /* CONFIG_SCHED_WALT */
+
+#ifdef CONFIG_SPRD_ROTATION_TASK
+#include "sprd_rotation.c"
+#endif
