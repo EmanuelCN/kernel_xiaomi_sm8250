@@ -28,11 +28,11 @@
 #include "walt.h"
 
 #ifdef CONFIG_SMP
-static inline bool task_fits_max(struct task_struct *p, int cpu);
 static inline unsigned long boosted_task_util(struct task_struct *task);
 #endif /* CONFIG_SMP */
 
 #ifdef CONFIG_SCHED_WALT
+static inline bool task_fits_max(struct task_struct *p, int cpu);
 static void walt_fixup_sched_stats_fair(struct rq *rq, struct task_struct *p,
 					u16 updated_demand_scaled,
 					u16 updated_pred_demand_scaled);
@@ -4465,7 +4465,7 @@ static inline int task_fits_cpu(struct task_struct *p, int cpu)
 	unsigned long util = task_util_est(p);
 	return util_fits_cpu(util, uclamp_min, uclamp_max, cpu);
 }
-
+#ifdef CONFIG_SCHED_WALT
 static inline bool task_fits_max(struct task_struct *p, int cpu)
 {
 	unsigned long capacity = capacity_orig_of(cpu);
@@ -4488,7 +4488,7 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 
 	return task_fits_cpu(p, cpu);
 }
-
+#endif
 static inline void update_misfit_status(struct task_struct *p, struct rq *rq)
 {
         if (!static_branch_unlikely(&sched_asym_cpucapacity))
