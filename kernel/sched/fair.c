@@ -5851,10 +5851,7 @@ bool __cpu_overutilized(int cpu, int delta)
 
 bool cpu_overutilized(int cpu)
 {
-	unsigned long rq_util_min = uclamp_rq_get(cpu_rq(cpu), UCLAMP_MIN);
-	unsigned long rq_util_max = uclamp_rq_get(cpu_rq(cpu), UCLAMP_MAX);
-
-	return !util_fits_cpu(cpu_util(cpu), rq_util_min, rq_util_max, cpu);
+	return false;
 }
 
 static bool sd_overutilized(struct sched_domain *sd)
@@ -5876,14 +5873,6 @@ static void clear_sd_overutilized(struct sched_domain *sd)
 
 static inline void update_overutilized_status(struct rq *rq)
 {
-	struct sched_domain *sd;
-
-	rcu_read_lock();
-	sd = rcu_dereference(rq->sd);
-	if (sd && !sd_overutilized(sd) &&
-	    cpu_overutilized(rq->cpu))
-		set_sd_overutilized(sd);
-	rcu_read_unlock();
 }
 #else
 static inline void update_overutilized_status(struct rq *rq) { }
