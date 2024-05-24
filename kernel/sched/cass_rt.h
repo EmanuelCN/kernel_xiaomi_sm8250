@@ -5,7 +5,7 @@
 
 #ifdef CONFIG_SCHED_CASS
 int cass_select_task_rq_rt(struct task_struct *p, int prev_cpu, int sd_flag,
-			   int wake_flags, int sibling_count_hint);
+			   int wake_flags);
 
 /* Use CASS. A dummy wrapper ensures the replaced function is still "used". */
 static inline void *select_task_rq_rt_dummy(void)
