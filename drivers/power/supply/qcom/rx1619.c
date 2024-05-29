@@ -399,7 +399,7 @@ static int rx1619_set_ept(struct rx1619_chg *chip)
 	u8 ept_raw = 0x0b;
 	u8 header[2] = {0};
 	u8 chksum[4] = {0};
-	int rc;
+	int rc = 0;
 
 	header[1] = 0x02;  //add the ept header
 
@@ -431,7 +431,7 @@ static int rx1619_set_rpp(struct rx1619_chg *chip)
 	u8 header[2] = {0};
 	u8 chksum[4] = {0};
 	union power_supply_propval val = {0, };
-	int rc;
+	int rc = 0;
 
 	header[1] = 0x31;  //add the rpp header
 
@@ -465,7 +465,7 @@ static int rx1619_set_cep(struct rx1619_chg *chip)
 	u8 header[2] = {0};
 	u8 chksum[4] = {0};
 	union power_supply_propval val = {0, };
-	int rc;
+	int rc = 0;
 
 	header[1] = 0x03;  //add the rpp header
 
@@ -591,7 +591,7 @@ void rx1619_oob_set_cep_work(struct work_struct *work)
 
 int rx_op_ble_flag(int en)
 {
-	int rc;
+	int rc = 0;
 	if (!g_chip)
 		return -EINVAL;
 
@@ -797,7 +797,7 @@ int rx1619_set_vout(struct rx1619_chg *chip, int volt)
 	u8 value_h,value_l,ret;
 	u16 vout_set,vrect_set;
 
-	if ((volt < 4000) && (volt > 21000))
+	if ((volt < 4000) || (volt > 21000))
 	{
 		volt = 6000;  //6V
 	}
@@ -3648,7 +3648,7 @@ static int rx1619_set_reverse_gpio_state( struct rx1619_chg *chip, int enable){
 }
 static int rx_set_reverse_gpio(struct rx1619_chg *chip, int enable)
 {
-	int ret;
+	int ret = 0;
 	union power_supply_propval val = {0, };
 
 	chip->wireless_psy = power_supply_get_by_name("wireless");
@@ -3695,7 +3695,7 @@ static int rx_set_reverse_gpio(struct rx1619_chg *chip, int enable)
 
 static int rx_get_reverse_chg_mode(struct rx1619_chg *chip)
 {
-	int ret;
+	int ret = 0;
 
 	if (gpio_is_valid(chip->tx_on_gpio))
 		ret = gpio_get_value(chip->tx_on_gpio);
@@ -3719,7 +3719,7 @@ static int rx_set_reverse_chg_mode(struct rx1619_chg *chip, int enable)
 	union power_supply_propval cp_val = {0, };
 	union power_supply_propval val = {0, };
 	union power_supply_propval wk_val = {0, };
-	int ret, rc;
+	int ret = 0, rc;
 
 	chip->wireless_psy = power_supply_get_by_name("wireless");
 	if (!chip->wireless_psy) {
