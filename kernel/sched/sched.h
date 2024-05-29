@@ -101,6 +101,7 @@ struct sched_walt_cpu_load {
 	u64 ws;
 };
 
+unsigned long apply_dvfs_headroom(unsigned long util, int cpu, bool tapered);
 #ifdef CONFIG_SCHED_WALT
 extern unsigned int sched_ravg_window;
 
