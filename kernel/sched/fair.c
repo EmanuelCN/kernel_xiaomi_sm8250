@@ -8348,7 +8348,7 @@ static void set_task_max_allowed_capacity(struct task_struct *p)
 		cpumask_t *cpumask;
 
 		cpumask = cpu_capacity_span(entry);
-		if (!cpumask_intersects(p->cpus_ptr, cpumask))
+		if (!cpumask_intersects(&p->cpus_allowed, cpumask))
 			continue;
 
 		p->max_allowed_capacity = entry->capacity;
@@ -11887,6 +11887,17 @@ static void kick_ilb(unsigned int flags)
 	if (ilb_cpu >= nr_cpu_ids)
 		return;
 
+	/*
+	 * Don't bother if no new NOHZ balance work items for ilb_cpu,
+	 * i.e. all bits in flags are already set in ilb_cpu.
+	 */
+	if ((atomic_read(nohz_flags(ilb_cpu)) & flags) == flags)
+		return;
+
+	/*
+	 * Access to rq::nohz_csd is serialized by NOHZ_KICK_MASK; he who sets
+	 * the first flag owns it; cleared by nohz_csd_func().
+	 */
 	flags = atomic_fetch_or(flags, nohz_flags(ilb_cpu));
 	if (flags & NOHZ_KICK_MASK)
 		return;
