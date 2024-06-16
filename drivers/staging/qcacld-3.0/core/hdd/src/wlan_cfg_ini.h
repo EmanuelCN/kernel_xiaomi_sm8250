@@ -17,6 +17,7 @@ static const char wlan_cfg[] __initconst = {
 	"gNeighborScanChannelMaxTime=30\n"
 	"FastRoamEnabled=1\n"
 	"gSelect5GHzMargin=5\n"
+	"gRoamPrefer5GHz=1\n"
 	"roam_bad_rssi_thresh_offset_2g=40\n"
 	"roam_bg_scan_bad_rssi_thresh=-76\n"
 	"candidate_min_rssi_for_beacon_miss=-83\n"
