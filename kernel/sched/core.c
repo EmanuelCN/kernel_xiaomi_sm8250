@@ -1113,7 +1113,7 @@ static inline void uclamp_rq_bucket_update(struct rq *rq, struct task_struct *p,
 	    bucket_value != uc_se->value || uc_se->value == 0)
 		return;
 
-	bucket_value = uclamp_bucket_base_value(uc_se->value);
+	bucket_value = UCLAMP_BUCKET_DELTA * uclamp_bucket_id(uc_se->value);
 	/* search for all cfs tasks */
 	list_for_each_entry(t, &rq->cfs_tasks, se.group_node) {
 		struct uclamp_se *uc_se_t = &t->uclamp[clamp_id];
