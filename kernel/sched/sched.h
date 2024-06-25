@@ -3300,12 +3300,6 @@ static inline int update_preferred_cluster(struct related_thread_group *grp,
 
 static inline void add_new_task_to_grp(struct task_struct *new) {}
 
-static inline int mark_reserved(int cpu)
-{
-	return 0;
-}
-
-static inline void clear_reserved(int cpu) { }
 static inline int alloc_related_thread_groups(void) { return 0; }
 
 static inline void walt_fixup_cum_window_demand(struct rq *rq,
@@ -3319,11 +3313,6 @@ static inline unsigned long thermal_cap(int cpu)
 #endif
 
 static inline void clear_walt_request(int cpu) { }
-
-static inline int is_reserved(int cpu)
-{
-	return 0;
-}
 
 static inline enum sched_boost_policy sched_boost_policy(void)
 {
