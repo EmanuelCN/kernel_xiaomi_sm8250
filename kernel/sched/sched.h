@@ -3362,13 +3362,13 @@ static inline void clear_reserved(int cpu)
 	per_cpu(cpu_reserved, cpu) = false;
 }
 void check_for_task_rotation(struct rq *src_rq);
-u64 sched_ktime_clock(void);
+u64 sched_ktime_clocks(void);
 #else
 static inline bool is_reserved(int cpu)
 {
 	return false;
 }
-static inline u64 sched_ktime_clock(void)
+static inline u64 sched_ktime_clocks(void)
 {
 	return sched_clock();
 }

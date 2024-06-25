@@ -77,7 +77,7 @@ void check_for_task_rotation(struct rq *src_rq)
 	if (cpumask_empty(&misfit_mask))
 		return;
 
-	wc = sched_ktime_clock();
+	wc = sched_ktime_clocks();
 	for_each_cpu(i, &misfit_mask) {
 		struct rq *rq = cpu_rq(i);
 		struct task_struct *curr_task = rq->curr;
@@ -291,7 +291,7 @@ static int __init rotation_task_init(void)
 
 late_initcall(rotation_task_init);
 
-u64 sched_ktime_clock(void)
+u64 sched_ktime_clocks(void)
 {
 	if (unlikely(sched_ktime_suspended))
 		return ktime_to_ns(ktime_last);
