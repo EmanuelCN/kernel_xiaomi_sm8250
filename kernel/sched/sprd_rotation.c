@@ -119,8 +119,8 @@ void check_for_task_rotation(struct rq *src_rq)
 
 	double_rq_lock(src_rq, dst_rq);
 	if (!src_rq->active_balance && !dst_rq->active_balance) {
-		if (!cpumask_test_cpu(dst_cpu, src_rq->curr->cpus_ptr) ||
-		    !cpumask_test_cpu(src_cpu, dst_rq->curr->cpus_ptr)) {
+		if (!cpumask_test_cpu(dst_cpu, &src_rq->curr->cpus_allowed) ||
+		    !cpumask_test_cpu(src_cpu, &dst_rq->curr->cpus_allowed)) {
 			double_rq_unlock(src_rq, dst_rq);
 			return;
 		}
