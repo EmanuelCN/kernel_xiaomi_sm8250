@@ -209,13 +209,6 @@ config ARM64
 	help
 	  ARM 64-bit (AArch64) Linux support.
 
-config KSU
-	tristate "KernelSU function support"
-	select OVERLAY_FS
-	default y
-	help
-	Enable kernel-level root privileges on Android System.
-
 config 64BIT
 	def_bool y
 
