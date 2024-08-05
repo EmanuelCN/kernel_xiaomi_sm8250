@@ -969,7 +969,7 @@ this file is for attribution only of alioth
 	wireless_therm {//place close to wireless charge RX
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150b_adc_tm ADC_AMUX_THM1_PU2>;
 		trips {
 			active-config0 {
@@ -983,7 +983,7 @@ this file is for attribution only of alioth
 	conn_therm {//place close to type-c connector
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150b_adc_tm ADC_AMUX_THM3_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -998,7 +998,7 @@ this file is for attribution only of alioth
 	xo-therm-adc {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150_adc_tm ADC_XO_THERM_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -1013,7 +1013,7 @@ this file is for attribution only of alioth
 	cpu_therm {//place close to sm8250
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150_adc_tm ADC_AMUX_THM1_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -1028,7 +1028,7 @@ this file is for attribution only of alioth
 	quiet_therm {//place close to cool place
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150_adc_tm ADC_AMUX_THM2_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -1043,7 +1043,7 @@ this file is for attribution only of alioth
 	pa_therm0 {//place close to pa0
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150l_adc_tm ADC_AMUX_THM1_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -1058,7 +1058,7 @@ this file is for attribution only of alioth
 	pa_therm1 {//place close to pa1
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150l_adc_tm ADC_AMUX_THM2_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -1073,7 +1073,7 @@ this file is for attribution only of alioth
 	charger_therm0 {//place close to charge IC
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150l_adc_tm ADC_AMUX_THM3_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -1088,7 +1088,7 @@ this file is for attribution only of alioth
 	wifi_therm {//place close to wifi
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150l_adc_tm ADC_GPIO1_PU2>;
 		wake-capable-sensor;
 		trips {
