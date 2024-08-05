@@ -82,6 +82,7 @@ static void hif_init_rx_thread_napi(struct qca_napi_info *napii)
 	init_dummy_netdev(&napii->rx_thread_netdev);
 	netif_napi_add(&napii->rx_thread_netdev, &napii->rx_thread_napi,
 		       hif_rxthread_napi_poll, 64);
+	dev_set_threaded(&napii->rx_thread_netdev, true);
 	napi_enable(&napii->rx_thread_napi);
 }
 
@@ -682,6 +683,7 @@ int hif_napi_event(struct hif_opaque_softc *hif_ctx, enum qca_napi_event event,
 					napi = &(napii->napi);
 					NAPI_DEBUG("%s: enabling NAPI %d",
 						   __func__, i);
+					dev_set_threaded(napi->dev, true);
 					napi_enable(napi);
 				}
 			}
@@ -693,6 +695,7 @@ int hif_napi_event(struct hif_opaque_softc *hif_ctx, enum qca_napi_event event,
 					napi = &(napii->napi);
 					NAPI_DEBUG("%s: disabling NAPI %d",
 						   __func__, i);
+					dev_set_threaded(napi->dev, false);
 					napi_disable(napi);
 					/* in case it is affined, remove it */
 					qdf_dev_set_irq_affinity(napii->irq,
