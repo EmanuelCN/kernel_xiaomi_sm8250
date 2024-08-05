@@ -178,7 +178,7 @@
 	aoss0-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&tsens0 0>;
 		wake-capable-sensor;
 		trips {
@@ -198,7 +198,7 @@
 	cpu-0-0-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&tsens0 1>;
 		wake-capable-sensor;
 		trips {
@@ -218,7 +218,7 @@
 	cpu-0-1-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&tsens0 2>;
 		wake-capable-sensor;
 		trips {
@@ -238,7 +238,7 @@
 	cpu-0-2-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&tsens0 3>;
 		wake-capable-sensor;
 		trips {
@@ -259,7 +259,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 4>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -279,7 +279,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 5>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -299,7 +299,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 6>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -319,7 +319,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 7>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -339,7 +339,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 8>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -359,7 +359,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 9>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -379,7 +379,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 10>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -399,7 +399,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 11>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -419,7 +419,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 12>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -439,7 +439,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 13>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -459,7 +459,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 14>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -479,7 +479,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 15>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -499,7 +499,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -519,7 +519,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 1>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -539,7 +539,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 2>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -559,7 +559,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 3>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -579,7 +579,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 4>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -599,7 +599,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 5>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -619,7 +619,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 6>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -639,7 +639,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 7>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		wake-capable-sensor;
 		trips {
 			active-config0 {
@@ -658,7 +658,7 @@
 	gpuss-1-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&tsens1 8>;
 		wake-capable-sensor;
 		trips {
@@ -1419,7 +1419,7 @@
 	modem1_pa0 {//place close to RF PA0
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_PA)>;
 		wake-capable-sensor;
@@ -1435,7 +1435,7 @@
 	modem1_pa1 {//place close to RF PA1
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_PA_1)>;
 		wake-capable-sensor;
@@ -1451,7 +1451,7 @@
 	modem-mmw0-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_QFE_MMW_0)>;
 		wake-capable-sensor;
@@ -1467,7 +1467,7 @@
 	modem-mmw1-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_QFE_MMW_1)>;
 		wake-capable-sensor;
@@ -1483,7 +1483,7 @@
 	modem-mmw2-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_QFE_MMW_2)>;
 		wake-capable-sensor;
@@ -1499,7 +1499,7 @@
 	modem-mmw3-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_QFE_MMW_3)>;
 		wake-capable-sensor;
@@ -1515,7 +1515,7 @@
 	modem1_xo {//place close to modem1 hot place
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_XO_THERM)>;
 		wake-capable-sensor;
@@ -1531,7 +1531,7 @@
 	modem1_wifi {//place close to wifi module
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_SYS_THERM_1)>;
 		wake-capable-sensor;
@@ -1547,7 +1547,7 @@
 	modem1_quiet {//place close to modem1 quiet place
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_SYS_THERM_2)>;
 		wake-capable-sensor;
@@ -1563,7 +1563,7 @@
 	modem-0-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_MODEM_TSENS)>;
 		wake-capable-sensor;
@@ -1579,7 +1579,7 @@
 	modem-1-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_MODEM_TSENS_1)>;
 		wake-capable-sensor;
@@ -1595,7 +1595,7 @@
 	modem-streamer-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_QFE_MMW_STREAMER_0)>;
 		wake-capable-sensor;
@@ -1611,7 +1611,7 @@
 	modem-mmw0-mod-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_QFE_MMW_0_MOD)>;
 		wake-capable-sensor;
@@ -1627,7 +1627,7 @@
 	modem-mmw1-mod-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_QFE_MMW_1_MOD)>;
 		wake-capable-sensor;
@@ -1643,7 +1643,7 @@
 	modem-mmw2-mod-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_QFE_MMW_2_MOD)>;
 		wake-capable-sensor;
@@ -1659,7 +1659,7 @@
 	modem-mmw3-mod-usr {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&qmi_sensor
 				(QMI_MODEM_NR_INST_ID+QMI_QFE_MMW_3_MOD)>;
 		wake-capable-sensor;
