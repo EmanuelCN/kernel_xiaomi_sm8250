@@ -591,6 +591,7 @@ static void dp_rx_tm_thread_napi_init(struct dp_rx_thread *rx_thread)
 	init_dummy_netdev(&rx_thread->netdev);
 	netif_napi_add(&rx_thread->netdev, &rx_thread->napi,
 		       dp_rx_tm_thread_napi_poll, 64);
+	dev_set_threaded(&rx_thread->netdev, true);
 	napi_enable(&rx_thread->napi);
 }
 
