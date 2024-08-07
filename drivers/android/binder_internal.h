@@ -12,6 +12,7 @@
 #include <linux/uidgid.h>
 #include <uapi/linux/android/binderfs.h>
 #include "binder_alloc.h"
+#include "dbitmap.h"
 struct binder_context {
 	struct binder_node *binder_context_mgr_node;
 	struct mutex context_mgr_node_lock;
@@ -359,6 +360,8 @@ enum binder_prio_state {
  * @proc_node:            element for binder_procs list
  * @threads:              rbtree of binder_threads in this proc
  *                        (protected by @inner_lock)
+ * @dmap                  dbitmap to manage available reference descriptors
+ *                        (protected by @outer_lock)
  * @nodes:                rbtree of binder nodes associated with
  *                        this proc ordered by node->ptr
  *                        (protected by @inner_lock)
@@ -442,6 +445,7 @@ struct binder_proc {
 	bool sync_recv;
 	bool async_recv;
 	wait_queue_head_t freeze_wait;
+	struct dbitmap dmap;
 	struct list_head todo;
 #ifdef CONFIG_ANDROID_BINDER_LOGS
 	struct binder_stats stats;
