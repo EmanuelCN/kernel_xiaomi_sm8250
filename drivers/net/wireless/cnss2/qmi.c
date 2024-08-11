@@ -40,6 +40,10 @@
 #define ELF_BDF_FILE_NAME_K81           "bd_k81.elf"
 #define ELF_BDF_FILE_NAME_K81A          "bd_k81a.elf"
 
+#define ELF_BDF_FILE_NAME_L11R		"bd_l11r.elf"
+#define ELF_BDF_FILE_NAME_L11R_GLOBAL	"bd_l11rgl.elf"
+#define ELF_BDF_FILE_NAME_L11R_INDIA	"bd_l11rin.elf"
+
 #define ELF_BDF_FILE_NAME_GF		"bdwlang.elf"
 
 #define ELF_BDF_FILE_NAME_PREFIX	"bdwlan.e"
@@ -626,6 +630,14 @@ static int cnss_get_bdf_file_name(struct cnss_plat_data *plat_priv,
 					break;
 				case HARDWARE_PLATFORM_ELISH:
 					snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_K81A);
+					break;
+				case HARDWARE_PLATFORM_MUNCH:
+					if (hw_country_ver == (uint32_t)CountryGlobal)
+						snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_L11R_GLOBAL);
+					else if (hw_country_ver == (uint32_t)CountryIndia)
+						snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_L11R_INDIA);
+					else
+						snprintf(filename_tmp, filename_len, ELF_BDF_FILE_NAME_L11R);
 					break;
 				default:
 					snprintf(filename_tmp, filename_len,  ELF_BDF_FILE_NAME);
