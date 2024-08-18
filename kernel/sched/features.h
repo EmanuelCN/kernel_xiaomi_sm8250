@@ -27,7 +27,7 @@
  * Consider buddies to be cache hot, decreases the likeliness of a
  * cache buddy being migrated away, increases cache locality.
  */
-#define SCHED_FEAT_CACHE_HOT_BUDDY 1
+#define SCHED_FEAT_CACHE_HOT_BUDDY 0
 
 /*
  * Allow wakeup-time preemption of the current task:
