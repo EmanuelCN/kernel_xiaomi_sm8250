@@ -62,7 +62,7 @@
  */
 #define SCHED_FEAT_WARN_DOUBLE_CLOCK 0
 
-#ifdef HAVE_RT_PUSH_IPI
+#if defined(CONFIG_IRQ_WORK) && defined(CONFIG_SMP)
 /*
  * In order to avoid a thundering herd attack of CPUs that are
  * lowering their priorities at the same time, and there being
