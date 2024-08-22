@@ -1568,7 +1568,7 @@ config SGETMASK_SYSCALL
 
 config SYSFS_SYSCALL
 	bool "Sysfs syscall support" if EXPERT
-	default y
+	default n
 	---help---
 	  sys_sysfs is an obsolete system call no longer supported in libc.
 	  Note that disabling this option is more secure but might break
