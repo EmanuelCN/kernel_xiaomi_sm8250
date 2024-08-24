@@ -3102,7 +3102,7 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 			if ((smblib_get_fastcharge_mode(chg) == true)
 				&& (pval.intval >= 98))
 				smblib_set_fastcharge_mode(chg, false);
-				return 0;
+			return 0;
 		}
 
 		if (smblib_get_fastcharge_mode(chg) == true)
@@ -10496,25 +10496,24 @@ static void smblib_charger_type_recheck(struct work_struct *work)
 	if (smblib_get_prop_dfp_mode(chg) != POWER_SUPPLY_TYPEC_NONE)
 		goto check_next;
 
-		if (chg->typec_port && !chg->pr_swap_in_progress) {
-
-			/*
-			 * Schedule the work to differentiate actual removal
-			 * of cable and detach interrupt during role swap,
-			 * unregister the partner only during actual cable
-			 * removal.
-			 */
-			cancel_delayed_work(&chg->pr_swap_detach_work);
-			vote(chg->awake_votable, DETACH_DETECT_VOTER, true, 0);
-			schedule_delayed_work(&chg->pr_swap_detach_work,
-				msecs_to_jiffies(TYPEC_DETACH_DETECT_DELAY_MS));
-			smblib_force_dr_mode(chg, TYPEC_PORT_DRP);
-			/*
-			 * To handle cable removal during role
-			 * swap failure.
-			 */
-			chg->typec_role_swap_failed = false;
-		}
+	if (chg->typec_port && !chg->pr_swap_in_progress) {
+		/*
+		* Schedule the work to differentiate actual removal
+		* of cable and detach interrupt during role swap,
+		* unregister the partner only during actual cable
+		* removal.
+		*/
+		cancel_delayed_work(&chg->pr_swap_detach_work);
+		vote(chg->awake_votable, DETACH_DETECT_VOTER, true, 0);
+		schedule_delayed_work(&chg->pr_swap_detach_work,
+			msecs_to_jiffies(TYPEC_DETACH_DETECT_DELAY_MS));
+		smblib_force_dr_mode(chg, TYPEC_PORT_DRP);
+		/*
+		* To handle cable removal during role
+		* swap failure.
+		*/
+		chg->typec_role_swap_failed = false;
+	}
 
 	if (!chg->recheck_charger)
 		chg->precheck_charger_type = chg->real_charger_type;
