@@ -66,11 +66,6 @@ struct sugov_cpu {
 
 	unsigned long		util;
 	unsigned long		bw_min;
-
-	/* The field below is for single-CPU policies only: */
-#ifdef CONFIG_NO_HZ_COMMON
-	unsigned long		saved_idle_calls;
-#endif
 };
 
 static DEFINE_PER_CPU(struct sugov_cpu, sugov_cpu);
@@ -526,19 +521,6 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 	return (sg_cpu->iowait_boost * max_cap) >> SCHED_CAPACITY_SHIFT;
 }
 
-#ifdef CONFIG_NO_HZ_COMMON
-static bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu)
-{
-	unsigned long idle_calls = tick_nohz_get_idle_calls_cpu(sg_cpu->cpu);
-	bool ret = idle_calls == sg_cpu->saved_idle_calls;
-
-	sg_cpu->saved_idle_calls = idle_calls;
-	return ret;
-}
-#else
-static inline bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu) { return false; }
-#endif /* CONFIG_NO_HZ_COMMON */
-
 /*
  * Make sugov_should_update_freq() ignore the rate limit when DL
  * has increased the utilization.
@@ -556,7 +538,6 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	unsigned long max_cap;
 	unsigned int next_f;
-	bool busy;
         unsigned long boost;
 
 	max_cap = arch_scale_cpu_capacity(sg_cpu->cpu);
@@ -569,25 +550,10 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	if (!sugov_should_update_freq(sg_policy, time))
 		return;
 
-	/* Limits may have changed, don't skip frequency update */
-	busy = use_pelt() && !sg_policy->need_freq_update &&
-		sugov_cpu_is_busy(sg_cpu);
-
 	boost = sugov_iowait_apply(sg_cpu, time, max_cap);
 	sugov_get_util(sg_cpu, boost);
 
 	next_f = get_next_freq(sg_policy, sg_cpu->util, max_cap);
-	/*
-	 * Do not reduce the frequency if the CPU has not been idle
-	 * recently, as the reduction is likely to be premature then.
-	 */
-	if (busy && next_f < sg_policy->next_freq &&
-	    !sg_policy->need_freq_update) {
-		next_f = sg_policy->next_freq;
-
-		/* Restore cached freq as next_freq has changed */
-		sg_policy->cached_raw_freq = sg_policy->prev_cached_raw_freq;
-	}
 
 	/*
 	 * This code runs under rq->lock for the target CPU, so it won't run
