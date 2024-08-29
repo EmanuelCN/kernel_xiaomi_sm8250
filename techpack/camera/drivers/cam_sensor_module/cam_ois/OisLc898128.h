@@ -5,7 +5,6 @@
  * @brief		LC898128 Global declaration & prototype declaration
  *
  * @author		Copyright (C) 2016, ON Semiconductor, all right reserved.
- * @author		Copyright (C) 2021 XiaoMi, Inc.
  *
  * @file		OisLc898128.h
  * @date		svn:$Date:: 2016-06-17 16:42:32 +0900#$

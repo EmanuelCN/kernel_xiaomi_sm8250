@@ -207,9 +207,6 @@ struct cam_req_mgr_sched_request {
  * @sync_mode:           Input Param - Type of sync mode
  * @num_links:           Input Param - Num of links in sync mode (Valid only
  *                             when sync_mode is one of SYNC enabled modes)
- * @init_timeout:        To account for INIT exposure settings
- *                       If there is no change in exp settings
- *                       field needs to assigned to 0
  * @link_hdls:           Input Param - Array of link handles to be in sync mode
  *                             (Valid only when sync_mode is one of SYNC
  *                             enabled modes)
