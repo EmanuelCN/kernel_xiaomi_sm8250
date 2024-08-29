@@ -53,7 +53,7 @@ void I2C_Write_Data(struct cam_ois_ctrl_t *o_ctrl,uint32_t addr, uint32_t length
 	write_setting.reg_setting = w_data;
 
 	rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
-		&write_setting, 0);
+		&write_setting, 0, false);
 	if (rc < 0) {
 		CAM_ERR(CAM_OIS, "OIS I2C_Write_Data write failed %d", rc);
 	}

@@ -1,8 +1,8 @@
-source techpack/data/drivers/rmnet/perf/Kconfig
-source techpack/data/drivers/rmnet/shs/Kconfig
+menu "Xiaomi Camera Configuration"
 
-config OSSFOD
-	bool "OSS FOD support"
-	depends on BOARD_XIAOMI
+config CAMERA_NONEDXO
+	bool "Enable None-DXO Camera modifications"
 	help
-	  When this option is enabled, OSS FOD support will be added.
+	  "Enable None-DXO Camera modifications"
+
+endmenu

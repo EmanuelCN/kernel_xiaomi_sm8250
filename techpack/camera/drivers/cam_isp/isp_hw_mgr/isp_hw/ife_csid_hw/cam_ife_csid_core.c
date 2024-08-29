@@ -697,19 +697,20 @@ static int cam_ife_csid_global_reset(struct cam_ife_csid_hw *csid_hw)
 #if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_APOLLO)
 	/* reset SW regs first, then HW */
 	rc = cam_ife_csid_reset_regs(csid_hw, false);
+	if (rc < 0)
+		goto end;
+	rc = cam_ife_csid_reset_regs(csid_hw, true);
+	if (rc < 0)
+		goto end;
 #else
 	/* reset HW regs first, then SW */
 	rc = cam_ife_csid_reset_regs(csid_hw, true);
-#endif
 	if (rc < 0)
 		goto end;
-#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_APOLLO)
-	rc = cam_ife_csid_reset_regs(csid_hw, true);
-#else
 	rc = cam_ife_csid_reset_regs(csid_hw, false);
-#endif
 	if (rc < 0)
 		goto end;
+#endif
 
 	val = cam_io_r_mb(soc_info->reg_map[0].mem_base +
 		csid_reg->csi2_reg->csid_csi2_rx_irq_mask_addr);

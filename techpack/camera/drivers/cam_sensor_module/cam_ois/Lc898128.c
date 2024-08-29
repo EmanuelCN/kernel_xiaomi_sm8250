@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/module.h>
@@ -39,7 +38,7 @@ void RamWrite32A(struct cam_ois_ctrl_t *o_ctrl, uint32_t addr, uint32_t data, ui
 	i2c_reg_settings.reg_setting = &i2c_reg_array;
 
 	rc = camera_io_dev_write(&o_ctrl->io_master_info,
-		&i2c_reg_settings);
+		&i2c_reg_settings, false);
 	if (rc) {
 		CAM_ERR(CAM_OIS, "%s : write addr 0x%04x data 0x%x failed rc %d",
 			o_ctrl->ois_name, addr, data, rc);
@@ -130,7 +129,7 @@ void CntWrt(struct cam_ois_ctrl_t *o_ctrl, uint8_t *data, uint32_t length, uint3
 	write_setting.reg_setting = w_data;
 
 	rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
-		&write_setting, 1);
+		&write_setting, 1, false);
 	if (rc < 0) {
 		CAM_ERR(CAM_OIS, "OIS CntWrt write failed %d", rc);
 	}
@@ -1299,7 +1298,7 @@ uint8_t download_fw(
 			i2c_reg_setting.size = cnt;
 
 			rc = camera_io_dev_write_continuous(&(o_ctrl->io_master_info),
-				&i2c_reg_setting, 1);
+				&i2c_reg_setting, 1, false);
 			if (rc < 0) {
 				CAM_ERR(CAM_OIS, "OIS FW %s download failed %d", fw_name, rc);
 				break;
