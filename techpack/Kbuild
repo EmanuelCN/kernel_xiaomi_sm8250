@@ -1,8 +1,18 @@
 # SPDX-License-Identifier: GPL-2.0-only
 TECHPACK?=y
 
-techpack-dirs := $(shell find $(srctree)/techpack -maxdepth 1 -mindepth 1 -type d -not -name ".*")
+techpack-dirs := $(shell find $(srctree)/techpack -maxdepth 1 -mindepth 1 -type d -not -name ".*" -not -name "camera*")
+ifeq ($(CONFIG_CAMERA_CAS),y)
+techpack-dirs += $(srctree)/techpack/camera-cas
+else
+techpack-dirs += $(srctree)/techpack/camera
+endif
 obj-${TECHPACK} += stub/ $(addsuffix /,$(subst $(srctree)/techpack/,,$(techpack-dirs)))
 
-techpack-header-dirs := $(shell find $(srctree)/techpack -maxdepth 1 -mindepth 1 -type d -not -name ".*")
+techpack-header-dirs := $(shell find $(srctree)/techpack -maxdepth 1 -mindepth 1 -type d -not -name ".*" -not -name "camera*")
+ifeq ($(CONFIG_CAMERA_CAS),y)
+techpack-header-dirs += $(srctree)/techpack/camera-cas
+else
+techpack-header-dirs += $(srctree)/techpack/camera
+endif
 header-${TECHPACK} += $(addsuffix /include/uapi/,$(subst $(srctree)/techpack/,,$(techpack-header-dirs)))

@@ -5,4 +5,9 @@ config CAMERA_NONEDXO
 	help
 	  "Enable None-DXO Camera modifications"
 
+config CAMERA_CAS
+	bool "Enable Xiaomi CAS Camera modifications"
+	help
+	  "Enable Xiaomi CAS Camera modifications"
+
 endmenu
