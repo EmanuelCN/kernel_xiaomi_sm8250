@@ -1,26 +1,39 @@
 # SPDX-License-Identifier: GPL-2.0
 # scripts/dtc makefile
 
-hostprogs-y	:= dtc
+# *** Also keep .gitignore in sync when changing ***
+hostprogs-$(CONFIG_DTC) := dtc fdtoverlay
+ifeq ($(DTC_EXT),)
 always		:= $(hostprogs-y)
+endif
 
 dtc-objs	:= dtc.o flattree.o fstree.o data.o livetree.o treesource.o \
 		   srcpos.o checks.o util.o
 dtc-objs	+= dtc-lexer.lex.o dtc-parser.tab.o
 
-# Source files need to get at the userspace version of libfdt_env.h to compile
-HOST_EXTRACFLAGS := -I$(src)/libfdt
+# The upstream project builds libfdt as a separate library.  We are choosing to
+# instead directly link the libfdt object files into fdtoverlay.
+libfdt-objs	:= fdt.o fdt_ro.o fdt_wip.o fdt_sw.o fdt_rw.o fdt_strerror.o fdt_empty_tree.o fdt_addresses.o fdt_overlay.o
+libfdt		= $(addprefix libfdt/,$(libfdt-objs))
+fdtoverlay-objs	:= $(libfdt) fdtoverlay.o util.o
 
-ifeq ($(wildcard /usr/include/yaml.h),)
+# Source files need to get at the userspace version of libfdt_env.h to compile
+HOST_EXTRACFLAGS += -I $(srctree)/$(src)/libfdt
+
+ifeq ($(shell pkg-config --exists yaml-0.1 2>/dev/null && echo yes),)
+ifneq ($(CHECK_DTBS),)
+$(error dtc needs libyaml for DT schema validation support. \
+	Install the necessary libyaml development package.)
+endif
 HOST_EXTRACFLAGS += -DNO_YAML
 else
 dtc-objs	+= yamltree.o
-HOSTLDLIBS_dtc	:= -lyaml
+HOSTLDLIBS_dtc	:= $(shell pkg-config yaml-0.1 --libs)
 endif
 
 # Generated files need one more search path to include headers in source tree
-HOSTCFLAGS_dtc-lexer.lex.o := -I$(src)
-HOSTCFLAGS_dtc-parser.tab.o := -I$(src)
+HOSTCFLAGS_dtc-lexer.lex.o := -I $(srctree)/$(src)
+HOSTCFLAGS_dtc-parser.tab.o := -I $(srctree)/$(src)
 
 # dependencies on generated files need to be listed explicitly
 $(obj)/dtc-lexer.lex.o: $(obj)/dtc-parser.tab.h
