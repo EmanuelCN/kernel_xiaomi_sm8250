@@ -8936,8 +8936,10 @@ static int ufshcd_quirk_tune_host_pa_tactivate(struct ufs_hba *hba)
 	}
 
 	if (pa_hibern8time_quirk_enabled) {
-		ret = ufshcd_dme_peer_set(hba, UIC_ARG_MIB(PA_TXHSG4SYNCLENGTH), 0x4F);
-		ret = ufshcd_dme_peer_set(hba, UIC_ARG_MIB(PA_TXHSG1SYNCLENGTH), 0x4F);
+		// Synclength G4 for SAMSUNG ufs
+		ret = ufshcd_dme_peer_set(hba, UIC_ARG_MIB(0x15D0), 0x4F);
+		// Synclength G1 for SANDISK ufs
+		ret = ufshcd_dme_peer_set(hba, UIC_ARG_MIB(0x1552), 0x4F);
 	}
 
 out:
