@@ -3,9 +3,7 @@
  * Copyright 2007 Jon Loeliger, Freescale Semiconductor, Inc.
  */
 
-#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-#endif
 
 #include <stdio.h>
 
@@ -313,8 +311,8 @@ srcpos_string(struct srcpos *pos)
 static char *
 srcpos_string_comment(struct srcpos *pos, bool first_line, int level)
 {
-	char *pos_str, *fresh_fname = NULL, *first, *rest;
-	const char *fname;
+	char *pos_str, *fname, *first, *rest;
+	bool fresh_fname = false;
 
 	if (!pos) {
 		if (level > 1) {
@@ -332,9 +330,9 @@ srcpos_string_comment(struct srcpos *pos, bool first_line, int level)
 	else if (level > 1)
 		fname = pos->file->name;
 	else {
-		fresh_fname = shorten_to_initial_path(pos->file->name);
-		if (fresh_fname)
-			fname = fresh_fname;
+		fname = shorten_to_initial_path(pos->file->name);
+		if (fname)
+			fresh_fname = true;
 		else
 			fname = pos->file->name;
 	}
@@ -348,7 +346,7 @@ srcpos_string_comment(struct srcpos *pos, bool first_line, int level)
 			  first_line ? pos->first_line : pos->last_line);
 
 	if (fresh_fname)
-		free(fresh_fname);
+		free(fname);
 
 	if (pos->next != NULL) {
 		rest = srcpos_string_comment(pos->next, first_line, level);
