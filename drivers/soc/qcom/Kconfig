@@ -250,6 +250,14 @@ config QCOM_RPMH
 	  of hardware components aggregate requests for these resources and
 	  help apply the aggregated state on the resource.
 
+config QCOM_RPMH_DEBUG
+	bool "Enhance RPMh debug"
+	depends on QCOM_RPMH
+	help
+	  Adding debug prints increases latency of handling RPMh requests. This
+	  is specially notable during the boot process. Let's selectively remove
+	  some tracing that are more informative than an actual error.
+
 config QCOM_SMEM
 	tristate "Qualcomm Shared Memory Manager (SMEM)"
 	depends on ARCH_QCOM

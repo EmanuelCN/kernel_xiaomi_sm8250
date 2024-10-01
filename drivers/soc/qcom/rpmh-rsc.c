@@ -479,8 +479,10 @@ int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg)
 	do {
 		ret = tcs_write(drv, msg);
 		if (ret == -EBUSY) {
+#ifdef QCOM_RPMH_DEBUG
 			pr_info_ratelimited("DRV:%s TCS Busy, retrying RPMH message send: addr=%#x\n",
 					    drv->name, msg->cmds[0].addr);
+#endif /* QCOM_RPMH_DEBUG */
 			udelay(10);
 			count++;
 		}
