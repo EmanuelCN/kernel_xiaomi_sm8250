@@ -14,7 +14,6 @@
 
 #include <linux/mm.h>
 #include <linux/cpu.h>
-#include <linux/device.h>
 #include <linux/nmi.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -173,7 +172,6 @@ static u64 __read_mostly sample_period;
 
 static DEFINE_PER_CPU(unsigned long, watchdog_touch_ts);
 static DEFINE_PER_CPU(struct hrtimer, watchdog_hrtimer);
-static DEFINE_PER_CPU(unsigned int, watchdog_en);
 static DEFINE_PER_CPU(bool, softlockup_touch_sync);
 static DEFINE_PER_CPU(bool, soft_watchdog_warn);
 static DEFINE_PER_CPU(unsigned long, hrtimer_interrupts);
@@ -473,19 +471,15 @@ static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 	return HRTIMER_RESTART;
 }
 
-void watchdog_enable(unsigned int cpu)
+static void watchdog_enable(unsigned int cpu)
 {
 	struct hrtimer *hrtimer = this_cpu_ptr(&watchdog_hrtimer);
 	struct completion *done = this_cpu_ptr(&softlockup_completion);
-	unsigned int *enabled = this_cpu_ptr(&watchdog_en);
 
 	WARN_ON_ONCE(cpu != smp_processor_id());
 
 	init_completion(done);
 	complete(done);
-
-	if (*enabled)
-		return;
 
 	/*
 	 * Start the timer first to prevent the NMI watchdog triggering
@@ -501,24 +495,11 @@ void watchdog_enable(unsigned int cpu)
 	/* Enable the perf event */
 	if (watchdog_enabled & NMI_WATCHDOG_ENABLED)
 		watchdog_nmi_enable(cpu);
-
-	/*
-	 * Need to ensure above operations are observed by other CPUs before
-	 * indicating that timer is enabled. This is to synchronize core
-	 * isolation and hotplug. Core isolation will wait for this flag to be
-	 * set.
-	 */
-	mb();
-	*enabled = 1;
 }
 
-void watchdog_disable(unsigned int cpu)
+static void watchdog_disable(unsigned int cpu)
 {
 	struct hrtimer *hrtimer = per_cpu_ptr(&watchdog_hrtimer, cpu);
-	unsigned int *enabled = per_cpu_ptr(&watchdog_en, cpu);
-
-	if (!*enabled)
-		return;
 
 	/*
 	 * Disable the perf event first. That prevents that a large delay
@@ -528,17 +509,6 @@ void watchdog_disable(unsigned int cpu)
 	watchdog_nmi_disable(cpu);
 	hrtimer_cancel(hrtimer);
 	wait_for_completion(per_cpu_ptr(&softlockup_completion, cpu));
-
-	/*
-	 * No need for barrier here since disabling the watchdog is
-	 * synchronized with hotplug lock
-	 */
-	*enabled = 0;
-}
-
-bool watchdog_configured(unsigned int cpu)
-{
-	return *per_cpu_ptr(&watchdog_en, cpu);
 }
 
 static int softlockup_stop_fn(void *data)
