@@ -16,10 +16,9 @@ extern char __cpuidle_text_start[], __cpuidle_text_end[];
  * sched_idle_set_state - Record idle state for the current CPU.
  * @idle_state: State to record.
  */
-void sched_idle_set_state(struct cpuidle_state *idle_state, int index)
+void sched_idle_set_state(struct cpuidle_state *idle_state)
 {
 	idle_set_state(this_rq(), idle_state);
-	idle_set_state_idx(this_rq(), index);
 }
 
 static int __read_mostly cpu_idle_force_poll;
@@ -60,8 +59,7 @@ static noinline int __cpuidle cpu_idle_poll(void)
 	local_irq_enable();
 
 	while (!tif_need_resched() &&
-		(cpu_idle_force_poll || tick_check_broadcast_expired() ||
-		is_reserved(smp_processor_id())))
+		(cpu_idle_force_poll || tick_check_broadcast_expired()))
 		cpu_relax();
 
 	rcu_idle_exit();
@@ -253,8 +251,7 @@ static void do_idle(void)
 		 * broadcast device expired for us, we don't want to go deep
 		 * idle as we know that the IPI is going to arrive right away.
 		 */
-		if (cpu_idle_force_poll || tick_check_broadcast_expired() ||
-				is_reserved(smp_processor_id())) {
+		if (cpu_idle_force_poll || tick_check_broadcast_expired()) {
 			tick_nohz_idle_restart_tick();
 			cpu_idle_poll();
 		} else {
