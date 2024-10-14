@@ -430,7 +430,7 @@ static void ping_other_cpus(struct msm_watchdog_data *wdog_dd)
 	atomic_set(&wdog_dd->alive_mask, BIT(this_cpu));
 	online_mask = *cpumask_bits(cpu_online_mask) & ~BIT(this_cpu);
 	for_each_cpu(cpu, to_cpumask(&online_mask)) {
-		if (!cpu_idle_pc_state[cpu] && !cpu_isolated(cpu))
+		if (!cpu_idle_pc_state[cpu])
 			ping_mask |= BIT(cpu);
 	}
 	final_alive_mask = ping_mask | BIT(this_cpu);
