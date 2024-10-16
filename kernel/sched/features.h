@@ -93,7 +93,7 @@
 /*
  * Fast pre-selection of CPU candidates for EAS.
  */
-#define SCHED_FEAT_FIND_BEST_TARGET 1
+#define SCHED_FEAT_FIND_BEST_TARGET 0
 
 /*
  * Energy aware scheduling algorithm choices:
