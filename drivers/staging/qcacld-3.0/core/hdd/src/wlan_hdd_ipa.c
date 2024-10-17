@@ -328,42 +328,6 @@ void hdd_ipa_set_tx_flow_info(void)
 	}
 }
 
-#if defined(QCA_CONFIG_SMP) && defined(PF_WAKE_UP_IDLE)
-/**
- * hdd_ipa_get_wake_up_idle() - Get PF_WAKE_UP_IDLE flag in the task structure
- *
- * Get PF_WAKE_UP_IDLE flag in the task structure
- *
- * Return: 1 if PF_WAKE_UP_IDLE flag is set, 0 otherwise
- */
-static uint32_t hdd_ipa_get_wake_up_idle(void)
-{
-	return sched_get_wake_up_idle(current);
-}
-
-/**
- * hdd_ipa_set_wake_up_idle() - Set PF_WAKE_UP_IDLE flag in the task structure
- *
- * Set PF_WAKE_UP_IDLE flag in the task structure
- * This task and any task woken by this will be waken to idle CPU
- *
- * Return: None
- */
-static void hdd_ipa_set_wake_up_idle(bool wake_up_idle)
-{
-	sched_set_wake_up_idle(current, wake_up_idle);
-}
-#else
-static uint32_t hdd_ipa_get_wake_up_idle(void)
-{
-	return 0;
-}
-
-static void hdd_ipa_set_wake_up_idle(bool wake_up_idle)
-{
-}
-#endif
-
 /**
  * hdd_ipa_send_to_nw_stack() - Check if IPA supports NAPI
  * polling during RX
@@ -444,7 +408,6 @@ void hdd_ipa_send_nbuf_to_network(qdf_nbuf_t nbuf, qdf_netdev_t dev)
 	struct hdd_adapter *adapter = (struct hdd_adapter *) netdev_priv(dev);
 	int result;
 	unsigned int cpu_index;
-	uint32_t enabled;
 
 	if (hdd_validate_adapter(adapter)) {
 		kfree_skb(nbuf);
@@ -476,14 +439,6 @@ void hdd_ipa_send_nbuf_to_network(qdf_nbuf_t nbuf, qdf_netdev_t dev)
 				      QDF_DP_TRACE_RX_PACKET_RECORD, 0,
 				      QDF_RX));
 
-	/*
-	 * Set PF_WAKE_UP_IDLE flag in the task structure
-	 * This task and any task woken by this will be waken to idle CPU
-	 */
-	enabled = hdd_ipa_get_wake_up_idle();
-	if (!enabled)
-		hdd_ipa_set_wake_up_idle(true);
-
 	nbuf->dev = adapter->dev;
 	nbuf->protocol = eth_type_trans(nbuf, nbuf->dev);
 	nbuf->ip_summed = CHECKSUM_NONE;
@@ -506,11 +461,6 @@ void hdd_ipa_send_nbuf_to_network(qdf_nbuf_t nbuf, qdf_netdev_t dev)
 	else
 		++adapter->hdd_stats.tx_rx_stats.rx_refused[cpu_index];
 
-	/*
-	 * Restore PF_WAKE_UP_IDLE flag in the task structure
-	 */
-	if (!enabled)
-		hdd_ipa_set_wake_up_idle(false);
 }
 
 void hdd_ipa_set_mcc_mode(bool mcc_mode)
