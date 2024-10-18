@@ -10517,7 +10517,7 @@ static inline void calculate_imbalance(struct lb_env *env, struct sd_lb_stats *s
 			 */
 			env->migration_type = migrate_task;
 			lsub_positive(&nr_diff, local->sum_nr_running);
-			env->imbalance = nr_diff >> 1;
+			env->imbalance = nr_diff;
 		} else {
 
 			/*
@@ -10525,10 +10525,10 @@ static inline void calculate_imbalance(struct lb_env *env, struct sd_lb_stats *s
 			 * idle cpus.
 			 */
 			env->migration_type = migrate_task;
-			env->imbalance = max_t(long, 0, (local->idle_cpus -
-						 busiest->idle_cpus) >> 1);
+			env->imbalance = max_t(long, 0,
+					       (local->idle_cpus - busiest->idle_cpus));
 		}
-
+#ifdef CONFIG_NUMA
 		/* Consider allowing a small imbalance between NUMA groups */
 		if (env->sd->flags & SD_NUMA) {
 			unsigned int imbalance_min;
@@ -10548,7 +10548,10 @@ static inline void calculate_imbalance(struct lb_env *env, struct sd_lb_stats *s
 			if (busiest->sum_nr_running <= imbalance_min)
 				env->imbalance = 0;
 		}
+#endif
 
+		/* Number of tasks to move to restore balance */
+		env->imbalance >>= 1;
 		return;
 	}
 
