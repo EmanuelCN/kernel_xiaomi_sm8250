@@ -126,8 +126,7 @@ static __always_inline void csd_lock(struct __call_single_data *csd)
 
 static __always_inline void csd_unlock(struct __call_single_data *csd)
 {
-	if (!(csd->flags & CSD_FLAG_LOCK))
-		return;
+	WARN_ON(!(csd->flags & CSD_FLAG_LOCK));
 
 	/*
 	 * ensure we're all done before releasing data:
@@ -159,7 +158,7 @@ void __smp_call_single_queue(int cpu, struct llist_node *node)
  * for execution on the given CPU. data must already have
  * ->func, ->info, and ->flags set.
  */
-int generic_exec_single(int cpu, struct __call_single_data *csd)
+static int generic_exec_single(int cpu, struct __call_single_data *csd)
 {
 	if (cpu == smp_processor_id()) {
 		smp_call_func_t func = csd->func;
