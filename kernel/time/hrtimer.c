@@ -1055,7 +1055,6 @@ remove_hrtimer(struct hrtimer *timer, struct hrtimer_clock_base *base,
 			reprogram &= !keep_local;
 
 		__remove_hrtimer(timer, base, state, reprogram);
-		timer->state &= ~HRTIMER_STATE_PINNED;
 		return 1;
 	}
 	return 0;
@@ -1154,7 +1153,7 @@ static int __hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 
 	/* Update pinned state */
 	timer->state &= ~HRTIMER_STATE_PINNED;
-	timer->state |= (!!(mode & HRTIMER_MODE_PINNED)) << HRTIMER_PINNED_SHIFT;
+	timer->state |= !!(mode & HRTIMER_MODE_PINNED) << HRTIMER_PINNED_SHIFT;
 
 	/*
 	 * Timer was forced to stay on the current CPU to avoid
