@@ -2312,32 +2312,6 @@ static inline unsigned long task_util(struct task_struct *p)
  * Return: the (estimated) utilization for the specified CPU
  */
 
-#ifdef CONFIG_SCHED_WALT
-static inline unsigned long cpu_util(int cpu)
-#else
-static inline unsigned long cpu_util(int cpu);
-static inline unsigned long __cpu_util(int cpu)
-#endif
-{
-	struct cfs_rq *cfs_rq;
-	unsigned int util;
-
-#ifdef CONFIG_SCHED_WALT
-	u64 walt_cpu_util =
-		cpu_rq(cpu)->walt_stats.cumulative_runnable_avg_scaled;
-
-	return min_t(unsigned long, walt_cpu_util, capacity_orig_of(cpu));
-#endif
-
-	cfs_rq = &cpu_rq(cpu)->cfs;
-	util = READ_ONCE(cfs_rq->avg.util_avg);
-
-	if (sched_feat(UTIL_EST))
-		util = max(util, READ_ONCE(cfs_rq->avg.util_est.enqueued));
-
-	return min_t(unsigned long, util, capacity_orig_of(cpu));
-}
-
 static inline unsigned long cpu_util_cum(int cpu, int delta)
 {
 	u64 util = cpu_rq(cpu)->cfs.avg.util_avg;
@@ -2850,19 +2824,53 @@ bool uclamp_boosted(struct task_struct *p);
 # define arch_scale_freq_invariant()	false
 #endif
 
-#ifdef CONFIG_SMP
-static inline unsigned long cpu_util_cfs(struct rq *rq)
+/**
+ * cpu_util_cfs() - Estimates the amount of CPU capacity used by CFS tasks.
+ * @cpu: the CPU to get the utilization for.
+ *
+ * The unit of the return value must be the same as the one of CPU capacity
+ * so that CPU utilization can be compared with CPU capacity.
+ *
+ * CPU utilization is the sum of running time of runnable tasks plus the
+ * recent utilization of currently non-runnable tasks on that CPU.
+ * It represents the amount of CPU capacity currently used by CFS tasks in
+ * the range [0..max CPU capacity] with max CPU capacity being the CPU
+ * capacity at f_max.
+ *
+ * The estimated CPU utilization is defined as the maximum between CPU
+ * utilization and sum of the estimated utilization of the currently
+ * runnable tasks on that CPU. It preserves a utilization "snapshot" of
+ * previously-executed tasks, which helps better deduce how busy a CPU will
+ * be when a long-sleeping task wakes up. The contribution to CPU utilization
+ * of such a task would be significantly decayed at this point of time.
+ *
+ * CPU utilization can be higher than the current CPU capacity
+ * (f_curr/f_max * max CPU capacity) or even the max CPU capacity because
+ * of rounding errors as well as task migrations or wakeups of new tasks.
+ * CPU utilization has to be capped to fit into the [0..max CPU capacity]
+ * range. Otherwise a group of CPUs (CPU0 util = 121% + CPU1 util = 80%)
+ * could be seen as over-utilized even though CPU1 has 20% of spare CPU
+ * capacity. CPU utilization is allowed to overshoot current CPU capacity
+ * though since this is useful for predicting the CPU capacity required
+ * after task migrations (scheduler-driven DVFS).
+ *
+ * Return: (Estimated) utilization for the specified CPU.
+ */
+static inline unsigned long cpu_util_cfs(int cpu)
 {
-	unsigned long util = READ_ONCE(rq->cfs.avg.util_avg);
+	struct cfs_rq *cfs_rq;
+	unsigned long util;
+
+	cfs_rq = &cpu_rq(cpu)->cfs;
+	util = READ_ONCE(cfs_rq->avg.util_avg);
 
 	if (sched_feat(UTIL_EST)) {
 		util = max_t(unsigned long, util,
-			     READ_ONCE(rq->cfs.avg.util_est.enqueued));
+			     READ_ONCE(cfs_rq->avg.util_est.enqueued));
 	}
 
-	return util;
+	return min(util, capacity_orig_of(cpu));
 }
-#endif
 
 #ifdef CONFIG_CPU_FREQ_GOV_SCHEDUTIL
 
@@ -2902,16 +2910,6 @@ static inline unsigned long cpu_util_rt(struct rq *rq)
 	return 0;
 }
 #endif /* CONFIG_CPU_FREQ_GOV_SCHEDUTIL */
-
-#ifdef CONFIG_SMP
-#ifndef CONFIG_SCHED_WALT
-static inline unsigned long cpu_util(int cpu)
-{
-	return min(__cpu_util(cpu) + cpu_util_rt(cpu_rq(cpu)),
-		   capacity_orig_of(cpu));
-}
-#endif
-#endif
 
 #ifdef CONFIG_HAVE_SCHED_AVG_IRQ
 static inline unsigned long cpu_util_irq(struct rq *rq)
