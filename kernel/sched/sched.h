@@ -2825,6 +2825,7 @@ bool uclamp_boosted(struct task_struct *p);
 #endif
 
 extern unsigned long cpu_util_cfs(int cpu);
+extern unsigned long cpu_util_cfs_boost(int cpu);
 
 #ifdef CONFIG_CPU_FREQ_GOV_SCHEDUTIL
 
