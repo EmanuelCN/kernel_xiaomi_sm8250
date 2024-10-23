@@ -7597,6 +7597,7 @@ out:
  * @cpu: the CPU to get the utilization for
  * @p: task for which the CPU utilization should be predicted or NULL
  * @dst_cpu: CPU @p migrates to, -1 if @p moves from @cpu or @p == NULL
+ * @boost: 1 to enable boosting, otherwise 0
  *
  * The unit of the return value must be the same as the one of CPU capacity
  * so that CPU utilization can be compared with CPU capacity.
@@ -7614,6 +7615,12 @@ out:
  * be when a long-sleeping task wakes up. The contribution to CPU utilization
  * of such a task would be significantly decayed at this point of time.
  *
+ * Boosted CPU utilization is defined as max(CPU runnable, CPU utilization).
+ * CPU contention for CFS tasks can be detected by CPU runnable > CPU
+ * utilization. Boosting is implemented in cpu_util() so that internal
+ * users (e.g. EAS) can use it next to external users (e.g. schedutil),
+ * latter via cpu_util_cfs_boost().
+ *
  * CPU utilization can be higher than the current CPU capacity
  * (f_curr/f_max * max CPU capacity) or even the max CPU capacity because
  * of rounding errors as well as task migrations or wakeups of new tasks.
@@ -7624,12 +7631,19 @@ out:
  * though since this is useful for predicting the CPU capacity required
  * after task migrations (scheduler-driven DVFS).
  *
- * Return: (Estimated) utilization for the specified CPU.
+ * Return: (Boosted) (estimated) utilization for the specified CPU.
  */
-static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu)
+static unsigned long
+cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost)
 {
 	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
 	unsigned long util = READ_ONCE(cfs_rq->avg.util_avg);
+	unsigned long runnable;
+
+	if (boost) {
+		runnable = READ_ONCE(cfs_rq->avg.runnable_avg);
+		util = max(util, runnable);
+	}
 
 	/*
 	 * If @dst_cpu is -1 or @p migrates from @cpu to @dst_cpu remove its
@@ -7646,6 +7660,9 @@ static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu)
 		unsigned long util_est;
 
 		util_est = READ_ONCE(cfs_rq->avg.util_est.enqueued);
+
+		if (boost)
+			util_est = max(util_est, runnable);
 
 		/*
 		 * During wake-up @p isn't enqueued yet and doesn't contribute
@@ -7686,7 +7703,12 @@ static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu)
 
 unsigned long cpu_util_cfs(int cpu)
 {
-	return cpu_util(cpu, NULL, -1);
+	return cpu_util(cpu, NULL, -1, 0);
+}
+
+unsigned long cpu_util_cfs_boost(int cpu)
+{
+	return cpu_util(cpu, NULL, -1, 1);
 }
 
 /*
@@ -7708,7 +7730,7 @@ static unsigned long cpu_util_without(int cpu, struct task_struct *p)
 	if (cpu != task_cpu(p) || !READ_ONCE(p->se.avg.last_update_time))
 		p = NULL;
 
-	return cpu_util(cpu, p, -1);
+	return cpu_util(cpu, p, -1, 0);
 }
 
 
@@ -7815,7 +7837,7 @@ static void select_cpu_candidates(struct sched_domain *sd, cpumask_t *cpus,
 			if (!cpumask_test_cpu(cpu, &p->cpus_allowed))
 				continue;
 
-			util = cpu_util_next(cpu, p, cpu);
+			util = cpu_util(cpu, p, cpu, 1);
 			cpu_cap = capacity_of(cpu);
 			spare_cap = cpu_cap - util;
 
@@ -10953,7 +10975,7 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 			break;
 
 		case migrate_util:
-			util = cpu_util_cfs(i);
+			util = cpu_util_cfs_boost(i);
 
 			/*
 			 * Don't try to pull utilization from a CPU with one
