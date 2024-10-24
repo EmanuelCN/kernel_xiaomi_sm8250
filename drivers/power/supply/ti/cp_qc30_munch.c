@@ -236,7 +236,7 @@ static int qc3_set_bms_fastcharge_mode(bool enable)
 /* get thermal level from battery power supply property */
 static int qc3_get_batt_current_thermal_level(int *level)
 {
-	int ret, rc;
+	int ret, rc = 0;
 	struct power_supply *psy;
 	union power_supply_propval val = {0,};
 
@@ -610,7 +610,7 @@ static int cp_get_qc_pulse_cnt(void)
 
 static int cp_reset_vbus_volt(void)
 {
-	int ret;
+	int ret = 0;
 	int qc3p5_reset_vbus_retry = 0;
 	struct power_supply *psy;
 	union power_supply_propval val = {0,};

@@ -2181,7 +2181,7 @@ static int bq2597x_charger_is_writeable(struct power_supply *psy,
 
 static int bq2597x_psy_register(struct bq2597x *bq)
 {
-	int ret;
+	int ret = 0;
 
 	bq->psy_cfg.drv_data = bq;
 	bq->psy_cfg.of_node = bq->dev->of_node;
