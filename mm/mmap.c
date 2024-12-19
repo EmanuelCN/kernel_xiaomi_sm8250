@@ -908,7 +908,7 @@ again:
 			anon_vma_merge(vma, next);
 		mm->map_count--;
                 mpol_put(vma_policy(next));
-                vm_area_free(next)
+                vm_area_free(next);
 		if (next == mm->stack_vma)
 			mm->stack_vma = NULL;
 		/*
