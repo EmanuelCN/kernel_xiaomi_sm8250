@@ -849,6 +849,15 @@ config SPECULATIVE_PAGE_FAULT
 	 allocating, it is failing its processing and a classic page fault
 	 is then tried.
 
+config HAVE_USERSPACE_LOW_MEMORY_KILLER
+	bool "Have userspace low memory killer"
+	default n
+	help
+	  The page allocator cannot directly call into a
+	  userspace low memory killer as it can call into the OOM killer.
+	  Therefore, add a timeout mechanism to give the userspace
+	  low memory killer a chance to run.
+
 config GUP_BENCHMARK
 	bool "Enable infrastructure for get_user_pages_fast() benchmarking"
 	default n
@@ -892,11 +901,3 @@ config FORCE_ALLOC_FROM_DMA_ZONE
 config VMSTAT_INTERVAL
 	int "Default interval in seconds to update vmstat"
 	default 20
-
-config EMERGENCY_MEMORY
-	bool "Enable emergency memory"
-	default y if BOARD_XIAOMI
-	help
-	 This enables the migration type MIGRATE_EMERGENCY which reserves
-	 a small amount of memory for non-costly non-NOWARN page allocation
-	 failure.

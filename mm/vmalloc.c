@@ -44,6 +44,7 @@ struct vfree_deferred {
 	struct llist_head list;
 	struct work_struct wq;
 };
+
 static DEFINE_PER_CPU(struct vfree_deferred, vfree_deferred);
 
 static void __vunmap(const void *, int);
@@ -390,8 +391,9 @@ compute_subtree_max_size(struct vmap_area *va)
 		get_subtree_max_size(va->rb_node.rb_right));
 }
 
-RB_DECLARE_CALLBACKS_MAX(static, free_vmap_area_rb_augment_cb,
-	struct vmap_area, rb_node, unsigned long, subtree_max_size, va_size)
+RB_DECLARE_CALLBACKS(static, free_vmap_area_rb_augment_cb,
+	struct vmap_area, rb_node, unsigned long, subtree_max_size,
+	compute_subtree_max_size)
 
 static void purge_vmap_area_lazy(void);
 static BLOCKING_NOTIFIER_HEAD(vmap_notify_list);
