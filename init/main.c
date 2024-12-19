@@ -544,8 +544,6 @@ static void __init mm_init(void)
 	page_ext_init_flatmem();
 	report_meminit();
 	mem_init();
-	/* page_owner must be initialized after buddy is ready */
-	page_ext_init_flatmem_late();
 	kmem_cache_init();
 	pgtable_init();
 	vmalloc_init();
@@ -554,9 +552,6 @@ static void __init mm_init(void)
 	init_espfix_bsp();
 	/* Should be run after espfix64 is set up. */
 	pti_init();
-#ifdef CONFIG_EMERGENCY_MEMORY
-	emergency_mm_init();
-#endif
 }
 
 void __init init_sync_kmem_pool(void);
