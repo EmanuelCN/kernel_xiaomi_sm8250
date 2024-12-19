@@ -44,7 +44,6 @@ struct vfree_deferred {
 	struct llist_head list;
 	struct work_struct wq;
 };
-
 static DEFINE_PER_CPU(struct vfree_deferred, vfree_deferred);
 
 static void __vunmap(const void *, int);
