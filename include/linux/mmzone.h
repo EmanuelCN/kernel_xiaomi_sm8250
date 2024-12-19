@@ -37,6 +37,8 @@
  */
 #define PAGE_ALLOC_COSTLY_ORDER 3
 
+#define MAX_KSWAPD_THREADS 16
+
 enum migratetype {
 	MIGRATE_UNMOVABLE,
 	MIGRATE_MOVABLE,
@@ -59,13 +61,6 @@ enum migratetype {
 #endif
 	MIGRATE_PCPTYPES, /* the number of types on the pcp lists */
 	MIGRATE_HIGHATOMIC = MIGRATE_PCPTYPES,
-#ifdef CONFIG_EMERGENCY_MEMORY
-	/*
-	 * MIGRATE_EMERGENCY migration type is designed to save
-	 * non-costly non-NOWARN page allocation failure.
-	 */
-	MIGRATE_EMERGENCY,
-#endif
 #ifdef CONFIG_MEMORY_ISOLATION
 	MIGRATE_ISOLATE,	/* can't allocate from here */
 #endif
@@ -375,11 +370,6 @@ enum zone_type {
 
 #ifndef __GENERATING_BOUNDS_H
 
-#ifdef CONFIG_EMERGENCY_MEMORY
-/* The maximum number of pages in MIGRATE_EMERGENCY migration type */
-#define MAX_MANAGED_EMERGENCY 2048
-#endif
-
 struct zone {
 	/* Read-mostly fields */
 
@@ -388,10 +378,7 @@ struct zone {
 	unsigned long watermark_boost;
 
 	unsigned long nr_reserved_highatomic;
-#ifdef CONFIG_EMERGENCY_MEMORY
-	/* The actual number of pages in MIGRATE_EMERGENCY migration type */
-	unsigned long nr_reserved_emergency;
-#endif
+
 	/*
 	 * We don't know if the memory that we're going to allocate will be
 	 * freeable or/and it will be released eventually, so to avoid totally
@@ -701,8 +688,10 @@ typedef struct pglist_data {
 	int node_id;
 	wait_queue_head_t kswapd_wait;
 	wait_queue_head_t pfmemalloc_wait;
-	struct task_struct *kswapd;	/* Protected by
-					   mem_hotplug_begin/end() */
+	/*
+	 * Protected by mem_hotplug_begin/end()
+	 */
+	struct task_struct *kswapd[MAX_KSWAPD_THREADS];
 	int kswapd_order;
 	enum zone_type kswapd_classzone_idx;
 
@@ -934,6 +923,8 @@ static inline int is_highmem(struct zone *zone)
 
 /* These two functions are used to setup the per zone pages min values */
 struct ctl_table;
+int kswapd_threads_sysctl_handler(struct ctl_table *, int,
+					void __user *, size_t *, loff_t *);
 int min_free_kbytes_sysctl_handler(struct ctl_table *, int,
 					void __user *, size_t *, loff_t *);
 int watermark_boost_factor_sysctl_handler(struct ctl_table *, int,

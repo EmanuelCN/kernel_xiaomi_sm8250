@@ -22,12 +22,11 @@ KCOV_INSTRUMENT_mmzone.o := n
 KCOV_INSTRUMENT_vmstat.o := n
 
 mmu-y			:= nommu.o
-mmu-$(CONFIG_MMU)	:= gup.o memory.o mincore.o \
+mmu-$(CONFIG_MMU)	:= gup.o highmem.o memory.o mincore.o \
 			   mlock.o mmap.o mprotect.o mremap.o msync.o \
 			   page_vma_mapped.o pagewalk.o pgtable-generic.o \
 			   rmap.o vmalloc.o
 
-mmu-$(CONFIG_HIGHMEM)	+= highmem.o
 
 ifdef CONFIG_MM_EVENT_STAT
 mmu-$(CONFIG_MMU)	+= mm_event.o
@@ -109,5 +108,4 @@ obj-$(CONFIG_HARDENED_USERCOPY) += usercopy.o
 obj-$(CONFIG_PERCPU_STATS) += percpu-stats.o
 obj-$(CONFIG_HMM) += hmm.o
 obj-$(CONFIG_MEMFD_CREATE) += memfd.o
-
-CFLAGS_kmemleak.o += -DCONFIG_DEBUG_FS
+obj-$(CONFIG_PROCESS_RECLAIM)	+= process_reclaim.o

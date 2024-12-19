@@ -1862,13 +1862,13 @@ static bool need_update(int cpu)
  */
 void quiet_vmstat(void)
 {
-	if (unlikely(system_state != SYSTEM_RUNNING))
+	if (system_state != SYSTEM_RUNNING)
 		return;
 
 	if (!delayed_work_pending(this_cpu_ptr(&vmstat_work)))
 		return;
 
-	if (likely(!need_update(smp_processor_id())))
+	if (!need_update(smp_processor_id()))
 		return;
 
 	/*

@@ -1488,9 +1488,6 @@ struct task_struct {
 #endif
 	ANDROID_KABI_RESERVE(8);
 
-#ifdef CONFIG_ANDROID_SIMPLE_LMK
-	struct task_struct		*simple_lmk_next;
-#endif
 	/*
 	 * New fields for task_struct should be added above here, so that
 	 * they are included in the randomized portion of task_struct.
