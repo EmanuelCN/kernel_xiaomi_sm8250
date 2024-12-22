@@ -522,7 +522,7 @@ static void kgsl_of_get_mempools(struct device_node *parent)
 	 * low memory configuration is not specified
 	 * then fallback to default pool configuration.
 	 */
-	if (totalram_pages < (SZ_2G >> PAGE_SHIFT))
+	if (totalram_pages() < (SZ_2G >> PAGE_SHIFT))
 		node = of_find_compatible_node(parent, NULL,
 				"qcom,gpu-mempools-lowmem");
 
