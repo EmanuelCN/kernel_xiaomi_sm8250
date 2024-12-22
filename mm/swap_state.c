@@ -588,6 +588,10 @@ struct page *swap_cluster_readahead(swp_entry_t entry, gfp_t gfp_mask,
 	if (!mask)
 		goto skip;
 
+	/* If exiting, don't do swap readahead. */
+	if (current->flags & PF_EXITING)
+		goto skip;
+
 	do_poll = false;
 	/* Read a page_cluster sized and aligned cluster around offset. */
 	start_offset = offset & ~mask;
