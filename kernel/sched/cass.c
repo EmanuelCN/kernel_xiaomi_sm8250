@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2023-2024 Sultan Alsawaf <sultan@kerneltoast.com>.
+ * Copyright (C) 2023-2025 Sultan Alsawaf <sultan@kerneltoast.com>.
  */
 
 /**
@@ -189,12 +189,13 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync, bool rt
 		    available_idle_cpu(cpu) || sched_idle_cpu(cpu)) {
 			/*
 			 * A non-idle candidate may be better when @p is uclamp
-			 * boosted. Otherwise, always prefer idle candidates.
+			 * efficiency when @p is uclamp boosted above @curr's
+			 * minimum capacity. Otherwise, prefer idle
+			 * candidates.
 			 */
-			if (!uc_min) {
+			if (!has_idle && uc_min <= arch_scale_min_freq_capacity(cpu)) {
 				/* Discard any previous non-idle candidate */
-				if (!has_idle)
-					best = curr;
+				best = curr;
 				has_idle = true;
 			}
 
