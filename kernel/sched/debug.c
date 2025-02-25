@@ -315,13 +315,9 @@ print_task(struct seq_file *m, struct rq *rq, struct task_struct *p)
 	else
 		SEQ_printf(m, " %c", task_state_to_char(p));
 
-	SEQ_printf(m, "%15s %5d %9Ld.%06ld %c %9Ld.%06ld %9Ld.%06ld %9Ld.%06ld %9Ld %5d ",
+	SEQ_printf(m, "%15s %5d %9Ld.%06ld %9Ld %5d ",
 		p->comm, task_pid_nr(p),
 		SPLIT_NS(p->se.vruntime),
-		entity_eligible(cfs_rq_of(&p->se), &p->se) ? 'E' : 'N',
-		SPLIT_NS(p->se.deadline),
-		SPLIT_NS(p->se.slice),
-		SPLIT_NS(p->se.sum_exec_runtime),
 		(long long)(p->nvcsw + p->nivcsw),
 		p->prio);
 
@@ -363,9 +359,10 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 
 void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
 {
-	s64 left_vruntime = -1, min_vruntime, right_vruntime = -1, left_deadline = -1, spread;
-	struct sched_entity *last, *first, *root;
+	s64 MIN_vruntime = -1, min_vruntime, max_vruntime = -1,
+		spread, rq0_min_vruntime, spread0;
 	struct rq *rq = cpu_rq(cpu);
+	struct sched_entity *last;
 	unsigned long flags;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -379,30 +376,26 @@ void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
 			SPLIT_NS(cfs_rq->exec_clock));
 
 	raw_spin_lock_irqsave(&rq->lock, flags);
-	root = __pick_root_entity(cfs_rq);
-	if (root)
-		left_vruntime = root->min_vruntime;
-	first = __pick_first_entity(cfs_rq);
-	if (first)
-		left_deadline = first->deadline;
+	if (rb_first_cached(&cfs_rq->tasks_timeline))
+		MIN_vruntime = (__pick_first_entity(cfs_rq))->vruntime;
 	last = __pick_last_entity(cfs_rq);
 	if (last)
-		right_vruntime = last->vruntime;
+		max_vruntime = last->vruntime;
 	min_vruntime = cfs_rq->min_vruntime;
+	rq0_min_vruntime = cpu_rq(0)->cfs.min_vruntime;
 	raw_spin_unlock_irqrestore(&rq->lock, flags);
-
-	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "left_deadline",
-			SPLIT_NS(left_deadline));
-	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "left_vruntime",
-			SPLIT_NS(left_vruntime));
+	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "MIN_vruntime",
+			SPLIT_NS(MIN_vruntime));
 	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "min_vruntime",
 			SPLIT_NS(min_vruntime));
-	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "avg_vruntime",
-			SPLIT_NS(avg_vruntime(cfs_rq)));
-	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "right_vruntime",
-			SPLIT_NS(right_vruntime));
-	spread = right_vruntime - left_vruntime;
-	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "spread", SPLIT_NS(spread));
+	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "max_vruntime",
+			SPLIT_NS(max_vruntime));
+	spread = max_vruntime - MIN_vruntime;
+	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "spread",
+			SPLIT_NS(spread));
+	spread0 = min_vruntime - rq0_min_vruntime;
+	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "spread0",
+			SPLIT_NS(spread0));
 	SEQ_printf(m, "  .%-30s: %d\n", "nr_spread_over",
 			cfs_rq->nr_spread_over);
 	SEQ_printf(m, "  .%-30s: %d\n", "nr_running", cfs_rq->nr_running);
@@ -614,7 +607,10 @@ static void sched_debug_header(struct seq_file *m)
 	SEQ_printf(m, "  .%-40s: %Ld\n", #x, (long long)(x))
 #define PN(x) \
 	SEQ_printf(m, "  .%-40s: %Ld.%06ld\n", #x, SPLIT_NS(x))
-	PN(sysctl_sched_base_slice);
+	PN(sysctl_sched_latency);
+	PN(sysctl_sched_min_granularity);
+	PN(sysctl_sched_wakeup_granularity);
+	P(sysctl_sched_child_runs_first);
 #ifdef CONFIG_SCHED_WALT
 	P(sched_init_task_load_windows);
 	P(sched_ravg_window);

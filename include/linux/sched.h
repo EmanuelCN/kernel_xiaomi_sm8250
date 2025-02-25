@@ -492,18 +492,13 @@ struct sched_entity {
 	/* For load-balancing: */
 	struct load_weight		load;
 	struct rb_node			run_node;
-	u64				deadline;
-	u64				min_vruntime;
-
 	struct list_head		group_node;
 	unsigned int			on_rq;
 
 	u64				exec_start;
 	u64				sum_exec_runtime;
-	u64				prev_sum_exec_runtime;
 	u64				vruntime;
-	s64				vlag;
-	u64				slice;
+	u64				prev_sum_exec_runtime;
 
 	u64				nr_migrations;
 
