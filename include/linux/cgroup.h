@@ -380,7 +380,7 @@ static inline bool css_tryget_online(struct cgroup_subsys_state *css)
  */
 static inline bool css_is_dying(struct cgroup_subsys_state *css)
 {
-	return !(css->flags & CSS_NO_REF) && percpu_ref_is_dying(&css->refcnt);
+	return css->flags & CSS_DYING;
 }
 
 /**
