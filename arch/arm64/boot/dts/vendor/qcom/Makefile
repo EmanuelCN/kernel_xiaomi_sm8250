@@ -86,44 +86,8 @@ vangogh-sm7250-overlay.dtbo-base := lito.dtb lito-v2.dtb
 endif
 
 endif
-else
-ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
-        dtbo-$(CONFIG_ARCH_KONA) += \
-                kona-mtp-overlay.dtbo \
-                kona-rumi-overlay.dtbo \
-                kona-arglass-overlay.dtbo \
-                kona-xrsku4-overlay.dtbo
 
-kona-mtp-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
-kona-arglass-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
-kona-xrsku4-overlay.dtbo-base := kona.dtb kona-v2.dtb kona-v2.1.dtb
 else
-dtb-$(CONFIG_ARCH_KONA) += kona-rumi.dtb \
-        kona-mtp.dtb \
-        kona-mtp-ws.dtb \
-        kona-xr.dtb \
-        kona-arglass.dtb \
-        kona-xrsku4.dtb \
-        kona-cdp.dtb \
-        kona-cdp-lcd.dtb \
-        kona-cdp-lcd-tron.dtb \
-        kona-qrd.dtb \
-        kona-v2-rumi.dtb \
-        kona-v2-mtp.dtb \
-        kona-v2-mtp-ws.dtb \
-        kona-v2-cdp.dtb \
-        kona-v2-qrd.dtb \
-        kona-v2-arglass.dtb \
-        kona-v2-xrsku4.dtb \
-        kona-hdk.dtb \
-        kona-v2.1-mtp.dtb \
-        kona-v2.1-mtp-ws.dtb \
-        kona-v2.1-cdp.dtb \
-        kona-v2.1-qrd.dtb \
-        kona-v2.1-arglass.dtb \
-        kona-v2.1-xrsku4.dtb \
-        kona-v2.1-hdk.dtb
-endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
 dtbo-$(CONFIG_ARCH_LITO) += lito-rumi-overlay.dtbo \
