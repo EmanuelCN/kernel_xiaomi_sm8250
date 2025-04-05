@@ -700,7 +700,6 @@
 				 <0 1 IRQ_TYPE_LEVEL_HIGH>;
 		qcom,bark-time = <11000>;
 		qcom,pet-time = <9360>;
-		qcom,wakeup-enable;
 		qcom,ipi-ping;
 	};
 
