@@ -2011,7 +2011,7 @@ static void binder_do_fd_close(struct callback_head *twork)
 static void binder_deferred_fd_close(int fd)
 {
 	struct binder_task_work_cb *twcb;
-	twcb = kmalloc(sizeof(*twcb), GFP_KERNEL);
+	twcb = kzalloc(sizeof(*twcb), GFP_KERNEL);
 	if (!twcb)
 		return;
 	init_task_work(&twcb->twork, binder_do_fd_close);
@@ -2349,7 +2349,7 @@ static int binder_translate_fd(u32 fd, binder_size_t fd_offset,
 	 * of the fd in the target needs to be done from a
 	 * target thread.
 	 */
-	fixup = kmalloc(sizeof(*fixup), GFP_KERNEL);
+	fixup = kzalloc(sizeof(*fixup), GFP_KERNEL);
 	if (!fixup) {
 		ret = -ENOMEM;
 		goto err_alloc;
@@ -3709,7 +3709,7 @@ static int binder_thread_write(struct binder_proc *proc,
 				 * Allocate memory for death notification
 				 * before taking lock
 				 */
-				death = kmalloc(sizeof(*death), GFP_KERNEL);
+				death = kzalloc(sizeof(*death), GFP_KERNEL);
 				if (death == NULL) {
 					WARN_ON(thread->return_error.cmd !=
 						BR_OK);
