@@ -569,7 +569,7 @@ config MEM_SOFT_DIRTY
 
 config ZSWAP
 	bool "Compressed cache for swap pages (EXPERIMENTAL)"
-	depends on FRONTSWAP && CRYPTO=y
+	depends on FRONTSWAP && CRYPTO=y && !ZRAM
 	select CRYPTO_LZO
 	select ZPOOL
 	default n
