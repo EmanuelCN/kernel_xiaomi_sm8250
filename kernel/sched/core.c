@@ -6219,6 +6219,8 @@ static int get_user_cpu_mask(unsigned long __user *user_mask_ptr, unsigned len,
 SYSCALL_DEFINE3(sched_setaffinity, pid_t, pid, unsigned int, len,
 		unsigned long __user *, user_mask_ptr)
 {
+	return 0;
+
 	cpumask_var_t new_mask;
 	int retval;
 
