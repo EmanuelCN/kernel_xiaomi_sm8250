@@ -2428,6 +2428,14 @@ const struct cpumask *const cpu_prime_mask = cpu_possible_mask;
 #endif
 EXPORT_SYMBOL(cpu_prime_mask);
 
+#if defined(CONFIG_BIG_CPU_MASK) && defined(CONFIG_PRIME_CPU_MASK)
+static const unsigned long hp_cpu_bits = CONFIG_BIG_CPU_MASK + CONFIG_PRIME_CPU_MASK;
+const struct cpumask *const cpu_hp_mask = to_cpumask(&hp_cpu_bits);
+#else
+const struct cpumask *const cpu_hp_mask = cpu_possible_mask;
+#endif
+EXPORT_SYMBOL(cpu_hp_mask);
+
 void init_cpu_present(const struct cpumask *src)
 {
 	cpumask_copy(&__cpu_present_mask, src);
