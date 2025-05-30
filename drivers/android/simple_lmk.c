@@ -5,7 +5,6 @@
 
 #define pr_fmt(fmt) "simple_lmk: " fmt
 
-#include <linux/delay.h>
 #include <linux/freezer.h>
 #include <linux/kthread.h>
 #include <linux/mm.h>
@@ -311,8 +310,6 @@ static void scan_and_kill(void)
 	/* Wait until all the victims die or until the timeout is reached */
 	if (!wait_for_completion_timeout(&reclaim_done, RECLAIM_EXPIRES))
 		pr_info("Timeout hit waiting for victims to die, proceeding\n");
-	else
-		msleep(28);
 
 	/* Clean up for future reclaims but let the reaper thread keep going */
 	write_lock(&mm_free_lock);
