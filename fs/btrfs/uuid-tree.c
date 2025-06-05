@@ -87,9 +87,9 @@ int btrfs_uuid_tree_add(struct btrfs_trans_handle *trans, u8 *uuid, u8 type,
 	int ret;
 	struct btrfs_path *path = NULL;
 	struct btrfs_key key;
-	struct extent_buffer *eb;
+	struct extent_buffer *eb = NULL;
 	int slot;
-	unsigned long offset;
+	unsigned long offset = 0;
 	__le64 subid_le;
 
 	ret = btrfs_uuid_tree_lookup(uuid_root, uuid, type, subid_cpu);
