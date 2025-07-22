@@ -3605,8 +3605,13 @@ static int check_func_arg(struct bpf_verifier_env *env, u32 regno,
 	} else if (arg_type_is_mem_size(arg_type)) {
 		bool zero_size_allowed = (arg_type == ARG_CONST_SIZE_OR_ZERO);
 
-		/* remember the mem_size which may be used later
-		 * to refine return values.
+		/* This is used to refine r0 return value bounds for helpers
+		 * that enforce this value as an upper bound on return values.
+		 * See do_refine_retval_range() for helpers that can refine
+		 * the return value. C type of helper is u32 so we pull register
+		 * bound from umax_value however, if negative verifier errors
+		 * out. Only upper bounds can be learned because retval is an
+		 * int type and negative retvals are allowed.
 		 */
 		meta->msize_max_value = reg->umax_value;
 
@@ -4140,44 +4145,22 @@ static int prepare_func_exit(struct bpf_verifier_env *env, int *insn_idx)
 	return 0;
 }
 
-static int do_refine_retval_range(struct bpf_verifier_env *env,
-				  struct bpf_reg_state *regs, int ret_type,
-				  int func_id, struct bpf_call_arg_meta *meta)
+static void do_refine_retval_range(struct bpf_reg_state *regs, int ret_type,
+				  int func_id,
+				  struct bpf_call_arg_meta *meta)
 {
 	struct bpf_reg_state *ret_reg = &regs[BPF_REG_0];
-	struct bpf_reg_state tmp_reg = *ret_reg;
-	bool ret;
 
 	if (ret_type != RET_INTEGER ||
 	    (func_id != BPF_FUNC_get_stack &&
 	     func_id != BPF_FUNC_probe_read_str))
-		return 0;
+		return;
 
-	/* Error case where ret is in interval [S32MIN, -1]. */
-	ret_reg->smin_value = S32_MIN;
-	ret_reg->smax_value = -1;
-
-	__reg_deduce_bounds(ret_reg);
-	__reg_bound_offset(ret_reg);
-	__update_reg_bounds(ret_reg);
-
-	ret = push_stack(env, env->insn_idx + 1, env->insn_idx, false);
-	if (!ret)
-		return -EFAULT;
-
-	*ret_reg = tmp_reg;
-
-	/* Success case where ret is in range [0, msize_max_value]. */
-	ret_reg->smin_value = 0;
 	ret_reg->smax_value = meta->msize_max_value;
-	ret_reg->umin_value = ret_reg->smin_value;
-	ret_reg->umax_value = ret_reg->smax_value;
-
 	__reg_deduce_bounds(ret_reg);
 	__reg_bound_offset(ret_reg);
 	__update_reg_bounds(ret_reg);
 
-	return 0;
 }
 
 static int
@@ -4445,9 +4428,7 @@ static int check_helper_call(struct bpf_verifier_env *env, int func_id, int insn
 		regs[BPF_REG_0].ref_obj_id = id;
 	}
 
-	err = do_refine_retval_range(env, regs, fn->ret_type, func_id, &meta);
-	if (err)
-		return err;
+	do_refine_retval_range(regs, fn->ret_type, func_id, &meta);
 
 	err = check_map_func_compatibility(env, meta.map_ptr, func_id);
 	if (err)
