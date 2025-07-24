@@ -8,6 +8,7 @@
 #include <linux/types.h>
 #include <linux/bpf.h>
 #include <net/lwtunnel.h>
+#include <net/ipv6_stubs.h>
 
 struct bpf_lwt_prog {
 	struct bpf_prog *prog;
