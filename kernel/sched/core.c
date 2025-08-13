@@ -6918,7 +6918,7 @@ long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 	struct affinity_context ac;
 	struct cpumask *user_mask;
 	struct task_struct *p;
-	int retval;
+	int retval = 0;
 
 	rcu_read_lock();
 
