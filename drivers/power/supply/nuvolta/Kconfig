@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "NuVolta Technologies Inc. Charger and Fuel Gauge support"
+
+config RX1619
+	tristate "RX1619 wireless Charger"
+	depends on I2C
+	help
+	  Say Y to include support for rx1619 wireless Charger.
+	  RX1619 is a wireless battery charger chip.
+	  The driver supports charger enable/disable.
+	  The driver reports the charger status via the power supply framework.
+	  The driver controls rx1619 via I2C and
+	  supports device-tree interface.
+
+config RX1619_CAS
+	tristate "RX1619 wireless Charger"
+	depends on I2C
+	help
+	  Say Y to include support for rx1619 wireless Charger.
+	  RX1619 is a wireless battery charger chip.
+	  The driver supports charger enable/disable.
+	  The driver reports the charger status via the power supply framework.
+	  The driver controls rx1619 via I2C and
+	  supports device-tree interface.
+
+config RX1619_TRIM
+	tristate "RX1619 TRIM"
+	depends on I2C
+	help
+	  Say Y to include support for rx1619 wireless Charger.
+	  RX1619 is a wireless battery charger chip.
+	  The driver supports charger enable/disable.
+	  The driver reports the charger status via the power supply framework.
+	  The driver controls rx1619 via I2C and
+	  supports device-tree interface.
+
+config RX1619_TRIM_CAS
+	tristate "RX1619 TRIM"
+	depends on I2C
+	help
+	  Say Y to include support for rx1619 wireless Charger.
+	  RX1619 is a wireless battery charger chip.
+	  The driver supports charger enable/disable.
+	  The driver reports the charger status via the power supply framework.
+	  The driver controls rx1619 via I2C and
+	  supports device-tree interface.
+
+config RX1619_REMOVE
+	bool "J2S special modify."
+	depends on I2C
+	help
+	  J2S special modify
+
+config RX_ON_URD
+	tristate "RX chip on urd device"
+	depends on I2C
+	help
+	  Say Y to include support for rx wireless Charger on URD.
+	  supports device-tree interface.
+
+endmenu

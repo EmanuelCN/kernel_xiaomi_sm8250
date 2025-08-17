@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef __SMB5_CHARGER_REG_H
@@ -429,7 +428,6 @@ enum {
 
 #define TYPE_C_CURRSRC_CFG_REG			(TYPEC_BASE + 0x52)
 #define TYPEC_SRC_RP_SEL_MASK			GENMASK(1, 0)
-
 enum {
 	TYPEC_SRC_RP_STD,
 	TYPEC_SRC_RP_1P5A,

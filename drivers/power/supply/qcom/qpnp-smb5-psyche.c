@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/debugfs.h>
@@ -233,7 +232,7 @@ struct smb5 {
 
 static struct smb_charger *__smbchg;
 
-static int __debug_mask;
+static int __debug_mask = PR_MISC | PR_WLS | PR_OEM | PR_PARALLEL;
 
 static ssize_t pd_disabled_show(struct device *dev, struct device_attribute
 				*attr, char *buf)

@@ -1,13 +1,25 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "Maxim Integrated Charger and Fuel Gauge support"
+
 config BATT_VERIFY_BY_DS28E16
-	bool
-	prompt "Support ds28e16 as encryption IC."
-	default n
+	bool "Support ds28e16 as encryption IC."
 	help
 		It needs a onewire physical controller to work.
 
 config ONEWIRE_GPIO
-	bool
-	prompt "Support Onewire Driver."
-	default n
+	bool "Support Onewire Driver."
 	help
 		It's an onewire driver.
+
+config WATCHDOG_MAX28200
+	tristate "maxim watch dog max28200 driver"
+	help
+	  Say Y to enable support for maxim max28200 driver
+
+config CP_MAX77932
+	tristate "maxim charger pump max77932 driver"
+	help
+	  Say Y to enable support for charger pump driver
+
+endmenu

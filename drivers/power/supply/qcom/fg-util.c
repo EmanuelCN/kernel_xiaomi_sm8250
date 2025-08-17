@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/of.h>
@@ -891,7 +890,7 @@ int fg_get_msoc_raw(struct fg_dev *fg, int *val)
 		return -EINVAL;
 	}
 
-//	fg_dbg(fg, FG_POWER_SUPPLY, "raw: 0x%02x\n", cap[0]);
+	fg_dbg(fg, FG_POWER_SUPPLY, "raw: 0x%02x\n", cap[0]);
 	*val = cap[0];
 	return 0;
 }
@@ -911,8 +910,6 @@ int fg_get_msoc(struct fg_dev *fg, int *msoc)
 		return rc;
 
 	if (fg->param.smooth_batt_flag) {
-//		pr_info("===raw_msoc:%d\n", raw_msoc);
-
 		if (raw_msoc >= 255) {
 			*msoc = FULL_CAPACITY;
 		} else if (raw_msoc >= 252 && !optimized_soc_flag && fg->report_full) {
@@ -1692,9 +1689,9 @@ int fg_debugfs_create(struct fg_dev *fg)
 	fg->dfs_root = debugfs_create_dir("fg", NULL);
 	if (IS_ERR_OR_NULL(fg->dfs_root)) {
 		if (PTR_ERR(fg->dfs_root) == -ENODEV)
-			pr_debug("debugfs is not enabled in the kernel\n");
+			pr_err("debugfs is not enabled in the kernel\n");
 		else
-			pr_debug("error creating fg dfs root rc=%ld\n",
+			pr_err("error creating fg dfs root rc=%ld\n",
 			       (long)fg->dfs_root);
 		return -ENODEV;
 	}
@@ -1702,20 +1699,20 @@ int fg_debugfs_create(struct fg_dev *fg)
 	file = debugfs_create_u32("debug_mask", 0600, fg->dfs_root,
 			fg->debug_mask);
 	if (IS_ERR_OR_NULL(file)) {
-		pr_debug("failed to create debug_mask\n");
+		pr_err("failed to create debug_mask\n");
 		goto err_remove_fs;
 	}
 
 	rc = fg_sram_debugfs_create(fg);
 	if (rc < 0) {
-		pr_debug("failed to create sram dfs rc=%d\n", rc);
+		pr_err("failed to create sram dfs rc=%d\n", rc);
 		goto err_remove_fs;
 	}
 
 	if (fg->alg_flags) {
 		if (!debugfs_create_file("alg_flags", 0400, fg->dfs_root, fg,
 					 &fg_alg_flags_fops)) {
-			pr_debug("failed to create alg_flags file\n");
+			pr_err("failed to create alg_flags file\n");
 			goto err_remove_fs;
 		}
 	}
