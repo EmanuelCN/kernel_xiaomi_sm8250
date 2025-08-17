@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
@@ -1531,6 +1532,8 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_PD_AUTHENTICATION,
 	POWER_SUPPLY_PROP_PASSTHROUGH_CURR_MAX,
 	POWER_SUPPLY_PROP_SKIN_HEALTH,
+	POWER_SUPPLY_PROP_APDO_MAX,
+	POWER_SUPPLY_PROP_POWER_MAX,
 };
 
 static int smb5_usb_get_prop(struct power_supply *psy,
@@ -1709,6 +1712,12 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SKIN_HEALTH:
 		val->intval = smblib_get_skin_temp_status(chg);
 		break;
+	case POWER_SUPPLY_PROP_APDO_MAX:
+		val->intval = chg->apdo_max;
+		break;
+	case POWER_SUPPLY_PROP_POWER_MAX:
+		val->intval = smblib_get_adapter_power_max(chg);
+		break;
 	default:
 		pr_debug("get prop %d is not supported in usb\n", psp);
 		rc = -EINVAL;
@@ -1829,13 +1838,16 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE:
 		chg->quick_charge_type = val->intval;
-		queue_delayed_work(system_power_efficient_wq, &chg->report_soc_decimal_work,
+		schedule_delayed_work(&chg->report_soc_decimal_work,
 				msecs_to_jiffies(REPORT_SOC_DECIMAL_MS));
 		break;
 	case POWER_SUPPLY_PROP_QUICK_CHARGE_POWER:
 		chg->quick_charge_power = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_NON_COMPATIBLE:
+		break;
+	case POWER_SUPPLY_PROP_APDO_MAX:
+		chg->apdo_max = val->intval;
 		break;
 	default:
 		pr_debug("set prop %d is not supported\n", psp);
@@ -1862,6 +1874,7 @@ static int smb5_usb_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_QUICK_CHARGE_POWER:
 	case POWER_SUPPLY_PROP_NON_COMPATIBLE:
 	case POWER_SUPPLY_PROP_PASSTHROUGH_CURR_MAX:
+	case POWER_SUPPLY_PROP_APDO_MAX:
 		return 1;
 	default:
 		break;
@@ -2816,6 +2829,7 @@ static enum power_supply_property smb5_wireless_props[] = {
 	POWER_SUPPLY_PROP_CHIP_OK,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE,
+	POWER_SUPPLY_PROP_WLS_CAR_ADAPTER,
 };
 
 static int smb5_wireless_set_prop(struct power_supply *psy,
@@ -2886,9 +2900,14 @@ static int smb5_wireless_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE:
 		chg->wireless_charge_type = val->intval;
 		if (chg->wireless_charge_type == ADAPTER_XIAOMI_PD_40W
-			|| chg->wireless_charge_type == ADAPTER_XIAOMI_PD_45W || chg->wireless_charge_type == ADAPTER_XIAOMI_PD_60W)
-			queue_delayed_work(system_power_efficient_wq, &chg->report_soc_decimal_work,
+			|| chg->wireless_charge_type == ADAPTER_XIAOMI_PD_45W
+			|| chg->wireless_charge_type == ADAPTER_XIAOMI_PD_60W
+			|| chg->wireless_charge_type == ADAPTER_XIAOMI_PD_100W)
+			schedule_delayed_work(&chg->report_soc_decimal_work,
 				msecs_to_jiffies(REPORT_SOC_DECIMAL_MS));
+		break;
+	case POWER_SUPPLY_PROP_WLS_CAR_ADAPTER:
+		chg->wls_car_adapter = val->intval;
 		break;
 	default:
 		return -EINVAL;
@@ -2990,6 +3009,9 @@ static int smb5_wireless_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE:
 		val->intval = chg->wireless_charge_type;
 		break;
+	case POWER_SUPPLY_PROP_WLS_CAR_ADAPTER:
+		val->intval = chg->wls_car_adapter;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -3018,6 +3040,7 @@ static int smb5_wireless_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_REVERSE_CHG_MODE:
 	case POWER_SUPPLY_PROP_REVERSE_CHG_STATE:
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
+	case POWER_SUPPLY_PROP_WLS_CAR_ADAPTER:
 		return 1;
 	default:
 		break;
@@ -5113,6 +5136,12 @@ static int smb5_probe(struct platform_device *pdev)
 		goto cleanup;
 	}
 
+	rc = smblib_masked_write(chg, 0x4046, BIT(7), 0x00);
+	if (rc < 0) {
+		pr_err("Couldn't disable ESR rc=%d\n", rc);
+		goto cleanup;
+	}
+
 	/*
 	 * VBUS regulator enablement/disablement for host mode is handled
 	 * by USB-PD driver only. For micro-USB and non-PD typeC designs,
@@ -5232,7 +5261,7 @@ static int smb5_probe(struct platform_device *pdev)
 		goto free_irq;
 	}
 
-	queue_delayed_work(system_power_efficient_wq, &chg->reg_work, 30 * HZ);
+	schedule_delayed_work(&chg->reg_work, 30 * HZ);
 	pr_info("QPNP SMB5 probed successfully\n");
 
 	return rc;
