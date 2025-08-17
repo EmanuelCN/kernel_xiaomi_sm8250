@@ -130,7 +130,7 @@ static struct step_chg_info *the_chip;
 #define GET_CONFIG_RETRY_COUNT		50
 #define WAIT_BATT_ID_READY_MS		200
 #define FCC_TAPER_DELAY_MS		1000
-#define JEITA_WORK_DELAY_MS		1000
+#define JEITA_WORK_DELAY_MS		1000 /* 10 secs */
 #define BATT_CAP_SOC_MAX		100
 #define JEITA_TAPER_DELAY_MS		10000
 #define JEITA_TAPER_STEP_MA		200000
@@ -540,7 +540,7 @@ static void get_config_work(struct work_struct *work)
 	return;
 
 reschedule:
-	queue_delayed_work(system_power_efficient_wq, &chip->get_config_work,
+	schedule_delayed_work(&chip->get_config_work,
 			msecs_to_jiffies(GET_CONFIG_DELAY_MS));
 
 }
@@ -855,19 +855,31 @@ update_time:
 	return 0;
 }
 
+#define FV_REDUCTION_UV			10000
+#define FCC_REDUCTION_UA		200000   /* 200mA */
+#define FCC_REDUCTION_LIMIT_UA		2500000
 static int handle_fast_charge_mode(struct step_chg_info *chip, int temp)
 {
 	static bool ffc_mode_dis;
+	bool ffc_enable = false;
 	union power_supply_propval pval = {0, };
 	int rc;
+	int curr_vbat_uv, fv_max, curr_fcc;
+	static int count = 10;
 
-	if (!is_usb_available(chip))
+	if (!is_usb_available(chip) || !is_bms_available(chip))
 		return 0;
 
 	if (!chip->ffc_mode_dis_votable)
 		chip->ffc_mode_dis_votable = find_votable("FFC_MODE_DIS");
 
-	if (!chip->ffc_mode_dis_votable)
+	if (!chip->fcc_votable)
+		chip->fcc_votable = find_votable("FCC");
+
+	if (!chip->fv_votable)
+		chip->fv_votable = find_votable("FV");
+
+	if (!chip->ffc_mode_dis_votable || !chip->fcc_votable || !chip->fv_votable)
 		return -EINVAL;
 
 	rc = power_supply_get_property(chip->usb_psy,
@@ -876,8 +888,43 @@ static int handle_fast_charge_mode(struct step_chg_info *chip, int temp)
 		pr_err("Get battery present status failed, rc=%d\n", rc);
 		return rc;
 	}
-	if (!pval.intval)
+	if (!pval.intval) {
 		vote(chip->ffc_mode_dis_votable, JEITA_VOTER, false, 0);
+		if (chip->fv_votable)
+			vote(chip->fv_votable, STEP_BMS_CHG_VOTER, false, 0);
+	}
+
+	rc = power_supply_get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_FASTCHARGE_MODE, &pval);
+	ffc_enable = pval.intval;
+
+	if (ffc_enable) {
+		rc = power_supply_get_property(chip->batt_psy,
+				POWER_SUPPLY_PROP_VOLTAGE_NOW, &pval);
+		curr_vbat_uv = pval.intval;
+
+		rc = power_supply_get_property(chip->batt_psy,
+				 POWER_SUPPLY_PROP_VOLTAGE_MAX, &pval);
+		fv_max = pval.intval;
+
+		curr_fcc = get_effective_result(chip->fcc_votable);
+
+		if (curr_vbat_uv > (fv_max - FV_REDUCTION_UV)) {
+			if ((count++) / 10) {
+				vote(chip->fv_votable, STEP_BMS_CHG_VOTER, true, fv_max - FV_REDUCTION_UV);
+				count = 0;
+			}
+			if (curr_fcc > FCC_REDUCTION_LIMIT_UA)
+				vote(chip->fcc_votable, STEP_BMS_CHG_VOTER, true, curr_fcc - FCC_REDUCTION_UA);
+		} else if ((curr_vbat_uv < (fv_max - 2 * FV_REDUCTION_UV)) &&
+				is_client_vote_enabled(chip->fv_votable, STEP_BMS_CHG_VOTER))
+			vote(chip->fv_votable, STEP_BMS_CHG_VOTER, false, 0);
+
+		pr_info("curr_vbat_uv[%d], fv_max[%d], curr_fcc[%d]\n", curr_vbat_uv, fv_max, curr_fcc);
+	}
+
+	if (!ffc_enable && is_client_vote_enabled(chip->fcc_votable, STEP_BMS_CHG_VOTER))
+		vote(chip->fcc_votable, STEP_BMS_CHG_VOTER, false, 0);
 
 	ffc_mode_dis = get_effective_result(chip->ffc_mode_dis_votable);
 
@@ -1071,7 +1118,7 @@ static int handle_jeita(struct step_chg_info *chip)
 				if (last_index <= BATT_COOL_INDEX && chip->jeita_fcc_index > BATT_COOL_INDEX) {
 					chip->jeita_current_fcc = JEITA_TAPER_DEFUALT_MA;
 					chip->jeita_target_fcc = fcc_ua;
-					queue_delayed_work(system_power_efficient_wq, &chip->jeita_taper_work, 0);
+					schedule_delayed_work(&chip->jeita_taper_work, 0);
 				 } else
 					vote(chip->fcc_votable, JEITA_VOTER, fcc_ua ? true : false, fcc_ua);
 			}
@@ -1180,7 +1227,7 @@ static int handle_battery_insertion(struct step_chg_info *chip)
 			 * Get config for the new inserted battery, delay
 			 * to make sure BMS has read out the batt_id.
 			 */
-			queue_delayed_work(system_power_efficient_wq, &chip->get_config_work,
+			schedule_delayed_work(&chip->get_config_work,
 				msecs_to_jiffies(WAIT_BATT_ID_READY_MS));
 		}
 	}
@@ -1214,7 +1261,7 @@ static void jeita_workfunc(struct work_struct *work)
 	}
 	if (pval.intval) {
 		chip->sw_jeita_start = true;
-		queue_delayed_work(system_power_efficient_wq, &chip->jeita_work,
+		schedule_delayed_work(&chip->jeita_work,
 			msecs_to_jiffies(JEITA_WORK_DELAY_MS));
 	} else
 		chip->sw_jeita_start = false;
@@ -1227,7 +1274,7 @@ static void fcc_taper_workfunc(struct work_struct *work)
 
 	handle_step_chg_config(chip);
 
-	queue_delayed_work(system_power_efficient_wq, &chip->fcc_taper_work,
+	schedule_delayed_work(&chip->fcc_taper_work,
 			msecs_to_jiffies(FCC_TAPER_DELAY_MS));
 }
 
@@ -1259,7 +1306,7 @@ static void jeita_taper_workfunc(struct work_struct *work)
 		return;
 	}
 
-	queue_delayed_work(system_power_efficient_wq, &chip->jeita_taper_work,
+	schedule_delayed_work(&chip->jeita_taper_work,
 			msecs_to_jiffies(JEITA_TAPER_DELAY_MS));
 }
 
@@ -1287,7 +1334,7 @@ static void status_change_work(struct work_struct *work)
 	}
 	if (prop.intval) {
 		if (!chip->sw_jeita_start) {
-			queue_delayed_work(system_power_efficient_wq, &chip->jeita_work, 0);
+			schedule_delayed_work(&chip->jeita_work, 0);
 		}
 	} else {
 		/* skip elapsed_us debounce for handling battery temperature */
@@ -1302,7 +1349,7 @@ static void status_change_work(struct work_struct *work)
 	if (prop.intval == POWER_SUPPLY_PD_PPS_ACTIVE) {
 		if (!chip->fcc_taper_start) {
 			chip->fcc_taper_start = true;
-			queue_delayed_work(system_power_efficient_wq, &chip->fcc_taper_work, 0);
+			schedule_delayed_work(&chip->fcc_taper_work, 0);
 		}
 	} else {
 		chip->fcc_taper_start = false;
@@ -1340,14 +1387,14 @@ static int step_chg_notifier_call(struct notifier_block *nb,
 	if ((strcmp(psy->desc->name, "battery") == 0)
 			|| (strcmp(psy->desc->name, "usb") == 0)) {
 		__pm_stay_awake(chip->step_chg_ws);
-		queue_delayed_work(system_power_efficient_wq, &chip->status_change_work, 0);
+		schedule_delayed_work(&chip->status_change_work, 0);
 	}
 
 	if ((strcmp(psy->desc->name, "bms") == 0)) {
 		if (chip->bms_psy == NULL)
 			chip->bms_psy = psy;
 		if (!chip->config_is_read)
-			queue_delayed_work(system_power_efficient_wq, &chip->get_config_work, 0);
+			schedule_delayed_work(&chip->get_config_work, 0);
 	}
 
 	return NOTIFY_OK;
@@ -1449,7 +1496,7 @@ int qcom_step_chg_init(struct device *dev,
 		goto release_wakeup_source;
 	}
 
-	queue_delayed_work(system_power_efficient_wq, &chip->get_config_work,
+	schedule_delayed_work(&chip->get_config_work,
 			msecs_to_jiffies(GET_CONFIG_DELAY_MS));
 
 	the_chip = chip;

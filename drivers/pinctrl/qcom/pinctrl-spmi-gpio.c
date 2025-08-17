@@ -14,6 +14,7 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/spmi.h>
 
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 
@@ -738,7 +739,7 @@ static int pmic_gpio_get(struct gpio_chip *chip, unsigned pin)
 	return !!pad->out_value;
 }
 
-int pmic_gpio_get_external(const char* chip_name, unsigned pin)
+int pmic_gpio_get_external(const char *chip_name, unsigned pin)
 {
 	struct gpio_chip *chip;
 	chip = find_chip_by_name(chip_name);

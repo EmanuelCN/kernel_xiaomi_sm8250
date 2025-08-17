@@ -43,7 +43,7 @@ static struct delayed_work bat_work;
 
 static void s3c_adc_bat_ext_power_changed(struct power_supply *psy)
 {
-	queue_delayed_work(system_power_efficient_wq, &bat_work,
+	schedule_delayed_work(&bat_work,
 		msecs_to_jiffies(JITTER_DELAY));
 }
 
@@ -284,7 +284,7 @@ static void s3c_adc_bat_work(struct work_struct *work)
 
 static irqreturn_t s3c_adc_bat_charged(int irq, void *dev_id)
 {
-	queue_delayed_work(system_power_efficient_wq, &bat_work,
+	schedule_delayed_work(&bat_work,
 		msecs_to_jiffies(JITTER_DELAY));
 	return IRQ_HANDLED;
 }
@@ -358,7 +358,7 @@ static int s3c_adc_bat_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, 1);
 
 	/* Schedule timer to check current status */
-	queue_delayed_work(system_power_efficient_wq, &bat_work,
+	schedule_delayed_work(&bat_work,
 		msecs_to_jiffies(JITTER_DELAY));
 
 	return 0;
@@ -434,7 +434,7 @@ static int s3c_adc_bat_resume(struct platform_device *pdev)
 	}
 
 	/* Schedule timer to check current status */
-	queue_delayed_work(system_power_efficient_wq, &bat_work,
+	schedule_delayed_work(&bat_work,
 		msecs_to_jiffies(JITTER_DELAY));
 
 	return 0;
