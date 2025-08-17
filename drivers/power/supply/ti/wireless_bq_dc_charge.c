@@ -1688,7 +1688,7 @@ static void wldc_dc_ctrl_workfunc(struct work_struct *work)
 	wldc_pm_update_cp_sec_status(pm);
 
 	if (!wldc_pm_sm(pm) && pm->wl_info.active)
-		schedule_delayed_work(&pm->wireles_dc_ctrl_work,
+		queue_delayed_work(system_power_efficient_wq, &pm->wireles_dc_ctrl_work,
 				      msecs_to_jiffies(WLDC_WORK_RUN_INTERVAL));
 }
 
@@ -1716,7 +1716,7 @@ static void wldc_wl_contact(struct wireless_dc_device_info *pm, bool connected)
 	pm->wl_info.active = connected;
 
 	if (connected) {
-		schedule_delayed_work(&pm->wireles_dc_ctrl_work, 0);
+		queue_delayed_work(system_power_efficient_wq, &pm->wireles_dc_ctrl_work, 0);
 	} else {
 		wldc_wl_disconnect(pm);
 	}
@@ -1739,7 +1739,7 @@ static void cp_psy_change_work(struct work_struct *work)
 		pdpm->cp.vbus_pres = val.intval;
 
 	if (!ac_pres && pdpm->cp.vbus_pres)
-		schedule_delayed_work(&pdpm->pm_work, 0);
+		queue_delayed_work(system_power_efficient_wq, &pdpm->pm_work, 0);
 #endif
 	pm->psy_change_running = false;
 }

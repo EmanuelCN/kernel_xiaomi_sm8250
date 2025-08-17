@@ -63,7 +63,7 @@ static void gab_ext_power_changed(struct power_supply *psy)
 {
 	struct gab *adc_bat = to_generic_bat(psy);
 
-	schedule_delayed_work(&adc_bat->bat_work, msecs_to_jiffies(0));
+	queue_delayed_work(system_power_efficient_wq, &adc_bat->bat_work, msecs_to_jiffies(0));
 }
 
 static const enum power_supply_property gab_props[] = {
@@ -233,7 +233,7 @@ static irqreturn_t gab_charged(int irq, void *dev_id)
 	int delay;
 
 	delay = pdata->jitter_delay ? pdata->jitter_delay : JITTER_DEFAULT;
-	schedule_delayed_work(&adc_bat->bat_work,
+	queue_delayed_work(system_power_efficient_wq, &adc_bat->bat_work,
 			msecs_to_jiffies(delay));
 	return IRQ_HANDLED;
 }
@@ -347,7 +347,7 @@ static int gab_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, adc_bat);
 
 	/* Schedule timer to check current status */
-	schedule_delayed_work(&adc_bat->bat_work,
+	queue_delayed_work(system_power_efficient_wq, &adc_bat->bat_work,
 			msecs_to_jiffies(0));
 	return 0;
 
@@ -407,7 +407,7 @@ static int __maybe_unused gab_resume(struct device *dev)
 	delay = pdata->jitter_delay ? pdata->jitter_delay : JITTER_DEFAULT;
 
 	/* Schedule timer to check current status */
-	schedule_delayed_work(&adc_bat->bat_work,
+	queue_delayed_work(system_power_efficient_wq, &adc_bat->bat_work,
 			msecs_to_jiffies(delay));
 	return 0;
 }

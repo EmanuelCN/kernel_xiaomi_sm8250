@@ -1838,7 +1838,7 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE:
 		chg->quick_charge_type = val->intval;
-		schedule_delayed_work(&chg->report_soc_decimal_work,
+		queue_delayed_work(system_power_efficient_wq, &chg->report_soc_decimal_work,
 				msecs_to_jiffies(REPORT_SOC_DECIMAL_MS));
 		break;
 	case POWER_SUPPLY_PROP_QUICK_CHARGE_POWER:
@@ -2903,7 +2903,7 @@ static int smb5_wireless_set_prop(struct power_supply *psy,
 			|| chg->wireless_charge_type == ADAPTER_XIAOMI_PD_45W
 			|| chg->wireless_charge_type == ADAPTER_XIAOMI_PD_60W
 			|| chg->wireless_charge_type == ADAPTER_XIAOMI_PD_100W)
-			schedule_delayed_work(&chg->report_soc_decimal_work,
+			queue_delayed_work(system_power_efficient_wq, &chg->report_soc_decimal_work,
 				msecs_to_jiffies(REPORT_SOC_DECIMAL_MS));
 		break;
 	case POWER_SUPPLY_PROP_WLS_CAR_ADAPTER:
@@ -5261,7 +5261,7 @@ static int smb5_probe(struct platform_device *pdev)
 		goto free_irq;
 	}
 
-	schedule_delayed_work(&chg->reg_work, 30 * HZ);
+	queue_delayed_work(system_power_efficient_wq, &chg->reg_work, 30 * HZ);
 	pr_info("QPNP SMB5 probed successfully\n");
 
 	return rc;
