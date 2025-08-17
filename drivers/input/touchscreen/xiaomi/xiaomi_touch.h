@@ -21,7 +21,7 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 
-#define MI_TAG "[mi-touch]"
+#define MI_TAG  "[mi-touch]"
 
 #define XIAOMI_TOUCH_DEVICE_NAME "xiaomi-touch"
 #define KEY_INPUT_DEVICE_PHYS "xiaomi-touch/input0"
@@ -64,34 +64,34 @@ enum MODE_CMD {
 };
 
 enum MODE_TYPE {
-	Touch_Game_Mode = 0,
-	Touch_Active_MODE = 1,
-	Touch_UP_THRESHOLD = 2,
-	Touch_Tolerance = 3,
+	Touch_Game_Mode        = 0,
+	Touch_Active_MODE      = 1,
+	Touch_UP_THRESHOLD     = 2,
+	Touch_Tolerance        = 3,
 #ifdef CONFIG_TOUCHSCREEN_SUPPORT_NEW_GAME_MODE
-	Touch_Aim_Sensitivity = 4,
-	Touch_Tap_Stability = 5,
-	Touch_Expert_Mode = 6,
+	Touch_Aim_Sensitivity	= 4,
+	Touch_Tap_Stability	= 5,
+	Touch_Expert_Mode	= 6,
 #else
-	Touch_Wgh_Min = 4,
-	Touch_Wgh_Max = 5,
-	Touch_Wgh_Step = 6,
+	Touch_Wgh_Min          = 4,
+	Touch_Wgh_Max          = 5,
+	Touch_Wgh_Step         = 6,
 #endif
-	Touch_Edge_Filter = 7,
+	Touch_Edge_Filter      = 7,
 	Touch_Panel_Orientation = 8,
-	Touch_Report_Rate = 9,
-	Touch_Fod_Enable = 10,
-	Touch_Aod_Enable = 11,
-	Touch_Resist_RF = 12,
-	Touch_Idle_Time = 13,
-	Touch_Doubletap_Mode = 14,
-	Touch_Grip_Mode = 15,
-	Touch_FodIcon_Enable = 16,
-	Touch_Nonui_Mode = 17,
-	Touch_Debug_Level = 18,
-	Touch_Power_Status = 19,
-	Touch_Pen_ENABLE = 20,
-	Touch_Mode_NUM = 21,
+	Touch_Report_Rate      = 9,
+	Touch_Fod_Enable       = 10,
+	Touch_Aod_Enable       = 11,
+	Touch_Resist_RF        = 12,
+	Touch_Idle_Time        = 13,
+	Touch_Doubletap_Mode   = 14,
+	Touch_Grip_Mode        = 15,
+	Touch_FodIcon_Enable   = 16,
+	Touch_Nonui_Mode       = 17,
+	Touch_Debug_Level      = 18,
+	Touch_Power_Status     = 19,
+	Touch_Pen_ENABLE       = 20,
+	Touch_Mode_NUM         = 21,
 };
 
 struct xiaomi_touch_interface {
@@ -118,22 +118,24 @@ struct xiaomi_touch_interface {
 };
 
 struct xiaomi_touch {
-	struct miscdevice misc_dev;
+	struct miscdevice 	misc_dev;
 	struct input_dev *key_input_dev;
 	struct device *dev;
 	struct class *class;
 	struct attribute_group attrs;
-	struct mutex mutex;
-	struct mutex palm_mutex;
-	struct mutex psensor_mutex;
-	wait_queue_head_t wait_queue;
+	struct mutex  mutex;
+	struct mutex  palm_mutex;
+	struct mutex  psensor_mutex;
+	wait_queue_head_t 	wait_queue;
 };
 
-struct xiaomi_touch_pdata {
+struct xiaomi_touch_pdata{
 	struct xiaomi_touch *device;
 	struct xiaomi_touch_interface *touch_data;
 	int palm_value;
 	bool palm_changed;
+	bool set_update;
+	bool bump_sample_rate;
 	int psensor_value;
 	bool psensor_changed;
 	const char *name;

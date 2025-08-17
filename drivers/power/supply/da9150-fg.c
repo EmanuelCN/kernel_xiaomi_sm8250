@@ -363,7 +363,7 @@ static void da9150_fg_work(struct work_struct *work)
 	if (da9150_fg_soc_changed(fg))
 		power_supply_changed(fg->battery);
 
-	queue_delayed_work(system_power_efficient_wq, &fg->work, msecs_to_jiffies(fg->interval));
+	schedule_delayed_work(&fg->work, msecs_to_jiffies(fg->interval));
 }
 
 /* SOC level event configuration */
@@ -511,7 +511,7 @@ static int da9150_fg_probe(struct platform_device *pdev)
 	 */
 	if (fg->interval) {
 		INIT_DELAYED_WORK(&fg->work, da9150_fg_work);
-		queue_delayed_work(system_power_efficient_wq, &fg->work,
+		schedule_delayed_work(&fg->work,
 				      msecs_to_jiffies(fg->interval));
 	}
 

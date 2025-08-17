@@ -679,6 +679,7 @@ this file is for attribution only of alioth
 
 	alioth_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
+		#include "fg-gen4-batterydata-apollo-sun-5000mah.dtsi"
 		#include "fg-gen4-batterydata-alioth-FMT-4520mah.dtsi"
 		#include "fg-gen4-batterydata-alioth-GY-4520mah.dtsi"
 	};

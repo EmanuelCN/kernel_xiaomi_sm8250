@@ -490,7 +490,13 @@ config BOARD_LMI
 	bool "Lmi, Lmiin and Lmipro platform"
 	select BOARD_XIAOMI_SM8250
 	help
-	  This enables support for Xiaomi Redmi K30 Pro / POCO F2 Pro
+	  This enables support for Xiaomi Redmi K30 Pro / POCO F2 Pro.
+
+config BOARD_MUNCH
+	bool "munch platform"
+	select BOARD_XIAOMI_SM8250
+	help
+	  This enables support for Xiaomi Redmi K40S / POCO F4.
 
 config BOARD_THYME
 	bool "Thyme platform"

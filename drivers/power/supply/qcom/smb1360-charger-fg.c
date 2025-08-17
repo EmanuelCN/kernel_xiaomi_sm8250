@@ -2261,7 +2261,7 @@ static int hot_soft_handler(struct smb1360_chip *chip, u8 rt_stat)
 
 	if (chip->workaround_flags & WRKRND_HARD_JEITA) {
 		cancel_delayed_work_sync(&chip->jeita_work);
-		queue_delayed_work(system_power_efficient_wq, &chip->jeita_work,
+		schedule_delayed_work(&chip->jeita_work,
 					msecs_to_jiffies(JEITA_WORK_MS));
 		smb1360_stay_awake(&chip->smb1360_ws,
 			WAKEUP_SRC_JEITA_SOFT);
@@ -2285,7 +2285,7 @@ static int cold_soft_handler(struct smb1360_chip *chip, u8 rt_stat)
 
 	if (chip->workaround_flags & WRKRND_HARD_JEITA) {
 		cancel_delayed_work_sync(&chip->jeita_work);
-		queue_delayed_work(system_power_efficient_wq, &chip->jeita_work,
+		schedule_delayed_work(&chip->jeita_work,
 					msecs_to_jiffies(JEITA_WORK_MS));
 		smb1360_stay_awake(&chip->smb1360_ws,
 			WAKEUP_SRC_JEITA_SOFT);
@@ -3619,7 +3619,7 @@ static int determine_initial_status(struct smb1360_chip *chip)
 	UPDATE_IRQ_STAT(IRQ_A_REG, reg);
 
 	if (chip->workaround_flags & WRKRND_HARD_JEITA) {
-		queue_delayed_work(system_power_efficient_wq, &chip->jeita_work, 0);
+		schedule_delayed_work(&chip->jeita_work, 0);
 	} else {
 		if (reg & IRQ_A_HOT_HARD_BIT)
 			chip->batt_hot = true;
@@ -4153,7 +4153,7 @@ static int smb1360_hw_init(struct smb1360_chip *chip)
 	 * A 2 seconds delay is mandatory after bringing the chip out
 	 * of shutdown. This guarantees that FG is in a proper state.
 	 */
-	queue_delayed_work(system_power_efficient_wq, &chip->delayed_init_work,
+	schedule_delayed_work(&chip->delayed_init_work,
 			msecs_to_jiffies(SMB1360_POWERON_DELAY_MS));
 
 	/*
@@ -4506,7 +4506,7 @@ static void smb1360_delayed_init_work_fn(struct work_struct *work)
 			pr_err("couldn't reset FG, rc = %d\n", rc);
 			return;
 		}
-		queue_delayed_work(system_power_efficient_wq, &chip->delayed_init_work, 0);
+		schedule_delayed_work(&chip->delayed_init_work, 0);
 	} else {
 		pr_err("delayed hw init failed, rc=%d\n", rc);
 	}

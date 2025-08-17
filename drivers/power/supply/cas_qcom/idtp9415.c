@@ -155,6 +155,7 @@ struct idtp9220_device_info {
 	struct delayed_work bpp_e5_tx_work;
 	struct delayed_work pan_tx_work;
 	struct delayed_work	voice_tx_work;
+	struct delayed_work	train_tx_work;
 	struct delayed_work qc2_f1_tx_work;
 	struct delayed_work qc3_epp_work;
 	struct delayed_work oob_set_cep_work;
@@ -219,6 +220,7 @@ Factory Test Work
 	int is_zm_mobil_tx;
 	int is_zm_20w_tx;
 	int is_voice_box_tx;
+	int is_train_tx;
 	int is_pan_tx;
 	int last_icl;
 	int power_good_flag;
@@ -1270,7 +1272,7 @@ static int idtp9220_reverse_charge_enable(struct idtp9220_device_info *di)
 			di->is_reverse_mode = 0;
 			di->is_reverse_chg = 1;
 			idtp9220_set_reverse_enable(di, false);
-			queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+			schedule_delayed_work(&di->reverse_sent_state_work, 0);
 			return 0;
 		}
 	}
@@ -1526,7 +1528,7 @@ static ssize_t reverse_enable_store(struct device *dev,
 	ret = (int)simple_strtoul(buf, NULL, 10);
 	enable = !!ret;
 	di->is_reverse_chg = 0;
-	queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+	schedule_delayed_work(&di->reverse_sent_state_work, 0);
 	idtp9220_set_reverse_enable(di, enable);
 	return count;
 }
@@ -1580,7 +1582,7 @@ static enum alarmtimer_restart reverse_chg_alarm_cb(struct alarm *alarm,
 	/* Atomic context, cannot use voter */
 	pm_stay_awake(di->dev);
 
-	queue_delayed_work(system_power_efficient_wq, &di->reverse_chg_state_work, 0);
+	schedule_delayed_work(&di->reverse_chg_state_work, 0);
 
 	return ALARMTIMER_NORESTART;
 }
@@ -1597,7 +1599,7 @@ static enum alarmtimer_restart reverse_dping_alarm_cb(struct alarm *alarm,
 
 	/* Atomic context, cannot use voter */
 	pm_stay_awake(di->dev);
-	queue_delayed_work(system_power_efficient_wq, &di->reverse_dping_state_work, 0);
+	schedule_delayed_work(&di->reverse_dping_state_work, 0);
 
 	return ALARMTIMER_NORESTART;
 }
@@ -1612,7 +1614,7 @@ static enum alarmtimer_restart reverse_test_ready_alarm_cb(struct alarm *alarm,
 
   /* Atomic context, cannot use voter */
   pm_stay_awake(di->dev);
-  queue_delayed_work(system_power_efficient_wq, &di->reverse_test_state_work, 0);
+  schedule_delayed_work(&di->reverse_test_state_work, 0);
   di->wait_for_reverse_test = false;
 
   return ALARMTIMER_NORESTART;
@@ -1621,6 +1623,7 @@ static enum alarmtimer_restart reverse_test_ready_alarm_cb(struct alarm *alarm,
 static int idtp9220_set_present(struct idtp9220_device_info *di, int enable)
 {
 	int ret = 0;
+	union power_supply_propval val = { 0, };
 
 	dev_info(di->dev, "[idtp] dc plug %s\n", enable ? "in" : "out");
 	if (enable) {
@@ -1628,7 +1631,7 @@ static int idtp9220_set_present(struct idtp9220_device_info *di, int enable)
 		di->ss = 1;
 	} else {
 
-		queue_delayed_work(system_power_efficient_wq, &di->oob_set_ept_work,
+		schedule_delayed_work(&di->oob_set_ept_work,
 				      msecs_to_jiffies(10));
 		di->status = NORMAL_MODE;
 		di->count_9v = 0;
@@ -1641,7 +1644,11 @@ static int idtp9220_set_present(struct idtp9220_device_info *di, int enable)
 		di->last_vin = 0;
 		di->last_icl = 0;
 		di->is_car_tx = 0;
+		if (di->wireless_psy)
+			power_supply_set_property(di->wireless_psy,
+						POWER_SUPPLY_PROP_WLS_CAR_ADAPTER, &val);
 		di->is_voice_box_tx = 0;
+		di->is_train_tx = 0;
 		di->is_zm_20w_tx = 0;
 		di->is_pan_tx = 0;
 		di->is_ble_tx = 0;
@@ -1675,8 +1682,10 @@ static int idtp9220_set_present(struct idtp9220_device_info *di, int enable)
 		cancel_delayed_work(&di->oob_set_cep_work);
 		cancel_delayed_work(&di->rx_vout_cp_close_work);
 		/* clear OOB messages */
-		queue_delayed_work(system_power_efficient_wq, &di->oob_clean_work,
+		schedule_delayed_work(&di->oob_clean_work,
 				      msecs_to_jiffies(100));
+		if (di->usb_psy)
+			power_supply_changed(di->usb_psy);
 	}
 
 	return ret;
@@ -2312,7 +2321,7 @@ static void idtp9220_monitor_work(struct work_struct *work)
 
 	idtp9220_set_charging_param(di);
 
-	queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work, CHARGING_PERIOD_S * HZ);
+	schedule_delayed_work(&di->chg_monitor_work, CHARGING_PERIOD_S * HZ);
 }
 
 static void idtp9220_rx_vout_work(struct work_struct *work)
@@ -2338,7 +2347,7 @@ static void idtp9220_dc_check_work(struct work_struct *work)
 	} else {
 		di->ss = 0;
 		dev_info(di->dev, "dcin no present, continue dc check work\n");
-		queue_delayed_work(system_power_efficient_wq, &di->dc_check_work,
+		schedule_delayed_work(&di->dc_check_work,
 				      msecs_to_jiffies(2500));
 	}
 }
@@ -2373,7 +2382,7 @@ static void idtp9220_chg_detect_work(struct work_struct *work)
 			 "typec_mode: %d or pc online: %d,set chip disable\n",
 			 val.intval, pc_val.intval);
 		idtp9220_set_enable_mode(di, false);
-		queue_delayed_work(system_power_efficient_wq, &di->fw_download_work, 1 * HZ);
+		schedule_delayed_work(&di->fw_download_work, 1 * HZ);
 		return;
 	}
 
@@ -2428,9 +2437,9 @@ static void idtp9220_cmd_check_work(struct work_struct *work)
 	dev_info(di->dev, "[idt] %s: \n", __func__);
 	idtp922x_get_tx_vin(di);
 	if (di->power_off_mode) {
-		queue_delayed_work(system_power_efficient_wq, &di->load_fod_param_work,
+		schedule_delayed_work(&di->load_fod_param_work,
 				      msecs_to_jiffies(500));
-		queue_delayed_work(system_power_efficient_wq, &di->vout_regulator_work,
+		schedule_delayed_work(&di->vout_regulator_work,
 				      msecs_to_jiffies(10));
 	}
 
@@ -2459,10 +2468,10 @@ static void idtp9220_initial_tx_work(struct work_struct *work)
 	/* check dc present to judge device skewing */
 	if (int_val == 0x0059) {
 		dev_info(di->dev, "mophie tx, start check dc with 8s\n");
-		queue_delayed_work(system_power_efficient_wq, &di->dc_check_work,
+		schedule_delayed_work(&di->dc_check_work,
 				      msecs_to_jiffies(8000));
 	} else
-		queue_delayed_work(system_power_efficient_wq, &di->dc_check_work,
+		schedule_delayed_work(&di->dc_check_work,
 				      msecs_to_jiffies(2500));
 }
 
@@ -2637,9 +2646,9 @@ static void idt_voice_tx_work(struct work_struct *work)
 			di->disable_cp = false;
 			idtp9220_set_vout(di, adapter_vol);
 			msleep(110);
-			queue_delayed_work(system_power_efficient_wq, &di->load_fod_param_work,
+			schedule_delayed_work(&di->load_fod_param_work,
 					msecs_to_jiffies(500));
-			queue_delayed_work(system_power_efficient_wq, &di->vout_regulator_work,
+			schedule_delayed_work(&di->vout_regulator_work,
 					msecs_to_jiffies(400));
 		} else if (adapter_vol == EPP_VOL_THRESHOLD) {
 
@@ -2650,7 +2659,7 @@ static void idt_voice_tx_work(struct work_struct *work)
 				msleep(200);
 			}
 			idtp9220_set_vout(di, EPP_VOL_THRESHOLD);
-			queue_delayed_work(system_power_efficient_wq, &di->load_fod_param_work,
+			schedule_delayed_work(&di->load_fod_param_work,
 					msecs_to_jiffies(500));
 		}
 		vout_change = true;
@@ -2788,9 +2797,9 @@ static void idt_pan_tx_work(struct work_struct *work)
 			di->disable_cp = false;
 			idtp9220_set_vout(di, adapter_vol);
 			msleep(110);
-			queue_delayed_work(system_power_efficient_wq, &di->load_fod_param_work,
+			schedule_delayed_work(&di->load_fod_param_work,
 						  msecs_to_jiffies(500));
-			queue_delayed_work(system_power_efficient_wq, &di->vout_regulator_work,
+			schedule_delayed_work(&di->vout_regulator_work,
 						  msecs_to_jiffies(400));
 		} else if (adapter_vol == EPP_VOL_THRESHOLD) {
 
@@ -2801,7 +2810,7 @@ static void idt_pan_tx_work(struct work_struct *work)
 				msleep(200);
 			}
 			idtp9220_set_vout(di, EPP_VOL_THRESHOLD);
-			queue_delayed_work(system_power_efficient_wq, &di->load_fod_param_work,
+			schedule_delayed_work(&di->load_fod_param_work,
 					msecs_to_jiffies(500));
 		}
 		vout_change = true;
@@ -2823,6 +2832,160 @@ static void idt_pan_tx_work(struct work_struct *work)
 	return;
 }
 
+
+static void idt_train_tx_work(struct work_struct *work)
+{
+	struct idtp9220_device_info *di =
+		container_of(work, struct idtp9220_device_info,
+			 train_tx_work.work);
+
+	int soc = 0, batt_sts = 0, dc_level = 0;
+	int adapter_vol = ADAPTER_EPP_MI_VOL;
+	int icl_curr = 2000000;
+	bool vout_change = false;
+	union power_supply_propval val = { 0, };
+	union power_supply_propval wk_val = { 0, };
+	int vout = 0;
+	di->bpp_break = 1;
+	if (di->batt_psy) {
+		power_supply_get_property(di->batt_psy,
+					  POWER_SUPPLY_PROP_STATUS, &val);
+		batt_sts = val.intval;
+
+		power_supply_get_property(di->batt_psy,
+					  POWER_SUPPLY_PROP_CAPACITY, &val);
+		soc = val.intval;
+
+		power_supply_get_property(di->batt_psy,
+					  POWER_SUPPLY_PROP_DC_THERMAL_LEVELS,
+					  &val);
+		dc_level = val.intval;
+	}
+
+	dev_info(di->dev, "soc:%d, dc_level:%d, bat_status:%d\n",
+		 soc, dc_level, batt_sts);
+
+	switch (di->status) {
+	case NORMAL_MODE:
+		if (soc >= FULL_SOC)
+			di->status = TAPER_MODE;
+		break;
+	case TAPER_MODE:
+		if (soc == FULL_SOC && batt_sts == POWER_SUPPLY_STATUS_FULL)
+			di->status = FULL_MODE;
+		else if (soc < FULL_SOC - 1)
+			di->status = NORMAL_MODE;
+		break;
+	case FULL_MODE:
+		dev_info(di->dev, "[train]charge full set Vin 12V\n");
+		adapter_vol = EPP_VOL_THRESHOLD;
+		icl_curr = SCREEN_OFF_FUL_CURRENT;
+
+		if (batt_sts == POWER_SUPPLY_STATUS_CHARGING) {
+			dev_info(di->dev, "[train]full mode -> recharge mode\n");
+			di->status = RECHG_MODE;
+			icl_curr = DC_LOW_CURRENT;
+		}
+		break;
+	case RECHG_MODE:
+		if (batt_sts == POWER_SUPPLY_STATUS_FULL) {
+			dev_info(di->dev, "recharge mode -> full mode\n");
+			di->status = FULL_MODE;
+			icl_curr = SCREEN_OFF_FUL_CURRENT;
+			adapter_vol = EPP_VOL_THRESHOLD;
+			if (di->wireless_psy) {
+				wk_val.intval = 0;
+				power_supply_set_property(di->wireless_psy,
+							  POWER_SUPPLY_PROP_WIRELESS_WAKELOCK,
+							  &wk_val);
+			}
+			break;
+		}
+
+		dev_info(di->dev, "recharge mode set icl to 350mA\n");
+		adapter_vol = EPP_VOL_THRESHOLD;
+		icl_curr = DC_LOW_CURRENT;
+
+		if (di->wireless_psy) {
+			wk_val.intval = 1;
+			power_supply_set_property(di->wireless_psy,
+						  POWER_SUPPLY_PROP_WIRELESS_WAKELOCK,
+						  &wk_val);
+		}
+		break;
+	default:
+		break;
+	}
+
+	if (dc_level) {
+		dev_info(di->dev, "Disable bq, dc_level:%d\n", dc_level);
+		di->disable_cp = true;
+		if (di->wireless_psy) {
+			val.intval = 0;
+			power_supply_set_property(di->wireless_psy, POWER_SUPPLY_PROP_WIRELESS_CP_EN, &val);
+		}
+
+		adapter_vol = EPP_VOL_THRESHOLD;
+		if (dc_level < 3)
+			icl_curr = 600000;    //12V * 600mA
+		else
+			icl_curr = 450000;    //12V * 450mA
+		idtp922x_set_pmi_icl(di, icl_curr);
+		dev_info(di->dev, "dc_level:%d, icl_curr:%d.\n", dc_level, icl_curr);
+	}
+
+	if (!di->enable_ext5v) {
+		di->enable_ext5v = true;
+		idtp922x_enable_ext5v(di);
+	}
+
+	if (adapter_vol > 0 && adapter_vol != di->last_vin) {
+		if ((adapter_vol == ADAPTER_EPP_MI_VOL)
+			&& !di->first_rise_flag) {
+			di->disable_cp = false;
+			di->first_rise_flag = true;
+			idtp922x_set_adap_vol(di, adapter_vol);
+			di->vswitch_ok = false;
+			msleep(110);
+		} else if ((adapter_vol == ADAPTER_EPP_MI_VOL)
+			   && di->first_rise_flag) {
+			di->disable_cp = false;
+			idtp9220_set_vout(di, adapter_vol);
+			msleep(110);
+			schedule_delayed_work(&di->load_fod_param_work,
+						  msecs_to_jiffies(500));
+			schedule_delayed_work(&di->vout_regulator_work,
+						  msecs_to_jiffies(400));
+		} else if (adapter_vol == EPP_VOL_THRESHOLD) {
+
+			vout = idtp9220_get_vout(di);
+			while (vout > EPP_VOL_THRESHOLD) {
+				vout = vout - 1000;
+				idtp9220_set_vout(di, vout);
+				msleep(200);
+			}
+			idtp9220_set_vout(di, EPP_VOL_THRESHOLD);
+			schedule_delayed_work(&di->load_fod_param_work,
+					msecs_to_jiffies(500));
+		}
+		vout_change = true;
+		di->last_vin = adapter_vol;
+	}
+
+	if ((icl_curr > 0 && icl_curr != di->last_icl)
+		|| vout_change) {
+		di->last_icl = icl_curr;
+		idtp922x_set_pmi_icl(di, icl_curr);
+		msleep(100);
+	}
+
+	dev_info(di->dev,
+		 "di->status:0x%x,adapter_vol=%d,icl_curr=%d,last_vin=%d,last_icl=%d, bq_dis:%d\n",
+		 di->status, adapter_vol, icl_curr, di->last_vin, di->last_icl,
+		 di->disable_cp);
+
+	return;
+}
 
 static void idtp9220_bpp_e5_tx_work(struct work_struct *work)
 {
@@ -3375,7 +3538,7 @@ static void reverse_chg_state_set_work(struct work_struct *work)
 	di->is_reverse_mode = 0;
 	di->is_reverse_chg = 1;
 	mutex_unlock(&di->reverse_op_lock);
-	queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+	schedule_delayed_work(&di->reverse_sent_state_work, 0);
 
 	return;
 }
@@ -3393,7 +3556,7 @@ static void reverse_dping_state_set_work(struct work_struct *work)
 	di->is_reverse_mode = 0;
 	di->is_reverse_chg = 2;
 	mutex_unlock(&di->reverse_op_lock);
-	queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+	schedule_delayed_work(&di->reverse_sent_state_work, 0);
 
 	return;
 }
@@ -3410,7 +3573,7 @@ static void reverse_test_state_set_work(struct work_struct *work)
 	di->is_reverse_mode = 0;
 	di->is_reverse_chg = 2;
 	mutex_unlock(&di->reverse_op_lock);
-	queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+	schedule_delayed_work(&di->reverse_sent_state_work, 0);
 	pm_relax(di->dev);
 	return;
 }
@@ -3442,12 +3605,12 @@ static void reverse_ept_type_get_work(struct work_struct *work)
 				idtp9220_set_reverse_enable(di, false);
 				di->is_reverse_mode = 0;
 				di->is_reverse_chg = 2;
-				queue_delayed_work(system_power_efficient_wq, &di->
+				schedule_delayed_work(&di->
 						      reverse_sent_state_work,
 						      0);
 			} else if (ept_val & EPT_CEP_TIMEOUT) {
 				dev_info(di->dev, "recheck ping state\n");
-				//queue_delayed_work(system_power_efficient_wq, &di->reverse_dping_state_work, 10 * HZ);
+				//schedule_delayed_work(&di->reverse_dping_state_work, 10 * HZ);
 				alarm_start_relative(&di->reverse_dping_alarm,
 						     ms_to_ktime
 						     (REVERSE_DPING_CHECK_DELAY_MS));
@@ -3506,6 +3669,7 @@ static int idtp9220_get_charging_current(struct idtp9220_device_info *di)
 		return ICL_CP_2SBATT_30W_MA;
 	case ADAPTER_XIAOMI_PD_45W:
 	case ADAPTER_XIAOMI_PD_60W:
+	case ADAPTER_XIAOMI_PD_100W:
 		return ICL_CP_2SBATT_40W_MA;
 	default:
 		break;
@@ -3524,6 +3688,7 @@ static int idtp9220_get_taper_charging_current(struct idtp9220_device_info *di)
 		return ICL_TAPER_2SBATT_30W_MA;
 	case ADAPTER_XIAOMI_PD_45W:
 	case ADAPTER_XIAOMI_PD_60W:
+	case ADAPTER_XIAOMI_PD_100W:
 		return ICL_TAPER_2SBATT_40W_MA;
 	default:
 		break;
@@ -3603,6 +3768,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 	case ADAPTER_VOICE_BOX:
 	case ADAPTER_XIAOMI_PD_45W:
 	case ADAPTER_XIAOMI_PD_60W:
+	case ADAPTER_XIAOMI_PD_100W:
 		if (di->epp) {
 			adapter_vol = ADAPTER_EPP_MI_VOL;
 			icl_curr = idtp9220_get_charging_current(di);
@@ -3616,23 +3782,25 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 		break;
 	}
 
-	power_supply_get_property(di->batt_psy, POWER_SUPPLY_PROP_STATUS, &val);
-	batt_sts = val.intval;
+	if (di->batt_psy) {
+		power_supply_get_property(di->batt_psy, POWER_SUPPLY_PROP_STATUS, &val);
+		batt_sts = val.intval;
 
-	power_supply_get_property(di->batt_psy,
-				  POWER_SUPPLY_PROP_CAPACITY, &val);
-	soc = val.intval;
+		power_supply_get_property(di->batt_psy,
+					POWER_SUPPLY_PROP_CAPACITY, &val);
+		soc = val.intval;
 
-	power_supply_get_property(di->batt_psy,
-				  POWER_SUPPLY_PROP_VOLTAGE_NOW, &val);
-	vol_now = val.intval;
+		power_supply_get_property(di->batt_psy,
+					POWER_SUPPLY_PROP_VOLTAGE_NOW, &val);
+		vol_now = val.intval;
 
-	power_supply_get_property(di->batt_psy,
-				  POWER_SUPPLY_PROP_CURRENT_NOW, &val);
-	cur_now = val.intval;
+		power_supply_get_property(di->batt_psy,
+					POWER_SUPPLY_PROP_CURRENT_NOW, &val);
+		cur_now = val.intval;
 
-	power_supply_get_property(di->batt_psy, POWER_SUPPLY_PROP_HEALTH, &val);
-	health = val.intval;
+		power_supply_get_property(di->batt_psy, POWER_SUPPLY_PROP_HEALTH, &val);
+		health = val.intval;
+	}
 
 	idtp9220_get_iout(di);
 
@@ -3650,7 +3818,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 	 * vout/psns is setted in delayed work
 	 */
 	if (adapter_vol == ADAPTER_BPP_QC_VOL && di->is_compatible_hwid) {
-		queue_delayed_work(system_power_efficient_wq, &di->bpp_e5_tx_work, msecs_to_jiffies(0));
+		schedule_delayed_work(&di->bpp_e5_tx_work, msecs_to_jiffies(0));
 		goto out;
 	}
 
@@ -3658,7 +3826,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 	 * vout/psns is setted in delayed work
 	 */
 	if (di->tx_charger_type == ADAPTER_QC2 && di->is_f1_tx) {
-		queue_delayed_work(system_power_efficient_wq, &di->qc2_f1_tx_work, msecs_to_jiffies(0));
+		schedule_delayed_work(&di->qc2_f1_tx_work, msecs_to_jiffies(0));
 		goto out;
 	}
 
@@ -3666,7 +3834,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 	 * vout/psns is setted in delayed work
 	 */
 	if (di->is_epp_qc3) {
-		queue_delayed_work(system_power_efficient_wq, &di->qc3_epp_work, msecs_to_jiffies(0));
+		schedule_delayed_work(&di->qc3_epp_work, msecs_to_jiffies(0));
 		goto out;
 	}
 
@@ -3707,14 +3875,21 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 	}
 
 	if (adapter_vol == ADAPTER_EPP_MI_VOL && di->is_pan_tx) {
-		queue_delayed_work(system_power_efficient_wq, &di->pan_tx_work, msecs_to_jiffies(0));
+		schedule_delayed_work(&di->pan_tx_work, msecs_to_jiffies(0));
 		goto out;
 	}
 	if (adapter_vol == ADAPTER_EPP_MI_VOL && di->is_voice_box_tx) {
 		dev_info(di->dev, "voice box logic\n");
-		queue_delayed_work(system_power_efficient_wq, &di->voice_tx_work, msecs_to_jiffies(0));
+		schedule_delayed_work(&di->voice_tx_work, msecs_to_jiffies(0));
 		goto out;
 	}
+
+	if (adapter_vol == ADAPTER_EPP_MI_VOL && di->is_train_tx) {
+		dev_info(di->dev, "train logic\n");
+		schedule_delayed_work(&di->train_tx_work, msecs_to_jiffies(0));
+		goto out;
+	}
+
 	/* MI adapter, change vout only after vswitch success */
 	if (adapter_vol == ADAPTER_EPP_MI_VOL && di->vswitch_ok) {
 		switch (di->status) {
@@ -3812,9 +3987,9 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 			   && di->first_rise_flag) {
 			idtp9220_set_vout(di, adapter_vol);
 			msleep(110);
-			queue_delayed_work(system_power_efficient_wq, &di->load_fod_param_work,
+			schedule_delayed_work(&di->load_fod_param_work,
 					      msecs_to_jiffies(500));
-			queue_delayed_work(system_power_efficient_wq, &di->vout_regulator_work,
+			schedule_delayed_work(&di->vout_regulator_work,
 					      msecs_to_jiffies(400));
 			dev_info(di->dev, "%s:set vout_vol %d\n", __func__,
 				 adapter_vol);
@@ -3826,7 +4001,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 				msleep(200);
 			}
 			idtp9220_set_vout(di, EPP_VOL_THRESHOLD);
-			queue_delayed_work(system_power_efficient_wq, &di->load_fod_param_work,
+			schedule_delayed_work(&di->load_fod_param_work,
 					      msecs_to_jiffies(500));
 		}
 		vout_change = true;
@@ -3846,7 +4021,7 @@ static void idtp9220_set_charging_param(struct idtp9220_device_info *di)
 
 	if (!di->vswitch_ok && vin_inc) {
 		di->adapter_voltage = adapter_vol;
-		queue_delayed_work(system_power_efficient_wq, &di->cmd_check_work,
+		schedule_delayed_work(&di->cmd_check_work,
 				      msecs_to_jiffies(8000));
 	}
       out:
@@ -3906,7 +4081,7 @@ static void idtp9220_wpc_det_work(struct work_struct *work)
 			alarm_start_relative(&di->reverse_test_ready_alarm,
 					     ms_to_ktime(REVERSE_TEST_READY_CHECK_DELAY_MS));
 	}
-	queue_delayed_work(system_power_efficient_wq, &di->keep_awake_work, msecs_to_jiffies(5000));
+	schedule_delayed_work(&di->keep_awake_work, msecs_to_jiffies(5000));
 	return;
 }
 
@@ -4064,7 +4239,9 @@ static int idtp_set_effective_icl_val(struct idtp9220_device_info *di, int icl)
 #define RENEGOTIATION_CMD		0x80
 static void idtp9220_renegociation(struct idtp9220_device_info *di)
 {
-	if (di->tx_charger_type == ADAPTER_XIAOMI_PD_45W || di->tx_charger_type == ADAPTER_XIAOMI_PD_60W) {
+	if (di->tx_charger_type == ADAPTER_XIAOMI_PD_45W ||
+			di->tx_charger_type == ADAPTER_XIAOMI_PD_60W ||
+			di->tx_charger_type == ADAPTER_XIAOMI_PD_100W) {
 		di->bus.write(di, REG_MAX_POWER, NEW_MAX_POWER_CMD);
 		di->bus.write(di, REG_RX_RESET, RENEGOTIATION_CMD);
 	}
@@ -4073,13 +4250,14 @@ static void idtp9220_renegociation(struct idtp9220_device_info *di)
 static void idtp9220_start_to_load(struct idtp9220_device_info *di)
 {
 	union power_supply_propval val = { 0, };
-	queue_delayed_work(system_power_efficient_wq, &di->rx_vout_work,
+	schedule_delayed_work(&di->rx_vout_work,
 				  msecs_to_jiffies(100));
-	queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
+	schedule_delayed_work(&di->chg_monitor_work,
 				  msecs_to_jiffies(1000));
 	if (di->tx_charger_type == ADAPTER_XIAOMI_PD_40W ||
 		di->tx_charger_type == ADAPTER_XIAOMI_PD_45W ||
-			di->tx_charger_type == ADAPTER_XIAOMI_PD_60W) {
+			di->tx_charger_type == ADAPTER_XIAOMI_PD_60W ||
+			di->tx_charger_type == ADAPTER_XIAOMI_PD_100W) {
 		if (di->wireless_psy) {
 			val.intval = di->tx_charger_type;
 			power_supply_set_property(di->wireless_psy, POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE, &val);
@@ -4110,6 +4288,7 @@ static void idtp9220_irq_work(struct work_struct *work)
 	    container_of(work, struct idtp9220_device_info,
 			 irq_work.work);
 	union power_supply_propval val = { 0, };
+	union power_supply_propval car_val = { 0, };
 	u8 int_buf[4] = { 0 };
 	u32 int_val = 0;
 	int rc = 0;
@@ -4157,7 +4336,7 @@ static void idtp9220_irq_work(struct work_struct *work)
 		}
 		/* add for confirm if irq is cleared end */
 		if (int_val & INT_EPT_TYPE) {
-			queue_delayed_work(system_power_efficient_wq, &di->reverse_ept_type_work, 0);
+			schedule_delayed_work(&di->reverse_ept_type_work, 0);
 			goto reverse_out;
 		}
 
@@ -4167,12 +4346,12 @@ static void idtp9220_irq_work(struct work_struct *work)
 			idtp9220_set_reverse_enable(di, false);
 			di->is_reverse_mode = 0;
 			di->is_reverse_chg = 2;
-			queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+			schedule_delayed_work(&di->reverse_sent_state_work, 0);
 			goto reverse_out;
 		}
 
 		if (int_val & INT_START_DPING) {
-			//queue_delayed_work(system_power_efficient_wq, &di->reverse_chg_state_work, 80 * HZ);
+			//schedule_delayed_work(&di->reverse_chg_state_work, 80 * HZ);
 			alarm_start_relative(&di->reverse_chg_alarm,
 					     ms_to_ktime
 					     (REVERSE_CHG_CHECK_DELAY_MS));
@@ -4191,10 +4370,10 @@ static void idtp9220_irq_work(struct work_struct *work)
 				dev_err(di->dev,
 					"Couldn't cancel reverse_dping_alarm\n");
 			pm_stay_awake(di->dev);
-			queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+			schedule_delayed_work(&di->reverse_sent_state_work, 0);
 			/* set reverse charging state to started */
 			di->is_reverse_chg = 4;
-			queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+			schedule_delayed_work(&di->reverse_sent_state_work, 0);
 			di->bus.write(di, REG_TX_CMD, TX_EN);
 			msleep(50);
 		}
@@ -4231,7 +4410,7 @@ static void idtp9220_irq_work(struct work_struct *work)
 	if (int_val & INT_MODE_CHANGE  || int_val & INT_VOUT_OFF) {
 		if (di->power_good_flag) {
 			cancel_delayed_work_sync(&di->rx_ready_check_work);
-			queue_delayed_work(system_power_efficient_wq, &di->wpc_det_work, msecs_to_jiffies(0));
+			schedule_delayed_work(&di->wpc_det_work, msecs_to_jiffies(0));
 		}
 
 		idtp922x_clrInt(di, int_buf, 4);
@@ -4271,9 +4450,9 @@ static void idtp9220_irq_work(struct work_struct *work)
 	if (int_val & INT_RXREADY) {
 		cancel_delayed_work_sync(&di->rx_ready_check_work);
 		if (di->power_good_flag) {
-			queue_delayed_work(system_power_efficient_wq, &di->wpc_det_work, msecs_to_jiffies(0));
+			schedule_delayed_work(&di->wpc_det_work, msecs_to_jiffies(0));
 		}
-		queue_delayed_work(system_power_efficient_wq, &di->initial_tx_work,
+		schedule_delayed_work(&di->initial_tx_work,
 			msecs_to_jiffies(100));
 		di->power_good_flag = 1;
 		val.intval = 1;
@@ -4282,15 +4461,15 @@ static void idtp9220_irq_work(struct work_struct *work)
 		if (di->wireless_psy)
 			power_supply_set_property(di->wireless_psy,
 			POWER_SUPPLY_PROP_WIRELESS_POWER_GOOD_EN, &val);
-		queue_delayed_work(system_power_efficient_wq, &di->rx_ready_check_work, msecs_to_jiffies(100));
+		schedule_delayed_work(&di->rx_ready_check_work, msecs_to_jiffies(100));
 	}
 	if (int_val & INT_VOUT_ON) {
 		if (!di->power_good_flag) {
 			cancel_delayed_work_sync(&di->rx_ready_check_work);
 			if (di->power_good_flag) {
-				queue_delayed_work(system_power_efficient_wq, &di->wpc_det_work, msecs_to_jiffies(0));
+				schedule_delayed_work(&di->wpc_det_work, msecs_to_jiffies(0));
 			}
-			queue_delayed_work(system_power_efficient_wq, &di->initial_tx_work,
+			schedule_delayed_work(&di->initial_tx_work,
 				msecs_to_jiffies(100));
 			di->power_good_flag = 1;
 			val.intval = 1;
@@ -4299,16 +4478,16 @@ static void idtp9220_irq_work(struct work_struct *work)
 			if (di->wireless_psy)
 				power_supply_set_property(di->wireless_psy,
 				POWER_SUPPLY_PROP_WIRELESS_POWER_GOOD_EN, &val);
-			queue_delayed_work(system_power_efficient_wq, &di->rx_ready_check_work, msecs_to_jiffies(100));
+			schedule_delayed_work(&di->rx_ready_check_work, msecs_to_jiffies(100));
 		}
 		di->vout_on = true;
 		di->epp = idtp9220_get_power_profile(di);
 		if (di->epp) {
 			di->power_max = idtp9220_get_power_max(di);
-			queue_delayed_work(system_power_efficient_wq, &di->epp_connect_load_work,
+			schedule_delayed_work(&di->epp_connect_load_work,
 					      msecs_to_jiffies(200));
 		} else
-			queue_delayed_work(system_power_efficient_wq, &di->bpp_connect_load_work,
+			schedule_delayed_work(&di->bpp_connect_load_work,
 					      msecs_to_jiffies(200));
 		if (int_val & INT_IDAUTH_SUCESS)
 			idtp9220_send_device_auth(di);
@@ -4317,9 +4496,9 @@ static void idtp9220_irq_work(struct work_struct *work)
 
 	if (int_val & INT_VSWITCH_SUCESS) {
 		di->vswitch_ok = true;
-		queue_delayed_work(system_power_efficient_wq, &di->load_fod_param_work,
+		schedule_delayed_work(&di->load_fod_param_work,
 				      msecs_to_jiffies(500));
-		queue_delayed_work(system_power_efficient_wq, &di->vout_regulator_work,
+		schedule_delayed_work(&di->vout_regulator_work,
 				      msecs_to_jiffies(50));
 		cancel_delayed_work(&di->cmd_check_work);
 		if (di->is_ble_tx)
@@ -4340,7 +4519,7 @@ static void idtp9220_irq_work(struct work_struct *work)
 	/*
 	   idtp9220_get_signal_strength(di);
 	   di->tx_charger_type = ADAPTER_QC3;
-	   queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
+	   schedule_delayed_work(&di->chg_monitor_work,
 	   msecs_to_jiffies(0));
 	   goto out;
 	 */
@@ -4370,8 +4549,8 @@ static void idtp9220_irq_work(struct work_struct *work)
 		dev_info(di->dev, "[idtp] auth failed tx charger type set %d\n",
 			 di->tx_charger_type);
 
-		queue_delayed_work(system_power_efficient_wq, &di->rx_vout_work, msecs_to_jiffies(0));
-		queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
+		schedule_delayed_work(&di->rx_vout_work, msecs_to_jiffies(0));
+		schedule_delayed_work(&di->chg_monitor_work,
 				      msecs_to_jiffies(0));
 		goto out;
 	} else
@@ -4395,9 +4574,9 @@ static void idtp9220_irq_work(struct work_struct *work)
 				di->tx_charger_type = ADAPTER_AUTH_FAILED;
 			if (di->wireless_psy)
 				power_supply_changed(di->wireless_psy);
-			queue_delayed_work(system_power_efficient_wq, &di->rx_vout_work,
+			schedule_delayed_work(&di->rx_vout_work,
 					      msecs_to_jiffies(0));
-			queue_delayed_work(system_power_efficient_wq, &di->chg_monitor_work,
+			schedule_delayed_work(&di->chg_monitor_work,
 					      msecs_to_jiffies(0));
 			retry_count = 0;
 			goto out;
@@ -4407,7 +4586,9 @@ static void idtp9220_irq_work(struct work_struct *work)
 
 	}
 	if (int_val & RENEG_SUCCESS) {
-		if (di->tx_charger_type == ADAPTER_XIAOMI_PD_45W || di->tx_charger_type == ADAPTER_XIAOMI_PD_60W) {
+		if (di->tx_charger_type == ADAPTER_XIAOMI_PD_45W ||
+				di->tx_charger_type == ADAPTER_XIAOMI_PD_60W ||
+				di->tx_charger_type == ADAPTER_XIAOMI_PD_100W) {
 			dev_err(di->dev, "%s: max power renegociation success\n", __func__);
 			idtp9220_start_to_load(di);
 			renego_retry_count = 0;
@@ -4415,7 +4596,9 @@ static void idtp9220_irq_work(struct work_struct *work)
 	}
 
 	if (int_val & RENEG_FAIL) {
-		if (di->tx_charger_type == ADAPTER_XIAOMI_PD_45W || di->tx_charger_type == ADAPTER_XIAOMI_PD_60W) {
+		if (di->tx_charger_type == ADAPTER_XIAOMI_PD_45W ||
+				di->tx_charger_type == ADAPTER_XIAOMI_PD_60W ||
+				di->tx_charger_type == ADAPTER_XIAOMI_PD_100W) {
 			if (renego_retry_count < 3) {
 				idtp9220_renegociation(di);
 				dev_err(di->dev, "%s: retry renegociation\n", __func__);
@@ -4480,10 +4663,12 @@ static void idtp9220_irq_work(struct work_struct *work)
 				   recive_data[3] == 0x1 &&
 				   recive_data[1] == 0x9){
 				di->is_zm_20w_tx = 1;
+			} else if (recive_data[4] == 0x01 &&
+				recive_data[2] == 0x1 &&
+				recive_data[3] == 0xe &&
+				recive_data[1] == 0x1) {
+				di->is_train_tx = 1;
 			}
-#ifdef CONFIG_FACTORY_BUILD
-			di->is_ble_tx = 0;
-#endif
 			idtp922x_request_adapter(di);
 			break;
 		case BC_TX_COMPATIBLE_HWID:
@@ -4500,9 +4685,13 @@ static void idtp9220_irq_work(struct work_struct *work)
 				 recive_data[1]);
 
 			if (di->is_car_tx
-			    && (recive_data[1] == ADAPTER_XIAOMI_QC3))
+			    && (recive_data[1] >= ADAPTER_XIAOMI_QC3)) {
 				di->tx_charger_type = ADAPTER_ZIMI_CAR_POWER;
-			else if (di->is_voice_box_tx)
+				car_val.intval = 1;
+				if (di->wireless_psy)
+					power_supply_set_property(di->wireless_psy,
+							POWER_SUPPLY_PROP_WLS_CAR_ADAPTER, &car_val);
+			} else if (di->is_voice_box_tx)
 				di->tx_charger_type = ADAPTER_VOICE_BOX;
 			else
 				di->tx_charger_type = recive_data[1];
@@ -4511,7 +4700,22 @@ static void idtp9220_irq_work(struct work_struct *work)
 				//di->tx_charger_type = ADAPTER_VOICE_BOX;
 				di->is_voice_box_tx = 1;
 			}
-			if (di->tx_charger_type == ADAPTER_XIAOMI_PD_45W || di->tx_charger_type == ADAPTER_XIAOMI_PD_60W) {
+
+			if (di->wireless_psy)
+				power_supply_changed(di->wireless_psy);
+			if (di->usb_psy)
+				power_supply_changed(di->usb_psy);
+
+			/*
+			   if(!di->epp && (di->tx_charger_type == ADAPTER_QC3 ||
+			   di->tx_charger_type == ADAPTER_QC2)) {
+			   idtp922x_set_adap_vol(di, ADAPTER_BPP_VOL);
+			   dev_info(di->dev, "[idt]bpp mode set 5v first\n");
+			   }
+			 */
+			if (di->tx_charger_type == ADAPTER_XIAOMI_PD_45W ||
+					di->tx_charger_type == ADAPTER_XIAOMI_PD_60W ||
+					di->tx_charger_type == ADAPTER_XIAOMI_PD_100W) {
 				renego_retry_count = 0;
 				idtp9220_renegociation(di);
 			} else {
@@ -4531,11 +4735,11 @@ static void idtp9220_irq_work(struct work_struct *work)
 			dev_info(di->dev, "[idt] tx vin : %d\n", tx_vin);
 			break;
 		case BC_READ_VOUT:
-			queue_delayed_work(system_power_efficient_wq, &di->get_vout_work,
+			schedule_delayed_work(&di->get_vout_work,
 					      msecs_to_jiffies(0));
 			break;
 		case BC_READ_IOUT:
-			queue_delayed_work(system_power_efficient_wq, &di->get_iout_work,
+			schedule_delayed_work(&di->get_iout_work,
 					      msecs_to_jiffies(0));
 			break;
 		case BC_RX_CHIP_VERSION:
@@ -4597,7 +4801,7 @@ static irqreturn_t idtp9220_wpc_det_irq_handler(int irq, void *dev_id)
 
 	//pm_stay_awake(di->dev);
 	printk("idtp9220_wpc_det_irq_handler\n");
-	//queue_delayed_work(system_power_efficient_wq, &di->wpc_det_work, msecs_to_jiffies(0));
+	//schedule_delayed_work(&di->wpc_det_work, msecs_to_jiffies(0));
 
 	return IRQ_HANDLED;
 }
@@ -4616,7 +4820,7 @@ static irqreturn_t idtp9220_irq_handler(int irq, void *dev_id)
 	struct idtp9220_device_info *di = dev_id;
 	pm_stay_awake(di->dev);
 	printk("idtp9220_irq_handler\n");
-	queue_delayed_work(system_power_efficient_wq, &di->irq_work, msecs_to_jiffies(10));
+	schedule_delayed_work(&di->irq_work, msecs_to_jiffies(10));
 	return IRQ_HANDLED;
 }
 
@@ -4809,7 +5013,7 @@ static void idtp_oob_set_cep_work(struct work_struct *work)
 	if (ble_ok & BIT(0))
 		rc = idtp9220_set_cep(di);
 
-	queue_delayed_work(system_power_efficient_wq, &di->oob_set_cep_work, 1 * HZ);
+	schedule_delayed_work(&di->oob_set_cep_work, 1 * HZ);
 	return;
 }
 
@@ -4863,10 +5067,10 @@ static void idtp_rx_ready_check_work(struct work_struct *work)
 	if (rx_dead || (mode != WPC_MODE_BPP && mode != WPC_MODE_EPP)) {
 		dev_err(di->dev, "rx not respond, power good low\n");
 		if (di->power_good_flag) {
-			queue_delayed_work(system_power_efficient_wq, &di->wpc_det_work, msecs_to_jiffies(0));
+			schedule_delayed_work(&di->wpc_det_work, msecs_to_jiffies(0));
 		}
 	} else {
-		queue_delayed_work(system_power_efficient_wq, &di->rx_ready_check_work, msecs_to_jiffies(500));
+		schedule_delayed_work(&di->rx_ready_check_work, msecs_to_jiffies(500));
 	}
 	return;
 }
@@ -4881,7 +5085,7 @@ static void idtp9220_power_off(struct idtp9220_device_info *di)
 {
 	dev_err(di->dev, "bbc or smb report power off, PG:%d\n", di->power_good_flag);
 	if (di->power_good_flag && di->vout_on) {
-		queue_delayed_work(system_power_efficient_wq, &di->wpc_det_work, msecs_to_jiffies(0));
+		schedule_delayed_work(&di->wpc_det_work, msecs_to_jiffies(0));
 	}
 }
 
@@ -4895,7 +5099,7 @@ int idtp_op_ble_flag(int en)
 
 	if (en) {
 		rc = g_di->bus.mask_write(g_di, REG_BLE_FLAG, BIT(0), BIT(0));
-		queue_delayed_work(system_power_efficient_wq, &g_di->oob_set_cep_work, 0);
+		schedule_delayed_work(&g_di->oob_set_cep_work, 0);
 	} else {
 		rc = g_di->bus.mask_write(g_di, REG_BLE_FLAG, BIT(0), 0);
 		cancel_delayed_work_sync(&g_di->oob_set_cep_work);
@@ -5056,7 +5260,7 @@ static int idtp9220_set_prop(struct power_supply *psy,
 
 		if (di->power_good_flag) {
 			if (data == CP_CLOSE_VOUT_MV)
-				queue_delayed_work(system_power_efficient_wq, &di->rx_vout_cp_close_work, 0);
+				schedule_delayed_work(&di->rx_vout_cp_close_work, 0);
 			else
 				idtp9220_set_vout(di, data);
 		}
@@ -5067,12 +5271,12 @@ static int idtp9220_set_prop(struct power_supply *psy,
 			break;
 		}
 		di->is_reverse_chg = 0;
-		queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+		schedule_delayed_work(&di->reverse_sent_state_work, 0);
 		if (!di->power_good_flag) {
 			idtp9220_set_reverse_enable(di, val->intval);
 		} else {
 			di->is_reverse_chg = 3;
-			queue_delayed_work(system_power_efficient_wq, &di->reverse_sent_state_work, 0);
+			schedule_delayed_work(&di->reverse_sent_state_work, 0);
 		}
 		break;
 	case POWER_SUPPLY_PROP_OTG_STATE:
@@ -5304,6 +5508,7 @@ static int idtp9220_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK(&di->bpp_e5_tx_work, idtp9220_bpp_e5_tx_work);
 	INIT_DELAYED_WORK(&di->pan_tx_work, idt_pan_tx_work);
 	INIT_DELAYED_WORK(&di->voice_tx_work, idt_voice_tx_work);
+	INIT_DELAYED_WORK(&di->train_tx_work, idt_train_tx_work);
 	INIT_DELAYED_WORK(&di->qc2_f1_tx_work, idtp9220_qc2_f1_tx_work);
 	INIT_DELAYED_WORK(&di->qc3_epp_work, idtp9220_qc3_epp_work);
 	INIT_DELAYED_WORK(&di->oob_set_cep_work, idtp_oob_set_cep_work);
@@ -5383,7 +5588,7 @@ static int idtp9220_probe(struct i2c_client *client,
 	dev_info(di->dev, "[idt] success probe idtp922x driver\n");
 	get_cmdline(di);
 	if (!di->power_off_mode)
-		queue_delayed_work(system_power_efficient_wq, &di->chg_detect_work, 8 * HZ);
+		schedule_delayed_work(&di->chg_detect_work, 8 * HZ);
 	else {
 		dev_info(di->dev, "off-chg mode, reset chip\n");
 		idtp9220_set_enable_mode(di, false);
@@ -5392,10 +5597,10 @@ static int idtp9220_probe(struct i2c_client *client,
 	}
 
 	if (!idt_first_flag)
-		queue_delayed_work(system_power_efficient_wq, &di->idt_first_boot, msecs_to_jiffies(30000));
+		schedule_delayed_work(&di->idt_first_boot, msecs_to_jiffies(30000));
 #ifdef IDTP9220_SRAM_UPDATE
 	INIT_DELAYED_WORK(&di->sram_update_work, idtp9220_sram_update_work);
-	queue_delayed_work(system_power_efficient_wq, &di->sram_update_work, 10 * HZ);
+	schedule_delayed_work(&di->sram_update_work, 10 * HZ);
 #endif
 	return 0;
 

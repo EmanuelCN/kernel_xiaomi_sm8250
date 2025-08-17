@@ -848,7 +848,7 @@ static int bq2415x_notifier_call(struct notifier_block *nb,
 	if (bq->automode < 1)
 		return NOTIFY_OK;
 
-	queue_delayed_work(system_power_efficient_wq, &bq->work, 0);
+	schedule_delayed_work(&bq->work, 0);
 
 	return NOTIFY_OK;
 }
@@ -868,7 +868,7 @@ static void bq2415x_set_autotimer(struct bq2415x_device *bq, int state)
 	bq->autotimer = state;
 
 	if (state) {
-		queue_delayed_work(system_power_efficient_wq, &bq->work, BQ2415X_TIMER_TIMEOUT * HZ);
+		schedule_delayed_work(&bq->work, BQ2415X_TIMER_TIMEOUT * HZ);
 		bq2415x_exec_command(bq, BQ2415X_TIMER_RESET);
 		bq->timer_error = NULL;
 	} else {
@@ -991,7 +991,7 @@ static void bq2415x_timer_work(struct work_struct *work)
 		}
 	}
 
-	queue_delayed_work(system_power_efficient_wq, &bq->work, BQ2415X_TIMER_TIMEOUT * HZ);
+	schedule_delayed_work(&bq->work, BQ2415X_TIMER_TIMEOUT * HZ);
 }
 
 /**** power supply interface code ****/
