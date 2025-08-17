@@ -1793,10 +1793,10 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_FASTCHARGE_MODE:
 		rc = smblib_set_fastcharge_mode(chg, val->intval);
 		power_supply_changed(chg->usb_psy);
-		schedule_delayed_work(&chg->report_soc_decimal_work,
+		queue_delayed_work(system_power_efficient_wq, &chg->report_soc_decimal_work,
 				msecs_to_jiffies(REPORT_SOC_DECIMAL_MS));
 		if (chg->ext_fg && chg->step_chg_enabled)
-			schedule_delayed_work(&chg->step_charge_notify_work,
+			queue_delayed_work(system_power_efficient_wq, &chg->step_charge_notify_work,
 					msecs_to_jiffies(2000));
 		break;
 	case POWER_SUPPLY_PROP_FFC_ITERM:
@@ -5203,7 +5203,7 @@ static int smb5_probe(struct platform_device *pdev)
 		goto free_irq;
 	}
 
-	schedule_delayed_work(&chg->reg_work, 30 * HZ);
+	queue_delayed_work(system_power_efficient_wq, &chg->reg_work, 30 * HZ);
 	pr_info(" QPNP SMB5 probed successfully\n");
 
 	return rc;
