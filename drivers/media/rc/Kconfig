@@ -304,16 +304,6 @@ config IR_SPI
 	  To compile this driver as a module, choose M here: the module will be
 	  called ir-spi.
 
-config IR_SPI_MI
-	tristate "SPI connected IR LED"
-	depends on SPI && LIRC
-	depends on OF || COMPILE_TEST
-	---help---
-	  Say Y if you want to use an IR LED connected through SPI bus.
-
-	  To compile this driver as a module, choose M here: the module will be
-	  called ir-spi-mi.
-
 config IR_STREAMZAP
 	tristate "Streamzap PC Remote IR Receiver"
 	depends on USB_ARCH_HAS_HCD
