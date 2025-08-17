@@ -19,8 +19,6 @@
 
 #include "power_supply.h"
 
-//#undef dev_dbg
-//#define dev_dbg  dev_err
 /*
  * This is because the name "current" breaks the device attr macro.
  * The "current" word resolves to "(get_current())" so instead of
@@ -48,7 +46,8 @@ static const char * const power_supply_type_text[] = {
 	"USB_PD", "USB_PD_DRP", "BrickID",
 	"USB_HVDCP", "USB_HVDCP_3", "USB_HVDCP_3P5", "Wireless", "USB_FLOAT",
 	"BMS", "Parallel", "Main", "USB_C_UFP", "USB_C_DFP",
-	"Charge_Pump","Batt_Verify"
+	"Charge_Pump",
+	"Batt_Verify",
 };
 
 static const char * const power_supply_usb_type_text[] = {
@@ -150,7 +149,8 @@ static ssize_t power_supply_show_property(struct device *dev,
 
 		if (ret < 0) {
 			if (ret == -ENODATA)
-				dev_dbg(dev, "driver has no data for `%s' property\n",
+				dev_dbg_ratelimited(dev,
+					"driver has no data for `%s' property\n",
 					attr->attr.name);
 			else if (ret != -ENODEV && ret != -EAGAIN)
 				dev_err_ratelimited(dev,
@@ -442,7 +442,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(capacity_alert_min),
 	POWER_SUPPLY_ATTR(capacity_alert_max),
 	POWER_SUPPLY_ATTR(capacity_level),
-	POWER_SUPPLY_ATTR(cp_to_sw_status),
 	POWER_SUPPLY_ATTR(shutdown_delay),
 	POWER_SUPPLY_ATTR(shutdown_delay_en),
 	POWER_SUPPLY_ATTR(soc_decimal),
@@ -468,8 +467,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(calibrate),
 	POWER_SUPPLY_ATTR(ffc_termination_bbc),
 	POWER_SUPPLY_ATTR(mtbf_current),
-	POWER_SUPPLY_ATTR(enable_bypass_mode),
-	POWER_SUPPLY_ATTR(smart_batt),
+	POWER_SUPPLY_ATTR(has_dp),
 	/* Local extensions */
 	POWER_SUPPLY_ATTR(usb_hc),
 	POWER_SUPPLY_ATTR(usb_otg),
@@ -682,8 +680,21 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(step_vfloat_index),
 	POWER_SUPPLY_ATTR(night_charging),
 	POWER_SUPPLY_ATTR(i2c_error_count),
-	POWER_SUPPLY_ATTR(avg_current),
-	POWER_SUPPLY_ATTR(charging_mode),
+	/* PS5169 properties */
+	POWER_SUPPLY_ATTR(ps_en),
+	POWER_SUPPLY_ATTR(ps_chipid),
+	POWER_SUPPLY_ATTR(ps_cfgmod),
+	POWER_SUPPLY_ATTR(ps_cfg_flip),
+	POWER_SUPPLY_ATTR(ps_cfg_usb),
+	POWER_SUPPLY_ATTR(ps_cfg_dp),
+	POWER_SUPPLY_ATTR(ps_cfg_usb_dp),
+	POWER_SUPPLY_ATTR(ps_rmov_usb),
+	POWER_SUPPLY_ATTR(ps_rmov_dp),
+	POWER_SUPPLY_ATTR(ps_rmov_usb_dp),
+	POWER_SUPPLY_ATTR(eq0_tx),
+	POWER_SUPPLY_ATTR(eq1_tx),
+	POWER_SUPPLY_ATTR(eq2_tx),
+	POWER_SUPPLY_ATTR(tx_gain),
 #ifdef CONFIG_BATT_VERIFY_BY_DS28E16
 	/* battery verify properties */
 	POWER_SUPPLY_ATTR(romid),
@@ -702,6 +713,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(maxim_batt_cycle_count),
 #endif
 	POWER_SUPPLY_ATTR(chip_ok),
+	POWER_SUPPLY_ATTR(smart_batt),
 	/* DIV 2 properties */
 	POWER_SUPPLY_ATTR(div_2_mode),
 	POWER_SUPPLY_ATTR(reverse_chg_mode),
@@ -719,7 +731,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(cc_toggle_enable),
 	POWER_SUPPLY_ATTR(fg_type),
 	POWER_SUPPLY_ATTR(charger_status),
-	POWER_SUPPLY_ATTR(moisture_detection_enabled),
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */
@@ -728,6 +739,9 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(battery_type),
 	POWER_SUPPLY_ATTR(cycle_counts),
 	POWER_SUPPLY_ATTR(serial_number),
+	// Factory high temperature to intercept
+	POWER_SUPPLY_ATTR(temp_max_fac),
+	POWER_SUPPLY_ATTR(time_ot),
 };
 
 static struct attribute *

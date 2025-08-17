@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+menu "Lion Semiconductor Inc. Charger and Fuel Gauge support"
+
+config CHARGER_LN8000
+	tristate "LionSemi LN8000 Battery Charger"
+	depends on I2C
+	select PD_POLICY_MANAGER
+	select REGMAP_I2C
+	help
+	  Say Y to enable support for the LN8000 charger
+
+config CHARGER_LN8000_MUNCH
+	tristate "LionSemi LN8000 Battery Charger"
+	depends on I2C
+	select PD_POLICY_MANAGER_MUNCH
+	select REGMAP_I2C
+	help
+	  Say Y to enable support for the LN8000 charger
+
+config CHARGER_LN8000_PSYCHE
+	tristate "LionSemi LN8000 Battery Charger"
+	depends on I2C
+	select PD_POLICY_MANAGER_PSYCHE
+	select REGMAP_I2C
+	help
+	  Say Y to enable support for the LN8000 charger
+
+config LN8282
+	tristate "LN8282 Charge Pump"
+	depends on I2C
+	help
+	  Say Y to include support for LN8282 charger pump.
+	  Lion Semiconductor Inc. LN8282 is a charger pump chip.
+	  The driver supports charger enable/disable.
+	  The driver reports the charger status via the power supply framework.
+	  The driver controls 8282 via I2C and
+	  supports device-tree interface.
+
+endmenu

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"FG: %s: " fmt, __func__
@@ -33,11 +33,12 @@
 #define FG_MEM_IF_PM8150B		0x0D
 #define FG_ADC_RR_PM8150B		0x13
 
-#define SDAM_COOKIE_OFFSET		0x80
 #define SDAM_CYCLE_COUNT_OFFSET		0x81
 #define SDAM_CAP_LEARN_OFFSET		0x91
-#define SDAM_COOKIE			0xA5
 #define SDAM_FG_PARAM_LENGTH		20
+
+#define SDAM_COOKIE_OFFSET_4BYTE	0x95
+#define SDAM_COOKIE_4BYTE		0x12345678
 
 #define FG_SRAM_LEN			972
 #define PROFILE_LEN			416
@@ -1005,7 +1006,7 @@ out:
 static int fg_gen4_get_prop_capacity(struct fg_dev *fg, int *val)
 {
 	struct fg_gen4_chip *chip = container_of(fg, struct fg_gen4_chip, fg);
-	int rc, msoc = 0;
+	int rc, msoc;
 
 	if (!chip->dt.shutdown_delay_enable) {
 		*val = 1;
@@ -1090,7 +1091,6 @@ static int fg_gen4_get_prop_capacity_raw(struct fg_gen4_chip *chip, int *val)
 
 	return 0;
 }
-
 
 static int fg_gen4_get_prop_soc_decimal_rate(struct fg_gen4_chip *chip, int *val)
 {
@@ -1391,7 +1391,7 @@ static int fg_gen4_store_learned_capacity(void *data, int64_t learned_cap_uah)
 	struct fg_dev *fg;
 	int16_t cc_mah;
 	int rc;
-	u8 cookie = SDAM_COOKIE;
+	u32 cookie_4byte = SDAM_COOKIE_4BYTE;
 
 	if (!chip)
 		return -ENODEV;
@@ -1418,8 +1418,8 @@ static int fg_gen4_store_learned_capacity(void *data, int64_t learned_cap_uah)
 			return rc;
 		}
 
-		rc = nvmem_device_write(chip->fg_nvmem, SDAM_COOKIE_OFFSET, 1,
-					&cookie);
+		rc = nvmem_device_write(chip->fg_nvmem,
+			SDAM_COOKIE_OFFSET_4BYTE, 1, &cookie_4byte);
 		if (rc < 0) {
 			pr_err("Error in writing cookie to SDAM, rc=%d\n", rc);
 			return rc;
@@ -1634,7 +1634,7 @@ static int fg_gen4_adjust_ki_coeff_full_soc(struct fg_gen4_chip *chip,
 						int batt_temp)
 {
 	struct fg_dev *fg = &chip->fg;
-	int rc, ki_coeff_full_soc_norm = 0, ki_coeff_full_soc_low;
+	int rc, ki_coeff_full_soc_norm, ki_coeff_full_soc_low;
 	u8 val;
 
 	if ((batt_temp < 0) ||
@@ -2437,7 +2437,6 @@ static bool is_profile_load_required(struct fg_gen4_chip *chip)
 			fg->profile_load_status = PROFILE_SKIPPED;
 			return false;
 		}
-
 		profiles_same = memcmp(chip->batt_profile, buf,
 					PROFILE_COMP_LEN) == 0;
 		if (profiles_same) {
@@ -2449,10 +2448,10 @@ static bool is_profile_load_required(struct fg_gen4_chip *chip)
 		if (!chip->dt.force_load_profile) {
 			pr_warn("Profiles doesn't match, skipping loading it since force_load_profile is disabled\n");
 			if (fg_profile_dump) {
-				pr_debug("FG: loaded profile:\n");
+				pr_info("FG: loaded profile:\n");
 				dump_sram(fg, buf, PROFILE_LOAD_WORD,
 					PROFILE_COMP_LEN);
-				pr_debug("FG: available profile:\n");
+				pr_info("FG: available profile:\n");
 				dump_sram(fg, chip->batt_profile,
 					PROFILE_LOAD_WORD, PROFILE_LEN);
 			}
@@ -2464,7 +2463,7 @@ static bool is_profile_load_required(struct fg_gen4_chip *chip)
 	} else {
 		fg_dbg(fg, FG_STATUS, "Profile integrity bit is not set\n");
 		if (fg_profile_dump) {
-			pr_debug("FG: profile to be loaded:\n");
+			pr_info("FG: profile to be loaded:\n");
 			dump_sram(fg, chip->batt_profile, PROFILE_LOAD_WORD,
 				PROFILE_LEN);
 		}
@@ -2575,17 +2574,17 @@ static bool is_sdam_cookie_set(struct fg_gen4_chip *chip)
 {
 	struct fg_dev *fg = &chip->fg;
 	int rc;
-	u8 cookie;
+	u32 cookie_4byte;
 
-	rc = nvmem_device_read(chip->fg_nvmem, SDAM_COOKIE_OFFSET, 1,
-				&cookie);
+	rc = nvmem_device_read(chip->fg_nvmem, SDAM_COOKIE_OFFSET_4BYTE, 4,
+			&cookie_4byte);
 	if (rc < 0) {
 		pr_err("Error in reading SDAM_COOKIE rc=%d\n", rc);
 		return false;
 	}
 
-	fg_dbg(fg, FG_STATUS, "cookie: %x\n", cookie);
-	return (cookie == SDAM_COOKIE);
+	fg_dbg(fg, FG_STATUS, "cookie_4byte: %08x\n", cookie_4byte);
+	return (cookie_4byte == SDAM_COOKIE_4BYTE);
 }
 
 static void fg_gen4_clear_sdam(struct fg_gen4_chip *chip)
@@ -2609,8 +2608,9 @@ static void fg_gen4_clear_sdam(struct fg_gen4_chip *chip)
 static void fg_gen4_post_profile_load(struct fg_gen4_chip *chip)
 {
 	struct fg_dev *fg = &chip->fg;
-	int rc, act_cap_mah;
+	int rc = 0, act_cap_mah;
 	u8 buf[16] = {0};
+	u32 cookie_4byte = 0;
 
 	if (chip->dt.multi_profile_load &&
 		chip->batt_age_level != chip->last_batt_age_level) {
@@ -2664,6 +2664,13 @@ static void fg_gen4_post_profile_load(struct fg_gen4_chip *chip)
 				pr_err("Error in writing learned capacity to SDAM, rc=%d\n",
 					rc);
 		}
+
+		/* Set the COOKIE to prevent rechecking the SRAM again */
+		cookie_4byte = SDAM_COOKIE_4BYTE;
+		rc = nvmem_device_write(chip->fg_nvmem,
+			SDAM_COOKIE_OFFSET_4BYTE, 4, (u8 *)&cookie_4byte);
+		if (rc < 0)
+			pr_err("Failed to set SDAM cookie, rc=%d\n", rc);
 	}
 
 	/* Restore the cycle counters so that it would be valid at this point */
@@ -3164,7 +3171,8 @@ static int fg_gen4_charge_full_update(struct fg_dev *fg)
 		msoc, bsoc, fg->health, fg->charge_status,
 		fg->charge_full);
 	if (fg->charge_done && !fg->charge_full) {
-		if (msoc >= 99 && (fg->health != POWER_SUPPLY_HEALTH_OVERHEAT)) {
+		if (msoc >= 99 && (fg->health != POWER_SUPPLY_HEALTH_WARM ||
+					fg->health != POWER_SUPPLY_HEALTH_OVERHEAT)) {
 			fg_dbg(fg, FG_STATUS, "Setting charge_full to true\n");
 			fg->charge_full = true;
 		} else {
@@ -3581,7 +3589,6 @@ static int fg_gen4_validate_soc_scale_mode(struct fg_gen4_chip *chip)
 		vbatt_scale_mv = 3400;
 	else
 		vbatt_scale_mv = chip->dt.vbatt_scale_thr_mv;
-	pr_debug("get vbatt_scale_mv = %d, current now = %d\n", vbatt_scale_mv, chip->current_now);
 	if (!chip->soc_scale_mode && fg->charge_status ==
 		POWER_SUPPLY_STATUS_DISCHARGING &&
 		chip->current_now  > 0 &&
@@ -3768,7 +3775,7 @@ static irqreturn_t fg_vbatt_low_irq_handler(int irq, void *data)
 			chip->vbat_critical_low_count++;
 			if (chip->vbat_critical_low_count < EMPTY_DEBOUNCE_TIME_COUNT_MAX
 					&& vbatt_mv > VBAT_CRITICAL_LOW_THR) {
-				pr_debug("vbat_critical_low_count:%d\n", chip->vbat_critical_low_count);
+				pr_info("vbat_critical_low_count:%d\n", chip->vbat_critical_low_count);
 				if (batt_psy_initialized(fg))
 					power_supply_changed(fg->batt_psy);
 				return IRQ_HANDLED;
@@ -4324,7 +4331,7 @@ static int calculate_average_current(struct fg_gen4_chip *chip)
 	}
 
 unchanged:
-	pr_debug("current_now_ma=%d averaged_iavg_ma=%d\n",
+	pr_info("current_now_ma=%d averaged_iavg_ma=%d\n",
 				fg->param.batt_ma, fg->param.batt_ma_avg);
 	return fg->param.batt_ma_avg;
 }
@@ -4402,7 +4409,6 @@ static void soc_scale_work(struct work_struct *work)
 		if (delta_time < 0)
 			delta_time = 0;
 		soc_changed = min(1, delta_time);
-		fg_dbg(fg, FG_FVSS, "get delta_time = %d, soc_changed =%d, time_since_last_change_sec = %d\n", delta_time, soc_changed, time_since_last_change_sec);
 
 		chip->soc_scale_msoc = chip->prev_soc_scale_msoc - soc_changed;
 		chip->scale_timer = chip->dt.scale_timer_ms /
@@ -4650,7 +4656,7 @@ static int sync_cycle_count(struct fg_gen4_chip *chip)
 		power_supply_get_property(fg->max_verify_psy,
 				POWER_SUPPLY_PROP_MAXIM_BATT_CYCLE_COUNT, &prop);
 		fg->maxim_cycle_count = prop.intval;
-		pr_debug("fg cycle_count[%d], last cycle_count[%d], dc_value[%d]\n",
+		pr_info("fg cycle_count[%d], last cycle_count[%d], dc_value[%d]\n",
 					cycle_count, fg->cycle_count, fg->maxim_cycle_count);
 		fg->cycle_count++;
 	}
@@ -4896,7 +4902,7 @@ static ssize_t restart_store(struct device *dev, struct device_attribute
 		return rc;
 	}
 
-	pr_debug("FG restart done\n");
+	pr_info("FG restart done\n");
 exit:
 	rc = count;
 	return rc;
@@ -4969,7 +4975,7 @@ ATTRIBUTE_GROUPS(fg);
 
 static int fg_gen4_set_vbatt_full_vol(struct fg_dev *fg, bool enable_ffc)
 {
-	int rc = 0;
+	int rc;
 	int volt;
 
 	if (enable_ffc)
@@ -5373,7 +5379,7 @@ static int fg_psy_get_property(struct power_supply *psy,
 		pval->intval = chip->dt.ffc_ki_coeff_med_hi_chg_thr_ma;
 		break;
 	default:
-		pr_debug("unsupported property %d\n", psp);
+		pr_err("unsupported property %d\n", psp);
 		rc = -EINVAL;
 		break;
 	}
@@ -6969,7 +6975,7 @@ static int fg_gen4_parse_dt(struct fg_gen4_chip *chip)
 	rc = of_property_read_u32(node, "qcom,fg-esr-meas-curr-ma", &temp);
 	if (!rc) {
 		/* ESR measurement current range is 60-240 mA */
-		if (temp >= 60 && temp <= 240)
+		if (temp >= 60 || temp <= 240)
 			chip->dt.esr_meas_curr_ma = temp;
 	}
 
@@ -7019,7 +7025,7 @@ static void fg_battery_soc_smooth_tracking(struct fg_gen4_chip *chip)
 	struct timespec last_change_time = fg->param.last_soc_change_time;
 
 	calculate_delta_time(&last_change_time, &time_since_last_change_sec);
-	pr_debug("entry:smooth_batt_soc%d\n", fg->param.smooth_batt_soc);
+	pr_info("entry:smooth_batt_soc%d\n", fg->param.smooth_batt_soc);
 
 	/* calculate average ibat */
 	calculate_average_current(chip);
@@ -7108,31 +7114,31 @@ static void fg_battery_soc_smooth_tracking(struct fg_gen4_chip *chip)
 				&& (last_batt_soc < 3)
 				&& off_charge_flag
 				&& (fg->param.smooth_low_batt_soc < fg->param.smooth_batt_soc)) {
-			pr_debug("smooth_low_batt_soc%d", fg->param.smooth_low_batt_soc);
-			pr_debug("smooth_batt_soc%d", fg->param.smooth_batt_soc);
+			pr_info("smooth_low_batt_soc%d", fg->param.smooth_low_batt_soc);
+			pr_info("smooth_batt_soc%d", fg->param.smooth_batt_soc);
 			fg->param.smooth_low_batt_soc += DETAL_SOC;
 			fg->param.smooth_batt_soc = fg->param.smooth_low_batt_soc;
 		}
 
-		pr_debug("last_smooth_batt_soc:%d, smooth_batt_soc:%d\n", last_smooth_batt_soc, fg->param.smooth_batt_soc);
+		pr_info("last_smooth_batt_soc:%d, smooth_batt_soc:%d\n", last_smooth_batt_soc, fg->param.smooth_batt_soc);
 
 		if (last_smooth_batt_soc > 0) {
 			/*compare with last soc. avoid soc jump*/
 			if ((fg->param.smooth_batt_soc - last_smooth_batt_soc) > 1) {
 				fg->param.smooth_batt_soc = last_smooth_batt_soc + DETAL_SOC;
-				pr_debug("batt_soc:++\n");
+				pr_info("batt_soc:++\n");
 			} else if ((last_smooth_batt_soc - fg->param.smooth_batt_soc) > 1) {
 				fg->param.smooth_batt_soc = last_smooth_batt_soc - DETAL_SOC;
-				pr_debug("batt_soc:--\n");
+				pr_info("batt_soc:--\n");
 			}
-			pr_debug("last_smooth_batt_soc:%d, smooth_batt_soc:%d\n", last_smooth_batt_soc, fg->param.smooth_batt_soc);
+			pr_info("last_smooth_batt_soc:%d, smooth_batt_soc:%d\n", last_smooth_batt_soc, fg->param.smooth_batt_soc);
 
 			/*keep soc change with charging status*/
 			if ((fg->param.batt_ma < 0) && (fg->param.smooth_batt_soc < last_smooth_batt_soc)) {
-				pr_debug("soc should not fall\n");
+				pr_info("soc should not fall\n");
 				fg->param.smooth_batt_soc = last_smooth_batt_soc;
 			} else if ((fg->param.batt_ma > 0) && (fg->param.smooth_batt_soc > last_smooth_batt_soc)) {
-				pr_debug("soc should not rise\n");
+				pr_info("soc should not rise\n");
 				fg->param.smooth_batt_soc = last_smooth_batt_soc;
 			}
 		}
@@ -7143,7 +7149,7 @@ static void fg_battery_soc_smooth_tracking(struct fg_gen4_chip *chip)
 				&& (last_batt_soc >= 2)
 				&& (last_batt_soc <= 5)) {
 			fg->param.smooth_batt_soc = last_batt_soc;
-			pr_debug("fix soc jump after reboot, smooth_batt_soc:%d\n", fg->param.smooth_batt_soc);
+			pr_info("fix soc jump after reboot, smooth_batt_soc:%d\n", fg->param.smooth_batt_soc);
 		}
 	}
 	/* if battery temperature is above critical high threshold, report it */
@@ -7152,7 +7158,7 @@ static void fg_battery_soc_smooth_tracking(struct fg_gen4_chip *chip)
 			power_supply_changed(fg->batt_psy);
 	}
 
-	pr_debug("soc:%d, last_soc:%d, raw_soc:%d, soc_changed:%d, batt_ma:%d, smooth_low_batt_soc:%d, smooth_soc: %d\n",
+	pr_info("soc:%d, last_soc:%d, raw_soc:%d, soc_changed:%d, batt_ma:%d, smooth_low_batt_soc:%d, smooth_soc: %d\n",
 				fg->param.batt_soc, last_batt_soc,
 				fg->param.batt_raw_soc, soc_changed, fg->param.batt_ma, fg->param.smooth_low_batt_soc, fg->param.smooth_batt_soc);
 }
@@ -7179,7 +7185,7 @@ static void empty_restart_fg_work(struct work_struct *work)
 	/* only when usb is absent, restart fg */
 	if (!usb_present) {
 		if (fg->profile_load_status == PROFILE_LOADED) {
-			pr_debug("soc empty after cold to warm, need to restart fg\n");
+			pr_info("soc empty after cold to warm, need to restart fg\n");
 			fg->empty_restart_fg = true;
 			rc = fg_restart(fg, SOC_READY_WAIT_TIME_MS);
 			if (rc < 0) {
@@ -7187,7 +7193,7 @@ static void empty_restart_fg_work(struct work_struct *work)
 				fg->empty_restart_fg = false;
 				return;
 			}
-			pr_debug("FG restart done\n");
+			pr_info("FG restart done\n");
 			if (batt_psy_initialized(fg))
 				power_supply_changed(fg->batt_psy);
 			cancel_delayed_work_sync(&fg->soc_monitor_work);
@@ -7261,7 +7267,7 @@ static void soc_monitor_work(struct work_struct *work)
 	if (fg->soc_reporting_ready)
 		fg_battery_soc_smooth_tracking(chip);
 
-	pr_debug("soc:%d, raw_soc:%d, c:%d, s:%d\n",
+	pr_info("soc:%d, raw_soc:%d, c:%d, s:%d\n",
 			fg->param.batt_soc, fg->param.batt_raw_soc,
 			fg->param.batt_ma, fg->charge_status);
 
@@ -7469,7 +7475,6 @@ static int fg_gen4_probe(struct platform_device *pdev)
 	}
 
 	chip->hw_country = get_hw_country_version();
-	dev_err(fg->dev, "hw_country: %d\n", chip->hw_country);
 
 	rc = fg_gen4_parse_dt(chip);
 	if (rc < 0) {
@@ -7583,7 +7588,7 @@ static int fg_gen4_probe(struct platform_device *pdev)
 
 	if (!rc) {
 		fg->last_batt_temp = batt_temp;
-		pr_debug("battery SOC:%d voltage: %duV temp: %d id: %d ohms\n",
+		pr_info("battery SOC:%d voltage: %duV temp: %d id: %d ohms\n",
 			msoc, volt_uv, batt_temp, fg->batt_id_ohms);
 	}
 

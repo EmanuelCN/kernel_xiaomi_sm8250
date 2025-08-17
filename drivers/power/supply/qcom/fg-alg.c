@@ -331,24 +331,24 @@ static void cap_learning_post_process(struct cap_learning *cl)
 	else
 		cl->learned_cap_uah = cl->final_cap_uah;
 
-	if (cl->dt.max_cap_limit >= 0) {
+	if (cl->dt.max_cap_limit) {
 		max_inc_val = (int64_t)cl->nom_cap_uah * (1000 +
 				cl->dt.max_cap_limit);
 		max_inc_val = div64_u64(max_inc_val, 1000);
-		if (cl->learned_cap_uah > max_inc_val) {
+		if (cl->final_cap_uah > max_inc_val) {
 			pr_debug("learning capacity %lld goes above max limit %lld\n",
-				cl->learned_cap_uah, max_inc_val);
+				cl->final_cap_uah, max_inc_val);
 			cl->learned_cap_uah = max_inc_val;
 		}
 	}
 
-	if (cl->dt.min_cap_limit >= 0) {
+	if (cl->dt.min_cap_limit) {
 		min_dec_val = (int64_t)cl->nom_cap_uah * (1000 -
 				cl->dt.min_cap_limit);
 		min_dec_val = div64_u64(min_dec_val, 1000);
-		if (cl->learned_cap_uah < min_dec_val) {
+		if (cl->final_cap_uah < min_dec_val) {
 			pr_debug("learning capacity %lld goes below min limit %lld\n",
-				cl->learned_cap_uah, min_dec_val);
+				cl->final_cap_uah, min_dec_val);
 			cl->learned_cap_uah = min_dec_val;
 		}
 	}
@@ -541,9 +541,6 @@ static int cap_learning_done(struct cap_learning *cl, int batt_soc_cp)
 {
 	int rc;
 
-	if (cl->cl_skip == true)
-		return -ENODATA;
-
 	rc = cap_learning_process_full_data(cl, batt_soc_cp);
 	if (rc < 0) {
 		pr_debug("Error in processing cap learning full data, rc=%d\n",
@@ -633,8 +630,6 @@ void cap_learning_update(struct cap_learning *cl, int batt_temp,
 		if (charge_status == POWER_SUPPLY_STATUS_CHARGING) {
 			rc = cap_learning_begin(cl, batt_soc_cp);
 			cl->active = (rc == 0);
-			if (cl->active)
-				cl->cl_skip = false;
 		} else {
 			if (charge_status == POWER_SUPPLY_STATUS_DISCHARGING ||
 				charge_done)
