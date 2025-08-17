@@ -1929,7 +1929,7 @@ static void bq25790_charge_monitor_workfunc(struct work_struct *work)
 	bq25790_update_status(bq);
 	bq25790_reset_wdt(bq);
 
-	schedule_delayed_work(&bq->charge_monitor_work, 6 * HZ);
+	queue_delayed_work(system_power_efficient_wq, &bq->charge_monitor_work, 6 * HZ);
 }
 
 static int bq25790_get_psy(struct bq25790 *bq)
@@ -2006,7 +2006,7 @@ static void bq25790_charge_irq_workfunc(struct work_struct *work)
 		}
 		vote(bq->arti_vbus_dis_votable, BQ25790_USER_VOTER, false, 0);
 		vote(bq->awake_votable, BQ25790_USER_VOTER, true, 0);
-		schedule_delayed_work(&bq->charge_monitor_work, 10 * HZ);
+		queue_delayed_work(system_power_efficient_wq, &bq->charge_monitor_work, 10 * HZ);
 		bq_dbg(PR_OEM, "usb plugged in, set usb present = %d\n",
 		       bq->usb_present);
 	}
@@ -2035,7 +2035,7 @@ static irqreturn_t bq25790_charger_interrupt(int irq, void *dev_id)
 	}
 
 	bq->irq_waiting = false;
-	schedule_delayed_work(&bq->charge_irq_work, 0);
+	queue_delayed_work(system_power_efficient_wq, &bq->charge_irq_work, 0);
 	mutex_unlock(&bq->irq_complete);
 
 	return IRQ_HANDLED;
@@ -2321,7 +2321,7 @@ static int bq25790_notifier_call(struct notifier_block *nb, unsigned long ev,
 
 	if (strcmp(psy->desc->name, "usb") == 0 ||
 	    strcmp(psy->desc->name, "battery") == 0)
-		schedule_delayed_work(&bq->charge_status_change_work, 0);
+		queue_delayed_work(system_power_efficient_wq, &bq->charge_status_change_work, 0);
 
 	return NOTIFY_OK;
 }
@@ -2418,7 +2418,7 @@ static int bq25790_charger_probe(struct i2c_client *client,
 
 	determine_initial_status(bq);
 
-	schedule_delayed_work(&bq->charge_irq_work, 0);
+	queue_delayed_work(system_power_efficient_wq, &bq->charge_irq_work, 0);
 	bq_dbg(PR_OEM,
 	       "bq25790 probe successfully, Part Num:%d, Revision:0x%x \n",
 	       bq->part_no, bq->revision);

@@ -1420,7 +1420,7 @@ static void fg_monitor_workfunc(struct work_struct *work)
 		fg_update_status(bq);
 		fg_update_charge_full(bq);
 	}
-	schedule_delayed_work(&bq->monitor_work, 10 * HZ);
+	queue_delayed_work(system_power_efficient_wq, &bq->monitor_work, 10 * HZ);
 }
 static void fg_update_status(struct dual_fg_chip *bq)
 {
@@ -1663,7 +1663,7 @@ static int dual_fuelgauge_probe(struct platform_device *pdev)
 	Dual_Fuel_Gauge_Batt_Ctrl_Init();
 
 	INIT_DELAYED_WORK(&bq->monitor_work, fg_monitor_workfunc);
-	schedule_delayed_work(&bq->monitor_work, 10 * HZ);
+	queue_delayed_work(system_power_efficient_wq, &bq->monitor_work, 10 * HZ);
 	bq_dbg(PR_OEM, "dual fg probe successfully");
 	return 0;
 }
