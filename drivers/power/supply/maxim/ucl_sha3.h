@@ -6,10 +6,10 @@
 extern "C" {
 #endif
 
-#define UCL_SHA3_224_HASHSIZE  28
-#define UCL_SHA3_256_HASHSIZE  32
-#define UCL_SHA3_384_HASHSIZE  48
-#define UCL_SHA3_512_HASHSIZE  64
+#define UCL_SHA3_224_HASHSIZE 28
+#define UCL_SHA3_256_HASHSIZE 32
+#define UCL_SHA3_384_HASHSIZE 48
+#define UCL_SHA3_512_HASHSIZE 64
 #define UCL_SHA3_MAX_PERMSIZE 25
 #define UCL_SHA3_MAXQRATE_QWORDS 24
 
@@ -58,7 +58,8 @@ typedef struct sha3_ctx {
 	unsigned int block_size;
 } sha3_ctx;
 
-#define SHA3_SPONGE_WORDS (((1600)/8/*bits to byte*/)/sizeof(unsigned long long))
+#define SHA3_SPONGE_WORDS                                                      \
+	(((1600) / 8 /*bits to byte*/) / sizeof(unsigned long long))
 
 typedef struct sha3_context_ {
 	unsigned long long saved;
@@ -66,11 +67,11 @@ typedef struct sha3_context_ {
 		unsigned long long s[SHA3_SPONGE_WORDS];
 		unsigned char sb[SHA3_SPONGE_WORDS * 8];
 	};
-	int byteIndex;         /* 0..7--the next byte after the set one
+	int byteIndex; /* 0..7--the next byte after the set one
 	 * (starts from 0; 0--none are buffered) */
-	int wordIndex;         /* 0..24--the next word to integrate input
+	int wordIndex; /* 0..24--the next word to integrate input
 	 * (starts from 0) */
-	int capacityWords;     /* the double size of the hash output in
+	int capacityWords; /* the double size of the hash output in
 	 * words (e.g. 16 for Keccak 512) */
 } ucl_sha3_ctx_t;
 
@@ -150,7 +151,8 @@ int ucl_sha3_512_init(ucl_sha3_ctx_t *ctx);
 *
 * @ingroup UCL_SHA3
 */
-int ucl_sha3_core(ucl_sha3_ctx_t *ctx, const unsigned char *bufIn, unsigned int len);
+int ucl_sha3_core(ucl_sha3_ctx_t *ctx, const unsigned char *bufIn,
+		  unsigned int len);
 /*============================================================================*/
 /** <b>SHA3 Finish</b>.
 * Finish the process of SHA3, common to all SHA3 hash functions.
@@ -191,7 +193,8 @@ int ucl_sha3_finish(unsigned char *digest, ucl_sha3_ctx_t *ctx);
 * @ingroup UCL_SHA3
 */
 
-int ucl_sha3_224(unsigned char *digest, unsigned char *msg, unsigned int msgLen);
+int ucl_sha3_224(unsigned char *digest, unsigned char *msg,
+		 unsigned int msgLen);
 
 /*============================================================================*/
 /** <b>SHA3-256</b>.
@@ -210,7 +213,8 @@ int ucl_sha3_224(unsigned char *digest, unsigned char *msg, unsigned int msgLen)
 *
 * @ingroup UCL_SHA3
 */
-int ucl_sha3_256(unsigned char *digest, unsigned char *msg, unsigned int msgLen);
+int ucl_sha3_256(unsigned char *digest, unsigned char *msg,
+		 unsigned int msgLen);
 
 /*============================================================================*/
 /** <b>SHA3-384</b>.
@@ -229,7 +233,8 @@ int ucl_sha3_256(unsigned char *digest, unsigned char *msg, unsigned int msgLen)
 *
 * @ingroup UCL_SHA3
 */
-int ucl_sha3_384(unsigned char *digest, unsigned char *msg, unsigned int msgLen);
+int ucl_sha3_384(unsigned char *digest, unsigned char *msg,
+		 unsigned int msgLen);
 
 /*============================================================================*/
 /** <b>SHA3-512</b>.
@@ -248,12 +253,15 @@ int ucl_sha3_384(unsigned char *digest, unsigned char *msg, unsigned int msgLen)
 *
 * @ingroup UCL_SHA3
 */
-int ucl_sha3_512(unsigned char *digest, unsigned char *msg, unsigned int msgLen);
+int ucl_sha3_512(unsigned char *digest, unsigned char *msg,
+		 unsigned int msgLen);
 int ucl_shake128_init(ucl_sha3_ctx_t *ctx);
 int ucl_shake256_init(ucl_sha3_ctx_t *ctx);
 int ucl_shake_finish(unsigned char *hash, ucl_sha3_ctx_t *ctx);
-int ucl_shake128(unsigned char *digest, unsigned char *msg, unsigned int msgLen);
-int ucl_shake256(unsigned char *digest, unsigned char *msg, unsigned int msgLen);
+int ucl_shake128(unsigned char *digest, unsigned char *msg,
+		 unsigned int msgLen);
+int ucl_shake256(unsigned char *digest, unsigned char *msg,
+		 unsigned int msgLen);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif /* __cplusplus */
