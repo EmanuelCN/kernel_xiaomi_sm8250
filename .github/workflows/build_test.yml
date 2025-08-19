@@ -1,4 +1,4 @@
-name: Build Kernel
+name: Build Kernel(Test all)
 
 on:
   workflow_dispatch:
