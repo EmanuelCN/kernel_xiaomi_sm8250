@@ -3,6 +3,10 @@ name: Build Kernel All
 on:
   workflow_dispatch:
     inputs:
+      kernel_version:
+        description: 'Kernel Version (e.g., 16.3.9, 16.4.0)'
+        required: true
+        type: string
       target_device:
         description: 'Target device'
         required: true
@@ -127,7 +131,8 @@ jobs:
           DEVICE="${{ matrix.device }}"
           KSU_VERSION="${{ github.event.inputs.kernelsu_version }}"
           ADDITIONAL_FUNCTION="${{ github.event.inputs.additional_function }}"
-          bash build.sh "$DEVICE" "$KSU_VERSION" "$ADDITIONAL_FUNCTION"
+          KERNEL_VERSION="${{ github.event.inputs.kernel_version }}"
+          bash build.sh "$DEVICE" "$KSU_VERSION" "$ADDITIONAL_FUNCTION" "$KERNEL_VERSION"
 
       - name: Set Kernel Path and Name
         id: kernel-info
@@ -149,7 +154,7 @@ jobs:
         run: |
           curl -F chat_id=${{ secrets.TG_CHAT_ID }} \
                -F document=@${{ env.KernelPath }} \
-               -F caption="n0Kernel for ${{ matrix.device }}" \
+               -F caption="Kernel for ${{ matrix.device }}" \
                "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendDocument"
 
   release:
@@ -189,8 +194,8 @@ jobs:
           files: "*.zip"
           body: |
             ## Kernel Build Summary
+            - **Kernel Version**: ${{ github.event.inputs.kernel_version }}
             - **Devices**: ${{ github.event.inputs.target_device }}
-            - **System**: AOSP
             - **KernelSU**: ${{ github.event.inputs.kernelsu_version }}
             - **Additional Functions**: ${{ github.event.inputs.additional_function }}
             
