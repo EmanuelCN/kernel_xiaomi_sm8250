@@ -1,0 +1,222 @@
+name: Build Kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_device:
+        description: 'Target device'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - 'alioth'
+          - 'munch'
+          - 'apollo'
+          - 'all'
+      system_version:
+        description: 'Target System'
+        required: true
+        type: choice
+        default: 'miui'
+        options:
+          - 'aosp'
+          - 'miui'
+          - 'all'
+      kernelsu_version:
+        description: 'KernelSU Version'
+        required: true
+        type: choice
+        default: 'sukisu-ultra'
+        options:
+          - 'sukisu-ultra'
+          - 'ksu'
+          - 'rksu'
+          - 'sukisu'
+          - 'noksu'
+      additional_function:
+        description: 'Additional Functions'
+        required: true
+        type: choice
+        default: 'no'
+        options:
+          - 'no'
+          - 'susfs-kpm'
+          - 'susfs'
+          - 'kpm'
+      release_tag:
+        description: 'Custom release tag (leave empty to auto-generate)'
+        required: false
+        default: ''
+      upload_to_telegram:
+        description: 'Upload kernel to Telegram?'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+          - 'yes'
+          - 'no'
+      upload_to_release:
+        description: 'Upload kernel to GitHub Release?'
+        required: true
+        default: 'yes'
+        type: choice
+        options:
+          - 'yes'
+          - 'no'
+
+jobs:
+  prepare:
+    runs-on: ubuntu-22.04
+    outputs:
+      devices: ${{ steps.set-matrix.outputs.devices }}
+      systems: ${{ steps.set-matrix.outputs.systems }}
+    steps:
+      - name: Set build matrix
+        id: set-matrix
+        run: |
+          if [ "${{ github.event.inputs.target_device }}" = "all" ]; then
+            echo 'devices=["alioth", "munch", "apollo"]' >> $GITHUB_OUTPUT
+          else
+            echo 'devices=["${{ github.event.inputs.target_device }}"]' >> $GITHUB_OUTPUT
+          fi
+          
+          if [ "${{ github.event.inputs.system_version }}" = "all" ]; then
+            echo 'systems=["aosp", "miui"]' >> $GITHUB_OUTPUT
+          else
+            echo 'systems=["${{ github.event.inputs.system_version }}"]' >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJson(needs.prepare.outputs.devices) }}
+        system: ${{ fromJson(needs.prepare.outputs.systems) }}
+
+    steps:
+      - name: Clone Kernel Source
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update -y 
+          sudo apt-get install -y \
+          build-essential git curl wget bison flex zip bc \
+          cpio libssl-dev libncurses-dev gcc \
+          python3 python3-pip ccache
+          sudo apt update
+          sudo apt install -y software-properties-common
+          apt policy python2
+          sudo apt install -y python2
+          python2 --version
+          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
+          sudo python2.7 get-pip.py
+          pip2.7 --version
+
+      - name: Cache AOSP Clang
+        uses: actions/cache@v4
+        id: clang-cache
+        with:
+          path: toolchain/clang-13289611
+          key: ${{ runner.os }}-aosp-clang-13289611
+
+      - name: Download and Extract AOSP Clang
+        if: steps.clang-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p toolchain/clang-13289611
+          wget -O clang.tar.xz https://github.com/Impqxr/aosp_clang_ci/releases/download/13289611/clang-13289611-linux-x86.tar.xz
+          tar -xJf clang.tar.xz -C toolchain/clang-13289611 --strip-components=1
+          rm -f clang.tar.xz
+          
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache_mikernel
+          key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ matrix.system }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-${{ matrix.device }}-${{ matrix.system }}-
+            ${{ runner.os }}-ccache-${{ matrix.device }}-
+
+      - name: Build Kernel
+        run: |
+          sed -i 's|TOOLCHAIN_PATH=\$HOME/toolchain/clang-13289611/bin|TOOLCHAIN_PATH=$(pwd)/toolchain/clang-13289611/bin|' build.sh
+          DEVICE="${{ matrix.device }}"
+          SYSTEM="${{ matrix.system }}"
+          KSU_VERSION="${{ github.event.inputs.kernelsu_version }}"
+          ADDITIONAL_FUNCTION="${{ github.event.inputs.additional_function }}"
+          bash build.sh "$DEVICE" "$KSU_VERSION" $ADDITIONAL_FUNCTION "$SYSTEM"
+
+      - name: Set Kernel Path and Name
+        id: kernel-info
+        run: |
+          KernelPath=$(ls N0Kernel_*.zip 2>/dev/null | head -n 1 || true)
+          echo "KernelPath=$(pwd)/$KernelPath" >> $GITHUB_ENV
+          echo "KernelName=$KernelPath" >> $GITHUB_ENV
+          echo "kernel_name=$KernelPath" >> $GITHUB_OUTPUT
+
+      - name: Upload Kernel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-${{ matrix.device }}-${{ matrix.system }}
+          path: ${{ env.KernelPath }}
+          retention-days: 7
+
+      - name: Upload Kernel to Telegram (Individual)
+        if: ${{ github.event.inputs.upload_to_telegram == 'yes' }}
+        run: |
+          curl -F chat_id=${{ secrets.TG_CHAT_ID }} \
+               -F document=@${{ env.KernelPath }} \
+               -F caption="Kernel for ${{ matrix.device }} - ${{ matrix.system }}" \
+               "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendDocument"
+
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-22.04
+    if: ${{ github.event.inputs.upload_to_release == 'yes' }}
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: kernels/
+
+      - name: Set Release Tag
+        id: release_tag
+        run: |
+          if [ -z "${{ github.event.inputs.release_tag }}" ]; then
+            if [ "${{ github.event.inputs.target_device }}" = "all" ] && [ "${{ github.event.inputs.system_version }}" = "all" ]; then
+              TAG="all-devices-all-systems-${{ github.run_number }}"
+            elif [ "${{ github.event.inputs.target_device }}" = "all" ]; then
+              TAG="all-devices-${{ github.event.inputs.system_version }}-${{ github.run_number }}"
+            elif [ "${{ github.event.inputs.system_version }}" = "all" ]; then
+              TAG="${{ github.event.inputs.target_device }}-all-systems-${{ github.run_number }}"
+            else
+              TAG="${{ github.event.inputs.target_device }}-${{ github.event.inputs.system_version }}-${{ github.run_number }}"
+            fi
+          else
+            TAG="${{ github.event.inputs.release_tag }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Prepare Release Files
+        run: |
+          find kernels/ -name "*.zip" -exec cp {} . \;
+          ls -la *.zip
+
+      - name: Upload Kernels to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_tag.outputs.tag }}
+          name: ${{ steps.release_tag.outputs.tag }}
+          files: "*.zip"
+          body: |
+            ## Kernel Build Summary
+            - **Devices**: ${{ github.event.inputs.target_device }}
+            - **System**: ${{ github.event.inputs.system_version }}
+            - **KernelSU**: ${{ github.event.inputs.kernelsu_version }}
+            - **Additional Functions**: ${{ github.event.inputs.additional_function }}
+            
+            Built kernels for all requested device/system combinations.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
