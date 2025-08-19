@@ -149,7 +149,7 @@ jobs:
         run: |
           curl -F chat_id=${{ secrets.TG_CHAT_ID }} \
                -F document=@${{ env.KernelPath }} \
-               -F caption="Kernel for ${{ matrix.device }} - AOSP" \
+               -F caption="n0Kernel for ${{ matrix.device }}" \
                "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendDocument"
 
   release:
