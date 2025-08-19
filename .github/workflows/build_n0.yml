@@ -20,7 +20,6 @@ on:
           - 'aosp'
           - 'miui'
           - 'all'
-
       kernelsu_version:
         description: 'KernelSU Version'
         required: true
@@ -32,7 +31,6 @@ on:
           - 'rksu'
           - 'sukisu'
           - 'noksu'
-
       additional_function:
         description: 'Additional Functions'
         required: true
@@ -43,6 +41,18 @@ on:
           - 'susfs-kpm'
           - 'susfs'
           - 'kpm'
+      release_tag:
+        description: 'Custom release tag (leave empty to auto-generate)'
+        required: false
+        default: ''
+      upload_to_telegram:   # <-- নতুন ইনপুট
+        description: 'Upload kernel to Telegram?'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+          - 'yes'
+          - 'no'
 
 jobs:
   build:
@@ -67,7 +77,6 @@ jobs:
           curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
           sudo python2.7 get-pip.py
           pip2.7 --version
-            
 
       - name: Cache AOSP Clang
         uses: actions/cache@v4
@@ -104,25 +113,35 @@ jobs:
       - name: Set Kernel Path
         run: |
           if [[ "${{ github.event.inputs.system_version }}" == "aosp" || "${{ github.event.inputs.system_version }}" == "miui" ]]; then
-          KernelPath=$(ls N0Kernel_*.zip 2>/dev/null | head -n 1 || true)
-          echo "KernelPath=$(pwd)/$KernelPath" >> $GITHUB_ENV
+            KernelPath=$(ls N0Kernel_*.zip 2>/dev/null | head -n 1 || true)
+            echo "KernelPath=$(pwd)/$KernelPath" >> $GITHUB_ENV
           else
-          tar -czvf Kernel_All.tar.gz N0Kernel_*.zip
-          echo "KernelPath=$(pwd)/Kernel_All.tar.gz" >> $GITHUB_ENV
+            tar -czvf Kernel_All.tar.gz N0Kernel_*.zip
+            echo "KernelPath=$(pwd)/Kernel_All.tar.gz" >> $GITHUB_ENV
           fi
 
-     # - name: Upload Kernel to Telegram
-       # run: |
-        #  curl -F chat_id=${{ secrets.TG_CHAT_ID }} \
-             #  -F document=@${{ env.KernelPath }} \
-             #  "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendDocument"
-      
+      - name: Set Release Tag
+        id: release_tag
+        run: |
+          if [ -z "${{ github.event.inputs.release_tag }}" ]; then
+            TAG="${{ github.event.inputs.target_device }}-${{ github.event.inputs.system_version }}-${{ github.run_number }}"
+          else
+            TAG="${{ github.event.inputs.release_tag }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Upload Kernel to Telegram
+        if: ${{ github.event.inputs.upload_to_telegram == 'yes' }}
+        run: |
+          curl -F chat_id=${{ secrets.TG_CHAT_ID }} \
+               -F document=@${{ env.KernelPath }} \
+               "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendDocument"
+
       - name: Upload Kernel to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.target_device }}-${{ github.event.inputs.system_version }}-${{ github.run_number }}
+          tag_name: ${{ steps.release_tag.outputs.tag }}
           name: Kernel ${{ github.event.inputs.target_device }} (${{ github.event.inputs.system_version }})
           files: ${{ env.KernelPath }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
