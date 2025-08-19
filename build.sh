@@ -95,9 +95,10 @@ SuSFS_ENABLE=0
 KPM_ENABLE=0
 KSU_VERSION=$2
 ADDITIONAL=$3
-TARGET_SYSTEM=$4
+KERNEL_VERSION=$4
 
 echo "TARGET_DEVICE: $TARGET_DEVICE"
+echo "KERNEL_VERSION: $KERNEL_VERSION"
 
 KSU_ENABLE=$([[ "$KSU_VERSION" == "ksu" || "$KSU_VERSION" == "rksu" || "$KSU_VERSION" == "sukisu" || "$KSU_VERSION" == "sukisu-ultra" ]] && echo 1 || echo 0)
 
@@ -308,7 +309,7 @@ Generate_dtbo() {
 
     cd anykernel 
 
-    ZIP_FILENAME=N0Kernel_${TARGET_DEVICE}_${KSU_ZIP_STR}_$(date +'%Y%m%d_%H%M%S')_anykernel3_${GIT_COMMIT_ID}.zip
+    ZIP_FILENAME=N0Kernel_${KERNEL_VERSION}_${TARGET_DEVICE}_${KSU_ZIP_STR}_$(date +'%Y%m%d_%H%M%S')_anykernel3_${GIT_COMMIT_ID}.zip
 
     zip -r9 $ZIP_FILENAME ./* -x .git .gitignore out/ ./*.zip
 
