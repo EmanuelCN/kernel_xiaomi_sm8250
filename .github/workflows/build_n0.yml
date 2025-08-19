@@ -10,7 +10,8 @@ on:
         type: choice
         options:
           - 'alioth'
-          - 'pipa'
+          - 'munch'
+          - 'apollo'
       system_version:
         description: 'Target System'
         required: true
