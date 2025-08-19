@@ -8299,9 +8299,6 @@ void __init sched_init_smp(void)
 	/* Move init over to a non-isolated CPU */
 	if (set_cpus_allowed_ptr(current, housekeeping_cpumask(HK_FLAG_DOMAIN)) < 0)
 		BUG();
-#ifdef CONFIG_SCHED_WALT
-	cpumask_copy(&current->cpus_requested, cpu_possible_mask);
-#endif
 	sched_init_granularity();
 
 	init_sched_rt_class();
