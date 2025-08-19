@@ -141,7 +141,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_tag.outputs.tag }}
-          name: Kernel ${{ github.event.inputs.target_device }} (${{ github.event.inputs.system_version }})
+          name: Release ${{ steps.release_tag.outputs.tag }}
           files: ${{ env.KernelPath }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
