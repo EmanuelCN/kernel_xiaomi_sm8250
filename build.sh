@@ -2,6 +2,8 @@
 
 # Some logics of this script are copied from [scripts/build_kernel]. Thanks to UtsavBalar1231.
 
+# taken this from Prlsc and modified it so thanks to him
+
 # Ensure the script exits on error
 set -e
 
