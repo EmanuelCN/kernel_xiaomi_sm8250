@@ -360,9 +360,17 @@ Image_Repack(){
         exit 1
     fi
 
-    # KPM Patch
+      # KPM Patch - only for sukisu-ultra with KPM enabled
     if [[ "$KPM_ENABLE" -eq 1 && "$KSU_VERSION" == "sukisu-ultra" ]]; then
-        Patch_KPM
+        echo "Applying KPM patch..."
+        if Patch_KPM; then
+            echo "KPM patch applied successfully"
+        else
+            echo "Warning: KPM patch failed, continuing with original Image"
+            echo "This may cause boot issues if KPM features are required"
+            # You can choose to exit here if KPM is critical:
+            # exit 1
+        fi
     fi
 
     echo "Generating [out/arch/arm64/boot/dtb]......"
@@ -411,20 +419,79 @@ Generate_dtbo() {
 }
 
 Patch_KPM(){
-    cd out/arch/arm64/boot
-    curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch
-    chmod +x patch
-    ./patch
-    if [ $? -eq 0 ]; then
-        rm -f Image
-        mv oImage Image
-        echo "Image file repair complete"
-    else
-        echo "KPM Patch Failed, Use Original Image"
+    echo "Starting KPM patching process..."
+    
+    # Store original directory
+    ORIGINAL_DIR=$(pwd)
+    
+    # Create a temporary directory for patching
+    PATCH_DIR="$KERNEL_SRC/kpm_patch_temp"
+    mkdir -p "$PATCH_DIR"
+    cd "$PATCH_DIR"
+    
+    # Download the patch script
+    echo "Downloading KMP patch script..."
+    if ! curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kmp/patch_linux" -o patch_linux; then
+        echo "Error: Failed to download patch script"
+        cd "$ORIGINAL_DIR"
+        return 1
     fi
     
-    cd $KERNEL_SRC
-
+    # Make it executable
+    chmod +x patch_linux
+    
+    # Copy the Image.gz to patch directory
+    if [ ! -f "$KERNEL_SRC/out/arch/arm64/boot/Image.gz" ]; then
+        echo "Error: Image.gz not found at expected location"
+        cd "$ORIGINAL_DIR"
+        return 1
+    fi
+    
+    # Extract Image.gz for patching
+    echo "Extracting Image.gz for patching..."
+    cp "$KERNEL_SRC/out/arch/arm64/boot/Image.gz" ./
+    gunzip Image.gz
+    
+    if [ ! -f "Image" ]; then
+        echo "Error: Failed to extract Image from Image.gz"
+        cd "$ORIGINAL_DIR"
+        return 1
+    fi
+    
+    # Run the patch
+    echo "Applying KMP patch..."
+    if ./patch_linux; then
+        echo "KMP patch applied successfully"
+        
+        # Check if patched image exists
+        if [ -f "oImage" ]; then
+            # Replace original with patched version
+            mv oImage Image
+            
+            # Compress back to Image.gz
+            echo "Compressing patched Image..."
+            gzip Image
+            
+            # Replace the original Image.gz
+            cp Image.gz "$KERNEL_SRC/out/arch/arm64/boot/Image.gz"
+            echo "KMP patched Image.gz has been updated"
+            
+            # Cleanup
+            cd "$ORIGINAL_DIR"
+            rm -rf "$PATCH_DIR"
+            return 0
+        else
+            echo "Error: Patched image (oImage) not found after patching"
+            cd "$ORIGINAL_DIR"
+            rm -rf "$PATCH_DIR"
+            return 1
+        fi
+    else
+        echo "Error: KMP patch failed"
+        cd "$ORIGINAL_DIR"
+        rm -rf "$PATCH_DIR"
+        return 1
+    fi
 }
 
 if [ "$TARGET_SYSTEM" == "aosp" ];then
