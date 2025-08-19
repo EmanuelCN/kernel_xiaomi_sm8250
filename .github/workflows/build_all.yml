@@ -13,15 +13,6 @@ on:
           - 'munch'
           - 'apollo'
           - 'all'
-      system_version:
-        description: 'Target System'
-        required: true
-        type: choice
-        default: 'miui'
-        options:
-          - 'aosp'
-          - 'miui'
-          - 'all'
       kernelsu_version:
         description: 'KernelSU Version'
         required: true
@@ -69,7 +60,6 @@ jobs:
     runs-on: ubuntu-22.04
     outputs:
       devices: ${{ steps.set-matrix.outputs.devices }}
-      systems: ${{ steps.set-matrix.outputs.systems }}
     steps:
       - name: Set build matrix
         id: set-matrix
@@ -79,12 +69,6 @@ jobs:
           else
             echo 'devices=["${{ github.event.inputs.target_device }}"]' >> $GITHUB_OUTPUT
           fi
-          
-          if [ "${{ github.event.inputs.system_version }}" = "all" ]; then
-            echo 'systems=["aosp", "miui"]' >> $GITHUB_OUTPUT
-          else
-            echo 'systems=["${{ github.event.inputs.system_version }}"]' >> $GITHUB_OUTPUT
-          fi
 
   build:
     needs: prepare
@@ -93,7 +77,6 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJson(needs.prepare.outputs.devices) }}
-        system: ${{ fromJson(needs.prepare.outputs.systems) }}
 
     steps:
       - name: Clone Kernel Source
@@ -134,19 +117,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache_mikernel
-          key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ matrix.system }}-${{ github.sha }}
+          key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-ccache-${{ matrix.device }}-${{ matrix.system }}-
             ${{ runner.os }}-ccache-${{ matrix.device }}-
 
       - name: Build Kernel
         run: |
           sed -i 's|TOOLCHAIN_PATH=\$HOME/toolchain/clang-13289611/bin|TOOLCHAIN_PATH=$(pwd)/toolchain/clang-13289611/bin|' build.sh
           DEVICE="${{ matrix.device }}"
-          SYSTEM="${{ matrix.system }}"
           KSU_VERSION="${{ github.event.inputs.kernelsu_version }}"
           ADDITIONAL_FUNCTION="${{ github.event.inputs.additional_function }}"
-          bash build.sh "$DEVICE" "$KSU_VERSION" $ADDITIONAL_FUNCTION "$SYSTEM"
+          bash build.sh "$DEVICE" "$KSU_VERSION" "$ADDITIONAL_FUNCTION"
 
       - name: Set Kernel Path and Name
         id: kernel-info
@@ -159,7 +140,7 @@ jobs:
       - name: Upload Kernel Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-${{ matrix.device }}-${{ matrix.system }}
+          name: kernel-${{ matrix.device }}
           path: ${{ env.KernelPath }}
           retention-days: 7
 
@@ -168,7 +149,7 @@ jobs:
         run: |
           curl -F chat_id=${{ secrets.TG_CHAT_ID }} \
                -F document=@${{ env.KernelPath }} \
-               -F caption="Kernel for ${{ matrix.device }} - ${{ matrix.system }}" \
+               -F caption="Kernel for ${{ matrix.device }} - AOSP" \
                "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendDocument"
 
   release:
@@ -185,14 +166,10 @@ jobs:
         id: release_tag
         run: |
           if [ -z "${{ github.event.inputs.release_tag }}" ]; then
-            if [ "${{ github.event.inputs.target_device }}" = "all" ] && [ "${{ github.event.inputs.system_version }}" = "all" ]; then
-              TAG="all-devices-all-systems-${{ github.run_number }}"
-            elif [ "${{ github.event.inputs.target_device }}" = "all" ]; then
-              TAG="all-devices-${{ github.event.inputs.system_version }}-${{ github.run_number }}"
-            elif [ "${{ github.event.inputs.system_version }}" = "all" ]; then
-              TAG="${{ github.event.inputs.target_device }}-all-systems-${{ github.run_number }}"
+            if [ "${{ github.event.inputs.target_device }}" = "all" ]; then
+              TAG="all-devices-aosp-${{ github.run_number }}"
             else
-              TAG="${{ github.event.inputs.target_device }}-${{ github.event.inputs.system_version }}-${{ github.run_number }}"
+              TAG="${{ github.event.inputs.target_device }}-aosp-${{ github.run_number }}"
             fi
           else
             TAG="${{ github.event.inputs.release_tag }}"
@@ -213,10 +190,10 @@ jobs:
           body: |
             ## Kernel Build Summary
             - **Devices**: ${{ github.event.inputs.target_device }}
-            - **System**: ${{ github.event.inputs.system_version }}
+            - **System**: AOSP
             - **KernelSU**: ${{ github.event.inputs.kernelsu_version }}
             - **Additional Functions**: ${{ github.event.inputs.additional_function }}
             
-            Built kernels for all requested device/system combinations.
+            Built kernels for all requested devices with AOSP integration.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
