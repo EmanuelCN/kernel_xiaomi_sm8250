@@ -156,8 +156,30 @@ echo "Cleaning..."
 rm -rf out/
 rm -rf anykernel/
 
-echo "Clone AnyKernel3 for packing kernel (repo: https://github.com/Sayemx18/AKalioth)"
-git clone https://github.com/Sayemx18/AKalioth -b main --single-branch --depth=1 anykernel
+# Clone device-specific AnyKernel3 repository
+Clone_AnyKernel() {
+    case "$TARGET_DEVICE" in
+        "alioth")
+            echo "Clone AnyKernel3 for alioth (repo: https://github.com/Sayemx18/AKalioth)"
+            git clone https://github.com/Sayemx18/AKalioth -b main --single-branch --depth=1 anykernel
+            ;;
+        "apollo")
+            echo "Clone AnyKernel3 for apollo (repo: https://github.com/Sayemx18/AKapollo)"
+            git clone https://github.com/Sayemx18/AKapollo -b main --single-branch --depth=1 anykernel
+            ;;
+        "munch")
+            echo "Clone AnyKernel3 for munch (repo: https://github.com/Sayemx18/AKmunch)"
+            git clone https://github.com/Sayemx18/AKmunch -b main --single-branch --depth=1 anykernel
+            ;;
+        *)
+            echo "Unknown device: $TARGET_DEVICE. Using default AnyKernel3 for alioth..."
+            git clone https://github.com/Sayemx18/AKalioth -b main --single-branch --depth=1 anykernel
+            ;;
+    esac
+}
+
+# Call the function to clone appropriate AnyKernel3
+Clone_AnyKernel
 
 # Add date to local version
 local_version_str="-perf"
@@ -412,7 +434,7 @@ Generate_dtbo() {
 
 Patch_KPM(){
     cd out/arch/arm64/boot
-    curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch
+    curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kmp/patch_linux" -o patch
     chmod +x patch
     ./patch
     if [ $? -eq 0 ]; then
