@@ -400,7 +400,7 @@ Generate_dtbo() {
     if [ "$1" == "MIUI" ]; then
         ZIP_FILENAME=N0Kernel_MIUI_${TARGET_DEVICE}_${KSU_ZIP_STR}_$(date +'%Y%m%d_%H%M%S')_anykernel3_${GIT_COMMIT_ID}.zip
     else
-        ZIP_FILENAME=N0Kernel_16.3.7_${TARGET_DEVICE}_${KSU_ZIP_STR}_$(date +'%Y%m%d_%H%M%S')_anykernel3_${GIT_COMMIT_ID}.zip
+        ZIP_FILENAME=N0Kernel_16.3.9_${TARGET_DEVICE}_${KSU_ZIP_STR}_$(date +'%Y%m%d_%H%M%S')_anykernel3_${GIT_COMMIT_ID}.zip
     fi
 
     zip -r9 $ZIP_FILENAME ./* -x .git .gitignore out/ ./*.zip
