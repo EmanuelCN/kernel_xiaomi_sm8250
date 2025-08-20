@@ -2813,7 +2813,7 @@ static int sched_partition_show(struct seq_file *seq, void *v)
 		break;
 	case PRS_INVALID_ROOT:
 		type = "root";
-		fallthrough;
+       		/* fall through */
 	case PRS_INVALID_ISOLATED:
 		if (!type)
 			type = "isolated";
