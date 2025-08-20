@@ -242,7 +242,6 @@ wlansap_filter_unsafe_ch(struct wlan_objmgr_psoc *psoc,
 {
 	uint16_t i;
 	uint16_t num_safe_ch = 0;
-	uint32_t freq;
 
 	/*
 	 * There are two channel list, one acs cfg channel list, and one
@@ -258,15 +257,10 @@ wlansap_filter_unsafe_ch(struct wlan_objmgr_psoc *psoc,
 	 * the acs channel list before chosing one of them as a default channel
 	 */
 	for (i = 0; i < sap_ctx->acs_cfg->ch_list_count; i++) {
-		/*
-		 * Keep unsafe channel if it's STA+SAP SCC and
-		 * STA+SAP SCC on LTE coex channel is allowed
-		 */
-		freq = sap_ctx->acs_cfg->freq_list[i];
-		if (!((policy_mgr_sta_sap_scc_on_lte_coex_chan(psoc) &&
-		       policy_mgr_is_sta_sap_scc(psoc, freq)) ||
-		      policy_mgr_is_safe_channel(psoc, freq))) {
-			sap_debug("unsafe freq %d removed from acs list", freq);
+		if (!policy_mgr_is_safe_channel(
+				psoc, sap_ctx->acs_cfg->freq_list[i])) {
+			sap_debug("unsafe freq %d removed from acs list",
+				  sap_ctx->acs_cfg->freq_list[i]);
 			continue;
 		}
 		/* Add only safe channels to the acs cfg ch list */

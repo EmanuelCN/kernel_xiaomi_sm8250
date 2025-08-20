@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -3149,6 +3150,43 @@ bool policy_mgr_is_multiple_active_sta_sessions(struct wlan_objmgr_psoc *psoc)
 		psoc, PM_STA_MODE, NULL) > 1;
 }
 
+bool policy_mgr_is_sta_present_on_dfs_channel(struct wlan_objmgr_psoc *psoc,
+					      uint8_t *vdev_id,
+					      qdf_freq_t *ch_freq,
+					      enum hw_mode_bandwidth *ch_width)
+{
+	struct policy_mgr_conc_connection_info *conn_info;
+	bool status = false;
+	uint32_t conn_index = 0;
+	struct policy_mgr_psoc_priv_obj *pm_ctx;
+
+	pm_ctx = policy_mgr_get_context(psoc);
+	if (!pm_ctx) {
+		policy_mgr_err("Invalid Context");
+		return false;
+	}
+	qdf_mutex_acquire(&pm_ctx->qdf_conc_list_lock);
+	for (conn_index = 0; conn_index < MAX_NUMBER_OF_CONC_CONNECTIONS;
+	     conn_index++) {
+		conn_info = &pm_conc_connection_list[conn_index];
+		if (conn_info->in_use &&
+		    (conn_info->mode == PM_STA_MODE ||
+		     conn_info->mode == PM_P2P_CLIENT_MODE) &&
+		    (wlan_reg_is_dfs_for_freq(pm_ctx->pdev, conn_info->freq) ||
+		     (wlan_reg_is_5ghz_ch_freq(conn_info->freq) &&
+		      conn_info->bw == HW_MODE_160_MHZ))) {
+			*vdev_id = conn_info->vdev_id;
+			*ch_freq = pm_conc_connection_list[conn_index].freq;
+			*ch_width = conn_info->bw;
+			status = true;
+			break;
+		}
+	}
+	qdf_mutex_release(&pm_ctx->qdf_conc_list_lock);
+
+	return status;
+}
+
 /**
  * policy_mgr_is_sta_active_connection_exists() - Check if a STA
  * connection is active
@@ -3835,24 +3873,6 @@ bool policy_mgr_is_sta_sap_scc_allowed_on_dfs_chan(
 	return status;
 }
 
-bool policy_mgr_is_sap_only_allow_sta_dfs_indoor_chan(
-		struct wlan_objmgr_psoc *psoc)
-{
-	struct policy_mgr_psoc_priv_obj *pm_ctx;
-	bool status = true;
-
-	pm_ctx = policy_mgr_get_context(psoc);
-	if (!pm_ctx) {
-		policy_mgr_err("Invalid Context");
-		return status;
-	}
-
-	if (!pm_ctx->cfg.sap_only_allow_sta_dfs_indoor_chan)
-		status = false;
-
-	return status;
-}
-
 bool policy_mgr_is_sta_connected_2g(struct wlan_objmgr_psoc *psoc)
 {
 	struct policy_mgr_psoc_priv_obj *pm_ctx;
@@ -3872,6 +3892,35 @@ bool policy_mgr_is_sta_connected_2g(struct wlan_objmgr_psoc *psoc)
 				WLAN_REG_MAX_24GHZ_CHAN_FREQ &&
 		    pm_conc_connection_list[conn_index].in_use)
 			ret = true;
+	}
+	qdf_mutex_release(&pm_ctx->qdf_conc_list_lock);
+
+	return ret;
+}
+
+bool
+policy_mgr_is_connected_sta_5g(struct wlan_objmgr_psoc *psoc, qdf_freq_t *freq)
+{
+	struct policy_mgr_psoc_priv_obj *pm_ctx;
+	uint32_t conn_index;
+	bool ret = false;
+
+	pm_ctx = policy_mgr_get_context(psoc);
+	if (!pm_ctx) {
+		policy_mgr_err("Invalid Context");
+		return ret;
+	}
+
+	qdf_mutex_acquire(&pm_ctx->qdf_conc_list_lock);
+	for (conn_index = 0; conn_index < MAX_NUMBER_OF_CONC_CONNECTIONS;
+	     conn_index++) {
+		*freq = pm_conc_connection_list[conn_index].freq;
+		if (pm_conc_connection_list[conn_index].mode == PM_STA_MODE &&
+		    WLAN_REG_IS_5GHZ_CH_FREQ(*freq) &&
+		    pm_conc_connection_list[conn_index].in_use) {
+			ret = true;
+			break;
+		}
 	}
 	qdf_mutex_release(&pm_ctx->qdf_conc_list_lock);
 

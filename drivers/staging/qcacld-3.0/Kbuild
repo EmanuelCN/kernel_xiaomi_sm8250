@@ -94,8 +94,7 @@ HDD_OBJS := 	$(HDD_SRC_DIR)/wlan_hdd_assoc.o \
 		$(HDD_SRC_DIR)/wlan_hdd_trace.o \
 		$(HDD_SRC_DIR)/wlan_hdd_tx_rx.o \
 		$(HDD_SRC_DIR)/wlan_hdd_wmm.o \
-		$(HDD_SRC_DIR)/wlan_hdd_wowl.o \
-		$(HDD_SRC_DIR)/wlan_hdd_dynamic_nss.o
+		$(HDD_SRC_DIR)/wlan_hdd_wowl.o
 
 ifeq ($(CONFIG_WLAN_FEATURE_PERIODIC_STA_STATS), y)
 HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_periodic_sta_stats.o
@@ -641,6 +640,7 @@ QDF_OBJS := \
 	$(QDF_LINUX_OBJ_DIR)/qdf_periodic_work.o \
 	$(QDF_LINUX_OBJ_DIR)/qdf_status.o \
 	$(QDF_LINUX_OBJ_DIR)/qdf_threads.o \
+	$(QDF_LINUX_OBJ_DIR)/qdf_trace.o \
 	$(QDF_OBJ_DIR)/qdf_flex_mem.o \
 	$(QDF_OBJ_DIR)/qdf_parse.o \
 	$(QDF_OBJ_DIR)/qdf_platform.o \
@@ -648,10 +648,6 @@ QDF_OBJS := \
 	$(QDF_OBJ_DIR)/qdf_talloc.o \
 	$(QDF_OBJ_DIR)/qdf_types.o \
 
-ifeq ($(BUILD_DEBUG_VERSION), y)
-QDF_OBJS += $(QDF_LINUX_OBJ_DIR)/qdf_trace.o
-endif
- 
 ifeq ($(CONFIG_WLAN_DEBUGFS), y)
 QDF_OBJS += $(QDF_LINUX_OBJ_DIR)/qdf_debugfs.o
 endif
@@ -2304,6 +2300,7 @@ ccflags-y += $(INCS)
 
 cppflags-y +=	-DANI_OS_TYPE_ANDROID=6 \
 		-Wall\
+		-Werror\
 		-D__linux__
 
 cppflags-$(CONFIG_PTT_SOCK_SVC_ENABLE) += -DPTT_SOCK_SVC_ENABLE
@@ -2376,7 +2373,7 @@ cppflags-$(CONFIG_PLD_PCIE_INIT_FLAG) += -DCONFIG_PLD_PCIE_INIT
 cppflags-$(CONFIG_WLAN_FEATURE_DP_RX_THREADS) += -DFEATURE_WLAN_DP_RX_THREADS
 cppflags-$(CONFIG_WLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT) += -DWLAN_FEATURE_RX_SOFTIRQ_TIME_LIMIT
 cppflags-$(CONFIG_FEATURE_HAL_DELAYED_REG_WRITE) += -DFEATURE_HAL_DELAYED_REG_WRITE
-
+cppflags-$(CONFIG_SHADOW_WRITE_DELAY) += -DSHADOW_WRITE_DELAY
 
 cppflags-$(CONFIG_PLD_USB_CNSS) += -DCONFIG_PLD_USB_CNSS
 cppflags-$(CONFIG_PLD_SDIO_CNSS2) += -DCONFIG_PLD_SDIO_CNSS2
@@ -2423,7 +2420,7 @@ cppflags-$(CONFIG_FEATURE_PKTLOG) +=     -DFEATURE_PKTLOG
 
 ifeq ($(CONFIG_WLAN_NAPI), y)
 cppflags-y += -DFEATURE_NAPI
-#cppflags-y += -DHIF_IRQ_AFFINITY
+cppflags-y += -DHIF_IRQ_AFFINITY
 ifeq ($(CONFIG_WLAN_NAPI_DEBUG), y)
 cppflags-y += -DFEATURE_NAPI_DEBUG
 endif
@@ -3081,9 +3078,6 @@ cppflags-$(CONFIG_SAP_AVOID_ACS_FREQ_LIST) += -DSAP_AVOID_ACS_FREQ_LIST
 #Flag to enable Dynamic Voltage WDCVS (Config Voltage Mode)
 cppflags-$(CONFIG_WLAN_DYNAMIC_CVM) += -DFEATURE_WLAN_DYNAMIC_CVM
 
-#Flag to enable dynamic Nss strategy for power saving.
-cppflags-y += -DFEATURE_WLAN_DYNAMIC_NSS
-
 #Flag to enable get firmware state feature
 cppflags-$(CONFIG_QCACLD_FEATURE_FW_STATE) += -DFEATURE_FW_STATE
 
@@ -3236,7 +3230,7 @@ ccflags-y += -DWLAN_PDEV_MAX_VDEVS=$(CONFIG_WLAN_PDEV_MAX_VDEVS)
 CONFIG_WLAN_PSOC_MAX_VDEVS ?= $(CONFIG_WLAN_MAX_VDEVS)
 ccflags-y += -DWLAN_PSOC_MAX_VDEVS=$(CONFIG_WLAN_PSOC_MAX_VDEVS)
 
-CONFIG_MAX_SCAN_CACHE_SIZE ?= 300
+CONFIG_MAX_SCAN_CACHE_SIZE ?= 500
 ccflags-y += -DMAX_SCAN_CACHE_SIZE=$(CONFIG_MAX_SCAN_CACHE_SIZE)
 CONFIG_SCAN_MAX_REST_TIME ?= 0
 ccflags-y += -DSCAN_MAX_REST_TIME=$(CONFIG_SCAN_MAX_REST_TIME)
@@ -3326,6 +3320,7 @@ cppflags-$(CONFIG_HIF_CPU_PERF_AFFINE_MASK) += -DHIF_CPU_PERF_AFFINE_MASK
 cppflags-$(CONFIG_SMMU_S1_UNMAP) += -DCONFIG_SMMU_S1_UNMAP
 cppflags-$(CONFIG_GENERIC_SHADOW_REGISTER_ACCESS_ENABLE) += -DGENERIC_SHADOW_REGISTER_ACCESS_ENABLE
 cppflags-$(CONFIG_IPA_SET_RESET_TX_DB_PA) += -DIPA_SET_RESET_TX_DB_PA
+cppflags-$(CONFIG_DUMP_REO_QUEUE_INFO_IN_DDR) += -DDUMP_REO_QUEUE_INFO_IN_DDR
 
 KBUILD_CPPFLAGS += $(cppflags-y)
 

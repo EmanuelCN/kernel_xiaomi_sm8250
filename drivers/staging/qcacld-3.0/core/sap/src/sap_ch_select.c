@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -465,7 +464,10 @@ static bool sap_chan_sel_init(mac_handle_t mac_handle,
 		}
 
 		if (!include_dfs_ch ||
-		    sta_sap_scc_on_dfs_chnl_config_value == 1) {
+		    (sta_sap_scc_on_dfs_chnl_config_value ==
+				PM_STA_SAP_ON_DFS_MASTER_MODE_DISABLED &&
+		     !policy_mgr_is_sta_sap_scc(mac->psoc,
+						pSpectCh->chan_freq))) {
 			if (wlan_reg_is_dfs_for_freq(mac->pdev,
 						     pSpectCh->chan_freq)) {
 				QDF_TRACE(QDF_MODULE_ID_SAP,
@@ -477,18 +479,8 @@ static bool sap_chan_sel_init(mac_handle_t mac_handle,
 			}
 		}
 
-		/*
-		 * DO NOT skip unsafe channel if it's STA+SAP SCC and
-		 * STA+SAP SCC on LTE coex channel is allowed
-		 */
-		if (!((policy_mgr_sta_sap_scc_on_lte_coex_chan(mac->psoc) &&
-		       policy_mgr_is_sta_sap_scc(mac->psoc, *pChans)) ||
-		      policy_mgr_is_safe_channel(mac->psoc, *pChans))) {
-			QDF_TRACE(QDF_MODULE_ID_SAP, QDF_TRACE_LEVEL_INFO_HIGH,
-				  "%s: Skip unsafe freq %d",
-				  __func__, *pChans);
+		if (!policy_mgr_is_safe_channel(mac->psoc, *pChans))
 			continue;
-		}
 
 		/* OFDM rates are not supported on channel 14 */
 		if (channel == 14 &&
@@ -1420,8 +1412,7 @@ static void sap_compute_spect_weight(tSapChSelSpectInfo *pSpectInfoParams,
 
 		chan_freq = pSpectCh->chan_freq;
 
-		if (wlan_reg_is_dfs_for_freq(mac->pdev, chan_freq) ||
-		    wlan_reg_is_freq_indoor(mac->pdev, chan_freq)) {
+		if (wlan_reg_is_dfs_for_freq(mac->pdev, chan_freq)) {
 			normalize_factor =
 				MLME_GET_DFS_CHAN_WEIGHT(
 				mac->mlme_cfg->acs.np_chan_weightage);

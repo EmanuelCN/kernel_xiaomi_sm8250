@@ -529,6 +529,7 @@ static int dp_rx_thread_loop(void *arg)
 	tm_handle_cmn = rx_thread->rtm_handle_cmn;
 
 	qdf_set_user_nice(qdf_get_current_task(), -1);
+	qdf_set_wake_up_idle(true);
 
 	qdf_event_set(&rx_thread->start_event);
 	dp_info("starting rx_thread (%s) id %d pid %d", qdf_get_current_comm(),
@@ -590,7 +591,6 @@ static void dp_rx_tm_thread_napi_init(struct dp_rx_thread *rx_thread)
 	init_dummy_netdev(&rx_thread->netdev);
 	netif_napi_add(&rx_thread->netdev, &rx_thread->napi,
 		       dp_rx_tm_thread_napi_poll, 64);
-	dev_set_threaded(&rx_thread->netdev, true);
 	napi_enable(&rx_thread->napi);
 }
 

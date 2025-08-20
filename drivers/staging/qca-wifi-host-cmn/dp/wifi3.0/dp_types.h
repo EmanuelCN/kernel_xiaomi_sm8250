@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -586,6 +587,7 @@ struct dp_rx_tid {
 	uint8_t pn_size;
 	/* REO TID queue descriptors */
 	void *hw_qdesc_vaddr_unaligned;
+	void *hw_qdesc_vaddr_aligned;
 	qdf_dma_addr_t hw_qdesc_paddr_unaligned;
 	qdf_dma_addr_t hw_qdesc_paddr;
 	uint32_t hw_qdesc_alloc_size;
@@ -873,6 +875,8 @@ struct dp_soc_stats {
 			uint32_t peer_unauth_rx_pkt_drop;
 			/* MSDU len err count */
 			uint32_t msdu_len_err;
+			/* Rx invalid tid count */
+			uint32_t rx_invalid_tid_err;
 		} err;
 
 		/* packet count per core - per ring */

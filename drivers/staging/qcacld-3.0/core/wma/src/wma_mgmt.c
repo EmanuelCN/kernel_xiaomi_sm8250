@@ -836,20 +836,6 @@ void wma_set_sta_keep_alive(tp_wma_handle wma, uint8_t vdev_id,
 	wmi_unified_set_sta_keep_alive_cmd(wma->wmi_handle, &params);
 }
 
-#if IS_ENABLED(CONFIG_BOARD_ELISH) || IS_ENABLED(CONFIG_BOARD_ENUMA)
-void wma_register_install_key_complete_cb(wma_install_key_complete_cb cb)
-{
-	tp_wma_handle wma_handle = cds_get_context(QDF_MODULE_ID_WMA);
-
-	if (!wma_handle) {
-		wma_err("wma handle is NULL");
-		return;
-	}
-
-	wma_handle->install_key_complete_cb = cb;
-}
-#endif
-
 /*
  * 802.11n D2.0 defined values for "Minimum MPDU Start Spacing":
  *   0 for no restriction
@@ -1514,7 +1500,8 @@ QDF_STATUS wma_send_peer_assoc(tp_wma_handle wma,
 				     ((1 << cmd->peer_nss) - 1));
 			WMI_VHT_MCS_NOTIFY_EXT_SS_SET(cmd->tx_mcs_set, 1);
 		}
-		if (params->vht_extended_nss_bw_cap) {
+		if (params->vht_extended_nss_bw_cap &&
+		    (params->vht_160mhz_nss || params->vht_80p80mhz_nss)) {
 			/*
 			 * bit[2:0] : Represents value of Rx NSS for 160 MHz
 			 * bit[5:3] : Represents value of Rx NSS for 80_80 MHz
@@ -1523,9 +1510,12 @@ QDF_STATUS wma_send_peer_assoc(tp_wma_handle wma,
 			 * bit[31]  : MSB(0/1): 1 in case of valid data
 			 */
 			cmd->peer_bw_rxnss_override |= (1 << 31);
-			cmd->peer_bw_rxnss_override |= params->vht_160mhz_nss;
-			cmd->peer_bw_rxnss_override |=
-				(params->vht_80p80mhz_nss << 3);
+			if (params->vht_160mhz_nss)
+				cmd->peer_bw_rxnss_override |=
+					(params->vht_160mhz_nss - 1);
+			if (params->vht_80p80mhz_nss)
+				cmd->peer_bw_rxnss_override |=
+					((params->vht_80p80mhz_nss - 1) << 3);
 			wma_debug("peer_bw_rxnss_override %0X",
 				  cmd->peer_bw_rxnss_override);
 		}

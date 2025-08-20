@@ -4965,7 +4965,7 @@ int wma_extscan_hotlist_match_event_handler(void *handle,
 		return -ENOMEM;
 
 	dest_ap = &dest_hotlist->ap[0];
-	dest_hotlist->numOfAps = event->total_entries;
+	dest_hotlist->numOfAps = numap;
 	dest_hotlist->requestId = event->config_request_id;
 
 	if (event->first_entry_index +
@@ -5132,6 +5132,7 @@ static int wma_group_num_bss_to_scan_id(const u_int8_t *cmd_param_info,
 	struct extscan_cached_scan_results *t_cached_result;
 	struct extscan_cached_scan_result *t_scan_id_grp;
 	int i, j;
+	uint32_t total_scan_num_results = 0;
 	tSirWifiScanResult *ap;
 
 	param_buf = (WMI_EXTSCAN_CACHED_RESULTS_EVENTID_param_tlvs *)
@@ -5142,17 +5143,19 @@ static int wma_group_num_bss_to_scan_id(const u_int8_t *cmd_param_info,
 	t_cached_result = cached_result;
 	t_scan_id_grp = &t_cached_result->result[0];
 
-	if ((t_cached_result->num_scan_ids *
-	     QDF_MIN(t_scan_id_grp->num_results,
-		     param_buf->num_bssid_list)) > param_buf->num_bssid_list) {
-		WMA_LOGE("%s:num_scan_ids %d, num_results %d num_bssid_list %d",
-			 __func__,
-			 t_cached_result->num_scan_ids,
-			 t_scan_id_grp->num_results,
-			 param_buf->num_bssid_list);
+	for (i = 0; i < t_cached_result->num_scan_ids; i++) {
+		total_scan_num_results += t_scan_id_grp->num_results;
+		t_scan_id_grp++;
+	}
+
+	if (total_scan_num_results > param_buf->num_bssid_list) {
+		wma_err("total_scan_num_results %d, num_bssid_list %d",
+			total_scan_num_results,
+			param_buf->num_bssid_list);
 		return -EINVAL;
 	}
 
+	t_scan_id_grp = &t_cached_result->result[0];
 	WMA_LOGD("%s: num_scan_ids:%d", __func__,
 			t_cached_result->num_scan_ids);
 	for (i = 0; i < t_cached_result->num_scan_ids; i++) {
@@ -5164,8 +5167,7 @@ static int wma_group_num_bss_to_scan_id(const u_int8_t *cmd_param_info,
 			return -ENOMEM;
 
 		ap = &t_scan_id_grp->ap[0];
-		for (j = 0; j < QDF_MIN(t_scan_id_grp->num_results,
-					param_buf->num_bssid_list); j++) {
+		for (j = 0; j < t_scan_id_grp->num_results; j++) {
 			ap->channel = src_hotlist->channel;
 			ap->ts = WMA_MSEC_TO_USEC(src_rssi->tstamp);
 			ap->rtt = src_hotlist->rtt;

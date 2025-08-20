@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -214,6 +215,9 @@
 #define WLAN_BSS_MEMBERSHIP_SELECTOR_EPD          124
 #define WLAN_BSS_MEMBERSHIP_SELECTOR_SAE_H2E      123
 #define WLAN_BSS_MEMBERSHIP_SELECTOR_HE_PHY       122
+
+#define WLAN_MIN_HECAP_IE_LEN  22
+#define WLAN_MAX_HECAP_IE_LEN  55
 
 #define WLAN_CHAN_IS_5GHZ(chanidx) \
 	((chanidx > 30) ? true : false)

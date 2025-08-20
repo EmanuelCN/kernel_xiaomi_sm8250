@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4677,6 +4678,10 @@ void dp_print_soc_cfg_params(struct dp_soc *soc)
 		       soc_cfg_ctx->sg_enabled);
 	DP_PRINT_STATS("Gro enabled: %u ",
 		       soc_cfg_ctx->gro_enabled);
+	DP_PRINT_STATS("TC based dynamic GRO: %u ",
+		       soc_cfg_ctx->tc_based_dynamic_gro);
+	DP_PRINT_STATS("TC ingress prio: %u ",
+		       soc_cfg_ctx->tc_ingress_prio);
 	DP_PRINT_STATS("rawmode enabled: %u ",
 		       soc_cfg_ctx->rawmode_enabled);
 	DP_PRINT_STATS("peer flow ctrl enabled: %u ",
@@ -6128,6 +6133,8 @@ dp_print_soc_rx_stats(struct dp_soc *soc)
 		       soc->stats.rx.err.reo_cmd_send_fail);
 
 	DP_PRINT_STATS("Rx BAR frames:%d", soc->stats.rx.bar_frame);
+	DP_PRINT_STATS("Rx invalid TID count:%d",
+		       soc->stats.rx.err.rx_invalid_tid_err);
 }
 
 #ifdef FEATURE_TSO_STATS

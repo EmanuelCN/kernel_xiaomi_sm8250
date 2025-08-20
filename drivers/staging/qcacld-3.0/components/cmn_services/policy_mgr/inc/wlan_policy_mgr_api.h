@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -2750,6 +2751,22 @@ QDF_STATUS policy_mgr_get_updated_scan_and_fw_mode_config(
 		uint32_t channel_select_logic_conc);
 
 /**
+ * policy_mgr_is_sta_present_on_dfs_channel() - to find whether any DFS STA is
+ *                                              present
+ * @psoc: PSOC object information
+ * @vdev_id: pointer to vdev_id. It will be filled with the vdev_id of DFS STA
+ * @ch_freq: pointer to channel frequency on which DFS STA is present
+ * @ch_width: pointer channel width on which DFS STA is connected
+ * If any STA is connected on DFS channel then this function will return true
+ *
+ * Return: true if session is on DFS or false if session is on non-dfs channel
+ */
+bool policy_mgr_is_sta_present_on_dfs_channel(struct wlan_objmgr_psoc *psoc,
+					      uint8_t *vdev_id,
+					      qdf_freq_t *ch_freq,
+					      enum hw_mode_bandwidth *ch_width);
+
+/**
  * policy_mgr_is_safe_channel - Check if the channel is in LTE
  * coex channel avoidance list
  * @psoc: PSOC object information
@@ -2950,18 +2967,6 @@ void policy_mgr_set_weight_of_dfs_passive_channels_to_zero(
  */
 bool policy_mgr_is_sta_sap_scc_allowed_on_dfs_chan(
 		struct wlan_objmgr_psoc *psoc);
-
-/**
- * policy_mgr_is_sap_only_allow_sta_dfs_indoor_chan() - check if disallow
- * sap to work on dfs/indoor chan outside mac working freq
- * @psoc: pointer to soc
- * check if disallow sap to work on dfs/indoor chan outside mac working freq
- *
- * Return: true if disallowsap to work on dfs/indoor chan outside mac working freq
- */
-bool policy_mgr_is_sap_only_allow_sta_dfs_indoor_chan(
-		struct wlan_objmgr_psoc *psoc);
-
 /**
  * policy_mgr_is_sta_connected_2g() - check if sta connected in 2g
  * @psoc: pointer to soc
@@ -2969,6 +2974,16 @@ bool policy_mgr_is_sap_only_allow_sta_dfs_indoor_chan(
  * Return: true if sta is connected in 2g else false
  */
 bool policy_mgr_is_sta_connected_2g(struct wlan_objmgr_psoc *psoc);
+
+/**
+ * policy_mgr_is_connected_sta_5g() - check if sta connected in 5 GHz
+ * @psoc: pointer to soc
+ * @freq: Pointer to the frequency on which sta is connected
+ *
+ * Return: true if sta is connected in 5 GHz else false
+ */
+bool policy_mgr_is_connected_sta_5g(struct wlan_objmgr_psoc *psoc,
+				    qdf_freq_t *freq);
 
 /**
  * policy_mgr_scan_trim_5g_chnls_for_dfs_ap() - check if sta scan should skip
