@@ -657,10 +657,10 @@ QDF_STATUS fwol_configure_hw_assist(struct wlan_objmgr_pdev *pdev,
 				    bool disable_hw_assist)
 {
 	QDF_STATUS status;
-	struct pdev_params pdev_param;
-
-	pdev_param.param_id = WMI_PDEV_PARAM_DISABLE_HW_ASSIST;
-	pdev_param.param_value = disable_hw_assist;
+	struct pdev_params pdev_param = {
+		.param_id = WMI_PDEV_PARAM_DISABLE_HW_ASSIST,
+		.param_value = disable_hw_assist
+	};
 
 	status = tgt_fwol_pdev_param_send(pdev, pdev_param);
 	if (QDF_IS_STATUS_ERROR(status))
