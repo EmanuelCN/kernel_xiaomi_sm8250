@@ -991,7 +991,7 @@ static int pd_select_pdo(struct usbpd *pd, int pdo_pos, int uv, int ua)
 	pd->requested_current = curr;
 	pd->requested_pdo = pdo_pos;
 
-#ifdef CONFIG_MACH_XIAOMI_DAGU
+#ifdef CONFIG_BOARD_DAGU
 	if ((pd->requested_pdo == 1) && (pd->requested_current > 2500)) {
 		pd->requested_current = 2500;
 	}
@@ -1102,11 +1102,11 @@ static int pd_eval_src_caps(struct usbpd *pd)
 
 	/* Select the first PDO (vSafe5V) immediately. */
 	/* Select thr first PDO for zimi adapter*/
-#ifndef CONFIG_MACH_XIAOMI_MUNCH
+#ifndef CONFIG_BOARD_MUNCH
 	if (pd->batt_2s && pd->adapter_id == 0xA819)
 		pd_select_pdo(pd, 2, 0, 0);
 	else if (pd->request_reject == 1) {
-#ifndef CONFIG_MACH_XIAOMI_DAGU
+#ifndef CONFIG_BOARD_DAGU
 		if (pd->rdo == 0) {
 			usbpd_err(&pd->dev, "Invalid rdo, first pdo %08x\n", first_pdo);
 			pd_select_pdo(pd, 1, 0, 0);
@@ -1929,7 +1929,7 @@ static void handle_vdm_tx(struct usbpd *pd, enum pd_sop_type sop_type)
 	 * PD 3.0: For initiated SVDMs, source must first ensure Rp is set
 	 * to SinkTxNG to indicate the start of an AMS
 	 */
-#ifndef CONFIG_MACH_XIAOMI_DAGU
+#ifndef CONFIG_BOARD_DAGU
 	if (VDM_IS_SVDM(vdm_hdr) &&
 		SVDM_HDR_CMD_TYPE(vdm_hdr) == SVDM_CMD_TYPE_INITIATOR &&
 		pd->current_pr == PR_SRC && !in_src_ams(pd)) {
@@ -2949,7 +2949,7 @@ static void handle_state_snk_wait_for_capabilities(struct usbpd *pd,
 		memcpy(&pd->received_pdos, rx_msg->payload,
 				min_t(size_t, rx_msg->data_len,
 					sizeof(pd->received_pdos)));
-#ifndef CONFIG_MACH_XIAOMI_MUNCH
+#ifndef CONFIG_BOARD_MUNCH
 		if (pd->request_reject)
 			pd->request_reject = false;
 #endif
@@ -3970,8 +3970,8 @@ sm_done:
 
 	/* requeue if there are any new/pending RX messages */
 	if (!ret &&
-		((!IS_ENABLED(CONFIG_MACH_XIAOMI_MUNCH) &&
-		  !IS_ENABLED(CONFIG_MACH_XIAOMI_DAGU)) || !pd->sm_queued)
+		((!IS_ENABLED(CONFIG_BOARD_MUNCH) &&
+		  !IS_ENABLED(CONFIG_BOARD_DAGU)) || !pd->sm_queued)
 	) {
 		usbpd_dbg(&pd->dev, "Requeuing new/pending RX messages\n");
 		kick_sm(pd, 0);
@@ -4943,7 +4943,7 @@ static ssize_t usbpd_verifed_store(struct device *dev,
 	}
 
 	if (!pd->verifed && !pd->pps_found && !pd->fix_pdo_5v
-			&& (!IS_ENABLED(CONFIG_MACH_XIAOMI_DAGU) || !pd->has_dp))
+			&& (!IS_ENABLED(CONFIG_BOARD_DAGU) || !pd->has_dp))
 		schedule_delayed_work(&pd->fixed_pdo_work, 5 * HZ);
 
 	return size;
@@ -5611,7 +5611,7 @@ static void usbpd_fixed_pdo_workfunc(struct work_struct *w)
 	union power_supply_propval val = {0};
 	int ret;
 
-#ifdef CONFIG_MACH_XIAOMI_DAGU
+#ifdef CONFIG_BOARD_DAGU
 	if (pd->has_dp) {
 		return;
 	}
@@ -5696,7 +5696,7 @@ static void usbpd_pdo_workfunc(struct work_struct *w)
 					pd->is_support_2s = true;
 			}
 			if (pps_max_watts < max_volt * max_curr) {
-				if (!IS_ENABLED(CONFIG_MACH_XIAOMI_DAGU) || max_volt < 20000)
+				if (!IS_ENABLED(CONFIG_BOARD_DAGU) || max_volt < 20000)
 					pps_max_watts = max_volt * max_curr;
 				if(pps_max_watts >120000000 && pps_max_watts < 130000000)
 					pps_max_watts = 120000000;
@@ -5717,7 +5717,7 @@ static void usbpd_pdo_workfunc(struct work_struct *w)
 		pps_max_mwatt = pps_max_watts / 1000  / 1000;
 		if (pps_max_mwatt != pd->apdo_max) {
 			pd->apdo_max = pps_max_mwatt;
-#ifdef CONFIG_MACH_XIAOMI_MUNCH
+#ifdef CONFIG_BOARD_MUNCH
 			val.intval = pps_max_mwatt;
 #else
 			val.intval = min(pps_max_mwatt, pd->power_max);
