@@ -54,7 +54,8 @@ enum {
 	HW_PLATFORM_RCM	= 21,
 	HW_PLATFORM_STP = 23,
 	HW_PLATFORM_SBC = 24,
-
+	HW_PLATFORM_HDK = 31,
+	HW_PLATFORM_IDP = 34,
 	HW_PLATFORM_J1  = 36,
 	HW_PLATFORM_J11 = 37,
 	HW_PLATFORM_J1S = 41,
@@ -64,9 +65,10 @@ enum {
 	HW_PLATFORM_J2S = 45,
 	HW_PLATFORM_K81 = 46,
 	HW_PLATFORM_K81A = 47,
-	HW_PLATFORM_L11R = 50,
-	HW_PLATFORM_HDK = 31,
-	HW_PLATFORM_IDP = 34,
+	HW_PLATFORM_L3A = 48,
+    	HW_PLATFORM_L11R = 50,
+	HW_PLATFORM_L81A = 51,
+	HW_PLATFORM_M82 = 52,
 	HW_PLATFORM_INVALID
 };
 
@@ -87,6 +89,8 @@ const char *hw_platform[] = {
 	[HW_PLATFORM_DTV] = "DTV",
 	[HW_PLATFORM_STP] = "STP",
 	[HW_PLATFORM_SBC] = "SBC",
+	[HW_PLATFORM_HDK] = "HDK",
+	[HW_PLATFORM_IDP] = "IDP",
 	[HW_PLATFORM_J2] = "UMI",
 	[HW_PLATFORM_J1] = "CMI",
 	[HW_PLATFORM_J11] = "LMI",
@@ -96,9 +100,10 @@ const char *hw_platform[] = {
 	[HW_PLATFORM_J2S] = "THYME",
 	[HW_PLATFORM_K81] = "ENUMA",
 	[HW_PLATFORM_K81A] = "ELISH",
-	[HW_PLATFORM_L11R] = "MUNCH",
-	[HW_PLATFORM_HDK] = "HDK",
-	[HW_PLATFORM_IDP] = "IDP"
+	[HW_PLATFORM_L3A] = "PSYCHE",
+    	[HW_PLATFORM_L11R] = "MUNCH",
+    	[HW_PLATFORM_L81A] = "DAGU",
+    	[HW_PLATFORM_M82] = "PIPA",
 };
 
 enum {
@@ -1750,10 +1755,16 @@ uint32_t get_hw_version_platform(void)
 		return HARDWARE_PLATFORM_ENUMA;
 	if (hw_type == HW_PLATFORM_K81A)
 		return HARDWARE_PLATFORM_ELISH;
-        if (hw_type == HW_PLATFORM_J2S)
-                return HARDWARE_PLATFORM_THYME;
-	else if (hw_type == HW_PLATFORM_L11R)
+	if (hw_type == HW_PLATFORM_J2S)
+		return HARDWARE_PLATFORM_THYME;
+	if (hw_type == HW_PLATFORM_L3A)
+		return HARDWARE_PLATFORM_PSYCHE;
+	if (hw_type == HW_PLATFORM_L11R)
 		return HARDWARE_PLATFORM_MUNCH;
+	if (hw_type == HW_PLATFORM_L81A)
+		return HARDWARE_PLATFORM_DAGU;
+	if (hw_type == HW_PLATFORM_M82)
+		return HARDWARE_PLATFORM_PIPA;
 	else
 		return HARDWARE_PLATFORM_UNKNOWN;
 }
