@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/atomic.h>
@@ -333,21 +332,15 @@ int rpmh_write(const struct device *dev, enum rpmh_state state,
 	rpm_msg.msg.num_cmds = n;
 
 	ret = __rpmh_write(dev, state, &rpm_msg);
-	if (!oops_in_progress) {
-		if (ret)
-			return ret;
-	}
 
 	if (ret)
 		return ret;
-	if (!oops_in_progress) {
-		ret = wait_for_completion_timeout(&compl, RPMH_TIMEOUT_MS);
-		if (!ret) {
-			rpmh_rsc_debug(ctrlr_to_drv(ctrlr),&compl);
-			return -ETIMEDOUT;
-		}
-	} else
-		mdelay(100);
+
+	ret = wait_for_completion_timeout(&compl, RPMH_TIMEOUT_MS);
+	if (!ret) {
+		rpmh_rsc_debug(ctrlr_to_drv(ctrlr), &compl);
+		return -ETIMEDOUT;
+	}
 
 	return 0;
 }
@@ -479,19 +472,16 @@ int rpmh_write_batch(const struct device *dev, enum rpmh_state state,
 
 	time_left = RPMH_TIMEOUT_MS;
 	while (i--) {
-		if (!oops_in_progress) {
-			time_left = wait_for_completion_timeout(&compls[i], time_left);
-			if (!time_left) {
-				/*
-				 * Better hope they never finish because they'll signal
-				 * the completion that we're going to free once
-				 * we've returned from this function.
-				 */
-				rpmh_rsc_debug(ctrlr_to_drv(ctrlr),compls);
-				BUG_ON(1);
-			}
-		} else
-			mdelay(100);
+		time_left = wait_for_completion_timeout(&compls[i], time_left);
+		if (!time_left) {
+			/*
+			 * Better hope they never finish because they'll signal
+			 * the completion that we're going to free once
+			 * we've returned from this function.
+			 */
+			rpmh_rsc_debug(ctrlr_to_drv(ctrlr), &compls[i]);
+			BUG_ON(1);
+		}
 	}
 
 	kfree(ptr);
