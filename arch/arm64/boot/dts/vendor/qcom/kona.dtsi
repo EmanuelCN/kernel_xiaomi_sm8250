@@ -2608,6 +2608,7 @@
 		reg = <0x177004 0x4>;
 		regulator-name = "ufs_phy_gdsc";
 		qcom,retain-regs;
+		qcom,gds-timeout = <500>;
 	};
 
 	usb30_prim_gdsc: qcom,gdsc@10f004 {
