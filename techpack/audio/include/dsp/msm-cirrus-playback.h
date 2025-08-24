@@ -11,6 +11,7 @@
  */
 #ifndef MSM_CIRRUS_PLAYBACK_H
 #define MSM_CIRRUS_PLAYBACK_H
+#define DEBUG
 #include <linux/slab.h>
 #include <sound/soc.h>
 #include <dsp/apr_audio-v2.h>
@@ -18,12 +19,11 @@
 #include <dsp/q6audio-v2.h>
 #include <uapi/sound/msm-cirrus-playback.h>
 
-
-#define MIN_CHAN_SWAP_SAMPLES	48
-#define MAX_CHAN_SWAP_SAMPLES	9600
-#define VOL_ATTN_MAX		0x7FFFFFFF
-#define VOL_ATTN_18DB		257698038
-#define VOL_ATTN_24DB		128849019
+#define MIN_CHAN_SWAP_SAMPLES 48
+#define MAX_CHAN_SWAP_SAMPLES 9600
+#define VOL_ATTN_MAX 0x7FFFFFFF
+#define VOL_ATTN_18DB 257698038
+#define VOL_ATTN_24DB 128849019
 
 struct afe_cspl_state {
 	void **apr;
@@ -61,7 +61,7 @@ struct afe_custom_crus_get_config_t {
 
 /* Payload struct for getting or setting one integer value from/to the DSP module */
 struct crus_single_data_t {
-	int32_t	value;
+	int32_t value;
 };
 
 /* Payload struct for getting or setting two integer values from/to the DSP module */
@@ -99,7 +99,7 @@ struct cirrus_cal_result_t {
 	int32_t z_r;
 };
 
-#define APR_CHUNK_SIZE		256
+#define APR_CHUNK_SIZE 256
 
 /* Payload struct for sending an external configuration string to the DSP
  * module
@@ -144,12 +144,12 @@ struct crus_rx_temperature_t {
 	uint32_t full_status_r;
 };
 
-#define CONFIG_FILE_SIZE	128
-#define PAYLOAD_FOLLOWS_CONFIG	4
-#define MAX_TUNING_CONFIGS	4
-#define MIN_CHAN_SWAP_SAMPLES	48
-#define MAX_CHAN_SWAP_SAMPLES	9600
-#define CRUS_MAX_BUFFER_SIZE	384
+#define CONFIG_FILE_SIZE 128
+#define PAYLOAD_FOLLOWS_CONFIG 4
+#define MAX_TUNING_CONFIGS 4
+#define MIN_CHAN_SWAP_SAMPLES 48
+#define MAX_CHAN_SWAP_SAMPLES 9600
+#define CRUS_MAX_BUFFER_SIZE 384
 
 struct crus_control_t {
 	struct device *device;
@@ -170,7 +170,7 @@ struct crus_control_t {
 	atomic_t count_wait;
 	struct mutex param_lock;
 	struct mutex sp_lock;
-	int32_t* user_buffer;
+	int32_t *user_buffer;
 	int32_t usecase;
 	int32_t config;
 	int32_t conf_sel;
@@ -180,8 +180,7 @@ struct crus_control_t {
 
 //extern int afe_apr_send_pkt_crus(void *data, int index, int set);
 
-int crus_afe_callback(void* payload, int size);
+int crus_afe_callback(void *payload, int size);
 void msm_crus_pb_add_controls(struct snd_soc_component *component);
 
 #endif /* _MSM_CIRRUS_PLAYBACK_H */
-

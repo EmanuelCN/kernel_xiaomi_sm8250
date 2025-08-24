@@ -20,6 +20,9 @@ endif
 ifeq ($(TARGET_SUPPORT),sdm660)
 KBUILD_OPTIONS += CONFIG_ARCH_SDM660=y
 endif
+ifeq ($(TARGET_SUPPORT),apq8053 msm8953 msm8937)
+KBUILD_OPTIONS += CONFIG_ARCH_SDM450=y
+endif
 
 obj-m := ipc/
 obj-m += dsp/
@@ -40,12 +43,13 @@ obj-m += asoc/codecs/bolero/
 obj-m += asoc/codecs/wcd937x/
 endif
 
-ifeq ($(TARGET_SUPPORT), qrb5165)
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qrb5165 sxr2130))
 obj-m += asoc/codecs/bolero/
 obj-m += asoc/codecs/wcd938x/
+obj-m += asoc/codecs/wsa883x/
 endif
 
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sdm660))
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), apq8053 sdm660 msm8953 msm8937))
 obj-m += asoc/codecs/sdm660_cdc/
 endif
 
@@ -61,7 +65,7 @@ endif
 ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sa6155))
 KBUILD_OPTIONS += CONFIG_SND_SOC_SA6155=m
 endif
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qrb5165))
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qrb5165 sxr2130))
 KBUILD_OPTIONS += CONFIG_SND_SOC_KONA=m
 endif
 endif

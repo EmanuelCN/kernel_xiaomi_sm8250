@@ -2,6 +2,7 @@
 /* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/clk.h>
@@ -47,7 +48,7 @@
 #define TX_MACRO_AMIC_UNMUTE_DELAY_MS	100
 #define TX_MACRO_DMIC_HPF_DELAY_MS	100
 
-#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH)
 #define TX_MACRO_AMIC_HPF_DELAY_MS	300
 #else
 #define TX_MACRO_AMIC_HPF_DELAY_MS	100
@@ -711,9 +712,6 @@ static int tx_macro_tx_mixer_put(struct snd_kcontrol *kcontrol,
 	if (!tx_macro_get_data(component, &tx_dev, &tx_priv, __func__))
 		return -EINVAL;
 
-	dev_err(tx_dev, "%s: id:%d(%s) enable:%d active_ch_cnt:%d\n", __func__,
-		dai_id, widget->name, enable, tx_priv->active_ch_cnt[dai_id]);
-
 	if (enable) {
 		set_bit(dec_id, &tx_priv->active_ch_mask[dai_id]);
 		tx_priv->active_ch_cnt[dai_id]++;
@@ -992,6 +990,7 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 
 	decimator = w->shift;
+
 	dev_dbg(component->dev, "%s(): widget = %s decimator = %u\n", __func__,
 			w->name, decimator);
 
@@ -1069,10 +1068,10 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 				   msecs_to_jiffies(tx_unmute_delay));
 		if (tx_priv->tx_hpf_work[decimator].hpf_cut_off_freq !=
 							CF_MIN_3DB_150HZ) {
-#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH)
 			queue_delayed_work(system_freezable_wq,
-					&tx_priv->tx_hpf_work[decimator].dwork,
-					msecs_to_jiffies(hpf_delay));
+				&tx_priv->tx_hpf_work[decimator].dwork,
+				msecs_to_jiffies(hpf_delay));
 #else
 			queue_delayed_work(system_freezable_wq,
 					&tx_priv->tx_hpf_work[decimator].dwork,
@@ -1251,8 +1250,6 @@ static int tx_macro_get_channel_map(struct snd_soc_dai *dai,
 		dev_err(tx_dev, "%s: Invalid AIF\n", __func__);
 		break;
 	}
-	dev_err(tx_dev, "%s: id:%d(%s) ch_mask:0x%x active_ch_cnt:%d active_mask: 0x%lx\n",
-		__func__, dai->id, dai->name, *tx_slot, *tx_num, tx_priv->active_ch_mask[dai->id]);
 	return 0;
 }
 
@@ -2506,7 +2503,11 @@ static int tx_macro_register_event_listener(struct snd_soc_component *component,
 			ret = swrm_wcd_notify(
 				tx_priv->swr_ctrl_data[0].tx_swr_pdev,
 				SWR_REGISTER_WAKEUP, NULL);
+			msm_cdc_pinctrl_set_wakeup_capable(
+					tx_priv->tx_swr_gpio_p, false);
 		} else {
+			msm_cdc_pinctrl_set_wakeup_capable(
+					tx_priv->tx_swr_gpio_p, true);
 			ret = swrm_wcd_notify(
 				tx_priv->swr_ctrl_data[0].tx_swr_pdev,
 				SWR_DEREGISTER_WAKEUP, NULL);
@@ -2537,8 +2538,6 @@ static int tx_macro_tx_va_mclk_enable(struct tx_macro_priv *tx_priv,
 					__func__);
 				goto exit;
 			}
-			msm_cdc_pinctrl_set_wakeup_capable(
-					tx_priv->tx_swr_gpio_p, false);
 		}
 
 		clk_tx_ret = bolero_clk_rsc_request_clock(tx_priv->dev,
@@ -2663,8 +2662,6 @@ tx_clk:
 						   TX_CORE_CLK,
 						   false);
 		if (tx_priv->swr_clk_users == 0) {
-			msm_cdc_pinctrl_set_wakeup_capable(
-					tx_priv->tx_swr_gpio_p, true);
 			ret = msm_cdc_pinctrl_select_sleep_state(
 						tx_priv->tx_swr_gpio_p);
 			if (ret < 0) {
@@ -2730,7 +2727,6 @@ static int tx_macro_clk_switch(struct snd_soc_component *component, int clk_src)
 
 static int tx_macro_core_vote(void *handle, bool enable)
 {
-	int rc = 0;
 	struct tx_macro_priv *tx_priv = (struct tx_macro_priv *) handle;
 
 	if (tx_priv == NULL) {
@@ -2739,16 +2735,14 @@ static int tx_macro_core_vote(void *handle, bool enable)
 	}
 	if (enable) {
 		pm_runtime_get_sync(tx_priv->dev);
-		if (bolero_check_core_votes(tx_priv->dev))
-			rc = 0;
-		else
-			rc = -ENOTSYNC;
-	} else {
 		pm_runtime_put_autosuspend(tx_priv->dev);
 		pm_runtime_mark_last_busy(tx_priv->dev);
 	}
 
-	return rc;
+	if (bolero_check_core_votes(tx_priv->dev))
+		return 0;
+	else
+		return -EINVAL;
 }
 
 static int tx_macro_swrm_clock(void *handle, bool enable)
@@ -3329,13 +3323,13 @@ static int tx_macro_probe(struct platform_device *pdev)
 			"%s: register macro failed\n", __func__);
 		goto err_reg_macro;
 	}
+	if (is_used_tx_swr_gpio)
+		schedule_work(&tx_priv->tx_macro_add_child_devices_work);
 	pm_runtime_set_autosuspend_delay(&pdev->dev, AUTO_SUSPEND_DELAY);
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
 	pm_suspend_ignore_children(&pdev->dev, true);
 	pm_runtime_enable(&pdev->dev);
-	if (is_used_tx_swr_gpio)
-		schedule_work(&tx_priv->tx_macro_add_child_devices_work);
 
 	return 0;
 err_reg_macro:

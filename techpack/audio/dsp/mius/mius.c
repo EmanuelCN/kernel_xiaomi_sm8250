@@ -2,6 +2,7 @@
 * Copyright MI
 *
 */
+/* #define DEBUG */
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/version.h>
@@ -34,7 +35,6 @@
 #include <mius/mius_mixer_controls.h>
 #include <dsp/apr_mius.h>
 
-
 /* Alternative mechanism to load calibration data.
 * Read calibration data during driver initialization
 * and send message to the DSP
@@ -59,7 +59,6 @@ static dev_t mius_major;
 
 static struct wakeup_source *wake_source;
 
-
 void mius_data_cancel(struct mius_data *mius_data)
 {
 	atomic_set(&mius_data->abort_io, 1);
@@ -75,38 +74,32 @@ void mius_data_print_debug_counters(struct mius_data *mius_data)
 {
 	if (mius_data->isr_fifo_discard > 0) {
 		MI_PRINT_E("isr fifo discarded %u frames",
-			mius_data->isr_fifo_discard);
+			   mius_data->isr_fifo_discard);
 	}
 
-	if (mius_data->userspace_read_total !=
-		mius_data->isr_write_total) {
+	if (mius_data->userspace_read_total != mius_data->isr_write_total) {
 		MI_PRINT_I("user space reads / isr writes : %u / %u",
-			mius_data->userspace_read_total,
-			mius_data->isr_write_total);
+			   mius_data->userspace_read_total,
+			   mius_data->isr_write_total);
 	}
 
 	MI_PRINT_I("total isr fifo discarded frame count : %u",
-		mius_data->isr_fifo_discard_total);
+		   mius_data->isr_fifo_discard_total);
 }
 
-void mius_data_update_debug_counters(struct mius_data
-	*mius_data)
+void mius_data_update_debug_counters(struct mius_data *mius_data)
 {
-	mius_data->isr_fifo_discard_total +=
-		mius_data->isr_fifo_discard;
+	mius_data->isr_fifo_discard_total += mius_data->isr_fifo_discard;
 }
-
 
 /* spin lock for isr must be held prior to calling */
-static void mius_data_flush_isr_fifo(struct mius_data
-	*mius_data)
+static void mius_data_flush_isr_fifo(struct mius_data *mius_data)
 {
 	kfifo_reset(&mius_data->fifo_isr);
 }
 
 /* spin lock for isr must be held prior to calling */
-static void mius_data_isr_fifo_pop(struct mius_data
-	*mius_data, size_t size)
+static void mius_data_isr_fifo_pop(struct mius_data *mius_data, size_t size)
 {
 	unsigned int fifo_result;
 	static uint8_t temp_buffer[MIUS_MSG_BUF_SIZE];
@@ -114,21 +107,18 @@ static void mius_data_isr_fifo_pop(struct mius_data
 	if (size > MIUS_MSG_BUF_SIZE)
 		MI_PRINT_E("pop size %zu too large", size);
 
-	fifo_result = kfifo_out(&mius_data->fifo_isr,
-		temp_buffer, size);
+	fifo_result = kfifo_out(&mius_data->fifo_isr, temp_buffer, size);
 
 	if (size != fifo_result)
 		MI_PRINT_E("failed to pop element");
 }
 
-
 int mius_notify_gain_change_msg(int component_id, int gaindb)
 {
-	int32_t msg[3] = {MSC_COMPONENT_GAIN_CHANGE, component_id, gaindb};
+	int32_t msg[3] = { MSC_COMPONENT_GAIN_CHANGE, component_id, gaindb };
 
-	return mius_data_write(
-		MIUS_ULTRASOUND_SET_PARAMS,
-		(const char *)msg, sizeof(msg));
+	return mius_data_write(MIUS_ULTRASOUND_SET_PARAMS, (const char *)msg,
+			       sizeof(msg));
 }
 
 /* inode refers to the actual file on disk */
@@ -142,10 +132,9 @@ static int device_open(struct inode *inode, struct file *filp)
 	major = imajor(inode);
 	minor = iminor(inode);
 
-	if (major != mius_major || minor < 0
-		|| minor >= MIUS_NUM_DEVICES) {
-		MI_PRINT_W("no device found with minor=%d and major=%d",
-			major, minor);
+	if (major != mius_major || minor < 0 || minor >= MIUS_NUM_DEVICES) {
+		MI_PRINT_W("no device found with minor=%d and major=%d", major,
+			   minor);
 		return -ENODEV; /* No such device */
 	}
 
@@ -176,10 +165,8 @@ static int device_open(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-
-int mius_data_initialize(struct mius_data
-	*mius_data, size_t queue_size,
-	unsigned int wakeup_timeout, int id)
+int mius_data_initialize(struct mius_data *mius_data, size_t queue_size,
+			 unsigned int wakeup_timeout, int id)
 {
 	int is_power_of_two;
 
@@ -190,8 +177,7 @@ int mius_data_initialize(struct mius_data
 		return -EINVAL;
 	}
 
-	if (kfifo_alloc(&mius_data->fifo_isr,
-		queue_size, GFP_KERNEL) != 0) {
+	if (kfifo_alloc(&mius_data->fifo_isr, queue_size, GFP_KERNEL) != 0) {
 		MI_PRINT_E("failed to allocate fifo isr");
 		return -EINVAL;
 	}
@@ -214,8 +200,8 @@ int mius_data_cleanup(struct mius_data *mius_data)
 	return 0;
 }
 
-size_t mius_data_pop(struct mius_data
-	*mius_data, char __user *user_buffer, size_t buffer_size)
+size_t mius_data_pop(struct mius_data *mius_data, char __user *user_buffer,
+		     size_t buffer_size)
 {
 	int result;
 	unsigned long num_copied;
@@ -223,14 +209,15 @@ size_t mius_data_pop(struct mius_data
 	unsigned long flags;
 
 	if (buffer_size < MIUS_MSG_BUF_SIZE) {
-		MI_PRINT_E("buffer_size : %lu smaller than %lu",
-			buffer_size, (size_t)MIUS_MSG_BUF_SIZE);
+		MI_PRINT_E("buffer_size : %lu smaller than %lu", buffer_size,
+			   (size_t)MIUS_MSG_BUF_SIZE);
 		return 0;
 	}
 
-	result = wait_event_interruptible(mius_data->fifo_isr_not_empty,
-		(kfifo_is_empty(&mius_data->fifo_isr) == 0)
-		|| (atomic_read(&mius_data->abort_io) == 1));
+	result = wait_event_interruptible(
+		mius_data->fifo_isr_not_empty,
+		(kfifo_is_empty(&mius_data->fifo_isr) == 0) ||
+			(atomic_read(&mius_data->abort_io) == 1));
 
 	if (atomic_read(&mius_data->abort_io) == 1) {
 		atomic_set(&mius_data->abort_io, 0);
@@ -242,22 +229,22 @@ size_t mius_data_pop(struct mius_data
 		spin_lock_irqsave(&mius_data->fifo_isr_spinlock, flags);
 
 		fifo_result = kfifo_out(&mius_data->fifo_isr,
-			mius_data->isr_swap_buffer, MIUS_MSG_BUF_SIZE);
+					mius_data->isr_swap_buffer,
+					MIUS_MSG_BUF_SIZE);
 
-		spin_unlock_irqrestore(&mius_data->fifo_isr_spinlock,
-			flags);
+		spin_unlock_irqrestore(&mius_data->fifo_isr_spinlock, flags);
 
 		if (fifo_result == 0) {
 			MI_PRINT_E("failed to copy: fifo isr -> swap buffer %u",
-				fifo_result);
+				   fifo_result);
 			return 0;
 		}
 
 		mutex_lock(&mius_data->user_buffer_lock);
 
-		num_copied = copy_to_user(user_buffer,
-						mius_data->isr_swap_buffer,
-						MIUS_MSG_BUF_SIZE);
+		num_copied =
+			copy_to_user(user_buffer, mius_data->isr_swap_buffer,
+				     MIUS_MSG_BUF_SIZE);
 
 		mutex_unlock(&mius_data->user_buffer_lock);
 
@@ -278,13 +265,9 @@ size_t mius_data_pop(struct mius_data
 	return (size_t)MIUS_MSG_BUF_SIZE;
 }
 
-
-
 /* push data to specific device or all devices */
-int mius_data_push(int deviceid,
-	const char *buffer,
-	size_t buffer_size,
-	mius_data_push_t data_source)
+int mius_data_push(int deviceid, const char *buffer, size_t buffer_size,
+		   mius_data_push_t data_source)
 {
 	size_t available_space;
 	size_t space_required;
@@ -332,58 +315,48 @@ int mius_data_push(int deviceid,
 		spin_lock_irqsave(&mius_data->fifo_isr_spinlock, flags);
 
 		if (available_space < space_required) {
-
 			++mius_data->isr_fifo_discard;
-			mius_data_isr_fifo_pop(mius_data,
-				MIUS_MSG_BUF_SIZE);
+			mius_data_isr_fifo_pop(mius_data, MIUS_MSG_BUF_SIZE);
 		}
 
 		if (data_source == MIUS_DATA_PUSH_FROM_KERNEL) {
-			fifo_result = kfifo_in(&mius_data->fifo_isr,
-				buffer, buffer_size);
+			fifo_result = kfifo_in(&mius_data->fifo_isr, buffer,
+					       buffer_size);
 
 			if (fifo_result == 0) {
 				spin_unlock_irqrestore(
-					&mius_data->fifo_isr_spinlock,
-					flags);
+					&mius_data->fifo_isr_spinlock, flags);
 				continue;
 			}
 		} else if (data_source == MIUS_DATA_PUSH_FROM_USERSPACE) {
-			copy_from_user_result = kfifo_from_user(
-				&mius_data->fifo_isr, buffer,
-				buffer_size, &copied_from_user);
+			copy_from_user_result =
+				kfifo_from_user(&mius_data->fifo_isr, buffer,
+						buffer_size, &copied_from_user);
 
 			if (-EFAULT == copy_from_user_result) {
 				spin_unlock_irqrestore(
-					&mius_data->fifo_isr_spinlock,
-					flags);
+					&mius_data->fifo_isr_spinlock, flags);
 				continue;
 			}
 		}
 
-
 		if (zeros_to_pad > 0) {
-			fifo_result = kfifo_in(
-				&mius_data->fifo_isr, zero_pad_buffer,
-				zeros_to_pad);
+			fifo_result = kfifo_in(&mius_data->fifo_isr,
+					       zero_pad_buffer, zeros_to_pad);
 
 			if (fifo_result == 0) {
-				mius_data_isr_fifo_pop(mius_data,
-					buffer_size);
+				mius_data_isr_fifo_pop(mius_data, buffer_size);
 
 				spin_unlock_irqrestore(
-					&mius_data->fifo_isr_spinlock,
-					flags);
+					&mius_data->fifo_isr_spinlock, flags);
 
 				++mius_data->isr_fifo_discard;
 				continue;
 			}
 		}
 
-
 		++mius_data->isr_write_total;
-		spin_unlock_irqrestore(
-			&mius_data->fifo_isr_spinlock, flags);
+		spin_unlock_irqrestore(&mius_data->fifo_isr_spinlock, flags);
 		wake_up_interruptible(&mius_data->fifo_isr_not_empty);
 		__pm_wakeup_event(wake_source, mius_data->wakeup_timeout);
 	}
@@ -401,9 +374,7 @@ int mius_close_port(int portid)
 	return mius_io_close_port(portid);
 }
 
-
-int32_t mius_data_write(uint32_t message_id,
-	const char *data, size_t data_size)
+int32_t mius_data_write(uint32_t message_id, const char *data, size_t data_size)
 {
 	int32_t err_dsp;
 	/* int32_t err_us; */
@@ -425,14 +396,12 @@ int32_t mius_data_write(uint32_t message_id,
 	*/
 }
 
-
-
 /**
 *
 * @return Number of bytes read.
 */
-static ssize_t device_read(struct file *fp, char __user *buff,
-	size_t length, loff_t *ppos)
+static ssize_t device_read(struct file *fp, char __user *buff, size_t length,
+			   loff_t *ppos)
 {
 	ssize_t bytes_read = 0;
 	struct mius_device *mius_device;
@@ -450,22 +419,21 @@ static ssize_t device_read(struct file *fp, char __user *buff,
 *
 * @return number of bytes actually written
 */
-static ssize_t device_write(struct file *fp, const char *buff,
-	size_t length, loff_t *ppos)
+static ssize_t device_write(struct file *fp, const char *buff, size_t length,
+			    loff_t *ppos)
 {
 	ssize_t ret_val;
 
 	ret_val = 0;
 	if ((buff != NULL) && (length != 0))
-		ret_val = mius_data_io_write(MIUS_ULTRASOUND_SET_PARAMS,
-			buff, length);
+		ret_val = mius_data_io_write(MIUS_ULTRASOUND_SET_PARAMS, buff,
+					     length);
 
 	return ret_val >= 0 ? (ssize_t)length : 0;
 }
 
-
 static long device_ioctl(struct file *fp, unsigned int number,
-	unsigned long param)
+			 unsigned long param)
 {
 	struct mius_device *device;
 	struct mius_data *mius_data;
@@ -478,8 +446,7 @@ static long device_ioctl(struct file *fp, unsigned int number,
 
 	switch (number) {
 	case IOCTL_MIUS_DATA_IO_CANCEL:
-		MI_PRINT_D("IOCTL_MIUS_CANCEL_READ %ld",
-			param);
+		MI_PRINT_D("IOCTL_MIUS_CANCEL_READ %ld", param);
 		mius_data_cancel(mius_data);
 		break;
 
@@ -488,14 +455,11 @@ static long device_ioctl(struct file *fp, unsigned int number,
 		mirror_tag = *(unsigned int *)data_ptr;
 		mirror_payload_size = *((unsigned int *)data_ptr + 1);
 
-		if ((mirror_tag == MIRROR_TAG) &&
-			(mirror_payload_size != 0) &&
-			(mirror_payload_size <=
-			(MIUS_SET_PARAMS_SIZE * 4))) {
-
-			err = mius_data_io_write(
-				MIUS_ULTRASOUND_SET_PARAMS,
-				(data_ptr + 8), mirror_payload_size);
+		if ((mirror_tag == MIRROR_TAG) && (mirror_payload_size != 0) &&
+		    (mirror_payload_size <= (MIUS_SET_PARAMS_SIZE * 4))) {
+			err = mius_data_io_write(MIUS_ULTRASOUND_SET_PARAMS,
+						 (data_ptr + 8),
+						 mirror_payload_size);
 
 			if (err != 0) {
 				MI_PRINT_E("mius_data_io_write failed");
@@ -516,9 +480,8 @@ static long device_ioctl(struct file *fp, unsigned int number,
 	return 0;
 }
 
-
 static unsigned int device_poll(struct file *file,
-	struct poll_table_struct *poll_table)
+				struct poll_table_struct *poll_table)
 {
 	unsigned int mask;
 
@@ -536,7 +499,6 @@ static unsigned int device_poll(struct file *file,
 
 	return mask;
 }
-
 
 static int device_close(struct inode *inode, struct file *filp)
 {
@@ -565,7 +527,7 @@ static int device_close(struct inode *inode, struct file *filp)
 /* defines the file operations provided by the driver */
 static const struct file_operations mius_fops = {
 	.owner = THIS_MODULE, /* prevents unloading when operations are in use*/
-	.open = device_open,  /*to open the device*/
+	.open = device_open, /*to open the device*/
 	.write = device_write, /*to write to the device*/
 	.read = device_read, /*to read the device*/
 	.poll = device_poll,
@@ -573,9 +535,8 @@ static const struct file_operations mius_fops = {
 	.release = device_close, /*to close the device*/
 };
 
-
-static int mius_device_initialize(struct mius_device
-	*mius_device, int minor, struct class *class)
+static int mius_device_initialize(struct mius_device *mius_device, int minor,
+				  struct class *class)
 {
 	int err;
 	dev_t device_number;
@@ -594,18 +555,18 @@ static int mius_device_initialize(struct mius_device
 	err = cdev_add(&mius_device->cdev, device_number, 1);
 
 	if (err) {
-		MI_PRINT_E("error %d while trying to add %s%d",
-			err, MIUS_DEVICENAME, minor);
+		MI_PRINT_E("error %d while trying to add %s%d", err,
+			   MIUS_DEVICENAME, minor);
 		return err;
 	}
 
-	device = device_create(class, NULL, device_number,
-		NULL, MIUS_DEVICENAME "%d", minor);
+	device = device_create(class, NULL, device_number, NULL,
+			       MIUS_DEVICENAME "%d", minor);
 
 	if (IS_ERR(device)) {
 		err = PTR_ERR(device);
-		MI_PRINT_E("error %d while trying to create %s%d",
-			err, MIUS_DEVICENAME, minor);
+		MI_PRINT_E("error %d while trying to create %s%d", err,
+			   MIUS_DEVICENAME, minor);
 		cdev_del(&mius_device->cdev);
 		return err;
 	}
@@ -619,7 +580,7 @@ static int mius_device_initialize(struct mius_device
 }
 
 static void mius_device_cleanup(struct mius_device *dev, int minor,
-	struct class *class)
+				struct class *class)
 
 {
 	BUG_ON(dev == NULL || class == NULL);
@@ -637,8 +598,7 @@ static void mius_driver_cleanup(int devices_to_destroy)
 
 		for (i = 0; i < devices_to_destroy; ++i) {
 			mius_data_cleanup(&mius_devices[i].el_data);
-			mius_device_cleanup(
-				&mius_devices[i], i, mius_class);
+			mius_device_cleanup(&mius_devices[i], i, mius_class);
 		}
 
 		kfree(mius_devices);
@@ -647,15 +607,13 @@ static void mius_driver_cleanup(int devices_to_destroy)
 	if (mius_class)
 		class_destroy(mius_class);
 
-	unregister_chrdev_region(
-		MKDEV(mius_major, 0), MIUS_NUM_DEVICES);
+	unregister_chrdev_region(MKDEV(mius_major, 0), MIUS_NUM_DEVICES);
 }
-
-
 
 #ifdef MIUS_LOAD_CALIBRATION_DATA_FROM_FILESYSTEM
 
-#define MIUS_CALIBRATION_MAX_DATA_SIZE (MIUS_CALIBRATION_V2_DATA_SIZE + MIUS_CALIBRATION_DATA_SIZE)
+#define MIUS_CALIBRATION_MAX_DATA_SIZE                                         \
+	(MIUS_CALIBRATION_V2_DATA_SIZE + MIUS_CALIBRATION_DATA_SIZE)
 static unsigned char calibration_data[MIUS_CALIBRATION_MAX_DATA_SIZE];
 static char *calibration_filename = "/persist/audio/mius_calibration";
 
@@ -671,27 +629,24 @@ static size_t load_calibration_data(char *filename)
 	if (rc) {
 		if (rc == -ENOENT)
 			MI_PRINT_E("loading %s failed with error %d\n",
-				filename, rc);
+				   filename, rc);
 		else
 			MI_PRINT_E("loading %s failed with error %d\n",
-				filename, rc);
+				   filename, rc);
 	}
 	MI_PRINT_I("loading %s\n", filename);
-
 
 	return bytes_read;
 }
 
 static int32_t mius_send_calibration_to_engine(size_t calib_data_size)
 {
-    mius_set_calibration_data(calibration_data, calib_data_size);
-	return mius_data_write(
-		MIUS_ULTRASOUND_SET_PARAMS,
-		(const char *)calibration_data, calib_data_size);
+	mius_set_calibration_data(calibration_data, calib_data_size);
+	return mius_data_write(MIUS_ULTRASOUND_SET_PARAMS,
+			       (const char *)calibration_data, calib_data_size);
 }
 
 #endif
-
 
 int __init mius_driver_init(void)
 {
@@ -701,7 +656,7 @@ int __init mius_driver_init(void)
 	dev_t device_number;
 
 	err = alloc_chrdev_region(&device_number, 0, MIUS_NUM_DEVICES,
-		MIUS_DEVICENAME);
+				  MIUS_DEVICENAME);
 
 	devices_to_destroy = 0;
 
@@ -723,25 +678,23 @@ int __init mius_driver_init(void)
 	if (err)
 		goto fail;
 
-	mius_devices = (struct mius_device *)
-		kzalloc(sizeof(struct mius_device) * MIUS_NUM_DEVICES,
-			GFP_KERNEL);
+	mius_devices = (struct mius_device *)kzalloc(
+		sizeof(struct mius_device) * MIUS_NUM_DEVICES, GFP_KERNEL);
 
 	if (mius_devices == NULL) {
 		err = -ENOMEM;
 		goto fail;
 	}
 
-
 	for (i = 0; i < MIUS_NUM_DEVICES; ++i) {
-		if (mius_device_initialize(&mius_devices[i], i,
-			mius_class)) {
+		if (mius_device_initialize(&mius_devices[i], i, mius_class)) {
 			devices_to_destroy = i;
 			goto fail;
 		}
 
 		if (mius_data_initialize(&mius_devices[i].el_data,
-			MIUS_DATA_FIFO_SIZE, MIUS_WAKEUP_TIMEOUT, i)) {
+					 MIUS_DATA_FIFO_SIZE,
+					 MIUS_WAKEUP_TIMEOUT, i)) {
 			goto fail;
 		}
 	}
@@ -751,7 +704,6 @@ int __init mius_driver_init(void)
 
 	if (mius_userspace_io_driver_init())
 		goto fail;
-
 
 	if (mius_userspace_ctrl_driver_init())
 		goto fail;
@@ -763,11 +715,11 @@ int __init mius_driver_init(void)
 		return -ENOMEM;
 	}
 
-
 #ifdef MIUS_LOAD_CALIBRATION_DATA_FROM_FILESYSTEM
 	/* Code to send calibration to engine */
 	{
-		size_t calib_data_size = load_calibration_data(calibration_filename);
+		size_t calib_data_size =
+			load_calibration_data(calibration_filename);
 		if (calib_data_size > 0)
 			mius_send_calibration_to_engine(calib_data_size);
 	}

@@ -22,14 +22,12 @@
 #include <mius/mius_data_io.h>
 #include <mius/mius_device.h>
 
-
 #define USE_IRQ 11
 
 static struct task_struct *simulating_task;
 static atomic_t cancel;
 
-struct mius_data_io_state {
-};
+struct mius_data_io_state {};
 #define BUFFER_SIZE 128
 
 static int32_t output_buffer[BUFFER_SIZE];
@@ -38,11 +36,10 @@ irqreturn_t irq_handler(int irq, void *dev_id)
 {
 	int result;
 
-	result = mius_data_push(MIUS_ALL_DEVICES,
-				(const char *)output_buffer, BUFFER_SIZE * sizeof(int32_t));
+	result = mius_data_push(MIUS_ALL_DEVICES, (const char *)output_buffer,
+				BUFFER_SIZE * sizeof(int32_t));
 	return 0;
 }
-
 
 static void fill_buffer(int32_t *buffer, size_t len, int32_t value)
 {
@@ -51,7 +48,6 @@ static void fill_buffer(int32_t *buffer, size_t len, int32_t value)
 	for (i = 0; i < len; ++i)
 		buffer[i] = value;
 }
-
 
 int simulating_thread(void *context)
 {
@@ -72,24 +68,24 @@ int simulating_thread(void *context)
 		if (result != 0) {
 			pr_warn("failed to push data\n");
 		}
-		asm("int $0x3B");  /* Corresponding to irq 11 */
+		asm("int $0x3B"); /* Corresponding to irq 11 */
 		msleep(0);
 	}
 	return 0;
 }
 
 int32_t mius_data_io_write(uint32_t message_id, const char *data,
-	size_t data_size)
-{
-		return 0;
-	}
-
-int32_t mius_data_io_transact(uint32_t message_id, const char *data,
-	size_t data_size, char *output_data, size_t output_data_size)
+			   size_t data_size)
 {
 	return 0;
 }
 
+int32_t mius_data_io_transact(uint32_t message_id, const char *data,
+			      size_t data_size, char *output_data,
+			      size_t output_data_size)
+{
+	return 0;
+}
 
 void mius_data_io_cancel(struct mius_data *mius_data)
 {
@@ -97,17 +93,15 @@ void mius_data_io_cancel(struct mius_data *mius_data)
 	wake_up_interruptible(&mius_data->fifo_isr_not_empty);
 }
 
-
 int mius_data_io_initialize(void)
 {
 	pr_debug("%s\n", __func__);
 	atomic_set(&cancel, 0);
-	simulating_task = kthread_run(&simulating_thread, NULL,
-									"el_simulating_thread");
-
+	simulating_task =
+		kthread_run(&simulating_thread, NULL, "el_simulating_thread");
 
 	if (request_irq(USE_IRQ, irq_handler, IRQF_SHARED, "my_device",
-				(void *)(irq_handler))) {
+			(void *)(irq_handler))) {
 		pr_debug("my_device: cannot register IRQ ");
 		return -EPERM;
 	}

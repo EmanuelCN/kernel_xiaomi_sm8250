@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2018, 2021, The Linux Foundation. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -283,7 +283,7 @@ static enum cpe_svc_result cpe_is_command_valid(
 
 static int cpe_register_read(u32 reg, u8 *val)
 {
-	*(val) = snd_soc_read(cpe_d.cdc_priv, reg);
+	*(val) = snd_soc_component_read32(cpe_d.cdc_priv, reg);
 	return 0;
 }
 
@@ -292,7 +292,7 @@ static enum cpe_svc_result cpe_update_bits(u32 reg,
 {
 	int ret = 0;
 
-	ret = snd_soc_update_bits(cpe_d.cdc_priv, reg,
+	ret = snd_soc_component_update_bits(cpe_d.cdc_priv, reg,
 				  mask, value);
 	if (ret < 0)
 		return CPE_SVC_FAILED;
@@ -308,7 +308,7 @@ static int cpe_register_write(u32 reg, u32 val)
 		pr_debug("%s: reg = 0x%x, value = 0x%x\n",
 			  __func__, reg, val);
 
-	ret = snd_soc_write(cpe_d.cdc_priv, reg, val);
+	ret = snd_soc_component_write(cpe_d.cdc_priv, reg, val);
 	if (ret < 0)
 		return CPE_SVC_FAILED;
 
@@ -317,8 +317,9 @@ static int cpe_register_write(u32 reg, u32 val)
 
 static int cpe_register_write_repeat(u32 reg, u8 *ptr, u32 to_write)
 {
-	struct snd_soc_codec *codec = cpe_d.cdc_priv;
-	struct wcd9xxx *wcd9xxx = dev_get_drvdata(codec->dev->parent);
+	struct snd_soc_component *component = cpe_d.cdc_priv;
+	struct  wcd9xxx *wcd9xxx =
+			dev_get_drvdata(component->dev->parent);
 	int ret = 0;
 
 	ret = wcd9xxx_slim_write_repeat(wcd9xxx, reg, to_write, ptr);

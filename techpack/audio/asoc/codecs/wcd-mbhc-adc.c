@@ -946,6 +946,13 @@ report:
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ADC_MODE, 0);
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ADC_EN, 0);
 
+	if (mbhc->hs_detect_work_stop) {
+		pr_debug("%s: stop requested: %d\n", __func__,
+				mbhc->hs_detect_work_stop);
+		wcd_micbias_disable(mbhc);
+		goto exit;
+	}
+
 	WCD_MBHC_RSC_LOCK(mbhc);
 	wcd_mbhc_find_plug_and_report(mbhc, plug_type);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
@@ -1156,10 +1163,6 @@ static irqreturn_t wcd_mbhc_adc_hs_ins_irq(int irq, void *data)
 	 * get ADC complete interrupt, so connected cable should be
 	 * headset not headphone.
 	 */
-	/* JIRA:UMI-14363
-	 * delete it to fix headset recogition problem when insert
-	 * lineout and then connect headset to lineout.
-	*/
 	/*
 	if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADPHONE) {
 		wcd_mbhc_hs_elec_irq(mbhc, WCD_MBHC_ELEC_HS_INS, false);

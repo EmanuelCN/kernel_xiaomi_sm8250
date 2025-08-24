@@ -75,14 +75,21 @@ ifeq ($(KERNEL_BUILD), 0)
 		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sdm660autoconf.h
 	endif
-endif
-
-ifdef CONFIG_BOARD_PSYCHE
-CDEFINES += -DCONFIG_TARGET_PRODUCT_PSYCHE
-endif
-
-ifdef CONFIG_BOARD_MUNCH
-CDEFINES += -DCONFIG_TARGET_PRODUCT_MUNCH
+	ifeq ($(CONFIG_ARCH_SDM450), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
+	ifeq ($(CONFIG_ARCH_SDM439), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
+	ifeq ($(CONFIG_ARCH_MSM8917), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
 endif
 
 # As per target team, build is done as follows:
@@ -160,7 +167,9 @@ ifdef CONFIG_SND_SOC_WSA881X_ANALOG
 	WSA881X_ANALOG_OBJS += wsa881x-analog.o
 	WSA881X_ANALOG_OBJS += wsa881x-tables-analog.o
 	WSA881X_ANALOG_OBJS += wsa881x-regmap-analog.o
+ifdef CONFIG_SND_SOC_BENGAL
 	WSA881X_ANALOG_OBJS += wsa881x-temp-sensor.o
+endif
 endif
 ifdef CONFIG_SND_SOC_MSM_STUB
 	STUB_OBJS += msm_stub.o
@@ -210,6 +219,8 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_OS_TYPE_ANDROID=6 \
 		-DPTT_SOCK_SVC_ENABLE \
 		-Wall\
+		-Werror\
+		-Wno-enum-conversion \
 		-D__linux__
 
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -238,14 +249,15 @@ ifeq ($(KERNEL_BUILD), 1)
 	obj-y	+= wcd937x/
 	obj-y	+= wcd938x/
 	obj-y	+= bolero/
-ifneq ($(filter y, $(CONFIG_BOARD_ENUMA) $(CONFIG_BOARD_ELISH)),)
+ifeq (y, $(filter y, \
+	$(CONFIG_BOARD_DAGU) \
+	$(CONFIG_BOARD_ELISH) \
+	$(CONFIG_BOARD_ENUMA)))
 	obj-y	+= cs35l41_k81/
-else
-	obj-y	+= cs35l41/
-endif
-ifeq ($(CONFIG_BOARD_MUNCH), y)
+else ifeq ($(CONFIG_BOARD_MUNCH), y)
 	obj-y	+= tfa9874/
 else
+	obj-y	+= cs35l41/
 	obj-y	+= tfa98xx/
 endif
 	obj-y	+= rouleur/

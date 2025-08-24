@@ -81,6 +81,21 @@ ifeq ($(KERNEL_BUILD), 0)
 		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sdm660autoconf.h
 	endif
+	ifeq ($(CONFIG_ARCH_SDM450), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
+	ifeq ($(CONFIG_ARCH_SDM439), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
+	ifeq ($(CONFIG_ARCH_MSM8917), y)
+		include $(AUDIO_ROOT)/config/sdm450auto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm450autoconf.h
+	endif
 endif
 
 # As per target team, build is done as follows:
@@ -170,6 +185,17 @@ ifdef CONFIG_SND_SOC_CPE
 	CPE_LSM_OBJS += msm-cpe-lsm.o
 endif
 
+# for SDM450 internal codec sound card driver
+ifdef CONFIG_SND_SOC_SDM450
+	MACHINE_OBJS += msm8952.o
+endif
+
+# for SDM450 external codec sound card driver
+ifdef CONFIG_SND_SOC_EXT_CODEC_SDM450
+	MACHINE_EXT_OBJS += msm8952-slimbus.o
+	MACHINE_EXT_OBJS += msm8952-dai-links.o
+endif
+
 ifdef CONFIG_SND_SOC_QDSP6V2
 	PLATFORM_OBJS += msm-audio-effects-q6-v2.o
 	PLATFORM_OBJS += msm-compress-q6-v2.o
@@ -221,58 +247,13 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_OS_TYPE_ANDROID=6 \
 		-DPTT_SOCK_SVC_ENABLE \
 		-Wall\
+		-Werror\
 		-D__linux__
 
-ifdef CONFIG_BOARD_LMI
+ifeq (y, $(filter y,\
+	$(CONFIG_BOARD_LMI) \
+	$(CONFIG_BOARD_MUNCH)))
 CDEFINES += -DTFA_ADSP_SUPPORTED
-endif
-
-ifdef CONFIG_BOARD_MUNCH
-CDEFINES += -DTFA_ADSP_SUPPORTED
-endif
-
-ifdef CONFIG_BOARD_XIAOMI_SM8250
-CDEFINES += -DAUDIO_SM8250_FLAG
-endif
-
-ifdef CONFIG_BOARD_XIAOMI_SM7250
-CDEFINES += -DAUDIO_SM7250_FLAG
-endif
-
-ifdef CONFIG_BOARD_PICASSO
-CDEFINES += -DTFA_ADSP_SUPPORTED
-endif
-
-ifdef CONFIG_BOARD_APOLLO
-CDEFINES += -DCONFIG_TARGET_PRODUCT_APOLLO
-endif
-
-ifdef CONFIG_BOARD_CAS
-CDEFINES += -DCONFIG_TARGET_PRODUCT_CAS
-endif
-
-ifdef CONFIG_BOARD_ALIOTH
-CDEFINES += -DCONFIG_TARGET_PRODUCT_ALIOTH
-endif
-
-ifdef CONFIG_BOARD_ENUMA
-CDEFINES += -DCONFIG_TARGET_PRODUCT_ENUMA
-endif
-
-ifdef CONFIG_BOARD_ELISH
-CDEFINES += -DCONFIG_TARGET_PRODUCT_ELISH
-endif
-
-ifdef CONFIG_BOARD_THYME
-CDEFINES += -DCONFIG_TARGET_PRODUCT_THYME
-endif
-
-ifdef CONFIG_BOARD_PSYCHE
-CDEFINES += -DCONFIG_TARGET_PRODUCT_PSYCHE
-endif
-
-ifdef CONFIG_BOARD_MUNCH
-CDEFINES += -DCONFIG_TARGET_PRODUCT_MUNCH
 endif
 
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -304,6 +285,12 @@ endif
 # Module information used by KBuild framework
 obj-$(CONFIG_SND_SOC_QDSP6V2) += platform_dlkm.o
 platform_dlkm-y := $(PLATFORM_OBJS)
+
+obj-$(CONFIG_SND_SOC_SDM450) += machine_dlkm.o
+machine_dlkm-y := $(MACHINE_OBJS)
+
+obj-$(CONFIG_SND_SOC_EXT_CODEC_SDM450) += machine_ext_dlkm.o
+machine_ext_dlkm-y := $(MACHINE_EXT_OBJS)
 
 obj-$(CONFIG_SND_SOC_SM8150) += machine_dlkm.o
 machine_dlkm-y := $(MACHINE_OBJS)
