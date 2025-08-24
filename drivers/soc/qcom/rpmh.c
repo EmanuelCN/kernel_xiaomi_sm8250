@@ -1,11 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0
-/*
- * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- */
+// SPDX-License-Identifier: GPL-2.0-only
+/* Copyright (c) 2016-2021, The Linux Foundation. All rights reserved. */
 
 #include <linux/atomic.h>
 #include <linux/bug.h>
-#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
@@ -79,12 +76,13 @@ static struct rpmh_ctrlr *get_rpmh_ctrlr(const struct device *dev)
 static int check_ctrlr_state(struct rpmh_ctrlr *ctrlr, enum rpmh_state state)
 {
 	int ret = 0;
+	unsigned long flags;
 
 	/* Do not allow setting active votes when in solver mode */
-	spin_lock(&ctrlr->cache_lock);
+	spin_lock_irqsave(&ctrlr->cache_lock, flags);
 	if (ctrlr->in_solver_mode && state == RPMH_ACTIVE_ONLY_STATE)
 		ret = -EBUSY;
-	spin_unlock(&ctrlr->cache_lock);
+	spin_unlock_irqrestore(&ctrlr->cache_lock, flags);
 
 	return ret;
 }
@@ -102,11 +100,12 @@ static int check_ctrlr_state(struct rpmh_ctrlr *ctrlr, enum rpmh_state state)
 int rpmh_mode_solver_set(const struct device *dev, bool enable)
 {
 	struct rpmh_ctrlr *ctrlr = get_rpmh_ctrlr(dev);
+	unsigned long flags;
 
-	spin_lock(&ctrlr->cache_lock);
+	spin_lock_irqsave(&ctrlr->cache_lock, flags);
 	rpmh_rsc_mode_solver_set(ctrlr_to_drv(ctrlr), enable);
 	ctrlr->in_solver_mode = enable;
-	spin_unlock(&ctrlr->cache_lock);
+	spin_unlock_irqrestore(&ctrlr->cache_lock, flags);
 
 	return 0;
 }
@@ -155,8 +154,9 @@ static struct cache_req *cache_rpm_request(struct rpmh_ctrlr *ctrlr,
 					   struct tcs_cmd *cmd)
 {
 	struct cache_req *req;
+	unsigned long flags;
 
-	spin_lock(&ctrlr->cache_lock);
+	spin_lock_irqsave(&ctrlr->cache_lock, flags);
 	req = __find_req(ctrlr, cmd->addr);
 	if (req)
 		goto existing;
@@ -197,7 +197,7 @@ existing:
 	}
 
 unlock:
-	spin_unlock(&ctrlr->cache_lock);
+	spin_unlock_irqrestore(&ctrlr->cache_lock, flags);
 
 	return req;
 }
@@ -233,8 +233,7 @@ static int __rpmh_write(const struct device *dev, enum rpmh_state state,
 	rpm_msg->msg.state = state;
 
 	if (state == RPMH_ACTIVE_ONLY_STATE) {
-		if (!oops_in_progress)
-			WARN_ON(irqs_disabled());
+		WARN_ON(irqs_disabled());
 		ret = rpmh_rsc_send_data(ctrlr_to_drv(ctrlr), &rpm_msg->msg);
 	} else {
 		/* Clean up our call by spoofing tx_done */
@@ -332,7 +331,6 @@ int rpmh_write(const struct device *dev, enum rpmh_state state,
 	rpm_msg.msg.num_cmds = n;
 
 	ret = __rpmh_write(dev, state, &rpm_msg);
-
 	if (ret)
 		return ret;
 
@@ -348,21 +346,24 @@ EXPORT_SYMBOL(rpmh_write);
 
 static void cache_batch(struct rpmh_ctrlr *ctrlr, struct batch_cache_req *req)
 {
+	unsigned long flags;
 
-	spin_lock(&ctrlr->cache_lock);
+	spin_lock_irqsave(&ctrlr->cache_lock, flags);
 	list_add_tail(&req->list, &ctrlr->batch_cache);
-	spin_unlock(&ctrlr->cache_lock);
+	ctrlr->dirty = true;
+	spin_unlock_irqrestore(&ctrlr->cache_lock, flags);
 }
 
 static int flush_batch(struct rpmh_ctrlr *ctrlr)
 {
 	struct batch_cache_req *req;
 	const struct rpmh_request *rpm_msg;
+	unsigned long flags;
 	int ret = 0;
 	int i;
 
 	/* Send Sleep/Wake requests to the controller, expect no response */
-	spin_lock(&ctrlr->cache_lock);
+	spin_lock_irqsave(&ctrlr->cache_lock, flags);
 	list_for_each_entry(req, &ctrlr->batch_cache, list) {
 		for (i = 0; i < req->count; i++) {
 			rpm_msg = req->rpm_msgs + i;
@@ -372,7 +373,7 @@ static int flush_batch(struct rpmh_ctrlr *ctrlr)
 				break;
 		}
 	}
-	spin_unlock(&ctrlr->cache_lock);
+	spin_unlock_irqrestore(&ctrlr->cache_lock, flags);
 
 	return ret;
 }
@@ -380,14 +381,15 @@ static int flush_batch(struct rpmh_ctrlr *ctrlr)
 static void invalidate_batch(struct rpmh_ctrlr *ctrlr)
 {
 	struct batch_cache_req *req, *tmp;
+	unsigned long flags;
 
-	spin_lock(&ctrlr->cache_lock);
+	spin_lock_irqsave(&ctrlr->cache_lock, flags);
 	list_for_each_entry_safe(req, tmp, &ctrlr->batch_cache, list) {
 		list_del(&req->list);
 		kfree(req);
 	}
 	INIT_LIST_HEAD(&ctrlr->batch_cache);
-	spin_unlock(&ctrlr->cache_lock);
+	spin_unlock_irqrestore(&ctrlr->cache_lock, flags);
 }
 
 /**
@@ -448,7 +450,10 @@ int rpmh_write_batch(const struct device *dev, enum rpmh_state state,
 	req->rpm_msgs = rpm_msgs;
 
 	for (i = 0; i < count; i++) {
-		__fill_rpmh_msg(rpm_msgs + i, state, cmd, n[i]);
+		ret = __fill_rpmh_msg(rpm_msgs + i, state, cmd, n[i]);
+		if (ret)
+			goto exit;
+
 		cmd += n[i];
 	}
 
@@ -484,6 +489,7 @@ int rpmh_write_batch(const struct device *dev, enum rpmh_state state,
 		}
 	}
 
+exit:
 	kfree(ptr);
 
 	return ret;
@@ -569,6 +575,7 @@ int rpmh_flush(const struct device *dev)
 		return 0;
 	}
 
+	/* Invalidate the TCSes first to avoid stale data */
 	do {
 		ret = rpmh_rsc_invalidate(ctrlr_to_drv(ctrlr));
 	} while (ret == -EAGAIN);
