@@ -8,15 +8,14 @@
  *
  */
 
-
 typedef struct TfaBfName {
-   unsigned short bfEnum;
-   char  *bfName;
+	unsigned short bfEnum;
+	char *bfName;
 } tfaBfName_t;
 
 typedef struct TfaIrqName {
 	unsigned short irqEnum;
-	char  *irqName;
+	char *irqName;
 } tfaIrqName_t;
 
 #include "tfa1_tfafieldnames.h"
@@ -38,40 +37,38 @@ typedef struct TfaIrqName {
 /* missing 'common' defs break the build but unused in TFA1 context */
 #define TFA1_BF_AMPINSEL -1
 #define TFA1_BF_MANSCONF -1
-#define TFA1_BF_MANCOLD  -1
+#define TFA1_BF_MANCOLD -1
 #define TFA1_BF_INTSMUTE -1
-#define TFA1_BF_CFSMR    -1
-#define TFA1_BF_CFSML    -1
+#define TFA1_BF_CFSMR -1
+#define TFA1_BF_CFSML -1
 #define TFA1_BF_DCMCCAPI -1
-#define TFA1_BF_DCMCCSB  -1
-#define TFA1_BF_USERDEF  -1
+#define TFA1_BF_DCMCCSB -1
+#define TFA1_BF_USERDEF -1
 #define TFA1_BF_MANSTATE -1
-#define TFA1_BF_MANOPER  -1
+#define TFA1_BF_MANOPER -1
 #define TFA1_BF_REFCKSEL -1
-#define TFA1_BF_VOLSEC	 -1
+#define TFA1_BF_VOLSEC -1
 #define TFA1_BF_FRACTDEL -1
-#define TFA1_BF_ACKDMG	 -1
+#define TFA1_BF_ACKDMG -1
 #define TFA1_BF_SSRIGHTE -1
-#define TFA1_BF_SSLEFTE	 -1
-#define TFA1_BF_R25CL	 -1
-#define TFA1_BF_R25CR	 -1
-#define TFA1_BF_SWPROFIL 0x8045    /*!< profile save   */
-#define TFA1_BF_SWVSTEP  0x80a5    /*!< vstep save  */
+#define TFA1_BF_SSLEFTE -1
+#define TFA1_BF_R25CL -1
+#define TFA1_BF_R25CR -1
+#define TFA1_BF_SWPROFIL 0x8045 /*!< profile save   */
+#define TFA1_BF_SWVSTEP 0x80a5 /*!< vstep save  */
 
 /* missing 'common' defs break the build */
 #define TFA2_BF_CFSM -1
 
-
 /* MTP access uses registers
  *  defs are derived from corresponding bitfield names as used in the BF macros
  */
-#define MTPKEY2  	MTPK		/* unlock key2 MTPK */
-#define MTP0     	MTPOTC 	/* MTP data */
-#define MTP_CONTROL CIMTP	/* copy i2c to mtp */
+#define MTPKEY2 MTPK /* unlock key2 MTPK */
+#define MTP0 MTPOTC /* MTP data */
+#define MTP_CONTROL CIMTP /* copy i2c to mtp */
 
 /* interrupt enable register uses HW name in TFA2 */
 #define TFA2_BF_INTENVDDS TFA2_BF_IEVDDS
-
 
 /* TFA9891 specific bit field names */
 #define TFA1_BF_SAAMGAIN 0x2202
@@ -139,7 +136,7 @@ typedef struct TfaIrqName {
 #define TFA1_BF_LP0 -1
 #define TFA1_BF_LP1 -1
 #define TFA1_BF_R25C -1
-#define TFA1_BF_SAMMODE	 -1
+#define TFA1_BF_SAMMODE -1
 
 /* TDM STATUS fields not available on TFA1 */
 #define TFA1_BF_TDMLUTER -1

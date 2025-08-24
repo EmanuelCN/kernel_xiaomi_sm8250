@@ -131,7 +131,7 @@ struct cs35l41_private {
 };
 
 int cs35l41_probe(struct cs35l41_private *cs35l41,
-				struct cs35l41_platform_data *pdata);
+		  struct cs35l41_platform_data *pdata);
 int cs35l41_remove(struct cs35l41_private *cs35l41);
 
 #endif /* __CS35L41_H */

@@ -85,7 +85,7 @@ INCS +=	$(COMMON_INC) \
 	$(UAPI_INC) \
 	$(TFA_INC)
 
-EXTRA_CFLAGS += -I$(src)/inc
+EXTRA_CFLAGS += $(INCS)
 
 CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_LITTLE_BIT_ENDIAN \
@@ -98,10 +98,9 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-D__linux__\
 		-DDEBUG
 
-ifdef CONFIG_BOARD_MUNCH
+
+ifeq ($(CONFIG_BOARD_MUNCH), y)
 	CDEFINES += -DTFA_NON_DSP_SOLUTION
-	CDEFINES += -DAUDIO_SM8250_FLAG
-	CDEFINES += -DCONFIG_TARGET_PRODUCT_MUNCH
 endif
 
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -130,6 +129,3 @@ endif
 # Module information used by KBuild framework
 obj-$(CONFIG_SND_SOC_TFA9874)    += tfa98xx_dlkm.o
 tfa98xx_dlkm-y := $(TFA9874_OBJS)
-
-# inject some build related information
-DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

@@ -21,7 +21,7 @@
 #include "msm-dai-q6-v2.h"
 #include <asoc/core.h>
 #ifdef TFA_ADSP_SUPPORTED
-#ifdef CONFIG_TARGET_PRODUCT_MUNCH
+#if defined(CONFIG_BOARD_MUNCH)
 #include "codecs/tfa9874/inc/tfa_platform_interface_definition.h"
 #else
 #include "codecs/tfa98xx/inc/tfa_platform_interface_definition.h"
@@ -3913,20 +3913,20 @@ static const struct snd_kcontrol_new rt_proxy_config_controls[] = {
 };
 
 static const struct snd_kcontrol_new usb_audio_cfg_controls[] = {
-	SOC_SINGLE_EXT("USB_AUDIO_RX dev_token", 0, 0, UINT_MAX, 0,
+	SOC_SINGLE_EXT("USB_AUDIO_RX dev_token", 0, 0, INT_MAX, 0,
 			msm_dai_q6_usb_audio_cfg_get,
 			msm_dai_q6_usb_audio_cfg_put),
 	SOC_SINGLE_EXT("USB_AUDIO_RX endian", 0, 0, 1, 0,
 			msm_dai_q6_usb_audio_endian_cfg_get,
 			msm_dai_q6_usb_audio_endian_cfg_put),
-	SOC_SINGLE_EXT("USB_AUDIO_TX dev_token", 0, 0, UINT_MAX, 0,
+	SOC_SINGLE_EXT("USB_AUDIO_TX dev_token", 0, 0, INT_MAX, 0,
 			msm_dai_q6_usb_audio_cfg_get,
 			msm_dai_q6_usb_audio_cfg_put),
 	SOC_SINGLE_EXT("USB_AUDIO_TX endian", 0, 0, 1, 0,
 			msm_dai_q6_usb_audio_endian_cfg_get,
 			msm_dai_q6_usb_audio_endian_cfg_put),
 	SOC_SINGLE_EXT("USB_AUDIO_RX service_interval", SND_SOC_NOPM, 0,
-			UINT_MAX, 0,
+			INT_MAX, 0,
 			msm_dai_q6_usb_audio_svc_interval_get,
 			msm_dai_q6_usb_audio_svc_interval_put),
 };
@@ -5540,6 +5540,7 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 #endif
+
 	dai_data->channels = params_channels(params);
 	switch (dai_data->channels) {
 	case 15:
@@ -7526,7 +7527,6 @@ static struct platform_driver msm_dai_q6_dev = {
 		.owner = THIS_MODULE,
 		.of_match_table = msm_dai_q6_dev_dt_match,
 		.suppress_bind_attrs = true,
-		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 
@@ -7565,7 +7565,6 @@ static struct platform_driver msm_dai_q6 = {
 		.owner = THIS_MODULE,
 		.of_match_table = msm_dai_q6_dt_match,
 		.suppress_bind_attrs = true,
-		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 
@@ -7940,7 +7939,6 @@ static struct platform_driver msm_dai_tdm_q6 = {
 		.owner = THIS_MODULE,
 		.of_match_table = msm_dai_tdm_dt_match,
 		.suppress_bind_attrs = true,
-		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 
@@ -12266,7 +12264,6 @@ static struct platform_driver msm_dai_q6_tdm_driver = {
 		.owner = THIS_MODULE,
 		.of_match_table = msm_dai_q6_tdm_dev_dt_match,
 		.suppress_bind_attrs = true,
-		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 

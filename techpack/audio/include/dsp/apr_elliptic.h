@@ -5,17 +5,17 @@
 #include <elliptic/elliptic_data_io.h>
 #include <linux/delay.h>
 
-#define ELLIPTIC_SET_PARAMS_SIZE			114
-#define ELLIPTIC_ULTRASOUND_MODULE_TX			0x0F010201
-#define ELLIPTIC_ULTRASOUND_MODULE_RX			0x0FF10202
-#define ULTRASOUND_OPCODE				0x0FF10204
+#define ELLIPTIC_SET_PARAMS_SIZE 114
+#define ELLIPTIC_ULTRASOUND_MODULE_TX 0x0F010201
+#define ELLIPTIC_ULTRASOUND_MODULE_RX 0x0FF10202
+#define ULTRASOUND_OPCODE 0x0FF10204
 
 /* This need to be updated for all platforms */
-#define ELLIPTIC_PORT_ID				AFE_PORT_ID_TX_CODEC_DMA_TX_4
+#define ELLIPTIC_PORT_ID AFE_PORT_ID_TX_CODEC_DMA_TX_4
 
 /** Sequence of Elliptic Labs Ultrasound module parameters */
 struct afe_ultrasound_set_params_t {
-	uint32_t  payload[ELLIPTIC_SET_PARAMS_SIZE];
+	uint32_t payload[ELLIPTIC_SET_PARAMS_SIZE];
 } __packed;
 
 /** Sequence of Elliptic Labs Ultrasound module parameters */
@@ -23,7 +23,7 @@ struct afe_ultrasound_set_params_t {
 /** Elliptic APR public  */
 
 int32_t ultrasound_apr_set_parameter(int32_t port_id, uint32_t param_id,
-	u8 *user_params, int32_t length);
+				     u8 *user_params, int32_t length);
 
 int32_t elliptic_process_apr_payload(uint32_t *payload);
 

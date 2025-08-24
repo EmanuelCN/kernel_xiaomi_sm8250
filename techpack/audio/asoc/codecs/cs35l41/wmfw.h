@@ -15,20 +15,20 @@
 
 #include <linux/types.h>
 
-#define WMFW_MAX_ALG_NAME         256
-#define WMFW_MAX_ALG_DESCR_NAME   256
+#define WMFW_MAX_ALG_NAME 256
+#define WMFW_MAX_ALG_DESCR_NAME 256
 
-#define WMFW_MAX_COEFF_NAME       256
+#define WMFW_MAX_COEFF_NAME 256
 #define WMFW_MAX_COEFF_DESCR_NAME 256
 
-#define WMFW_CTL_FLAG_SYS         0x8000
-#define WMFW_CTL_FLAG_VOLATILE    0x0004
-#define WMFW_CTL_FLAG_WRITEABLE   0x0002
-#define WMFW_CTL_FLAG_READABLE    0x0001
+#define WMFW_CTL_FLAG_SYS 0x8000
+#define WMFW_CTL_FLAG_VOLATILE 0x0004
+#define WMFW_CTL_FLAG_WRITEABLE 0x0002
+#define WMFW_CTL_FLAG_READABLE 0x0001
 
 /* Non-ALSA coefficient types start at 0x1000 */
-#define WMFW_CTL_TYPE_ACKED       0x1000 /* acked control */
-#define WMFW_CTL_TYPE_HOSTEVENT   0x1001 /* event control */
+#define WMFW_CTL_TYPE_ACKED 0x1000 /* acked control */
+#define WMFW_CTL_TYPE_HOSTEVENT 0x1001 /* event control */
 #define WMFW_CTL_TYPE_HOST_BUFFER 0x1002 /* host buffer pointer */
 
 struct wmfw_header {
@@ -207,10 +207,10 @@ struct wmfw_coeff_item {
 #define WMFW_HALO 4
 #define WMFW_VPU 0x44
 
-#define WMFW_ABSOLUTE         0xf0
-#define WMFW_ALGORITHM_DATA   0xf2
-#define WMFW_NAME_TEXT        0xfe
-#define WMFW_INFO_TEXT        0xff
+#define WMFW_ABSOLUTE 0xf0
+#define WMFW_ALGORITHM_DATA 0xf2
+#define WMFW_NAME_TEXT 0xfe
+#define WMFW_INFO_TEXT 0xff
 
 #define WMFW_ADSP1_PM 2
 #define WMFW_ADSP1_DM 3
