@@ -768,7 +768,17 @@ struct rt_rq {
 	struct task_group	*tg;
 #endif
 };
-
+#ifdef CONFIG_RT_GROUP_SCHED
+static inline int rt_rq_throttled(struct rt_rq *rt_rq)
+{
+        return rt_rq->rt_throttled && !rt_rq->rt_nr_boosted;
+}
+#else
+static inline int rt_rq_throttled(struct rt_rq *rt_rq)
+{
+        return rt_rq->rt_throttled;
+}
+#endif
 static inline bool rt_rq_is_runnable(struct rt_rq *rt_rq)
 {
 	return rt_rq->rt_queued && rt_rq->rt_nr_running;
