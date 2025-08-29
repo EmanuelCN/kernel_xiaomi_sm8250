@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/module.h>
@@ -881,7 +881,7 @@ int crus_adm_set_params(int port_id, int copp_idx, uint32_t module_id,
 			 uint32_t params_length)
 {
 	struct param_hdr_v3 param_hdr;
-	int port_idx = 0;
+	int port_idx;
 	int rc  = 0;
 
 	pr_info("[CSPL] %s: config: port_idx %d copp_idx  %d module 0x%d, len=%d\n",

@@ -629,7 +629,7 @@ static int __init audio_notifier_init(void)
 static int __init audio_notifier_init(void)
 {
 	audio_notifier_subsys_init();
-	audio_notifier_disable_service(AUDIO_NOTIFIER_PDR_SERVICE);
+	audio_notifer_disable_service(AUDIO_NOTIFIER_PDR_SERVICE);
 
 	audio_notifier_late_init();
 

@@ -3317,7 +3317,7 @@ static int msm_cpe_lsm_probe(struct platform_device *pdev)
  */
 static int msm_cpe_lsm_remove(struct platform_device *pdev)
 {
-	snd_soc_unregister_commponent(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 	return 0;
 }
 
