@@ -55,6 +55,14 @@
 #endif
 #endif
 
+#if defined(CONFIG_SND_SOC_AW882XX_TDM)
+#define PLATFORM_TDM_RX_VI_FB_RX_MUX_TEXT		"TERT_TDM_RX_0"
+#define PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT		"TERT_TDM_TX_0"
+#define PLATFORM_TDM_RX_VI_FB_MUX_NAME			"TERT_TDM_RX_VI_FB_MUX"
+#define PLATFORM_TDM_RX_VI_FB_TX_VALUE			MSM_BACKEND_DAI_TERT_TDM_TX_0
+#define PLATFORM_TDM_RX_VI_FB_MUX_ENUM			MSM_BACKEND_DAI_TERT_TDM_RX_0
+#endif
+
 #define DRV_NAME "msm-pcm-routing-v2"
 
 #ifndef CONFIG_DOLBY_DAP
@@ -476,8 +484,13 @@ struct msm_pcm_routing_bdai_data msm_bedais[MSM_BACKEND_DAI_MAX] = {
 	  LPASS_BE_SEC_TDM_RX_7},
 	{ AFE_PORT_ID_SECONDARY_TDM_TX_7, 0, {0}, {0}, 0, 0, 0, 0,
 	  LPASS_BE_SEC_TDM_TX_7},
+#if defined(CONFIG_TARGET_PRODUCT_PIPA)
+	{ AFE_PORT_ID_TERTIARY_TDM_RX, 0, {0}, {0}, 0, 0, 0, 2,
+	  LPASS_BE_TERT_TDM_RX_0},
+#else
 	{ AFE_PORT_ID_TERTIARY_TDM_RX, 0, {0}, {0}, 0, 0, 0, 0,
 	  LPASS_BE_TERT_TDM_RX_0},
+#endif
 	{ AFE_PORT_ID_TERTIARY_TDM_TX, 0, {0}, {0}, 0, 0, 0, 0,
 	  LPASS_BE_TERT_TDM_TX_0},
 	{ AFE_PORT_ID_TERTIARY_TDM_RX_1, 0, {0}, {0}, 0, 0, 0, 0,
@@ -1276,6 +1289,9 @@ static int msm_routing_get_adm_topology(int fedai_id, int session_type,
 	pr_debug("%s: fedai_id %d, session_type %d, be_id %d\n",
 	       __func__, fedai_id, session_type, be_id);
 
+	if (cal_data == NULL)
+		goto done;
+
 	app_type = fe_dai_app_type_cfg[fedai_id][session_type][be_id].app_type;
 	acdb_dev_id =
 		fe_dai_app_type_cfg[fedai_id][session_type][be_id].acdb_dev_id;
@@ -1296,6 +1312,7 @@ static int msm_routing_get_adm_topology(int fedai_id, int session_type,
 		if (topology < 0)
 			topology = NULL_COPP_TOPOLOGY;
 	}
+done:
 	pr_debug("%s: Using topology %d\n", __func__, topology);
 	return topology;
 }
@@ -24204,6 +24221,12 @@ static const char * const mi2s_rx_vi_fb_tx_mux_text[] = {
 #endif
 };
 
+#if defined(CONFIG_SND_SOC_AW882XX_TDM)
+static const char * const tert_tdm_rx_vi_fb_tx_mux_text[] = {
+	"ZERO", PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT
+};
+#endif
+
 static const char * const int4_mi2s_rx_vi_fb_tx_mono_mux_text[] = {
 	"ZERO", "INT5_MI2S_TX"
 };
@@ -24228,7 +24251,6 @@ static const int wsa_rx_0_vi_fb_tx_rch_value[] = {
 	MSM_BACKEND_DAI_MAX, MSM_BACKEND_DAI_WSA_CDC_DMA_TX_0
 };
 
-
 static const int mi2s_rx_vi_fb_tx_value[] = {
 #ifdef TFA_ADSP_SUPPORTED
 	MSM_BACKEND_DAI_MAX, PLATFORM_RX_VI_FB_TX_VALUE
@@ -24236,6 +24258,12 @@ static const int mi2s_rx_vi_fb_tx_value[] = {
 	MSM_BACKEND_DAI_MAX, MSM_BACKEND_DAI_SENARY_MI2S_TX
 #endif
 };
+
+#if defined(CONFIG_SND_SOC_AW882XX_TDM)
+static const int const tert_tdm_rx_vi_fb_tx_value[] = {
+	MSM_BACKEND_DAI_MAX, PLATFORM_TDM_RX_VI_FB_TX_VALUE
+};
+#endif
 
 static const int int4_mi2s_rx_vi_fb_tx_mono_ch_value[] = {
 	MSM_BACKEND_DAI_MAX, MSM_BACKEND_DAI_INT5_MI2S_TX
@@ -24273,6 +24301,13 @@ static const struct soc_enum mi2s_rx_vi_fb_mux_enum =
 #endif
 	ARRAY_SIZE(mi2s_rx_vi_fb_tx_mux_text),
 	mi2s_rx_vi_fb_tx_mux_text, mi2s_rx_vi_fb_tx_value);
+
+#if defined(CONFIG_SND_SOC_AW882XX_TDM)
+static const struct soc_enum tert_tdm_rx_vi_fb_mux_enum =
+	SOC_VALUE_ENUM_DOUBLE(0, PLATFORM_TDM_RX_VI_FB_MUX_ENUM, 0, 0,
+	ARRAY_SIZE(tert_tdm_rx_vi_fb_tx_mux_text),
+	tert_tdm_rx_vi_fb_tx_mux_text, tert_tdm_rx_vi_fb_tx_value);
+#endif
 
 static const struct soc_enum int4_mi2s_rx_vi_fb_mono_ch_mux_enum =
 	SOC_VALUE_ENUM_DOUBLE(0, MSM_BACKEND_DAI_INT4_MI2S_RX, 0, 0,
@@ -24324,6 +24359,13 @@ static const struct snd_kcontrol_new int4_mi2s_rx_vi_fb_stereo_ch_mux =
 	SOC_DAPM_ENUM_EXT("INT4_MI2S_RX_VI_FB_STEREO_CH_MUX",
 	int4_mi2s_rx_vi_fb_stereo_ch_mux_enum, spkr_prot_get_vi_rch_port,
 	spkr_prot_put_vi_rch_port);
+
+#if defined(CONFIG_SND_SOC_AW882XX_TDM)
+static const struct snd_kcontrol_new tert_tdm_rx_vi_fb_mux =
+	SOC_DAPM_ENUM_EXT(PLATFORM_TDM_RX_VI_FB_MUX_NAME,
+	tert_tdm_rx_vi_fb_mux_enum, spkr_prot_get_vi_rch_port,
+	spkr_prot_put_vi_rch_port);
+#endif
 
 static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 	/* Frontend AIF */
@@ -25309,6 +25351,11 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets_mi2s[] = {
 	SND_SOC_DAPM_MUX("PRI_MI2S_RX_VI_FB_MUX", SND_SOC_NOPM, 0, 0,
 #endif
 				&mi2s_rx_vi_fb_mux),
+
+#if defined(CONFIG_SND_SOC_AW882XX_TDM)
+	SND_SOC_DAPM_MUX(PLATFORM_TDM_RX_VI_FB_MUX_NAME, SND_SOC_NOPM, 0, 0,
+				&tert_tdm_rx_vi_fb_mux),
+#endif
 	SND_SOC_DAPM_MUX("INT4_MI2S_RX_VI_FB_MONO_CH_MUX", SND_SOC_NOPM, 0, 0,
 				&int4_mi2s_rx_vi_fb_mono_ch_mux),
 	SND_SOC_DAPM_MUX("INT4_MI2S_RX_VI_FB_STEREO_CH_MUX", SND_SOC_NOPM, 0, 0,
@@ -26024,7 +26071,6 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets_tdm[] = {
 	SND_SOC_DAPM_MIXER("SEN_TDM_RX_3 Port Mixer", SND_SOC_NOPM, 0, 0,
 	sen_tdm_rx_3_port_mixer_controls,
 	ARRAY_SIZE(sen_tdm_rx_3_port_mixer_controls)),
-
 };
 #endif
 
@@ -30630,6 +30676,11 @@ static const struct snd_soc_dapm_route intercon_mi2s[] = {
 	{PLATFORM_RX_VI_FB_RX_MUX_TEXT, NULL, PLATFORM_RX_VI_FB_MUX_NAME},
 #else
 	{"PRI_MI2S_RX", NULL, "PRI_MI2S_RX_VI_FB_MUX"},
+#endif
+
+#if defined(CONFIG_SND_SOC_AW882XX_TDM)
+	{PLATFORM_TDM_RX_VI_FB_RX_MUX_TEXT, NULL, PLATFORM_TDM_RX_VI_FB_MUX_NAME},
+	{PLATFORM_TDM_RX_VI_FB_MUX_NAME, PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT, PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT},
 #endif
 	{"INT4_MI2S_RX", NULL, "INT4_MI2S_RX_VI_FB_MONO_CH_MUX"},
 	{"INT4_MI2S_RX", NULL, "INT4_MI2S_RX_VI_FB_STEREO_CH_MUX"},

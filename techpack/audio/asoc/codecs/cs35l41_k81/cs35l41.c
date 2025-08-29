@@ -44,10 +44,16 @@
 #include <linux/err.h>
 #include <linux/firmware.h>
 #include <linux/timekeeping.h>
+#include <linux/mmhardware_sysfs.h>
 
 #include "wm_adsp.h"
 #include "cs35l41.h"
 #include <sound/cs35l41_k81.h>
+
+#ifdef CONFIG_MMHARDWARE_DETECTION
+static DEFINE_MUTEX(pa_lock);
+static int dev_cnt = 0;
+#endif
 
 static const char * const cs35l41_supplies[] = {
 	"VA",
@@ -1440,6 +1446,9 @@ static const struct snd_kcontrol_new cs35l41_aud_controls[] = {
 	SOC_SINGLE("VPBR Config", CS35L41_VPBR_CFG, 0, 0x7FFFFFF, 0),
 	SOC_SINGLE("Noise Gate Config", CS35L41_NG_CFG, 0, 0x3FFF, 0),
 	SOC_SINGLE("GLOBAL_EN from GPIO Control", CS35L41_PWR_CTRL1, 8, 1, 0),
+#if defined(AUDIO_SMART_PA_STANDBY_SUPPORT)
+	SOC_SINGLE("GLOBAL_EN Control", CS35L41_PWR_CTRL1, 0, 1, 0), // for pa standby
+#endif
 	SOC_SINGLE("Boost Converter Enable", CS35L41_PWR_CTRL2, 4, 3, 0),
 	SOC_SINGLE("AMP Enable", CS35L41_PWR_CTRL2, 0, 1, 0),
 	WM_ADSP_FW_CONTROL("DSP1", 0),
@@ -2261,6 +2270,8 @@ static int cs35l41_pcm_hw_params(struct snd_pcm_substream *substream,
 
 #if defined(CONFIG_TARGET_PRODUCT_ENUMA) || defined(CONFIG_TARGET_PRODUCT_ELISH)
 	cs35l41_component_set_sysclk(dai->component, 0, 0, 8 * rate * asp_width, 0);
+#elif defined(CONFIG_TARGET_PRODUCT_DAGU)
+	cs35l41_component_set_sysclk(dai->component, 0, 0, 4 * rate * asp_width, 0);
 #else
 	cs35l41_component_set_sysclk(dai->component, 0, 0, 2 * rate * asp_width, 0);
 #endif
@@ -2327,7 +2338,7 @@ static int cs35l41_pcm_startup(struct snd_pcm_substream *substream,
 			snd_soc_component_get_drvdata(dai->component);
 	
 	dev_dbg(cs35l41->dev, "%s\n", __func__);
-#if defined(CONFIG_TARGET_PRODUCT_ENUMA) || defined(CONFIG_TARGET_PRODUCT_ELISH)
+#if defined(CONFIG_TARGET_PRODUCT_ENUMA) || defined(CONFIG_TARGET_PRODUCT_ELISH) || defined(CONFIG_TARGET_PRODUCT_DAGU)
 		cs35l41_set_dai_fmt(dai, SND_SOC_DAIFMT_CBS_CFS|SND_SOC_DAIFMT_DSP_A);
 #else
 		cs35l41_set_dai_fmt(dai, SND_SOC_DAIFMT_CBS_CFS|SND_SOC_DAIFMT_I2S);
@@ -3861,6 +3872,43 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 	ret = snd_soc_register_component(cs35l41->dev,
 					&soc_component_dev_cs35l41,
 					cs35l41_dai, ARRAY_SIZE(cs35l41_dai));
+
+#ifdef CONFIG_MMHARDWARE_DETECTION
+	mutex_lock(&pa_lock);
+	dev_cnt++;
+	mutex_unlock(&pa_lock);
+	dev_err(cs35l41->dev, "%s: dev_cnt %d \n", __func__, dev_cnt);
+
+	switch (dev_cnt) {
+		case 1:
+			register_kobj_under_mmsysfs(MM_HW_PA_1, MM_HARDWARE_SYSFS_PA_1_FOLDER);
+			break;
+		case 2:
+			register_kobj_under_mmsysfs(MM_HW_PA_2, MM_HARDWARE_SYSFS_PA_2_FOLDER);
+			break;
+		case 3:
+			register_kobj_under_mmsysfs(MM_HW_PA_3, MM_HARDWARE_SYSFS_PA_3_FOLDER);
+			break;
+		case 4:
+			register_kobj_under_mmsysfs(MM_HW_PA_4, MM_HARDWARE_SYSFS_PA_4_FOLDER);
+			break;
+		case 5:
+			register_kobj_under_mmsysfs(MM_HW_PA_5, MM_HARDWARE_SYSFS_PA_5_FOLDER);
+			break;
+		case 6:
+			register_kobj_under_mmsysfs(MM_HW_PA_6, MM_HARDWARE_SYSFS_PA_6_FOLDER);
+			break;
+		case 7:
+			register_kobj_under_mmsysfs(MM_HW_PA_7, MM_HARDWARE_SYSFS_PA_7_FOLDER);
+			break;
+		case 8:
+			register_kobj_under_mmsysfs(MM_HW_PA_8, MM_HARDWARE_SYSFS_PA_8_FOLDER);
+			break;
+		default:
+			break;
+	}
+#endif
+
 	if (ret < 0) {
 		dev_err(cs35l41->dev, "%s: Register codec failed\n", __func__);
 		goto err;

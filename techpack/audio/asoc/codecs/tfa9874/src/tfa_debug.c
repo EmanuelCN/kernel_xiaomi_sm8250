@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "dbgprint.h"
-#include "tfa_service.h"
-#include "tfa98xx_tfafieldnames.h"
+#include "../inc/dbgprint.h"
+#include "../inc/tfa_service.h"
+#include "../inc/tfa98xx_tfafieldnames.h"
 
 /* support for error code translation into text */
 static char latest_errorstr[64];
