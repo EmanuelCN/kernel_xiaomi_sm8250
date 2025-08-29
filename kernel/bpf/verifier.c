@@ -2519,7 +2519,7 @@ static int check_stack_write_fixed_off(struct bpf_verifier_env *env,
 	cur = env->cur_state->frame[env->cur_state->curframe];
 	if (value_regno >= 0)
 		reg = &cur->regs[value_regno];
-	if (!env->allow_ptr_leaks) {
+	if (!env->bypass_spec_v4) {
 		bool sanitize = reg && is_spillable_regtype(reg->type);
 
 		for (i = 0; i < size; i++) {
