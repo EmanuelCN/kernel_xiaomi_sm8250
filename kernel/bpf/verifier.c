@@ -5466,8 +5466,8 @@ static int prepare_func_exit(struct bpf_verifier_env *env, int *insn_idx)
 }
 
 static void do_refine_retval_range(struct bpf_reg_state *regs, int ret_type,
-				  int func_id,
-				  struct bpf_call_arg_meta *meta)
+				   int func_id,
+				   struct bpf_call_arg_meta *meta)
 {
 	struct bpf_reg_state *ret_reg = &regs[BPF_REG_0];
 
@@ -6118,7 +6118,7 @@ static void sanitize_mark_insn_seen(struct bpf_verifier_env *env)
 	 * rewrite/sanitize them.
 	 */
 	if (!vstate->speculative)
-		env->insn_aux_data[env->insn_idx].seen = true;
+		env->insn_aux_data[env->insn_idx].seen = env->pass_cnt;
 }
 
 static int sanitize_err(struct bpf_verifier_env *env,
