@@ -30,7 +30,7 @@
 #include "adsp_err.h"
 #include "q6afecal-hwdep.h"
 #ifdef TFA_ADSP_SUPPORTED
-#ifdef CONFIG_TARGET_PRODUCT_MUNCH
+#if defined(CONFIG_BOARD_MUNCH)
 #include "../asoc/codecs/tfa9874/inc/tfa_platform_interface_definition.h"
 #else
 #include "../asoc/codecs/tfa98xx/inc/tfa_platform_interface_definition.h"
@@ -303,7 +303,7 @@ struct afe_ctl {
 #ifdef CONFIG_SND_SOC_AW882XX_TDM
 	struct rtac_cal_block_data aw_cal;
 	atomic_t aw_state;
-#endif /*CONFIG_SND_SOC_AW882XX_TDM*/
+#endif
 };
 
 struct afe_clkinfo_per_port {
@@ -383,9 +383,9 @@ static char clk_src_name[CLK_SRC_MAX][CLK_SRC_NAME_MAX];
 static int pcm_afe_instance[2];
 static int proxy_afe_instance[2];
 bool afe_close_done[2] = {true, true};
-
 #define SIZEOF_CFG_CMD(y) \
 		(sizeof(struct apr_hdr) + sizeof(u16) + (sizeof(struct y)))
+static bool q6afe_is_afe_lsm_port(int port_id);
 
 static bool q6afe_is_afe_lsm_port(int port_id);
 
@@ -469,15 +469,15 @@ static int q6afe_load_avcs_modules(int num_modules, u16 port_id,
 					goto load_unload;
 				}
 
-				if (format_id == ENC_CODEC_TYPE_LHDC) {
-					pm[i]->payload->load_unload_info[0].id1 =
-						AVS_MODULE_ID_DEPACKETIZER_COP_V1;
-					goto load_unload;
-				}
-
 				if (format_id == ASM_MEDIA_FMT_APTX_ADAPTIVE) {
 					pm[i]->payload->load_unload_info[0].id1 =
 						AVS_MODULE_ID_DEPACKETIZER_COP;
+					goto load_unload;
+				}
+
+				if (format_id == ENC_CODEC_TYPE_LHDC) {
+					pm[i]->payload->load_unload_info[0].id1 =
+						AVS_MODULE_ID_DEPACKETIZER_COP_V1;
 					goto load_unload;
 				}
 
@@ -523,17 +523,6 @@ static int afe_get_cal_hw_delay(int32_t path,
 				struct audio_cal_hw_delay_entry *entry);
 static int remap_cal_data(struct cal_block_data *cal_block, int cal_index);
 
-#ifdef CONFIG_MSM_CSPL
-struct afe_cspl_state cspl_afe = {
-	.apr= &this_afe.apr,
-	.status= &this_afe.status,
-	.state= &this_afe.state,
-	.wait= this_afe.wait,
-	.timeout_ms= TIMEOUT_MS,
-};
-EXPORT_SYMBOL(cspl_afe);
-#endif
-
 /**
  * afe_register_ext_mclk_cb - register callback for external mclk
  *
@@ -564,6 +553,17 @@ void afe_unregister_ext_mclk_cb(void)
 	afe_ext_mclk.private_data = NULL;
 }
 EXPORT_SYMBOL(afe_unregister_ext_mclk_cb);
+
+#ifdef CONFIG_MSM_CSPL
+struct afe_cspl_state cspl_afe = {
+	.apr= &this_afe.apr,
+	.status= &this_afe.status,
+	.state= &this_afe.state,
+	.wait= this_afe.wait,
+	.timeout_ms= TIMEOUT_MS,
+};
+EXPORT_SYMBOL(cspl_afe);
+#endif
 
 int afe_get_spk_initial_cal(void)
 {
@@ -2791,7 +2791,6 @@ afe_mi_ultrasound_state_t mius_afe = {
 EXPORT_SYMBOL(mius_afe);
 #endif
 /* for mius end */
-
 static void afe_send_cal_spv4_tx(int port_id)
 {
 	union afe_spkr_prot_config afe_spk_config;
@@ -3493,9 +3492,8 @@ static int afe_send_port_topology_id(u16 port_id)
 
 	ret = afe_get_cal_topology_id(port_id, &topology_id, AFE_TOPOLOGY_CAL);
 	if (ret < 0 && q6afe_is_afe_lsm_port(port_id)) {
-		if (port_id >= AFE_PORT_ID_VA_CODEC_DMA_TX_0 &&
-		    port_id <= AFE_PORT_ID_VA_CODEC_DMA_TX_2) {
-			pr_debug("%s: Check for LSM topology\n", __func__);
+		if (port_id >= AFE_PORT_ID_VA_CODEC_DMA_TX_0 && port_id <= AFE_PORT_ID_VA_CODEC_DMA_TX_2) {
+			pr_info("%s: Check for LSM topology\n", __func__);
 			ret = afe_get_cal_topology_id(port_id, &topology_id,
 							AFE_LSM_TOPOLOGY_CAL);
 		}
@@ -11537,7 +11535,7 @@ int send_tfa_cal_in_band(void *buf, int cmd_size)
 	if (afe_spk_prot_prepare(port_id, 0,
 			AFE_PARAM_ID_TFADSP_RX_CFG,
 			&afe_spk_config,
-                        sizeof(afe_spk_config))) {
+                        sizeof(union afe_spkr_prot_config))) {
 			pr_err("%s: AFE_PARAM_ID_TFADSP_RX_CFG failed\n",
 				   __func__);
 	}
@@ -11559,7 +11557,7 @@ int send_tfa_cal_set_bypass(void *buf, int cmd_size)
 	if (afe_spk_prot_prepare(port_id, 0,
 			AFE_PARAM_ID_TFADSP_RX_SET_BYPASS,
 			&afe_spk_config,
-                        sizeof(afe_spk_config))) {
+                        sizeof(union afe_spkr_prot_config))) {
 		pr_err("%s: AFE_PARAM_ID_TFADSP_RX_SET_BYPASS failed\n",
 				   __func__);
 	}
@@ -11581,7 +11579,7 @@ int send_tfa_cal_set_tx_enable(void *buf, int cmd_size)
 	if (afe_spk_prot_prepare(port_id, 0,
 			AFE_PARAM_ID_TFADSP_TX_SET_ENABLE,
 			&afe_spk_config,
-                        sizeof(afe_spk_config))) {
+                        sizeof(union afe_spkr_prot_config))) {
 		pr_err("%s: AFE_PARAM_ID_TFADSP_TX_SET_ENABLE failed\n",
 				   __func__);
 	}

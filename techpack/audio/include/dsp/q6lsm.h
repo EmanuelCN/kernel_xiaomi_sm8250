@@ -22,7 +22,7 @@
 
 #define MAX_LSM_SESSIONS 8
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 #define MAX_KEYWORDS_SUPPORTED 8
 
 #define LSM_MAX_SOUND_MODELS_SUPPORTED 8
@@ -38,7 +38,7 @@ struct lsm_sound_model {
 	uint32_t	actual_size; /* actual number of bytes read by DSP */
 	struct dma_buf	*dma_buf;
 	uint32_t	mem_map_handle;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	uint32_t	model_id;
 	struct list_head	list;
 #endif
@@ -81,7 +81,7 @@ struct lsm_stage_config {
 	bool	lab_enable;
 	struct lsm_sound_model	sound_model;
 	struct lsm_cal_data_info	cal_info;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	struct list_head	sound_models;
 #endif
 };
@@ -119,12 +119,12 @@ struct lsm_client {
 	struct lsm_stage_config	stage_cfg[LSM_MAX_STAGES_PER_SESSION];
 	uint64_t	fe_id;
 	uint16_t	unprocessed_data;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	uint32_t	num_sound_models;
 	uint32_t	num_keywords;
 	uint32_t	*multi_snd_model_confidence_levels;
 #endif
-#if defined(CONFIG_TARGET_PRODUCT_PIPA)
+#if defined(CONFIG_BOARD_PIPA)
 	bool		model_reged;
 #endif
 	void		*get_param_payload;
@@ -228,7 +228,7 @@ struct lsm_param_media_fmt_v2 {
 	uint8_t		channel_mapping[0];
 } __packed;
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 struct lsm_param_multi_snd_model_conf_levels {
 	uint32_t model_id;
 	uint32_t num_keywords;
@@ -309,7 +309,7 @@ void q6lsm_client_free(struct lsm_client *client);
 int q6lsm_open(struct lsm_client *client, uint16_t app_id);
 int q6lsm_start(struct lsm_client *client, bool wait);
 int q6lsm_stop(struct lsm_client *client, bool wait);
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 int q6lsm_snd_model_buf_alloc(struct lsm_client *client, size_t len,
 			struct lsm_params_info_v2 *p_info, struct lsm_sound_model *sm);
 int q6lsm_snd_model_buf_free(struct lsm_client *client,
@@ -341,7 +341,7 @@ int q6lsm_set_one_param(struct lsm_client *client,
 int q6lsm_get_one_param(struct lsm_client *client,
 			struct lsm_params_get_info *p_info,
 			uint32_t param_type);
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 void q6lsm_sm_set_param_data(struct lsm_client *client,
 		struct lsm_params_info_v2 *p_info, size_t *offset,
 		struct lsm_sound_model *sm);

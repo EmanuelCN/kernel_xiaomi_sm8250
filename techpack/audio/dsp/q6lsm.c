@@ -1029,7 +1029,7 @@ done:
 
 }
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 /**
  * q6lsm_sm_set_param_data -
  *       Update sound model param data
@@ -1170,7 +1170,7 @@ done:
 }
 EXPORT_SYMBOL(q6lsm_open);
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 static int q6lsm_send_confidence_levels(struct lsm_client *client,
 					struct param_hdr_v3 *param_info,
 					uint32_t set_param_opcode, uint32_t model_id)
@@ -1342,7 +1342,7 @@ int q6lsm_set_afe_data_format(uint64_t fe_id, uint16_t afe_data_format)
 {
 	int n = 0;
 
-#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_DAGU)
 	int free_session = LSM_INVALID_SESSION_ID;
 #endif
 
@@ -1353,7 +1353,7 @@ int q6lsm_set_afe_data_format(uint64_t fe_id, uint16_t afe_data_format)
 		 afe_data_format ? "unprocessed" : "processed");
 
 	for (n = LSM_MIN_SESSION_ID; n <= LSM_MAX_SESSION_ID; n++) {
-#if !defined(CONFIG_TARGET_PRODUCT_PSYCHE) && !defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if !defined(CONFIG_BOARD_PSYCHE) && !defined(CONFIG_BOARD_DAGU)
 		if (0 == lsm_client_afe_data[n].fe_id) {
 			lsm_client_afe_data[n].fe_id = fe_id;
 #else
@@ -1373,7 +1373,7 @@ int q6lsm_set_afe_data_format(uint64_t fe_id, uint16_t afe_data_format)
 		}
 	}
 
-#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_DAGU)
 	/*
 	 * When no matching session is found, allocate
 	 * a new one if a free session is available.
@@ -1729,7 +1729,7 @@ int q6lsm_set_data(struct lsm_client *client,
 	}
 
 	param_hdr.param_id = LSM_PARAM_ID_MIN_CONFIDENCE_LEVELS;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	rc = q6lsm_send_confidence_levels(client, &param_hdr,
 					  LSM_SESSION_CMD_SET_PARAMS, 0);
 #else
@@ -1811,7 +1811,7 @@ EXPORT_SYMBOL(q6lsm_register_sound_model);
  *
  * Returns 0 on success or error on failure
  */
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 int q6lsm_deregister_sound_model(struct lsm_client *client)
 {
 	int rc = 0;
@@ -1911,8 +1911,7 @@ int q6lsm_deregister_sound_model(struct lsm_client *client)
 		pr_err("%s: session[%d]", __func__, client->session);
 		return -EINVAL;
 	}
-
-#if defined(CONFIG_TARGET_PRODUCT_PIPA)
+#if defined(CONFIG_BOARD_PIPA)
 	client->model_reged = false;
 #endif
 	memset(&cmd, 0, sizeof(cmd));
@@ -2171,7 +2170,7 @@ fail:
 	return rc;
 }
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 /**
  * q6lsm_snd_model_buf_free -
  *       Free memory for LSM snd model
@@ -2309,8 +2308,18 @@ static int q6lsm_mmapcallback(struct apr_client_data *data, void *priv)
 		lsm_common.set_custom_topology = 1;
 		return 0;
 	}
+	
+	/*
+	The payload_size can be either 4 or 8 bytes.
+	It has to be verified whether the payload_size is
+	atleast 4 bytes. If it is less, returns errorcode.
 
-	if (data->payload_size < (2 * sizeof(uint32_t))) {
+	The opcode for 4 bytes is 0x12A80
+	The opcode for 8 bytes is 0x110E8.
+	 
+	*/
+
+	if (data->payload_size < (2 * sizeof(uint16_t))) {
 		pr_err("%s: payload has invalid size[%d]\n", __func__,
 			data->payload_size);
 		return -EINVAL;
@@ -2388,7 +2397,7 @@ static int q6lsm_mmapcallback(struct apr_client_data *data, void *priv)
  *
  * Returns 0 on success or error on failure
  */
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 int q6lsm_snd_model_buf_alloc(struct lsm_client *client, size_t len,
 			      struct lsm_params_info_v2 *p_info,
 			      struct lsm_sound_model *sm)
@@ -2663,13 +2672,13 @@ int q6lsm_set_one_param(struct lsm_client *client,
 	}
 
 	case LSM_MIN_CONFIDENCE_LEVELS:
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	case LSM_MULTI_SND_MODEL_CONFIDENCE_LEVELS:
 #endif
 		param_info.module_id = p_info->module_id;
 		param_info.instance_id = p_info->instance_id;
 		param_info.param_id = p_info->param_id;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 		rc = q6lsm_send_confidence_levels(
 			client, &param_info, LSM_SESSION_CMD_SET_PARAMS_V2,
 			p_info->model_id);
@@ -2703,7 +2712,7 @@ int q6lsm_set_one_param(struct lsm_client *client,
 	}
 
 	case LSM_REG_SND_MODEL:
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	case LSM_REG_MULTI_SND_MODEL: 
 #endif
 	{
@@ -2720,7 +2729,7 @@ int q6lsm_set_one_param(struct lsm_client *client,
 			payload_size = p_info->param_size +
 				       sizeof(struct param_hdr_v2);
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 		if (param_type == LSM_REG_MULTI_SND_MODEL) {
 			list_for_each_entry(sm,
 					    &client->stage_cfg[p_info->stage_idx].sound_models,
@@ -2746,7 +2755,7 @@ int q6lsm_set_one_param(struct lsm_client *client,
 
 		rc = q6lsm_set_params(client, &mem_hdr, NULL, payload_size,
 				      LSM_SESSION_CMD_SET_PARAMS_V2);
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 		if (rc) {
 			pr_err("%s: %s failed, rc %d\n",
 				__func__, param_type == LSM_REG_SND_MODEL ?
@@ -2776,7 +2785,7 @@ int q6lsm_set_one_param(struct lsm_client *client,
 	}
 
 	case LSM_DEREG_SND_MODEL:
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	case LSM_DEREG_MULTI_SND_MODEL: 
 #endif
 	{
@@ -2784,7 +2793,7 @@ int q6lsm_set_one_param(struct lsm_client *client,
 		param_info.instance_id = p_info->instance_id;
 		param_info.param_id = p_info->param_id;
 		param_info.param_size = 0;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 
 		if (param_type == LSM_DEREG_MULTI_SND_MODEL) {
 			param_info.param_size = p_info->param_size;

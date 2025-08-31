@@ -34,7 +34,7 @@ static int __init audio_q6_init(void)
 	mius_driver_init();
 #endif
 /* for mius end */
-    return 0;
+	return 0;
 }
 
 static void __exit audio_q6_exit(void)
@@ -59,6 +59,7 @@ static void __exit audio_q6_exit(void)
 	adsp_err_exit();
 	voice_mhi_exit();
 	elliptic_driver_exit();
+
 /* for mius start */
 #ifdef CONFIG_US_PROXIMITY
 	mius_driver_exit();

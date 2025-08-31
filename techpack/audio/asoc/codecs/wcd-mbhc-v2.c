@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  */
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -29,7 +28,7 @@
 #include <asoc/wcd-mbhc-v2-api.h>
 #define CONFIG_AUDIO_UART_DEBUG
 
-#if (defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)) && defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU) || defined(CONFIG_BOARD_PIPA)
 #include <linux/debugfs.h>
 
 #define HEADSET_STATUS_RECORD_INDEX_PLUGIN_HEADSET (3)
@@ -53,6 +52,8 @@
 #define HEADSET_EVENT_PLUGOUT_MICROPHONE (4)
 #define HEADSET_EVENT_PLUGOUT_JACK (8)
 
+#define DEBUGFS_DIR_NAME "mbhc"
+#define DEBUGFS_HEADSET_STATUS_FILE_NAME "headset_status"
 #define HEADSET_EVENT_MAX (5)
 
 static struct dentry* mbhc_debugfs_dir;
@@ -82,12 +83,14 @@ void wcd_mbhc_jack_report(struct wcd_mbhc *mbhc,
 			  struct snd_soc_jack *jack, int status, int mask)
 {
 	snd_soc_jack_report(jack, status, mask);
-#if (defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)) && defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU) || defined(CONFIG_BOARD_PIPA)
+	add_headset_event(mbhc->hph_status, mask, jack->status);
 #endif
 }
 EXPORT_SYMBOL(wcd_mbhc_jack_report);
 
-#if (defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)) && defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU) || defined(CONFIG_BOARD_PIPA)
+static void add_headset_event(int status, int mask, int jackstatus) {
 	if (status == HEADSET_STATUS_RECORD_INDEX_PLUGOUT) {
 		headset_status[4] = maxF(headset_status[4], HEADSET_EVENT_PLUGOUT_HEADPHONE);
 		headset_status[4] = maxF(headset_status[4], HEADSET_EVENT_PLUGOUT_MICROPHONE);
@@ -788,7 +791,6 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			}
 			mbhc->hph_status &= ~(SND_JACK_HEADSET |
 						SND_JACK_LINEOUT |
-						SND_JACK_ANC_HEADPHONE |
 						SND_JACK_UNSUPPORTED);
 		}
 
@@ -806,8 +808,9 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			mbhc->jiffies_atreport = jiffies;
 		} else if (jack_type == SND_JACK_LINEOUT) {
 			mbhc->current_plug = MBHC_PLUG_TYPE_HIGH_HPH;
-		} else if (jack_type == SND_JACK_ANC_HEADPHONE)
-			mbhc->current_plug = MBHC_PLUG_TYPE_ANC_HEADPHONE;
+		} else {
+			pr_debug("%s: invalid Jack type %d\n",__func__, jack_type);
+		}
 
 		if (mbhc->mbhc_cb->hph_pa_on_status)
 			is_pa_on = mbhc->mbhc_cb->hph_pa_on_status(component);
@@ -963,8 +966,6 @@ void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 			anc_mic_found =
 			mbhc->mbhc_fn->wcd_mbhc_detect_anc_plug_type(mbhc);
 		jack_type = SND_JACK_HEADSET;
-		if (anc_mic_found)
-			jack_type = SND_JACK_ANC_HEADPHONE;
 
 		if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADPHONE)
 			wcd_mbhc_report_plug(mbhc, 0, SND_JACK_HEADPHONE);
@@ -1151,9 +1152,6 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 			mbhc->is_extn_cable = false;
 			jack_type = SND_JACK_LINEOUT;
 			break;
-		case MBHC_PLUG_TYPE_ANC_HEADPHONE:
-			jack_type = SND_JACK_ANC_HEADPHONE;
-			break;
 		default:
 			pr_info("%s: Invalid current plug: %d\n",
 				__func__, mbhc->current_plug);
@@ -1232,27 +1230,21 @@ int wcd_mbhc_get_button_mask(struct wcd_mbhc *mbhc)
 	switch (btn) {
 	case 0:
 		mask = SND_JACK_BTN_0;
-        pr_debug("%s() button is 0x%x[hook]", __func__, mask);
 		break;
 	case 1:
 		mask = SND_JACK_BTN_1;
-        pr_debug("%s() button is 0x%x[volume up]", __func__, mask);
 		break;
 	case 2:
 		mask = SND_JACK_BTN_2;
-        pr_debug("%s() button is 0x%x[volume down]", __func__, mask);
 		break;
 	case 3:
 		mask = SND_JACK_BTN_3;
-        pr_debug("%s() button is 0x%x", __func__, mask);
 		break;
 	case 4:
 		mask = SND_JACK_BTN_4;
-        pr_debug("%s() button is 0x%x", __func__, mask);
 		break;
 	case 5:
 		mask = SND_JACK_BTN_5;
-        pr_debug("%s() button is 0x%x", __func__, mask);
 		break;
 	default:
 		break;
@@ -1403,14 +1395,14 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 				pr_debug("%s: Switch irq kicked in, ignore\n",
 					__func__);
 			} else {
-				pr_debug("%s: Reporting btn %#x press\n",
-					 __func__, mbhc->buttons_pressed);
+				pr_debug("%s: Reporting btn press\n",
+					 __func__);
 				wcd_mbhc_jack_report(mbhc,
 						     &mbhc->button_jack,
 						     mbhc->buttons_pressed,
 						     mbhc->buttons_pressed);
-				pr_debug("%s: Reporting btn %#x release\n",
-					 __func__, mbhc->buttons_pressed);
+				pr_debug("%s: Reporting btn release\n",
+					 __func__);
 				wcd_mbhc_jack_report(mbhc,
 						&mbhc->button_jack,
 						0, mbhc->buttons_pressed);
@@ -1804,9 +1796,9 @@ static int wcd_mbhc_non_usb_c_event_changed(struct notifier_block *nb,
 static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 					   unsigned long mode, void *ptr)
 {
+	u8 det_status = 0;
 	struct wcd_mbhc *mbhc = container_of(nb, struct wcd_mbhc, fsa_nb);
 	struct wcd_mbhc_config *config = mbhc->mbhc_cfg;
-	u8 det_status = 0;
 
 	if (!mbhc)
 		return -EINVAL;
@@ -2018,7 +2010,8 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 	const char *hph_thre = "qcom,msm-mbhc-hs-mic-min-threshold-mv";
 
 	pr_debug("%s: enter\n", __func__);
-#if (defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)) && defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU) || defined(CONFIG_BOARD_PIPA)
+	mbhc_debugfs_dir = debugfs_create_dir(DEBUGFS_DIR_NAME, NULL);
 	if (!IS_ERR(mbhc_debugfs_dir)) {
 		debugfs_create_file(DEBUGFS_HEADSET_STATUS_FILE_NAME, 0666,
 				mbhc_debugfs_dir, NULL, &mbhc_headset_status_fops);

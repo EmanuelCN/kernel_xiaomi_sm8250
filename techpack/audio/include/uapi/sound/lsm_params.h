@@ -7,7 +7,7 @@
 #include <linux/types.h>
 #include <sound/asound.h>
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 #define SNDRV_LSM_VERSION SNDRV_PROTOCOL_VERSION(0, 3, 2)
 #else
 #define SNDRV_LSM_VERSION SNDRV_PROTOCOL_VERSION(0, 3, 1)
@@ -38,7 +38,7 @@
 #define LSM_POLLING_ENABLE (7)
 #define LSM_DET_EVENT_TYPE (8)
 #define LSM_LAB_CONTROL (9)
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 #define LSM_REG_MULTI_SND_MODEL (10)
 #define LSM_DEREG_MULTI_SND_MODEL (11)
 #define LSM_MULTI_SND_MODEL_CONFIDENCE_LEVELS (12)
@@ -249,7 +249,7 @@ struct lsm_params_info_v2 {
 	uint32_t param_type;
 	__u16 instance_id;
 	__u16 stage_idx;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	__u32 model_id;
 #endif
 };

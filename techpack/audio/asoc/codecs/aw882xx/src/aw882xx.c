@@ -30,13 +30,12 @@
 #include <sound/control.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
-#include <linux/mmhardware_sysfs.h>
 
-#include "aw882xx.h"
-#include "aw882xx_log.h"
-#include "aw882xx_dsp.h"
-#include "aw882xx_bin_parse.h"
-#include "aw882xx_spin.h"
+#include "../inc/aw882xx.h"
+#include "../inc/aw882xx_log.h"
+#include "../inc/aw882xx_dsp.h"
+#include "../inc/aw882xx_bin_parse.h"
+#include "../inc/aw882xx_spin.h"
 
 #define AW882XX_DRIVER_VERSION "v1.13.0"
 #define AW882XX_I2C_NAME "aw882xx_smartpa"
@@ -2470,36 +2469,6 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c,
 	g_aw882xx_dev_cnt++;
 	mutex_unlock(&g_aw882xx_lock);
 	aw_dev_info(&i2c->dev, "dev_cnt %d", g_aw882xx_dev_cnt);
-#ifdef CONFIG_MMHARDWARE_DETECTION
-	switch (g_aw882xx_dev_cnt) {
-		case 1:
-			register_kobj_under_mmsysfs(MM_HW_PA_1, MM_HARDWARE_SYSFS_PA_1_FOLDER);
-			break;
-		case 2:
-			register_kobj_under_mmsysfs(MM_HW_PA_2, MM_HARDWARE_SYSFS_PA_2_FOLDER);
-			break;
-		case 3:
-			register_kobj_under_mmsysfs(MM_HW_PA_3, MM_HARDWARE_SYSFS_PA_3_FOLDER);
-			break;
-		case 4:
-			register_kobj_under_mmsysfs(MM_HW_PA_4, MM_HARDWARE_SYSFS_PA_4_FOLDER);
-			break;
-		case 5:
-			register_kobj_under_mmsysfs(MM_HW_PA_5, MM_HARDWARE_SYSFS_PA_5_FOLDER);
-			break;
-		case 6:
-			register_kobj_under_mmsysfs(MM_HW_PA_6, MM_HARDWARE_SYSFS_PA_6_FOLDER);
-			break;
-		case 7:
-			register_kobj_under_mmsysfs(MM_HW_PA_7, MM_HARDWARE_SYSFS_PA_7_FOLDER);
-			break;
-		case 8:
-			register_kobj_under_mmsysfs(MM_HW_PA_8, MM_HARDWARE_SYSFS_PA_8_FOLDER);
-			break;
-		default:
-			break;
-	}
-#endif
 	return ret;
 err_sysfs:
 	aw_componet_codec_ops.unregister_codec(&i2c->dev);

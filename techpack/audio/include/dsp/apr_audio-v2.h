@@ -3981,7 +3981,7 @@ struct afe_param_id_set_topology_cfg {
 	u32		topology_id;
 } __packed;
 
-#define MAX_ABR_LEVELS 5
+#define MAX_ABR_LEVELS 6
 
 struct afe_bit_rate_level_map_t {
 	/*
@@ -4604,6 +4604,11 @@ struct asm_lhdc_specific_enc_cfg_t {
 	 * @Default: 679 for LHDCBT_MTU_2DH5
 	 */
 	uint16_t                     mtu;
+	uint32_t                     ar_enabled;
+	uint32_t                     meta_enabled;
+	uint32_t                     llac_enabled;
+	uint32_t                     mbr_enabled;
+	uint32_t                     larc_enabled;
 } __packed;
 
 struct asm_lhdc_enc_cfg_t {

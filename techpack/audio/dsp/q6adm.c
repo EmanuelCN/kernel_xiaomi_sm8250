@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/module.h>
@@ -287,7 +287,7 @@ static int adm_get_copp_id(int port_idx, int copp_idx)
 
 static int adm_get_idx_if_copp_exists(int port_idx, int topology, int mode,
 				 int rate, int bit_width, int app_type,
-				 int session_type)
+				 int session_type, int channel_mode)
 {
 	int idx;
 
@@ -305,7 +305,9 @@ static int adm_get_idx_if_copp_exists(int port_idx, int topology, int mode,
 			atomic_read(
 				&this_adm.copp.session_type[port_idx][idx])) &&
 		    (app_type ==
-			atomic_read(&this_adm.copp.app_type[port_idx][idx])))
+			atomic_read(&this_adm.copp.app_type[port_idx][idx])) &&
+		    (channel_mode ==
+			atomic_read(&this_adm.copp.channels[port_idx][idx])))
 			return idx;
 	return -EINVAL;
 }
@@ -753,8 +755,6 @@ int adm_set_stereo_to_custom_stereo(int port_id, int copp_idx,
 	if (!rc) {
 		pr_err("%s: Set params timed out port = 0x%x\n", __func__,
 			port_id);
-		if (AFE_PORT_ID_USB_RX == port_id)
-			is_usb_timeout = true;
 		rc = -EINVAL;
 		goto set_stereo_to_custom_stereo_return;
 	} else if (atomic_read(&this_adm.copp.stat
@@ -3208,10 +3208,10 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 				this_adm.ffecns_port_id);
 	}
 
-	if ((topology == VPM_TX_VOICE_SMECNS_V2_COPP_TOPOLOGY) ||
-	    (topology == VPM_TX_VOICE_FLUENCE_SM_COPP_TOPOLOGY) ||
-	    (topology == ADM_TOPOLOGY_ID_AUDIO_RX_FVSAM) ||
-	    (topology == ADM_TOPOLOGY_ID_AUDIO_RX_MISE)) {
+	if (topology == VPM_TX_VOICE_SMECNS_V2_COPP_TOPOLOGY ||
+	        topology == VPM_TX_VOICE_FLUENCE_SM_COPP_TOPOLOGY ||
+		topology == ADM_TOPOLOGY_ID_AUDIO_RX_FVSAM ||
+		topology == ADM_TOPOLOGY_ID_AUDIO_RX_MISE) {
 		pr_debug("%s: set channel_mode as 1 for topology=%d\n", __func__, topology);
 		channel_mode = 1;
 	}
@@ -3225,7 +3225,8 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		copp_idx = adm_get_idx_if_copp_exists(port_idx, topology,
 						      perf_mode,
 						      rate, bit_width,
-						      app_type, session_type);
+						      app_type, session_type,
+						      channel_mode);
 
 	if (copp_idx < 0) {
 		copp_idx = adm_get_next_available_copp(port_idx);
@@ -3518,6 +3519,29 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 					__func__, tmp_port, port_id, ret);
 				return -EINVAL;
 			}
+		}
+
+		/* Wait for the callback with copp id */
+		ret = wait_event_timeout(this_adm.copp.wait[port_idx][copp_idx],
+			atomic_read(&this_adm.copp.stat
+			[port_idx][copp_idx]) >= 0,
+			msecs_to_jiffies(2 * TIMEOUT_MS));
+		if (!ret) {
+			pr_err("%s: ADM open timedout for port_id: 0x%x for [0x%x]\n",
+						__func__, tmp_port, port_id);
+			if (AFE_PORT_ID_USB_RX == port_id) {
+				is_usb_timeout = true;
+			}
+			return -EINVAL;
+		} else if (atomic_read(&this_adm.copp.stat
+					[port_idx][copp_idx]) > 0) {
+			pr_err("%s: DSP returned error[%s]\n",
+				__func__, adsp_err_get_err_str(
+				atomic_read(&this_adm.copp.stat
+				[port_idx][copp_idx])));
+			return adsp_err_get_lnx_err_code(
+					atomic_read(&this_adm.copp.stat
+						[port_idx][copp_idx]));
 		}
 	}
 	atomic_inc(&this_adm.copp.cnt[port_idx][copp_idx]);

@@ -22,6 +22,10 @@ ifeq ($(KERNEL_BUILD), 0)
 		include $(AUDIO_ROOT)/config/litoauto.conf
 		INCS    +=  -include $(AUDIO_ROOT)/config/litoautoconf.h
 	endif
+        ifeq ($(CONFIG_ARCH_KONA), y)
+                include $(AUDIO_ROOT)/config/konaauto.conf
+                INCS    +=  -include $(AUDIO_ROOT)/config/konaautoconf.h
+        endif
 endif
 
 # As per target team, build is done as follows:
@@ -65,14 +69,6 @@ INCS +=		$(COMMON_INC) \
 
 EXTRA_CFLAGS += $(INCS)
 
-
-ifdef CONFIG_BOARD_UMI
-	CDEFINES += -DCONFIG_TARGET_PRODUCT_UMI
-endif
-
-ifdef CONFIG_BOARD_CMI
-	CDEFINES += -DCONFIG_TARGET_PRODUCT_CMI
-endif
 
 CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_LITTLE_BIT_ENDIAN \

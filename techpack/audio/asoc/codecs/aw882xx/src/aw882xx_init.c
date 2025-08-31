@@ -31,15 +31,15 @@
 #include <sound/control.h>
 #include <linux/uaccess.h>
 
-#include "aw882xx.h"
-#include "aw882xx_pid_1852_reg.h"
-#include "aw882xx_pid_2013_reg.h"
-#include "aw882xx_pid_2032_reg.h"
-#include "aw882xx_pid_2055a_reg.h"
-#include "aw882xx_pid_2055_reg.h"
-#include "aw882xx_pid_2071_reg.h"
-#include "aw882xx_pid_2113_reg.h"
-#include "aw882xx_log.h"
+#include "../inc/aw882xx.h"
+#include "../inc/aw882xx_pid_1852_reg.h"
+#include "../inc/aw882xx_pid_2013_reg.h"
+#include "../inc/aw882xx_pid_2032_reg.h"
+#include "../inc/aw882xx_pid_2055a_reg.h"
+#include "../inc/aw882xx_pid_2055_reg.h"
+#include "../inc/aw882xx_pid_2071_reg.h"
+#include "../inc/aw882xx_pid_2113_reg.h"
+#include "../inc/aw882xx_log.h"
 
 int aw882xx_dev_i2c_write_bits(struct aw_device *aw_dev,
 	unsigned char reg_addr, unsigned int mask, unsigned int reg_data)

@@ -477,7 +477,7 @@ exit:
 	return ret;
 }
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 static int msm_lsm_get_conf_levels(struct lsm_client *client,
 				   u8 *conf_levels_ptr)
 {
@@ -705,7 +705,7 @@ done:
 	return rc;
 }
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 static int msm_lsm_set_conf(struct snd_pcm_substream *substream,
 		struct lsm_params_info_v2 *p_info)
 {
@@ -1033,7 +1033,7 @@ static int msm_lsm_reg_model(struct snd_pcm_substream *substream,
 			__func__, rc);
 		goto err_copy;
 	}
-#if defined(CONFIG_TARGET_PRODUCT_PIPA)
+#if defined(CONFIG_BOARD_PIPA)
 	prtd->lsm_client->model_reged = true;
 #endif
 	return rc;
@@ -1050,7 +1050,7 @@ static int msm_lsm_dereg_model(struct snd_pcm_substream *substream,
 	struct lsm_priv *prtd = runtime->private_data;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	int rc = 0;
-#if defined(CONFIG_TARGET_PRODUCT_PIPA)
+#if defined(CONFIG_BOARD_PIPA)
 	prtd->lsm_client->model_reged = false;
 #endif
 	rc = q6lsm_set_one_param(prtd->lsm_client, p_info,
@@ -1303,7 +1303,7 @@ static int msm_lsm_process_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	if (p_info->param_type == LSM_REG_MULTI_SND_MODEL &&
 		prtd->lsm_client->num_sound_models == LSM_MAX_SOUND_MODELS_SUPPORTED) {
 		dev_err(rtd->dev,
@@ -1332,19 +1332,19 @@ static int msm_lsm_process_params(struct snd_pcm_substream *substream,
 		rc = msm_lsm_set_gain(substream, p_info);
 		break;
 	case LSM_MIN_CONFIDENCE_LEVELS:
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	case LSM_MULTI_SND_MODEL_CONFIDENCE_LEVELS:
 #endif
 		rc = msm_lsm_set_conf(substream, p_info);
 		break;
 	case LSM_REG_SND_MODEL:
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	case LSM_REG_MULTI_SND_MODEL:
 #endif
 		rc = msm_lsm_reg_model(substream, p_info);
 		break;
 	case LSM_DEREG_SND_MODEL:
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	case LSM_DEREG_MULTI_SND_MODEL:
 #endif
 		rc = msm_lsm_dereg_model(substream, p_info);
@@ -1512,11 +1512,11 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 		 * also set stage index to LSM_STAGE_INDEX_FIRST.
 		 */
 		struct lsm_params_info_v2 p_info = {0};
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 		struct lsm_sound_model *sm = NULL;
 #endif
 		p_info.stage_idx = LSM_STAGE_INDEX_FIRST;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 		p_info.param_type = LSM_DEREG_SND_MODEL;
 		sm = &prtd->lsm_client->stage_cfg[p_info.stage_idx].sound_model;
 #endif
@@ -1534,7 +1534,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 			rc = -EINVAL;
 			break;
 		}
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 		rc = q6lsm_snd_model_buf_alloc(prtd->lsm_client,
 					snd_model_v2.data_size, &p_info, sm);
 #else
@@ -1547,7 +1547,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 			       __func__, snd_model_v2.data_size);
 			break;
 		}
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 		if (copy_from_user(sm->data, snd_model_v2.data,
 						   snd_model_v2.data_size)) {
 			dev_err(rtd->dev,
@@ -1595,7 +1595,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 			dev_err(rtd->dev,
 				"%s: Register snd Model v2 failed =%d\n",
 			       __func__, rc);
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 			q6lsm_snd_model_buf_free(prtd->lsm_client, &p_info, sm);
 #else
 			q6lsm_snd_model_buf_free(prtd->lsm_client, &p_info);
@@ -2056,7 +2056,7 @@ struct lsm_params_info_v2_32 {
 	uint32_t param_type;
 	u16 instance_id;
 	u16 stage_idx;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	u32 model_id;
 #endif
 };
@@ -2406,7 +2406,7 @@ static int msm_lsm_ioctl_compat(struct snd_pcm_substream *substream,
 					p_data.num_params * sizeof(struct lsm_params_info_v2_32);
 
 		if (p_data.data_size != expected_size) {
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 			dev_err(rtd->dev,
 				"%s: %s: Invalid size %d, expected_size %d\n",
 				__func__, "SET_MODULE_PARAMS(_V2)_32",
@@ -2452,7 +2452,7 @@ static int msm_lsm_ioctl_compat(struct snd_pcm_substream *substream,
 
 				p_info.instance_id = INSTANCE_ID_0;
 				p_info.stage_idx = LSM_STAGE_INDEX_FIRST;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 				p_info.model_id = 0;
 #endif
 
@@ -2466,7 +2466,7 @@ static int msm_lsm_ioctl_compat(struct snd_pcm_substream *substream,
 
 				p_info.instance_id = p_info_v2_32->instance_id;
 				p_info.stage_idx = p_info_v2_32->stage_idx;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 				/* set sound model id to 0 for backward compatibility */
 				p_info.model_id = 0;
 
@@ -2699,7 +2699,7 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 	case SNDRV_LSM_SET_MODULE_PARAMS_V2: {
 		struct snd_lsm_module_params p_data;
 		struct lsm_params_info *temp_ptr_info = NULL;
-#if !defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if !defined(CONFIG_BOARD_DAGU)
 		struct lsm_params_info_v2 info_v2;
 #endif
 		struct lsm_params_info_v2 *ptr_info_v2 = NULL, *temp_ptr_info_v2 = NULL;
@@ -2770,7 +2770,7 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 		for (count = 0; count < p_data.num_params; count++) {
 			if (cmd == SNDRV_LSM_SET_MODULE_PARAMS) {
 				/* convert to V2 param info struct from legacy param info */
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 				ptr_info_v2->module_id = temp_ptr_info->module_id;
 				ptr_info_v2->param_id = temp_ptr_info->param_id;
 				ptr_info_v2->param_size = temp_ptr_info->param_size;
@@ -2795,7 +2795,7 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 #endif
 				temp_ptr_info++;
 			} else {
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 				if (LSM_REG_MULTI_SND_MODEL != temp_ptr_info_v2->param_type ||
 				    LSM_DEREG_MULTI_SND_MODEL !=
 								temp_ptr_info_v2->param_type ||
@@ -3071,7 +3071,7 @@ static int msm_lsm_open(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct lsm_priv *prtd;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	int ret = 0, i;
 #else
 	int ret = 0;
@@ -3141,7 +3141,7 @@ static int msm_lsm_open(struct snd_pcm_substream *substream)
 	prtd->lsm_client->event_type = LSM_DET_EVENT_TYPE_LEGACY;
 	prtd->lsm_client->fe_id = rtd->dai_link->id;
 	prtd->lsm_client->unprocessed_data = 0;
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	prtd->lsm_client->num_sound_models = 0;
 	prtd->lsm_client->num_keywords = 0;
 	prtd->lsm_client->multi_snd_model_confidence_levels = NULL;
@@ -3149,7 +3149,7 @@ static int msm_lsm_open(struct snd_pcm_substream *substream)
 	for (i = 0; i < LSM_MAX_STAGES_PER_SESSION; i++)
 		INIT_LIST_HEAD(&prtd->lsm_client->stage_cfg[i].sound_models);
 #endif
-#if defined(CONFIG_TARGET_PRODUCT_PIPA)
+#if defined(CONFIG_BOARD_PIPA)
 	prtd->lsm_client->model_reged = false;
 #endif
 	return 0;
@@ -3310,7 +3310,7 @@ static int msm_lsm_close(struct snd_pcm_substream *substream)
 						__func__, ret);
 				prtd->lsm_client->lab_started = false;
 			}
-#if !defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if !defined(CONFIG_BOARD_DAGU)
 			if (prtd->lsm_client->lab_buffer) {
 				ret = msm_lsm_lab_buffer_alloc(prtd,
 						LAB_BUFFER_DEALLOC);
@@ -3336,7 +3336,7 @@ static int msm_lsm_close(struct snd_pcm_substream *substream)
 			dev_dbg(rtd->dev,
 				"%s: LSM client session stopped %d\n",
 				 __func__, ret);
-#if defined(CONFIG_TARGET_PRODUCT_DAGU)
+#if defined(CONFIG_BOARD_DAGU)
 	}
 
 	if (prtd->lsm_client->lab_enable && prtd->lsm_client->lab_buffer) {
@@ -3360,7 +3360,7 @@ static int msm_lsm_close(struct snd_pcm_substream *substream)
 	else
 		dev_dbg(rtd->dev, "%s: dereg_snd_model successful\n",
 			__func__);
-#elif defined(CONFIG_TARGET_PRODUCT_PIPA)
+#elif defined(CONFIG_BOARD_PIPA)
 		prtd->lsm_client->started = false;
 	}
 
@@ -3381,6 +3381,7 @@ static int msm_lsm_close(struct snd_pcm_substream *substream)
 				__func__);
 	}
 #else
+
 		/*
 		 * Go Ahead and try de-register sound model,
 		 * even if stop failed

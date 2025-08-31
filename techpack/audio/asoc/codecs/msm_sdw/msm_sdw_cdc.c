@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2016-2018, 2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2018, 2020-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1811,7 +1811,9 @@ static int msm_sdw_notifier_service_cb(struct notifier_block *nb,
 			initial_boot = false;
 			break;
 		}
+		mutex_lock(&msm_sdw->cdc_int_mclk1_mutex);
 		msm_sdw->int_mclk1_enabled = false;
+		mutex_unlock(&msm_sdw->cdc_int_mclk1_mutex);
 		msm_sdw->dev_up = false;
 		for (i = 0; i < msm_sdw->nr; i++)
 			swrm_wcd_notify(msm_sdw->sdw_ctrl_data[i].sdw_pdev,
@@ -2002,7 +2004,8 @@ static int msm_sdw_probe(struct platform_device *pdev)
 	int adsp_state;
 
 	adsp_state = apr_get_subsys_state();
-	if (adsp_state != APR_SUBSYS_LOADED) {
+	if (adsp_state != APR_SUBSYS_LOADED ||
+		!q6core_is_adsp_ready()) {
 		dev_err(&pdev->dev, "Adsp is not loaded yet %d\n",
 				adsp_state);
 		return -EPROBE_DEFER;
