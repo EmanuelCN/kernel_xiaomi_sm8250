@@ -65,6 +65,10 @@ ifdef CONFIG_SND_SOC_WCD938X_SLAVE
 	WCD938X_SLAVE_OBJS += wcd938x-slave.o
 endif
 
+ifneq (,$(filter $(TARGET_PRODUCT), dagu pipa))
+	CDEFINES += -DCONFIG_MMHARDWARE_DETECTION
+endif
+
 LINUX_INC +=	-Iinclude/linux
 
 INCS +=		$(COMMON_INC) \
@@ -72,9 +76,6 @@ INCS +=		$(COMMON_INC) \
 
 EXTRA_CFLAGS += $(INCS)
 
-ifneq ($(filter y, $(CONFIG_BOARD_DAGU) $(CONFIG_BOARD_PIPA)),)
-	CDEFINES += -DCONFIG_MMHARDWARE_DETECTION
-endif
 
 CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_LITTLE_BIT_ENDIAN \
@@ -83,6 +84,7 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_OS_TYPE_ANDROID=6 \
 		-DPTT_SOCK_SVC_ENABLE \
 		-Wall\
+		-Werror\
 		-D__linux__
 
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -114,3 +116,6 @@ wcd938x_dlkm-y := $(WCD938X_OBJS)
 
 obj-$(CONFIG_SND_SOC_WCD938X_SLAVE) += wcd938x_slave_dlkm.o
 wcd938x_slave_dlkm-y := $(WCD938X_SLAVE_OBJS)
+
+# inject some build related information
+DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

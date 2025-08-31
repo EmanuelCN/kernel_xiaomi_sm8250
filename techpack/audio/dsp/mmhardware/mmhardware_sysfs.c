@@ -6,38 +6,81 @@
 #include <linux/mmhardware_sysfs.h>
 
 /* show */
-static ssize_t mm_register_show(struct kobject *dev, struct kobj_attribute *a,
-				char *buf)
+static ssize_t mm_register_show(struct kobject *dev,
+	struct kobj_attribute *a, char *buf)
 {
 	struct mm_info *mi = container_of(a, struct mm_info, k_attr);
 
 	switch (mi->mm_id) {
-	case MM_HW_ADSP:
-	case MM_HW_CODEC:
-	case MM_HW_PA_1:
-	case MM_HW_PA_2:
-	case MM_HW_PA_3:
-	case MM_HW_PA_4:
-	case MM_HW_PA_5:
-	case MM_HW_PA_6:
-	case MM_HW_PA_7:
-	case MM_HW_PA_8:
-		if (!mi->on_register)
-			pr_info("%s: 0x%x is not registered\n", __func__,
-				mi->mm_id);
-
-		return snprintf(buf, sizeof(mi->on_register), "%d\n",
-				mi->on_register);
-	default:
-		break;
+		case MM_HW_ADSP:
+			if (!mi->on_register) {
+				pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		case MM_HW_CODEC:
+			if (!mi->on_register) {
+					pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		case MM_HW_PA_1:
+			if (!mi->on_register) {
+				pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		case MM_HW_PA_2:
+			if (!mi->on_register) {
+				pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		case MM_HW_PA_3:
+			if (!mi->on_register) {
+				pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		case MM_HW_PA_4:
+			if (!mi->on_register) {
+				pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		case MM_HW_PA_5:
+			if (!mi->on_register) {
+				pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		case MM_HW_PA_6:
+			if (!mi->on_register) {
+				pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		case MM_HW_PA_7:
+			if (!mi->on_register) {
+				pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		case MM_HW_PA_8:
+			if (!mi->on_register) {
+				pr_info("%s: 0x%x is not registered\n", __func__, mi->mm_id);
+			}
+			return sprintf(buf, "%d\n", mi->on_register);
+			break;
+		default:
+			break;
 	}
-
 	return 0;
 }
 
 /* store */
-static ssize_t mm_register_store(struct kobject *dev, struct kobj_attribute *a,
-				 const char *buf, size_t count)
+static ssize_t mm_register_store(struct kobject *dev,
+	struct kobj_attribute *a, const char *buf, size_t count)
 {
 	return count;
 }
@@ -64,7 +107,7 @@ static struct attribute *mm_attrs[] = {
 	&pa6_info.k_attr.attr,
 	&pa7_info.k_attr.attr,
 	&pa8_info.k_attr.attr,
-	NULL, /* need to NULL terminate the list of attributes */
+	NULL,  /* need to NULL terminate the list of attributes */
 };
 
 static struct attribute_group mm_attr_group = {
@@ -76,19 +119,18 @@ static struct kobject *mm_sysfs_kobj;
 int mmhardware_initialize_sysfs(void)
 {
 	int err;
-
 	/* create mm_hardware under /sys */
-	mm_sysfs_kobj = kobject_create_and_add(MM_HARDWARE_SYSFS_ROOT_FOLDER,
-					       kernel_kobj->parent);
+	mm_sysfs_kobj = kobject_create_and_add(MM_HARDWARE_SYSFS_ROOT_FOLDER, kernel_kobj->parent);
 
 	if (!mm_sysfs_kobj) {
-		pr_err("failed to create kobj: %d\n", mm_sysfs_kobj);
-		return -ENOMEM;
-	}
+		pr_err("failed to create kobj");
+    	return -ENOMEM;
+    }
 
 	err = sysfs_create_group(mm_sysfs_kobj, &mm_attr_group);
+
 	if (err) {
-		pr_err("failed to create sysfs group: %d\n", err);
+		pr_err("failed to create sysfs group");
 		kobject_put(mm_sysfs_kobj);
 		return -ENOMEM;
 	}
@@ -112,7 +154,7 @@ int register_kobj_under_mmsysfs(enum hardware_id mm_id, const char *name)
 
 	if (name == NULL) {
 		pr_err("%s: device_name is empty\n", __func__);
-		ret = -ENOENT;
+		ret = -2;
 		goto err;
 	}
 
@@ -124,23 +166,20 @@ int register_kobj_under_mmsysfs(enum hardware_id mm_id, const char *name)
 		if (mm_id == mi->mm_id) {
 			find_id = 1;
 			if (mi->on_register) {
-				pr_info("%s: device(id:%d name:%s) has already registered\n",
-					__func__, mi->mm_id, name);
+				pr_info("%s: device(id:%d name:%s) has already registered\n", __func__, mi->mm_id, name);
 				ret = -4;
 				goto err;
 			}
 			mi->on_register = 1;
 			goto err;
-		} else {
-			continue;
-		}
+		} else continue;
 	}
 
-	if (!find_id) {
-		pr_err("%s: Can't find correct hardware_id: 0x%x\n", __func__,
-		       mm_id);
-		ret = -ESRCH;
+	if (find_id == 0) {
+		pr_err("%s: Can't find correct hardware_id: 0x%x\n", __func__, mm_id);
+		ret = -3;
 	}
+
 err:
 	return ret;
 }
@@ -148,7 +187,6 @@ EXPORT_SYMBOL(register_kobj_under_mmsysfs);
 
 module_init(mmhardware_initialize_sysfs);
 module_exit(mmhardware_cleanup_sysfs);
-
-MODULE_AUTHOR("xiaomi mmhardware sysfs driver");
+MODULE_AUTHOR("xiaomi mm");
 MODULE_DESCRIPTION("Multimedia hardware detection");
 MODULE_LICENSE("GPL");

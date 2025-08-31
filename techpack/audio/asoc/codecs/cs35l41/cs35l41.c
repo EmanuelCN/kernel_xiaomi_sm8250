@@ -11,6 +11,7 @@
  * published by the Free Software Foundation.
  *
  */
+#define DEBUG
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/version.h>
@@ -1370,6 +1371,7 @@ static int cs35l41_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	asp_wl = params_width(params);
 	asp_width = params_physical_width(params);
+
 #if defined(CONFIG_TARGET_PRODUCT_APOLLO) || defined(CONFIG_TARGET_PRODUCT_CAS) || defined (CONFIG_TARGET_PRODUCT_ALIOTH) || defined(CONFIG_TARGET_PRODUCT_ENUMA)
 	cs35l41_component_set_sysclk(dai->component, 0, 0, 8 * rate * asp_width, 0);
 #elif defined(CONFIG_TARGET_PRODUCT_PSYCHE)
@@ -1449,7 +1451,7 @@ static int cs35l41_pcm_startup(struct snd_pcm_substream *substream,
 #else
 	cs35l41_set_dai_fmt(dai, SND_SOC_DAIFMT_CBS_CFS|SND_SOC_DAIFMT_I2S);
 #endif
-	
+
     //cs35l41_codec_set_sysclk(codec, 0, 0, 1536000, 0);
 #if 0
 	if (substream->runtime)
@@ -2266,7 +2268,7 @@ static int cs35l41_dsp_init(struct cs35l41_private *cs35l41)
 					CS35L41_INPUT_SRC_TEMPMON);
 	regmap_write(cs35l41->regmap, CS35L41_DSP1_RX8_SRC,
 					CS35L41_INPUT_SRC_RSVD);
-	
+
 	ret = regmap_read(cs35l41->regmap, CS35L41_REVID, &chip_revid);
 	if (ret < 0) {
 		dev_err(cs35l41->dev, "Get Revision ID failed\n");

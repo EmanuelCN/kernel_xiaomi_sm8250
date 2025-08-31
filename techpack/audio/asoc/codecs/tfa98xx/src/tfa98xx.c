@@ -31,10 +31,10 @@
 #include <linux/debugfs.h>
 #include <linux/version.h>
 #include <linux/input.h>
-#include "../inc/config.h"
-#include "../inc/tfa98xx.h"
-#include "../inc/tfa.h"
-#include "../inc/tfa_dsp_fw.h"
+#include "config.h"
+#include "tfa98xx.h"
+#include "tfa.h"
+#include "tfa_dsp_fw.h"
 
 #undef pr_info
 #undef pr_err
@@ -44,9 +44,9 @@
 #define pr_err(fmt, args...) printk(KERN_ERR "[tfa9874] " pr_fmt(fmt), ##args)
 
 /* required for enum tfa9912_irq */
-#include "../inc/tfa98xx_tfafieldnames.h"
+#include "tfa98xx_tfafieldnames.h"
 
-#include "../inc/spk-id.h"
+#include "spk-id.h"
 
 #define TFA98XX_VERSION	TFA98XX_API_REV_STR
 
@@ -431,16 +431,6 @@ static void tfa98xx_inputdev_unregister(struct tfa98xx *tfa98xx)
 	__tfa98xx_inputdev_check_register(tfa98xx, true);
 }
 
-#ifdef TFA_NON_DSP_SOLUTION
-extern int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead);
-#else
-int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead)
-{
-	pr_info("this function is empty!!!\n");
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_DEBUG_FS
 /* OTC reporting
  * Returns the MTP0 OTC bit value
@@ -791,6 +781,16 @@ static ssize_t tfa98xx_dbgfs_fw_state_get(struct file *file,
 
 	return simple_read_from_buffer(user_buf, count, ppos, str, strlen(str));
 }
+
+#ifdef TFA_NON_DSP_SOLUTION
+extern int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead);
+#else
+int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead)
+{
+	pr_info("this function is empty!!!\n");
+	return 0;
+}
+#endif
 
 static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
 				     char __user *user_buf, size_t count,

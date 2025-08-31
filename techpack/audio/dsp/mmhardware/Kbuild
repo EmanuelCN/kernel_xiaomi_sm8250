@@ -6,6 +6,8 @@ else
 	KERNEL_BUILD := 0
 endif
 
+
+
 ifeq ($(KERNEL_BUILD), 1)
 	# These are configurable via Kconfig for kernel-based builds
 	# Need to explicitly configure for Android-based builds
@@ -57,7 +59,7 @@ COMMON_DIR :=	include
 COMMON_INC :=	-I$(AUDIO_ROOT)/$(COMMON_DIR)
 
 # for mmhardware detection
-ifneq ($(filter y, $(CONFIG_BOARD_DAGU) $(CONFIG_BOARD_PIPA)),)
+ifneq (,$(filter $(TARGET_PRODUCT), dagu pipa))
 MMHARDWARE_OBJS += mmhardware_sysfs.o
 endif
 
@@ -74,9 +76,11 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_COMPILER_TYPE_GCC \
 		-DANI_OS_TYPE_ANDROID=6 \
 		-DPTT_SOCK_SVC_ENABLE \
-		-Wall \
-		-Werror \
-		-D__linux__
+		-Wall\
+		-Werror\
+		-D__linux__ \
+		-DDEBUG
+
 
 KBUILD_CPPFLAGS += $(CDEFINES)
 
@@ -102,7 +106,7 @@ KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/soc/Module
 endif
 
 # Module information used by KBuild framework
-obj-y    += mmhardware_sysfs.o
-mmhardware_sysfs-y := $(MMHARDWARE_OBJS)
+obj-m    += mmhardware_dlkm.o
+mmhardware_dlkm-y := $(MMHARDWARE_OBJS)
 # inject some build related information
 DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

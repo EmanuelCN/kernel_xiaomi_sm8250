@@ -105,14 +105,13 @@ INCS +=		$(COMMON_INC) \
 
 EXTRA_CFLAGS += $(INCS)
 
-ifdef CONFIG_BOARD_PSYCHE
-CDEFINES += -DCONFIG_TARGET_PRODUCT_PSYCHE
+ifeq ($(TARGET_PRODUCT), psyche)
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_PSYCHE
 endif
 
-ifdef CONFIG_BOARD_MUNCH
-CDEFINES += -DCONFIG_TARGET_PRODUCT_MUNCH
+ifeq ($(TARGET_PRODUCT), munch)
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_MUNCH
 endif
-
 
 CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_LITTLE_BIT_ENDIAN \
@@ -121,6 +120,7 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_OS_TYPE_ANDROID=6 \
 		-DPTT_SOCK_SVC_ENABLE \
 		-Wall\
+		-Werror\
 		-D__linux__
 
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -161,3 +161,6 @@ tx_macro_dlkm-y := $(TX_OBJS)
 
 obj-$(CONFIG_RX_MACRO) += rx_macro_dlkm.o
 rx_macro_dlkm-y := $(RX_OBJS)
+
+# inject some build related information
+DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

@@ -131,7 +131,7 @@ ifdef CONFIG_WCD_DSP_GLINK
 WDSP_GLINK += wcd-dsp-glink.o
 endif
 
-ifneq ($(filter y, $(CONFIG_BOARD_DAGU) $(CONFIG_BOARD_PIPA)),)
+ifneq (,$(filter $(TARGET_PRODUCT), dagu pipa))
 CDEFINES += -DCONFIG_MMHARDWARE_DETECTION
 endif
 
@@ -150,6 +150,7 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_OS_TYPE_ANDROID=6 \
 		-DPTT_SOCK_SVC_ENABLE \
 		-Wall\
+		-Werror\
 		-D__linux__
 
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -193,3 +194,6 @@ apr_dlkm-y := $(APRV_GLINK)
 
 obj-$(CONFIG_WCD_DSP_GLINK) += wglink_dlkm.o
 wglink_dlkm-y := $(WDSP_GLINK)
+
+# inject some build related information
+CDEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

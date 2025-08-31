@@ -124,7 +124,7 @@ static int msm_audio_ion_dma_buf_map(struct dma_buf *dma_buf,
 				 dma_addr_t *addr, size_t *len)
 {
 
-	struct msm_audio_alloc_data *alloc_data = NULL;
+	struct msm_audio_alloc_data *alloc_data;
 	struct device *cb_dev;
 	unsigned long ionflag = 0;
 	int rc = 0;
@@ -189,7 +189,6 @@ detach_dma_buf:
 	dma_buf_detach(dma_buf, alloc_data->attach);
 free_alloc_data:
 	kfree(alloc_data);
-	alloc_data = NULL;
 
 	return rc;
 }
@@ -263,7 +262,6 @@ static int msm_audio_dma_buf_unmap(void *handle)
 
 				list_del(&(alloc_data->list));
 				kfree(alloc_data);
-				alloc_data = NULL;
 				break;
 			}
 		} else {
@@ -280,7 +278,6 @@ static int msm_audio_dma_buf_unmap(void *handle)
 
 				list_del(&(alloc_data->list));
 				kfree(alloc_data);
-				alloc_data = NULL;
 				break;
 			}
 		}
@@ -543,11 +540,6 @@ static int msm_audio_ion_map_buf(void *handle, dma_addr_t *paddr,
 				 size_t *plen, void **vaddr)
 {
 	int rc = 0;
-
-	if (!handle || !paddr || !vaddr || !plen) {
-		pr_err("%s: Invalid params\n", __func__);
-		return -EINVAL;
-	}
 
 	rc = msm_audio_ion_get_phys((struct dma_buf*) handle, paddr, plen);
 	if (rc) {

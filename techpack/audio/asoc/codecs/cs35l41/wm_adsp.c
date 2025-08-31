@@ -9,6 +9,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#define DEBUG
 #include <linux/ctype.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -513,7 +514,11 @@ static const char *wm_vpu_fw_text[WM_VPU_NUM_FW] = {
 	[WM_VPU_FW_MISC] =	"Misc",
 };
 
+#ifdef CONFIG_TARGET_PRODUCT_DRACO
+#define CAL_R_DEFAULT       11190
+#else
 #define CAL_R_DEFAULT       8392
+#endif
 
 #define AMBIENT_DEFAULT     30
 #define CAL_STATUS_DEFAULT  1

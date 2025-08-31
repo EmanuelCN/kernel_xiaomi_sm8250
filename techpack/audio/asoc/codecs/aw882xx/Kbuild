@@ -66,7 +66,7 @@ UAPI_INC :=	-I$(AUDIO_ROOT)/include/$(UAPI_DIR)
 ############ COMMON ############
 COMMON_DIR :=	include
 COMMON_INC :=	-I$(AUDIO_ROOT)/$(COMMON_DIR)
-AW_INC    :=   -I$(src)/inc
+AW_INC    :=   -I$(AUDIO_ROOT)/asoc/codecs/aw882xx/inc
 
 # for AW882XX Amplifer
 ifdef CONFIG_SND_SOC_AW882XX
@@ -80,7 +80,7 @@ ifdef CONFIG_SND_SOC_AW882XX
 	AW882XX_OBJS += src/aw882xx_spin.o
 endif
 
-ifdef CONFIG_BOARD_PIPA
+ifneq (,$(filter $(TARGET_PRODUCT), pipa))
 CDEFINES += -DCONFIG_MMHARDWARE_DETECTION
 endif
 
@@ -103,9 +103,10 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-D__linux__ \
 		-DDEBUG
 
-ifdef CONFIG_BOARD_PIPA
-CDEFINES += -DCONFIG_TARGET_PRODUCT_PIPA
+ifneq (,$(filter $(TARGET_PRODUCT), pipa))
+	CDEFINES += -DCONFIG_TARGET_PRODUCT_PIPA
 endif
+
 
 KBUILD_CPPFLAGS += $(CDEFINES)
 

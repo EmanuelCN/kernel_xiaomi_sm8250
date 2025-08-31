@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013-2020, Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/fs.h>
 #include <linux/mutex.h>
@@ -230,17 +229,12 @@ static int q6lsm_callback(struct apr_client_data *data, void *priv)
 		}
 
 		if (client->param_size != param_size) {
-			pr_err("%s: response payload size %d mismatched with user requested %zu\n",
+			pr_err("%s: response payload size %d mismatched with user requested %d\n",
 			    __func__, param_size, client->param_size);
 			ret = -EINVAL;
 			goto done;
 		}
 
-		if (!client->get_param_payload) {
-			pr_err("%s: invalid get_param_payload buffer ptr\n", __func__);
-			ret = -EINVAL;
-			goto done;
-		}
 		memcpy((u8 *)client->get_param_payload,
 			(u8 *)payload + payload_min_size_expected, param_size);
 done:
@@ -478,10 +472,6 @@ static int q6lsm_apr_send_pkt(struct lsm_client *client, void *handle,
 	}
 
 	pr_debug("%s: enter wait %d\n", __func__, wait);
-	if (mmap_handle_p) {
-		pr_debug("%s: Invalid mmap_handle\n", __func__);
-		return -EINVAL;
-	}
 	if (wait)
 		mutex_lock(&lsm_common.apr_lock);
 	if (mmap_p) {
@@ -527,7 +517,6 @@ static int q6lsm_apr_send_pkt(struct lsm_client *client, void *handle,
 
 	if (mmap_p && *mmap_p == 0)
 		ret = -ENOMEM;
-	mmap_handle_p = NULL;
 	pr_debug("%s: leave ret %d\n", __func__, ret);
 	return ret;
 }
@@ -1911,7 +1900,6 @@ int q6lsm_deregister_sound_model(struct lsm_client *client)
 		pr_err("%s: session[%d]", __func__, client->session);
 		return -EINVAL;
 	}
-
 #if defined(CONFIG_TARGET_PRODUCT_PIPA)
 	client->model_reged = false;
 #endif
@@ -2310,12 +2298,6 @@ static int q6lsm_mmapcallback(struct apr_client_data *data, void *priv)
 		return 0;
 	}
 
-	if (data->payload_size < (2 * sizeof(uint32_t))) {
-		pr_err("%s: payload has invalid size[%d]\n", __func__,
-			data->payload_size);
-		return -EINVAL;
-	}
-
 	command = payload[0];
 	retcode = payload[1];
 	sid = (data->token >> 8) & 0x0F;
@@ -2331,8 +2313,7 @@ static int q6lsm_mmapcallback(struct apr_client_data *data, void *priv)
 	case LSM_SESSION_CMDRSP_SHARED_MEM_MAP_REGIONS:
 		if (atomic_read(&client->cmd_state) == CMD_STATE_WAIT_RESP) {
 			spin_lock_irqsave(&mmap_lock, flags);
-			if (mmap_handle_p)
-				*mmap_handle_p = command;
+			*mmap_handle_p = command;
 			/* spin_unlock_irqrestore implies barrier */
 			spin_unlock_irqrestore(&mmap_lock, flags);
 			atomic_set(&client->cmd_state, CMD_STATE_CLEARED);
@@ -2867,7 +2848,6 @@ int q6lsm_get_one_param(struct lsm_client *client,
 {
 	struct param_hdr_v3 param_info;
 	int rc = 0;
-	bool iid_supported = q6common_is_instance_id_supported();
 
 	memset(&param_info, 0, sizeof(param_info));
 
@@ -2876,12 +2856,7 @@ int q6lsm_get_one_param(struct lsm_client *client,
 		param_info.module_id = p_info->module_id;
 		param_info.instance_id = p_info->instance_id;
 		param_info.param_id = p_info->param_id;
-
-		if (iid_supported)
-			param_info.param_size = p_info->param_size + sizeof(struct param_hdr_v3);
-		else
-			param_info.param_size = p_info->param_size + sizeof(struct param_hdr_v2);
-
+		param_info.param_size = p_info->param_size + sizeof(param_info);
 		rc = q6lsm_get_params(client, NULL, &param_info);
 		if (rc) {
 			pr_err("%s: LSM_GET_CUSTOM_PARAMS failed, rc %d\n",

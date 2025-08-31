@@ -77,20 +77,20 @@ ifeq ($(KERNEL_BUILD), 0)
 	endif
 endif
 
-ifdef CONFIG_BOARD_PSYCHE
-CDEFINES += -DCONFIG_TARGET_PRODUCT_PSYCHE
+ifeq ($(TARGET_PRODUCT), psyche)
+        CDEFINES += -DCONFIG_TARGET_PRODUCT_PSYCHE
 endif
 
-ifdef CONFIG_BOARD_MUNCH
-CDEFINES += -DCONFIG_TARGET_PRODUCT_MUNCH
+ifeq ($(TARGET_PRODUCT), munch)
+        CDEFINES += -DCONFIG_TARGET_PRODUCT_MUNCH
 endif
 
-ifdef CONFIG_BOARD_DAGU
-CDEFINES += -DCONFIG_TARGET_PRODUCT_DAGU
+ifeq ($(TARGET_PRODUCT), dagu)
+        CDEFINES += -DCONFIG_TARGET_PRODUCT_DAGU
 endif
 
-ifdef CONFIG_BOARD_PIPA
-CDEFINES += -DCONFIG_TARGET_PRODUCT_PIPA
+ifeq ($(TARGET_PRODUCT), pipa)
+        CDEFINES += -DCONFIG_TARGET_PRODUCT_PIPA
 endif
 
 # As per target team, build is done as follows:
@@ -218,6 +218,7 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DANI_OS_TYPE_ANDROID=6 \
 		-DPTT_SOCK_SVC_ENABLE \
 		-Wall\
+		-Werror\
 		-D__linux__
 
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -246,21 +247,18 @@ ifeq ($(KERNEL_BUILD), 1)
 	obj-y	+= wcd937x/
 	obj-y	+= wcd938x/
 	obj-y	+= bolero/
-ifeq ($(CONFIG_BOARD_XIAOMI_SM8250), y)
-ifneq ($(filter y, $(CONFIG_BOARD_ENUMA) $(CONFIG_BOARD_ELISH) $(CONFIG_BOARD_DAGU)),)
+ifeq ($(TARGET_PRODUCT), $(filter $(TARGET_PRODUCT), enuma))
 	obj-y	+= cs35l41_k81/
+else ifeq ($(TARGET_PRODUCT), $(filter $(TARGET_PRODUCT), elish))
+	obj-y	+= cs35l41_k81/
+else ifeq ($(TARGET_PRODUCT), $(filter $(TARGET_PRODUCT), dagu))
+	obj-y	+= cs35l41_k81/
+else ifeq ($(TARGET_PRODUCT), $(filter $(TARGET_PRODUCT), munch))
+	obj-y	+= tfa9874/
 else
 	obj-y	+= cs35l41/
 endif
-ifeq ($(CONFIG_BOARD_MUNCH), y)
-	obj-y	+= tfa9874/
-else
-	obj-y	+= tfa98xx/
-endif
-ifeq ($(CONFIG_BOARD_PIPA), y)
 	obj-y	+= aw882xx/
-endif
-endif
 	obj-y	+= rouleur/
 	obj-y	+= wsa883x/
 	obj-y	+= sdm660_cdc/
@@ -296,3 +294,6 @@ mbhc_dlkm-y := $(MBHC_OBJS)
 
 obj-$(CONFIG_SND_SOC_MSM_HDMI_CODEC_RX) += hdmi_dlkm.o
 hdmi_dlkm-y := $(HDMICODEC_OBJS)
+
+# inject some build related information
+DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

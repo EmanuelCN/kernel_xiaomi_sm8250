@@ -2,6 +2,7 @@
 /* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  */
 
+#define DEBUG
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -29,7 +30,7 @@
 #include <asoc/wcd-mbhc-v2-api.h>
 #define CONFIG_AUDIO_UART_DEBUG
 
-#if (defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)) && defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)
 #include <linux/debugfs.h>
 
 #define HEADSET_STATUS_RECORD_INDEX_PLUGIN_HEADSET (3)
@@ -53,6 +54,8 @@
 #define HEADSET_EVENT_PLUGOUT_MICROPHONE (4)
 #define HEADSET_EVENT_PLUGOUT_JACK (8)
 
+#define DEBUGFS_DIR_NAME "mbhc"
+#define DEBUGFS_HEADSET_STATUS_FILE_NAME "headset_status"
 #define HEADSET_EVENT_MAX (5)
 
 static struct dentry* mbhc_debugfs_dir;
@@ -82,12 +85,14 @@ void wcd_mbhc_jack_report(struct wcd_mbhc *mbhc,
 			  struct snd_soc_jack *jack, int status, int mask)
 {
 	snd_soc_jack_report(jack, status, mask);
-#if (defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)) && defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)
+	add_headset_event(mbhc->hph_status, mask, jack->status);
 #endif
 }
 EXPORT_SYMBOL(wcd_mbhc_jack_report);
 
-#if (defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)) && defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)
+static void add_headset_event(int status, int mask, int jackstatus) {
 	if (status == HEADSET_STATUS_RECORD_INDEX_PLUGOUT) {
 		headset_status[4] = maxF(headset_status[4], HEADSET_EVENT_PLUGOUT_HEADPHONE);
 		headset_status[4] = maxF(headset_status[4], HEADSET_EVENT_PLUGOUT_MICROPHONE);
@@ -1804,9 +1809,9 @@ static int wcd_mbhc_non_usb_c_event_changed(struct notifier_block *nb,
 static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 					   unsigned long mode, void *ptr)
 {
+	u8 det_status = 0;
 	struct wcd_mbhc *mbhc = container_of(nb, struct wcd_mbhc, fsa_nb);
 	struct wcd_mbhc_config *config = mbhc->mbhc_cfg;
-	u8 det_status = 0;
 
 	if (!mbhc)
 		return -EINVAL;
@@ -2018,7 +2023,8 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 	const char *hph_thre = "qcom,msm-mbhc-hs-mic-min-threshold-mv";
 
 	pr_debug("%s: enter\n", __func__);
-#if (defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)) && defined(CONFIG_DEBUG_FS)
+#if defined(CONFIG_TARGET_PRODUCT_PSYCHE) || defined(CONFIG_TARGET_PRODUCT_MUNCH) || defined(CONFIG_TARGET_PRODUCT_DAGU) || defined(CONFIG_TARGET_PRODUCT_PIPA)
+	mbhc_debugfs_dir = debugfs_create_dir(DEBUGFS_DIR_NAME, NULL);
 	if (!IS_ERR(mbhc_debugfs_dir)) {
 		debugfs_create_file(DEBUGFS_HEADSET_STATUS_FILE_NAME, 0666,
 				mbhc_debugfs_dir, NULL, &mbhc_headset_status_fops);
