@@ -295,6 +295,7 @@ static int reg_ion_mem(void)
 				 &po.kvaddr);
 	if (rc != 0)
 		pr_err("%s: failed to allocate memory.\n", __func__);
+	else
 		pr_debug("%s: exited dma_buf = %pK, phys_addr = %lu, length = %d, vaddr = %pK, rc = 0x%x\n",
 			__func__, dma_buf, (long)po.paddr,
 			(unsigned int)po.size, po.kvaddr, rc);

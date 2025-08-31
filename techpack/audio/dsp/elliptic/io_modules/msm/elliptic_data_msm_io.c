@@ -11,6 +11,7 @@
 #include <linux/slab.h>
 #include <linux/mm.h>
 
+
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/version.h>
@@ -32,6 +33,7 @@
 #include <linux/kdev_t.h>
 #include <linux/device.h>
 
+
 #include <linux/kernel.h>
 #include <linux/version.h>
 #include <linux/types.h>
@@ -52,9 +54,11 @@
 #define AFE_MSM_RX_PSEUDOPORT_ID 0x8001
 #define AFE_MSM_TX_PSEUDOPORT_ID 0x8002
 
-struct elliptic_msm_io_device {};
+struct elliptic_msm_io_device {
+};
 
 /* static struct elliptic_msm_io_device io_device;*/
+
 
 int elliptic_data_io_initialize(void)
 {
@@ -82,22 +86,22 @@ int elliptic_io_close_port(int portid)
 }
 
 int32_t elliptic_data_io_write(uint32_t message_id, const char *data,
-			       size_t data_size)
+	size_t data_size)
 {
 	int32_t result = 0;
 
 	/* msm_pcm_routing_acquire_lock(); */
 
-	result = ultrasound_apr_set_parameter(ELLIPTIC_PORT_ID, message_id,
-					      (u8 *)data, (int32_t)data_size);
+	result = ultrasound_apr_set_parameter(ELLIPTIC_PORT_ID,
+		message_id, (u8 *)data,
+		(int32_t)data_size);
 
 	/* msm_pcm_routing_release_lock();*/
 	return result;
 }
 
 int32_t elliptic_data_io_transact(uint32_t message_id, const char *data,
-				  size_t data_size, char *output_data,
-				  size_t output_data_size)
+	size_t data_size, char *output_data, size_t output_data_size)
 {
 	pr_err("%s : unimplemented\n", __func__);
 	return -EINVAL;

@@ -10,5 +10,6 @@
 #define ELLIPTIC_SYSFS_OPMODE_FILENAME "opmode"
 #define ELLIPTIC_SYSFS_OPMODE_FLAGS_FILENAME "opmode_flags"
 
+
 int elliptic_initialize_sysfs(void);
 void elliptic_cleanup_sysfs(void);

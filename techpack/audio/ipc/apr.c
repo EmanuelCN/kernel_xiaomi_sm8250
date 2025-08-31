@@ -307,7 +307,6 @@ static void apr_adsp_up(void)
 {
 	pr_info("%s: Q6 is Up\n", __func__);
 	apr_set_q6_state(APR_SUBSYS_LOADED);
-
 	spin_lock(&apr_priv->apr_lock);
 	if (apr_priv->is_initial_boot)
 		schedule_work(&apr_priv->add_chld_dev_work);

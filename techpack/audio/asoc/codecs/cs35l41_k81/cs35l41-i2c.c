@@ -48,15 +48,15 @@ static struct regmap_config cs35l41_regmap_i2c = {
 };
 
 static const struct i2c_device_id cs35l41_id_i2c[] = {
-	{ "cs35l40", 0 },
-	{ "cs35l41", 0 },
-	{},
+	{"cs35l40", 0},
+	{"cs35l41", 0},
+	{}
 };
 
 MODULE_DEVICE_TABLE(i2c, cs35l41_id_i2c);
 
 static int cs35l41_i2c_probe(struct i2c_client *client,
-			     const struct i2c_device_id *id)
+				const struct i2c_device_id *id)
 {
 	struct cs35l41_private *cs35l41;
 	struct device *dev = &client->dev;
@@ -95,8 +95,8 @@ static int cs35l41_i2c_remove(struct i2c_client *client)
 }
 
 static const struct of_device_id cs35l41_of_match[] = {
-	{ .compatible = "cirrus,cs35l40" },
-	{ .compatible = "cirrus,cs35l41" },
+	{.compatible = "cirrus,cs35l40"},
+	{.compatible = "cirrus,cs35l41"},
 	{},
 };
 MODULE_DEVICE_TABLE(of, cs35l41_of_match);

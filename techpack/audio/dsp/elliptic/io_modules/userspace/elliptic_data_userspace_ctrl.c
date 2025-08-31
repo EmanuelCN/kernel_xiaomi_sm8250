@@ -11,6 +11,7 @@
 #include <linux/slab.h>
 #include <linux/mm.h>
 
+
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/version.h>
@@ -32,6 +33,7 @@
 #include <linux/kdev_t.h>
 #include <linux/device.h>
 
+
 #include <linux/kernel.h>
 #include <linux/version.h>
 #include <linux/types.h>
@@ -44,6 +46,7 @@
 
 #include <elliptic/elliptic_data_io.h>
 #include <elliptic/elliptic_device.h>
+
 
 static dev_t elliptic_userspace_ctrl_major;
 #define USERSPACE_CTRL_IO_DEVICE_NAME "elliptic_us_ctrl_io"
@@ -58,10 +61,12 @@ struct elliptic_userspace_ctrl_device {
 	atomic_t data_state;
 };
 
+
+
 static struct elliptic_userspace_ctrl_device ctrl_device;
 
 static uint8_t *get_ping_buffer(struct elliptic_userspace_ctrl_device *dev,
-				/*out parameter*/ size_t *data_size)
+	/*out parameter*/ size_t *data_size)
 {
 	if (data_size != NULL)
 		*data_size = dev->ping_pong_buffer_size[dev->ping_pong_idx];
@@ -70,7 +75,7 @@ static uint8_t *get_ping_buffer(struct elliptic_userspace_ctrl_device *dev,
 }
 
 static uint8_t *get_pong_buffer(struct elliptic_userspace_ctrl_device *dev,
-				/*out parameter*/ size_t *data_size)
+/*out parameter*/ size_t *data_size)
 {
 	if (data_size != NULL)
 		*data_size = dev->ping_pong_buffer_size[1 - dev->ping_pong_idx];
@@ -78,8 +83,9 @@ static uint8_t *get_pong_buffer(struct elliptic_userspace_ctrl_device *dev,
 	return dev->ping_pong_buffer[1 - dev->ping_pong_idx];
 }
 
+
 static void set_pong_buffer_size(struct elliptic_userspace_ctrl_device *dev,
-				 size_t data_size)
+	size_t data_size)
 {
 	dev->ping_pong_buffer_size[1 - dev->ping_pong_idx] = data_size;
 }
@@ -103,7 +109,7 @@ static int device_open(struct inode *inode, struct file *filp)
 }
 
 static ssize_t device_read(struct file *fp, char __user *buff,
-			   size_t user_buf_length, loff_t *ppos)
+	size_t user_buf_length, loff_t *ppos)
 {
 	size_t bytes_read;
 	unsigned long copy_result;
@@ -112,14 +118,13 @@ static ssize_t device_read(struct file *fp, char __user *buff,
 
 	if (user_buf_length < ELLIPTIC_MSG_BUF_SIZE)
 		EL_PRINT_E("user space buffer user_buf_length too small : %zu",
-			   user_buf_length);
+		user_buf_length);
 
 	bytes_read = 0;
 	copy_result = 0;
 	ping_buffer = NULL;
 
-	result = wait_event_interruptible(
-		ctrl_device.data_available,
+	result = wait_event_interruptible(ctrl_device.data_available,
 		atomic_read(&ctrl_device.data_state) != 0);
 	if (result == 0) {
 		const int state = atomic_read(&ctrl_device.data_state);
@@ -130,8 +135,8 @@ static ssize_t device_read(struct file *fp, char __user *buff,
 			if (result == 0) {
 				swap_ping_pong(&ctrl_device);
 
-				ping_buffer = get_ping_buffer(&ctrl_device,
-							      &bytes_read);
+				ping_buffer = get_ping_buffer(
+					&ctrl_device, &bytes_read);
 
 				if (bytes_read > user_buf_length) {
 					EL_PRINT_E(
@@ -141,7 +146,7 @@ static ssize_t device_read(struct file *fp, char __user *buff,
 				}
 
 				copy_result = copy_to_user(buff, ping_buffer,
-							   bytes_read);
+					bytes_read);
 				if (copy_result > 0) {
 					EL_PRINT_E("Failed copy to user");
 					goto fail;
@@ -178,11 +183,12 @@ static int device_close(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-static const struct file_operations elliptic_userspace_ctrl_fops = {
-	.owner = THIS_MODULE,
-	.open = device_open,
-	.read = device_read,
-	.release = device_close,
+static const struct file_operations
+elliptic_userspace_ctrl_fops = {
+	.owner      = THIS_MODULE,
+	.open       = device_open,
+	.read       = device_read,
+	.release    = device_close,
 };
 
 int elliptic_userspace_ctrl_driver_init(void)
@@ -191,8 +197,8 @@ int elliptic_userspace_ctrl_driver_init(void)
 	dev_t device_number;
 	int err;
 
-	err = alloc_chrdev_region(&device_number, 0, 1,
-				  USERSPACE_CTRL_IO_DEVICE_NAME);
+	err = alloc_chrdev_region(
+		&device_number, 0, 1, USERSPACE_CTRL_IO_DEVICE_NAME);
 
 	if (err < 0) {
 		pr_err("failed to allocate chrdev region\n");
@@ -202,12 +208,14 @@ int elliptic_userspace_ctrl_driver_init(void)
 	elliptic_userspace_ctrl_major = MAJOR(device_number);
 
 	device_number = MKDEV(elliptic_userspace_ctrl_major, 0);
-	device = device_create(elliptic_class, NULL, device_number, NULL,
-			       USERSPACE_CTRL_IO_DEVICE_NAME);
+	device = device_create(
+		elliptic_class, NULL, device_number,
+		NULL, USERSPACE_CTRL_IO_DEVICE_NAME);
 
 	if (IS_ERR(device)) {
-		unregister_chrdev(elliptic_userspace_ctrl_major,
-				  USERSPACE_CTRL_IO_DEVICE_NAME);
+		unregister_chrdev(
+			elliptic_userspace_ctrl_major,
+			USERSPACE_CTRL_IO_DEVICE_NAME);
 		EL_PRINT_E("Failed to create the device\n");
 		return PTR_ERR(device);
 	}
@@ -216,8 +224,8 @@ int elliptic_userspace_ctrl_driver_init(void)
 	ctrl_device.cdev.owner = THIS_MODULE;
 	err = cdev_add(&ctrl_device.cdev, device_number, 1);
 	if (err) {
-		EL_PRINT_W("error %d while trying to add %s%d", err,
-			   ELLIPTIC_DEVICENAME, 0);
+		EL_PRINT_W("error %d while trying to add %s%d",
+			err, ELLIPTIC_DEVICENAME, 0);
 		return err;
 	}
 
@@ -233,18 +241,17 @@ void elliptic_userspace_ctrl_driver_exit(void)
 	device_destroy(elliptic_class, MKDEV(elliptic_userspace_ctrl_major, 0));
 	cdev_del(&ctrl_device.cdev);
 	unregister_chrdev(elliptic_userspace_ctrl_major,
-			  USERSPACE_CTRL_IO_DEVICE_NAME);
+		USERSPACE_CTRL_IO_DEVICE_NAME);
 	up(&ctrl_device.sem);
 }
 
-int32_t elliptic_userspace_ctrl_write(uint32_t message_id, const char *data,
-				      size_t data_size)
-{
+int32_t elliptic_userspace_ctrl_write(uint32_t message_id,
+	const char *data, size_t data_size){
 	uint8_t *pong_buffer;
 
 	if (data_size > ELLIPTIC_MSG_BUF_SIZE) {
 		EL_PRINT_E("data size : %zu larger than buf size : %zu",
-			   data_size, (size_t)ELLIPTIC_MSG_BUF_SIZE);
+			data_size, (size_t)ELLIPTIC_MSG_BUF_SIZE);
 
 		return -EINVAL;
 	}
@@ -260,3 +267,5 @@ int32_t elliptic_userspace_ctrl_write(uint32_t message_id, const char *data,
 
 	return 0;
 }
+
+

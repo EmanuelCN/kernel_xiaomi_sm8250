@@ -255,6 +255,10 @@ ifeq (y, $(filter y,\
 CDEFINES += -DTFA_ADSP_SUPPORTED
 endif
 
+ifeq ($(CONFIG_BOARD_PIPA), y)
+CDEFINES += -DCONFIG_SND_SOC_AW882XX_TDM
+endif
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile

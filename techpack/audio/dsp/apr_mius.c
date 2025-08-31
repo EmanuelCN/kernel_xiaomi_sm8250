@@ -38,15 +38,19 @@ struct driver_sensor_event {
 	};
 };
 
-static int afe_set_parameter(int port, int param_id, int module_id,
-			     struct afe_mi_ultrasound_set_params_t *prot_config,
-			     uint32_t length)
+
+
+static int afe_set_parameter(int port,
+		int param_id,
+		int module_id,
+		struct afe_mi_ultrasound_set_params_t *prot_config,
+		uint32_t length)
 {
 	struct afe_port_cmd_set_param_v2 *set_param_v2 = NULL;
 	uint32_t set_param_v2_size = sizeof(struct afe_port_cmd_set_param_v2);
 	struct afe_port_cmd_set_param_v3 *set_param_v3 = NULL;
 	uint32_t set_param_v3_size = sizeof(struct afe_port_cmd_set_param_v3);
-	struct param_hdr_v3 param_hdr = { 0 };
+	struct param_hdr_v3 param_hdr = {0};
 	u16 port_id = 0;
 	int index = 0;
 	u8 *packed_param_data = NULL;
@@ -74,8 +78,8 @@ static int afe_set_parameter(int port, int param_id, int module_id,
 	if (packed_param_data == NULL)
 		return -ENOMEM;
 
-	ret = q6common_pack_pp_params(packed_param_data, &param_hdr,
-				      (u8 *)prot_config, &packed_data_size);
+	ret = q6common_pack_pp_params(packed_param_data, &param_hdr, (u8 *)prot_config,
+				      &packed_data_size);
 	if (ret) {
 		pr_err("%s: Failed to pack param header and data, error %d\n",
 		       __func__, ret);
@@ -91,11 +95,10 @@ static int afe_set_parameter(int port, int param_id, int module_id,
 		}
 
 		set_param_v3->apr_hdr.hdr_field =
-			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-				      APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
-		set_param_v3->apr_hdr.pkt_size =
-			sizeof(struct afe_port_cmd_set_param_v3) +
-			packed_data_size;
+			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD, APR_HDR_LEN(APR_HDR_SIZE),
+					APR_PKT_VER);
+		set_param_v3->apr_hdr.pkt_size = sizeof(struct afe_port_cmd_set_param_v3) +
+											packed_data_size;
 		set_param_v3->apr_hdr.src_port = 0;
 		set_param_v3->apr_hdr.dest_port = 0;
 		set_param_v3->apr_hdr.token = index;
@@ -103,10 +106,10 @@ static int afe_set_parameter(int port, int param_id, int module_id,
 		set_param_v3->port_id = port_id;
 		set_param_v3->payload_size = packed_data_size;
 		memcpy(&set_param_v3->param_data, packed_param_data,
-		       packed_data_size);
+			       packed_data_size);
 
 		atomic_set(mius_afe.ptr_state, 1);
-		ret = apr_send_pkt(*mius_afe.ptr_apr, (uint32_t *)set_param_v3);
+		ret = apr_send_pkt(*mius_afe.ptr_apr, (uint32_t *) set_param_v3);
 	} else {
 		set_param_v2_size += packed_data_size;
 		set_param_v2 = kzalloc(set_param_v2_size, GFP_KERNEL);
@@ -116,11 +119,10 @@ static int afe_set_parameter(int port, int param_id, int module_id,
 		}
 
 		set_param_v2->apr_hdr.hdr_field =
-			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-				      APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
-		set_param_v2->apr_hdr.pkt_size =
-			sizeof(struct afe_port_cmd_set_param_v2) +
-			packed_data_size;
+			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD, APR_HDR_LEN(APR_HDR_SIZE),
+				      APR_PKT_VER);
+		set_param_v2->apr_hdr.pkt_size = sizeof(struct afe_port_cmd_set_param_v2) +
+											packed_data_size;
 		set_param_v2->apr_hdr.src_port = 0;
 		set_param_v2->apr_hdr.dest_port = 0;
 		set_param_v2->apr_hdr.token = index;
@@ -128,19 +130,19 @@ static int afe_set_parameter(int port, int param_id, int module_id,
 		set_param_v2->port_id = port_id;
 		set_param_v2->payload_size = packed_data_size;
 		memcpy(&set_param_v2->param_data, packed_param_data,
-		       packed_data_size);
+			       packed_data_size);
 
 		atomic_set(mius_afe.ptr_state, 1);
-		ret = apr_send_pkt(*mius_afe.ptr_apr, (uint32_t *)set_param_v2);
+		ret = apr_send_pkt(*mius_afe.ptr_apr, (uint32_t *) set_param_v2);
 	}
 	if (ret < 0) {
 		pr_err("%s: Setting param for port %d param[0x%x]failed\n",
-		       __func__, port, param_id);
+			   __func__, port, param_id);
 		goto fail_cmd;
 	}
 	ret = wait_event_timeout(mius_afe.ptr_wait[index],
-				 (atomic_read(mius_afe.ptr_state) == 0),
-				 msecs_to_jiffies(mius_afe.timeout_ms));
+		(atomic_read(mius_afe.ptr_state) == 0),
+		msecs_to_jiffies(mius_afe.timeout_ms));
 	if (!ret) {
 		pr_err("%s: wait_event timeout\n", __func__);
 		ret = -EINVAL;
@@ -160,10 +162,11 @@ fail_cmd:
 	return ret;
 }
 
+
 int32_t mi_ultrasound_apr_set_parameter(int32_t port_id, uint32_t param_id,
-					u8 *user_params, int32_t length)
+	u8 *user_params, int32_t length)
 {
-	int32_t ret = 0;
+	int32_t  ret = 0;
 	uint32_t module_id;
 
 	if (port_id == MIUS_PORT_ID)
@@ -171,9 +174,10 @@ int32_t mi_ultrasound_apr_set_parameter(int32_t port_id, uint32_t param_id,
 	else
 		module_id = MIUS_ULTRASOUND_MODULE_RX;
 
-	ret = afe_set_parameter(
-		port_id, param_id, module_id,
-		(struct afe_mi_ultrasound_set_params_t *)user_params, length);
+	ret = afe_set_parameter(port_id,
+		param_id, module_id,
+		(struct afe_mi_ultrasound_set_params_t *)user_params,
+		length);
 
 	return ret;
 }
@@ -360,7 +364,7 @@ static int ups_event;
 int32_t mius_process_apr_payload(uint32_t *payload)
 {
 	uint32_t payload_size = 0;
-	int32_t ret = -1;
+	int32_t  ret = -1;
 
 	//if (payload[0] == MIUS_ULTRASOUND_MODULE_TX) {
 	if (true) {
@@ -400,24 +404,22 @@ int32_t mius_process_apr_payload(uint32_t *payload)
 			break;
 		case MIUS_ULTRASOUND_PARAM_ID_ENGINE_DATA:
 #endif
-		printk(KERN_DEBUG "[MIUS] mi us payload[3] = %d",
-		       (int)payload[3]);
-		if (payload[3] == 0 || payload[3] == 1) {
-			ups_event = payload[3];
-			ret = (int32_t)us_afe_callback(
-				(const uint32_t)payload[3]);
-		} else {
-			ups_event = ups_event ^ 1;
-			printk(KERN_DEBUG "[MIUS] >> change ups to %d",
-			       ups_event);
-			ret = (int32_t)us_afe_callback((uint32_t)ups_event);
-		}
+			printk(KERN_DEBUG "[MIUS] mi us payload[3] = %d", (int)payload[3]);
+			if (payload[3] == 0 || payload[3] == 1) {
+				ups_event = payload[3];
+				ret = (int32_t)us_afe_callback((const uint32_t)payload[3]);
+			} else {
 
-		if (ret != 0) {
-			pr_err("[MIUS] : failed to push apr payload to mius device");
-			return ret;
-		}
-		ret = payload_size;
+				ups_event = ups_event ^ 1;
+				printk(KERN_DEBUG "[MIUS] >> change ups to %d", ups_event);
+				ret = (int32_t)us_afe_callback((uint32_t)ups_event);
+			}
+
+			if (ret != 0) {
+				pr_err("[MIUS] : failed to push apr payload to mius device");
+				return ret;
+			}
+			ret = payload_size;
 #if 0
 			break;
 		default:
@@ -429,7 +431,7 @@ int32_t mius_process_apr_payload(uint32_t *payload)
 #endif
 	} else {
 		pr_debug("[MIUS]: Invalid Ultrasound Module ID %d\n",
-			 payload[0]);
+			payload[0]);
 	}
 	return ret;
 }
@@ -456,9 +458,10 @@ int mius_set_hall_state(int state)
 		return ret;
 	}
 
-	ret = afe_set_parameter(MIUS_PORT_ID, 2, MIUS_ULTRASOUND_MODULE_TX,
-				(struct afe_mi_ultrasound_set_params_t *)&dse,
-				sizeof(dse));
+	ret = afe_set_parameter(MIUS_PORT_ID,
+		2, MIUS_ULTRASOUND_MODULE_TX,
+		(struct afe_mi_ultrasound_set_params_t *)&dse,
+		sizeof(dse));
 	return ret;
 }
 EXPORT_SYMBOL(mius_set_hall_state);

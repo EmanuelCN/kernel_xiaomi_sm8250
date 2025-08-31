@@ -26,8 +26,9 @@
 #include "wcd-mbhc-adc.h"
 #include "bolero/bolero-cdc.h"
 #include <asoc/wcd-mbhc-v2-api.h>
+#define CONFIG_AUDIO_UART_DEBUG
 
-#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU) || defined(CONFIG_BOARD_PIPA)
 #include <linux/debugfs.h>
 
 #define HEADSET_STATUS_RECORD_INDEX_PLUGIN_HEADSET (3)
@@ -82,13 +83,13 @@ void wcd_mbhc_jack_report(struct wcd_mbhc *mbhc,
 			  struct snd_soc_jack *jack, int status, int mask)
 {
 	snd_soc_jack_report(jack, status, mask);
-#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU) || defined(CONFIG_BOARD_PIPA)
 	add_headset_event(mbhc->hph_status, mask, jack->status);
 #endif
 }
 EXPORT_SYMBOL(wcd_mbhc_jack_report);
 
-#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU) || defined(CONFIG_BOARD_PIPA)
 static void add_headset_event(int status, int mask, int jackstatus) {
 	if (status == HEADSET_STATUS_RECORD_INDEX_PLUGOUT) {
 		headset_status[4] = maxF(headset_status[4], HEADSET_EVENT_PLUGOUT_HEADPHONE);
@@ -1722,6 +1723,38 @@ static int wcd_mbhc_set_keycode(struct wcd_mbhc *mbhc)
 	return result;
 }
 
+static int wcd_mbhc_init_gpio(struct wcd_mbhc *mbhc,
+			      struct wcd_mbhc_config *mbhc_cfg,
+			      const char *gpio_dt_str,
+			      int *gpio, struct device_node **gpio_dn)
+{
+	int rc = 0;
+	struct snd_soc_component *component;
+	struct snd_soc_card *card;
+
+	if (!mbhc || !mbhc_cfg)
+		return -EINVAL;
+
+	component = mbhc->component;
+	card = component->card;
+
+	dev_dbg(mbhc->component->dev, "%s: gpio %s\n", __func__, gpio_dt_str);
+
+	*gpio_dn = of_parse_phandle(card->dev->of_node, gpio_dt_str, 0);
+
+	if (!(*gpio_dn)) {
+		*gpio = of_get_named_gpio(card->dev->of_node, gpio_dt_str, 0);
+		if (!gpio_is_valid(*gpio)) {
+			dev_err(card->dev, "%s, property %s not in node %s",
+				__func__, gpio_dt_str,
+				card->dev->of_node->full_name);
+			rc = -EINVAL;
+		}
+	}
+
+	return rc;
+}
+
 static int wcd_mbhc_non_usb_c_event_changed(struct notifier_block *nb,
 					unsigned long evt, void *ptr)
 {
@@ -1765,6 +1798,7 @@ static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 {
 	u8 det_status = 0;
 	struct wcd_mbhc *mbhc = container_of(nb, struct wcd_mbhc, fsa_nb);
+	struct wcd_mbhc_config *config = mbhc->mbhc_cfg;
 
 	if (!mbhc)
 		return -EINVAL;
@@ -1772,6 +1806,10 @@ static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 	dev_dbg(mbhc->component->dev, "%s: mode = %lu\n", __func__, mode);
 
 	if (mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) {
+#ifdef CONFIG_AUDIO_UART_DEBUG
+		msm_cdc_pinctrl_select_active_state(config->uart_audio_switch_gpio_p);
+		dev_dbg(mbhc->component->dev, "disable uart\n");
+#endif
 		if (mbhc->mbhc_cb->clk_setup) {
 			mbhc->mbhc_cb->clk_setup(mbhc->component, false);
 			mbhc->mbhc_cb->clk_setup(mbhc->component, true);
@@ -1796,6 +1834,15 @@ static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 
 		WCD_MBHC_REG_READ(WCD_MBHC_L_DET_EN, det_status);
 		pr_debug("%s: det_status = %x\n", __func__, det_status);
+#ifdef CONFIG_AUDIO_UART_DEBUG
+		msm_cdc_pinctrl_select_sleep_state(config->uart_audio_switch_gpio_p);
+		dev_dbg(mbhc->component->dev, "enable uart\n");
+#endif
+	} else {
+#ifdef CONFIG_AUDIO_UART_DEBUG
+		msm_cdc_pinctrl_select_sleep_state(config->uart_audio_switch_gpio_p);
+		dev_dbg(mbhc->component->dev, "enable uart\n");
+#endif
 	}
 	return 0;
 }
@@ -1834,6 +1881,19 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 
 	/* Parse fsa switch handle */
 	if (mbhc_cfg->enable_usbc_analog) {
+#ifdef CONFIG_AUDIO_UART_DEBUG
+		if (of_find_property(card->dev->of_node,
+					"qcom,uart-audio-sw-gpio",
+					NULL)) {
+			rc = wcd_mbhc_init_gpio(mbhc, mbhc_cfg,
+					"qcom,uart-audio-sw-gpio",
+					&mbhc_cfg->uart_audio_switch_gpio,
+					&mbhc_cfg->uart_audio_switch_gpio_p);
+			if (rc)
+				goto err;
+		}
+#endif
+
 		dev_dbg(mbhc->component->dev, "%s: usbc analog enabled\n",
 				__func__);
 		mbhc->swap_thr = GND_MIC_USBC_SWAP_THRESHOLD;
@@ -1950,15 +2010,13 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 	const char *hph_thre = "qcom,msm-mbhc-hs-mic-min-threshold-mv";
 
 	pr_debug("%s: enter\n", __func__);
-
-#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU)
+#if defined(CONFIG_BOARD_PSYCHE) || defined(CONFIG_BOARD_MUNCH) || defined(CONFIG_BOARD_DAGU) || defined(CONFIG_BOARD_PIPA)
 	mbhc_debugfs_dir = debugfs_create_dir(DEBUGFS_DIR_NAME, NULL);
 	if (!IS_ERR(mbhc_debugfs_dir)) {
 		debugfs_create_file(DEBUGFS_HEADSET_STATUS_FILE_NAME, 0666,
 				mbhc_debugfs_dir, NULL, &mbhc_headset_status_fops);
 	}
 #endif
-
 	ret = of_property_read_u32(card->dev->of_node, hph_switch, &hph_swh);
 	if (ret) {
 		dev_err(card->dev,

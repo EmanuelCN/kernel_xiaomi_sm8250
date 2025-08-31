@@ -290,7 +290,7 @@ enum {
 	/* IDX 208-> 209 */
 	IDX_AFE_PORT_ID_PRIMARY_META_MI2S_RX,
 	IDX_AFE_PORT_ID_SECONDARY_META_MI2S_RX,
-    IDX_AFE_PORT_ID_PSEUDOPORT_01,
+	IDX_AFE_PORT_ID_PSEUDOPORT_01,
 	/* IDX 210-> 211 */
 	IDX_RT_PROXY_PORT_002_RX,
 	IDX_RT_PROXY_PORT_002_TX,
@@ -456,6 +456,9 @@ int afe_pseudo_port_start_nowait(u16 port_id);
 int afe_pseudo_port_stop_nowait(u16 port_id);
 int afe_set_lpass_clock(u16 port_id, struct afe_clk_cfg *cfg);
 int afe_set_lpass_clock_v2(u16 port_id, struct afe_clk_set *cfg);
+void afe_set_cps_config(int src_port,
+			struct afe_cps_hw_intf_cfg *cps_config,
+			u32 ch_mask);
 int afe_set_lpass_clk_cfg(int index, struct afe_clk_set *cfg);
 int afe_set_digital_codec_core_clock(u16 port_id,
 			struct afe_digital_clk_cfg *cfg);

@@ -10,5 +10,6 @@
 #define MIUS_SYSFS_OPMODE_FILENAME "opmode"
 #define MIUS_SYSFS_OPMODE_FLAGS_FILENAME "opmode_flags"
 
+
 int mius_initialize_sysfs(void);
 void mius_cleanup_sysfs(void);
