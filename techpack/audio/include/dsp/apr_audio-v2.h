@@ -3981,7 +3981,7 @@ struct afe_param_id_set_topology_cfg {
 	u32		topology_id;
 } __packed;
 
-#define MAX_ABR_LEVELS 5
+#define MAX_ABR_LEVELS 6
 
 struct afe_bit_rate_level_map_t {
 	/*
