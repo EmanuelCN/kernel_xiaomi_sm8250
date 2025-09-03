@@ -239,6 +239,9 @@ void fpsimd_save(void)
 	struct user_fpsimd_state *st = __this_cpu_read(fpsimd_last_state.st);
 	/* set by fpsimd_bind_task_to_cpu() or fpsimd_bind_state_to_cpu() */
 
+    	if (unlikely(!st))
+            return;
+
 	WARN_ON(!system_supports_fpsimd());
 	WARN_ON(!in_softirq() && !irqs_disabled());
 
