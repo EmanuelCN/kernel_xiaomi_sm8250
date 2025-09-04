@@ -3253,7 +3253,7 @@ const struct vm_operations_struct hugetlb_vm_ops = {
 	.fault = hugetlb_vm_op_fault,
 	.open = hugetlb_vm_op_open,
 	.close = hugetlb_vm_op_close,
-	.may_split = hugetlb_vm_op_split,
+	.split = hugetlb_vm_op_split,
 	.pagesize = hugetlb_vm_op_pagesize,
 };
 
@@ -3435,7 +3435,7 @@ void __unmap_hugepage_range(struct mmu_gather *tlb, struct vm_area_struct *vma,
 	 * This is a hugetlb vma, all the pte entries should point
 	 * to huge page.
 	 */
-	tlb_change_page_size(tlb, sz);
+	tlb_remove_check_page_size_change(tlb, sz);
 	tlb_start_vma(tlb, vma);
 
 	/*

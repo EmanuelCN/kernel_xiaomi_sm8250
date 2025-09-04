@@ -109,14 +109,12 @@ struct shmem_falloc {
 #ifdef CONFIG_TMPFS
 static unsigned long shmem_default_max_blocks(void)
 {
-	return totalram_pages() / 2;
+	return totalram_pages / 2;
 }
 
 static unsigned long shmem_default_max_inodes(void)
 {
-	unsigned long nr_pages = totalram_pages();
-
-	return min(nr_pages - totalhigh_pages(), nr_pages / 2);
+	return min(totalram_pages - totalhigh_pages, totalram_pages / 2);
 }
 #endif
 
@@ -3394,7 +3392,7 @@ static int shmem_parse_options(char *options, struct shmem_sb_info *sbinfo,
 			size = memparse(value,&rest);
 			if (*rest == '%') {
 				size <<= PAGE_SHIFT;
-				size *= totalram_pages();
+				size *= totalram_pages;
 				do_div(size, 100);
 				rest++;
 			}
@@ -4057,7 +4055,7 @@ EXPORT_SYMBOL_GPL(shmem_file_setup_with_mnt);
 
 /**
  * shmem_zero_setup - setup a shared anonymous mapping
- * @vma: the vma to be mmapped is prepared by do_mmap
+ * @vma: the vma to be mmapped is prepared by do_mmap_pgoff
  */
 int shmem_zero_setup(struct vm_area_struct *vma)
 {

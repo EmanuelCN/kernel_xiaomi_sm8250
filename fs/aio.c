@@ -322,15 +322,12 @@ static void aio_free_ring(struct kioctx *ctx)
 	}
 }
 
-static int aio_ring_mremap(struct vm_area_struct *vma, unsigned long flags)
+static int aio_ring_mremap(struct vm_area_struct *vma)
 {
 	struct file *file = vma->vm_file;
 	struct mm_struct *mm = vma->vm_mm;
 	struct kioctx_table *table;
 	int i, res = -EINVAL;
-
-	if (flags & MREMAP_DONTUNMAP)
-		return -EINVAL;
 
 	spin_lock(&mm->ioctx_lock);
 	rcu_read_lock();
@@ -526,9 +523,9 @@ static int aio_setup_ring(struct kioctx *ctx, unsigned int nr_events)
 		return -EINTR;
 	}
 
-	ctx->mmap_base = do_mmap(ctx->aio_ring_file, 0, ctx->mmap_size,
-				 PROT_READ | PROT_WRITE,
-				 MAP_SHARED, 0, &unused, NULL);
+	ctx->mmap_base = do_mmap_pgoff(ctx->aio_ring_file, 0, ctx->mmap_size,
+				       PROT_READ | PROT_WRITE,
+				       MAP_SHARED, 0, &unused, NULL);
 	up_write(&mm->mmap_sem);
 	if (IS_ERR((void *)ctx->mmap_base)) {
 		ctx->mmap_size = 0;

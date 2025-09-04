@@ -274,15 +274,14 @@ static int htable_create(struct net *net, struct hashlimit_cfg3 *cfg,
 	struct xt_hashlimit_htable *hinfo;
 	const struct seq_operations *ops;
 	unsigned int size, i;
-	unsigned long nr_pages = totalram_pages();
 	int ret;
 
 	if (cfg->size) {
 		size = cfg->size;
 	} else {
-		size = (nr_pages << PAGE_SHIFT) / 16384 /
+		size = (totalram_pages << PAGE_SHIFT) / 16384 /
 		       sizeof(struct hlist_head);
-		if (nr_pages > 1024 * 1024 * 1024 / PAGE_SIZE)
+		if (totalram_pages > 1024 * 1024 * 1024 / PAGE_SIZE)
 			size = 8192;
 		if (size < 16)
 			size = 16;

@@ -32,12 +32,14 @@ static inline void pmd_populate(struct mm_struct *mm, pmd_t *pmd,
 /*
  * Allocate and free page tables.
  */
-static inline pte_t *pte_alloc_one_kernel(struct mm_struct *mm)
+static inline pte_t *pte_alloc_one_kernel(struct mm_struct *mm,
+					  unsigned long address)
 {
 	return quicklist_alloc(QUICK_PT, GFP_KERNEL, NULL);
 }
 
-static inline pgtable_t pte_alloc_one(struct mm_struct *mm)
+static inline pgtable_t pte_alloc_one(struct mm_struct *mm,
+					unsigned long address)
 {
 	struct page *page;
 	void *pg;
@@ -69,15 +71,6 @@ do {							\
 	pgtable_page_dtor(pte);				\
 	tlb_remove_page((tlb), (pte));			\
 } while (0)
-
-#if CONFIG_PGTABLE_LEVELS > 2
-#define __pmd_free_tlb(tlb, pmdp, addr)			\
-do {							\
-	struct page *page = virt_to_page(pmdp);		\
-	pgtable_pmd_page_dtor(page);			\
-	tlb_remove_page((tlb), page);			\
-} while (0);
-#endif
 
 static inline void check_pgt_cache(void)
 {

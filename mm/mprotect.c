@@ -9,7 +9,7 @@
  *  (C) Copyright 2002 Red Hat Inc, All Rights Reserved
  */
 
-#include <linux/pagewalk.h>
+#include <linux/mm.h>
 #include <linux/hugetlb.h>
 #include <linux/shm.h>
 #include <linux/mman.h>
@@ -361,11 +361,20 @@ static int prot_none_test(unsigned long addr, unsigned long next,
 	return 0;
 }
 
-static const struct mm_walk_ops prot_none_walk_ops = {
-	.pte_entry		= prot_none_pte_entry,
-	.hugetlb_entry		= prot_none_hugetlb_entry,
-	.test_walk		= prot_none_test,
-};
+static int prot_none_walk(struct vm_area_struct *vma, unsigned long start,
+			   unsigned long end, unsigned long newflags)
+{
+	pgprot_t new_pgprot = vm_get_page_prot(newflags);
+	struct mm_walk prot_none_walk = {
+		.pte_entry = prot_none_pte_entry,
+		.hugetlb_entry = prot_none_hugetlb_entry,
+		.test_walk = prot_none_test,
+		.mm = current->mm,
+		.private = &new_pgprot,
+	};
+
+	return walk_page_range(start, end, &prot_none_walk);
+}
 
 int
 mprotect_fixup(struct vm_area_struct *vma, struct vm_area_struct **pprev,
@@ -392,10 +401,7 @@ mprotect_fixup(struct vm_area_struct *vma, struct vm_area_struct **pprev,
 	if (arch_has_pfn_modify_check() &&
 	    (vma->vm_flags & (VM_PFNMAP|VM_MIXEDMAP)) &&
 	    (newflags & (VM_READ|VM_WRITE|VM_EXEC)) == 0) {
-		pgprot_t new_pgprot = vm_get_page_prot(newflags);
-
-		error = walk_page_range(current->mm, start, end,
-				&prot_none_walk_ops, &new_pgprot);
+		error = prot_none_walk(vma, start, end, newflags);
 		if (error)
 			return error;
 	}
@@ -574,12 +580,6 @@ static int do_mprotect_pkey(unsigned long start, size_t len,
 		/* newflags >> 4 shift VM_MAY% in place of VM_% */
 		if ((newflags & ~(newflags >> 4)) & (VM_READ | VM_WRITE | VM_EXEC)) {
 			error = -EACCES;
-			goto out;
-		}
-
-		/* Allow architectures to sanity-check the new flags */
-		if (!arch_validate_flags(newflags)) {
-			error = -EINVAL;
 			goto out;
 		}
 

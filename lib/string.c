@@ -586,13 +586,21 @@ EXPORT_SYMBOL(strnlen);
 size_t strspn(const char *s, const char *accept)
 {
 	const char *p;
+	const char *a;
+	size_t count = 0;
 
 	for (p = s; *p != '\0'; ++p) {
-		if (!strchr(accept, *p))
-			break;
+		for (a = accept; *a != '\0'; ++a) {
+			if (*p == *a)
+				break;
+		}
+		if (*a == '\0')
+			return count;
+		++count;
 	}
-	return p - s;
+	return count;
 }
+
 EXPORT_SYMBOL(strspn);
 #endif
 
@@ -605,12 +613,17 @@ EXPORT_SYMBOL(strspn);
 size_t strcspn(const char *s, const char *reject)
 {
 	const char *p;
+	const char *r;
+	size_t count = 0;
 
 	for (p = s; *p != '\0'; ++p) {
-		if (strchr(reject, *p))
-			break;
+		for (r = reject; *r != '\0'; ++r) {
+			if (*p == *r)
+				return count;
+		}
+		++count;
 	}
-	return p - s;
+	return count;
 }
 EXPORT_SYMBOL(strcspn);
 #endif

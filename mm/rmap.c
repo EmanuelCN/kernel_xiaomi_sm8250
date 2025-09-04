@@ -250,19 +250,13 @@ static inline void unlock_anon_vma_root(struct anon_vma *root)
  * Attach the anon_vmas from src to dst.
  * Returns 0 on success, -ENOMEM on failure.
  *
- * anon_vma_clone() is called by __vma_split(), __split_vma(), copy_vma() and
- * anon_vma_fork(). The first three want an exact copy of src, while the last
- * one, anon_vma_fork(), may try to reuse an existing anon_vma to prevent
- * endless growth of anon_vma. Since dst->anon_vma is set to NULL before call,
- * we can identify this case by checking (!dst->anon_vma && src->anon_vma).
- *
- * If (!dst->anon_vma && src->anon_vma) is true, this function tries to find
- * and reuse existing anon_vma which has no vmas and only one child anon_vma.
- * This prevents degradation of anon_vma hierarchy to endless linear chain in
- * case of constantly forking task. On the other hand, an anon_vma with more
- * than one child isn't reused even if there was no alive vma, thus rmap
- * walker has a good chance of avoiding scanning the whole hierarchy when it
- * searches where page is mapped.
+ * If dst->anon_vma is NULL this function tries to find and reuse existing
+ * anon_vma which has no vmas and only one child anon_vma. This prevents
+ * degradation of anon_vma hierarchy to endless linear chain in case of
+ * constantly forking task. On the other hand, an anon_vma with more than one
+ * child isn't reused even if there was no alive vma, thus rmap walker has a
+ * good chance of avoiding scanning the whole hierarchy when it searches where
+ * page is mapped.
  */
 int anon_vma_clone(struct vm_area_struct *dst, struct vm_area_struct *src)
 {
@@ -292,8 +286,8 @@ int anon_vma_clone(struct vm_area_struct *dst, struct vm_area_struct *src)
 		 * will always reuse it. Root anon_vma is never reused:
 		 * it has self-parent reference and at least one child.
 		 */
-		if (!dst->anon_vma && src->anon_vma &&
-		    anon_vma != src->anon_vma && anon_vma->degree < 2)
+		if (!dst->anon_vma && anon_vma != src->anon_vma &&
+				anon_vma->degree < 2)
 			dst->anon_vma = anon_vma;
 	}
 	if (dst->anon_vma)
@@ -508,11 +502,9 @@ out:
  *
  * Its a little more complex as it tries to keep the fast path to a single
  * atomic op -- the trylock. If we fail the trylock, we fall back to getting a
- * reference like with page_get_anon_vma() and then block on the mutex
- * on !rwc->try_lock case.
+ * reference like with page_get_anon_vma() and then block on the mutex.
  */
-struct anon_vma *page_lock_anon_vma_read(struct page *page,
-					 struct rmap_walk_control *rwc)
+struct anon_vma *page_lock_anon_vma_read(struct page *page)
 {
 	struct anon_vma *anon_vma = NULL;
 	struct anon_vma *root_anon_vma;
@@ -537,12 +529,6 @@ struct anon_vma *page_lock_anon_vma_read(struct page *page,
 			up_read(&root_anon_vma->rwsem);
 			anon_vma = NULL;
 		}
-		goto out;
-	}
-
-	if (rwc && rwc->try_lock) {
-		anon_vma = NULL;
-		rwc->contended = true;
 		goto out;
 	}
 
@@ -841,10 +827,8 @@ static bool invalid_page_referenced_vma(struct vm_area_struct *vma, void *arg)
  * @memcg: target memory cgroup
  * @vm_flags: collect encountered vma->vm_flags who actually referenced the page
  *
- * Quick test_and_clear_referenced for all mappings of a page,
- *
- * Return: The number of mappings which referenced the page. Return -1 if
- * the function bailed out due to rmap lock contention.
+ * Quick test_and_clear_referenced for all mappings to a page,
+ * returns the number of ptes which referenced the page.
  */
 int page_referenced(struct page *page,
 		    int is_locked,
@@ -860,7 +844,6 @@ int page_referenced(struct page *page,
 		.rmap_one = page_referenced_one,
 		.arg = (void *)&pra,
 		.anon_lock = page_lock_anon_vma_read,
-		.try_lock = true,
 	};
 
 	*vm_flags = 0;
@@ -891,7 +874,7 @@ int page_referenced(struct page *page,
 	if (we_locked)
 		unlock_page(page);
 
-	return rwc.contended ? -1 : pra.referenced;
+	return pra.referenced;
 }
 
 static bool page_mkclean_one(struct page *page, struct vm_area_struct *vma,
@@ -1686,9 +1669,23 @@ discard:
 	return ret;
 }
 
+bool is_vma_temporary_stack(struct vm_area_struct *vma)
+{
+	int maybe_stack = vma->vm_flags & (VM_GROWSDOWN | VM_GROWSUP);
+
+	if (!maybe_stack)
+		return false;
+
+	if ((vma->vm_flags & VM_STACK_INCOMPLETE_SETUP) ==
+						VM_STACK_INCOMPLETE_SETUP)
+		return true;
+
+	return false;
+}
+
 static bool invalid_migration_vma(struct vm_area_struct *vma, void *arg)
 {
-	return vma_is_temporary_stack(vma);
+	return is_vma_temporary_stack(vma);
 }
 
 static int page_not_mapped(struct page *page)
@@ -1781,7 +1778,7 @@ static struct anon_vma *rmap_walk_anon_lock(struct page *page,
 	struct anon_vma *anon_vma;
 
 	if (rwc->anon_lock)
-		return rwc->anon_lock(page, rwc);
+		return rwc->anon_lock(page);
 
 	/*
 	 * Note: remove_migration_ptes() cannot use page_lock_anon_vma_read()
@@ -1793,17 +1790,7 @@ static struct anon_vma *rmap_walk_anon_lock(struct page *page,
 	if (!anon_vma)
 		return NULL;
 
-	if (anon_vma_trylock_read(anon_vma))
-		goto out;
-
-	if (rwc->try_lock) {
-		anon_vma = NULL;
-		rwc->contended = true;
-		goto out;
-	}
-
 	anon_vma_lock_read(anon_vma);
-out:
 	return anon_vma;
 }
 
@@ -1894,18 +1881,8 @@ static void rmap_walk_file(struct page *page, struct rmap_walk_control *rwc,
 
 	pgoff_start = page_to_pgoff(page);
 	pgoff_end = pgoff_start + hpage_nr_pages(page) - 1;
-	if (!locked) {
-		if (i_mmap_trylock_read(mapping))
-			goto lookup;
-
-		if (rwc->try_lock) {
-			rwc->contended = true;
-			return;
-		}
-
+	if (!locked)
 		i_mmap_lock_read(mapping);
-	}
-lookup:
 	vma_interval_tree_foreach(vma, &mapping->i_mmap,
 			pgoff_start, pgoff_end) {
 		unsigned long address = vma_address(page, vma);

@@ -273,7 +273,7 @@ static enum oom_constraint constrained_alloc(struct oom_control *oc)
 	}
 
 	/* Default to all available memory */
-	oc->totalpages = totalram_pages() + total_swap_pages;
+	oc->totalpages = totalram_pages + total_swap_pages;
 
 	if (!IS_ENABLED(CONFIG_NUMA))
 		return CONSTRAINT_NONE;
@@ -509,7 +509,7 @@ bool __oom_reap_task_mm(struct mm_struct *mm)
 	set_bit(MMF_UNSTABLE, &mm->flags);
 
 	for (vma = mm->mmap ; vma; vma = vma->vm_next) {
-		if (!can_madv_lru_vma(vma))
+		if (!can_madv_dontneed_vma(vma))
 			continue;
 
 		/*

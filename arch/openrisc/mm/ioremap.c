@@ -118,7 +118,8 @@ EXPORT_SYMBOL(iounmap);
  * the memblock infrastructure.
  */
 
-pte_t __ref *pte_alloc_one_kernel(struct mm_struct *mm)
+pte_t __ref *pte_alloc_one_kernel(struct mm_struct *mm,
+					 unsigned long address)
 {
 	pte_t *pte;
 

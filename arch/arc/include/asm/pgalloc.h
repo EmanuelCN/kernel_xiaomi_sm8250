@@ -90,7 +90,8 @@ static inline int __get_order_pte(void)
 	return get_order(PTRS_PER_PTE * sizeof(pte_t));
 }
 
-static inline pte_t *pte_alloc_one_kernel(struct mm_struct *mm)
+static inline pte_t *pte_alloc_one_kernel(struct mm_struct *mm,
+					unsigned long address)
 {
 	pte_t *pte;
 
@@ -101,7 +102,7 @@ static inline pte_t *pte_alloc_one_kernel(struct mm_struct *mm)
 }
 
 static inline pgtable_t
-pte_alloc_one(struct mm_struct *mm)
+pte_alloc_one(struct mm_struct *mm, unsigned long address)
 {
 	pgtable_t pte_pg;
 	struct page *page;

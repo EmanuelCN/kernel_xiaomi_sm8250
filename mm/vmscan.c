@@ -1032,10 +1032,6 @@ static enum page_references page_check_references(struct page *page,
 	if (vm_flags & VM_LOCKED)
 		return PAGEREF_RECLAIM;
 
-	/* rmap lock contention: rotate */
-	if (referenced_ptes == -1)
-		return PAGEREF_KEEP;
-
 	if (referenced_ptes) {
 		if (PageSwapBacked(page))
 			return PAGEREF_ACTIVATE;
@@ -2152,9 +2148,9 @@ static void shrink_active_list(unsigned long nr_to_scan,
 			}
 		}
 
-		/* Referenced or rmap lock contention: rotate */
 		if (page_referenced(page, 0, sc->target_mem_cgroup,
-				    &vm_flags) != 0) {
+				    &vm_flags)) {
+			nr_rotated += hpage_nr_pages(page);
 			/*
 			 * Identify referenced, file-backed active pages and
 			 * give them one more trip around the active list. So
@@ -2165,7 +2161,6 @@ static void shrink_active_list(unsigned long nr_to_scan,
 			 * so we ignore them here.
 			 */
 			if ((vm_flags & VM_EXEC) && page_is_file_cache(page)) {
-				nr_rotated += hpage_nr_pages(page);
 				list_add(&page->lru, &l_active);
 				continue;
 			}
@@ -2181,8 +2176,10 @@ static void shrink_active_list(unsigned long nr_to_scan,
 	 */
 	spin_lock_irq(&pgdat->lru_lock);
 	/*
-	 * Rotating pages costs CPU without actually
-	 * progressing toward the reclaim goal.
+	 * Count referenced pages from currently used mappings as rotated,
+	 * even though only some of them are actually re-activated.  This
+	 * helps balance scan pressure between file and anonymous pages in
+	 * get_scan_count.
 	 */
 	reclaim_stat->recent_rotated[file] += nr_rotated;
 
@@ -2195,62 +2192,6 @@ static void shrink_active_list(unsigned long nr_to_scan,
 	free_unref_page_list(&l_hold);
 	trace_mm_vmscan_lru_shrink_active(pgdat->node_id, nr_taken, nr_activate,
 			nr_deactivate, nr_rotated, sc->priority, file);
-}
-
-unsigned long reclaim_pages(struct list_head *page_list)
-{
-	int nid = -1;
-	unsigned long nr_reclaimed = 0;
-	LIST_HEAD(node_page_list);
-	struct reclaim_stat dummy_stat;
-	struct page *page;
-	struct scan_control sc = {
-		.gfp_mask = GFP_KERNEL,
-		.priority = DEF_PRIORITY,
-		.may_writepage = 1,
-		.may_unmap = 1,
-		.may_swap = 1,
-	};
-
-	while (!list_empty(page_list)) {
-		page = lru_to_page(page_list);
-		if (nid == -1) {
-			nid = page_to_nid(page);
-			INIT_LIST_HEAD(&node_page_list);
-		}
-
-		if (nid == page_to_nid(page)) {
-			ClearPageActive(page);
-			list_move(&page->lru, &node_page_list);
-			continue;
-		}
-
-		nr_reclaimed += shrink_page_list(&node_page_list,
-						NODE_DATA(nid),
-						&sc, 0,
-						&dummy_stat, false);
-		while (!list_empty(&node_page_list)) {
-			page = lru_to_page(&node_page_list);
-			list_del(&page->lru);
-			putback_lru_page(page);
-		}
-
-		nid = -1;
-	}
-
-	if (!list_empty(&node_page_list)) {
-		nr_reclaimed += shrink_page_list(&node_page_list,
-						NODE_DATA(nid),
-						&sc, 0,
-						&dummy_stat, false);
-		while (!list_empty(&node_page_list)) {
-			page = lru_to_page(&node_page_list);
-			list_del(&page->lru);
-			putback_lru_page(page);
-		}
-	}
-
-	return nr_reclaimed;
 }
 
 /*

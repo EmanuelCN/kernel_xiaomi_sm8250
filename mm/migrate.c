@@ -38,7 +38,6 @@
 #include <linux/hugetlb.h>
 #include <linux/hugetlb_cgroup.h>
 #include <linux/gfp.h>
-#include <linux/pagewalk.h>
 #include <linux/pfn_t.h>
 #include <linux/memremap.h>
 #include <linux/userfaultfd_k.h>
@@ -2370,11 +2369,6 @@ next:
 	return 0;
 }
 
-static const struct mm_walk_ops migrate_vma_walk_ops = {
-	.pmd_entry		= migrate_vma_collect_pmd,
-	.pte_hole		= migrate_vma_collect_hole,
-};
-
 /*
  * migrate_vma_collect() - collect pages over a range of virtual addresses
  * @migrate: migrate struct containing all migration information
@@ -2385,16 +2379,22 @@ static const struct mm_walk_ops migrate_vma_walk_ops = {
  */
 static void migrate_vma_collect(struct migrate_vma *migrate)
 {
-	struct mmu_notifier_range range;
+	struct mm_walk mm_walk = {
+		.pmd_entry = migrate_vma_collect_pmd,
+		.pte_hole = migrate_vma_collect_hole,
+		.vma = migrate->vma,
+		.mm = migrate->vma->vm_mm,
+		.private = migrate,
+	};
 
-	mmu_notifier_range_init(&range, MMU_NOTIFY_CLEAR, 0, NULL,
-			migrate->vma->vm_mm, migrate->start, migrate->end);
-	mmu_notifier_invalidate_range_start(&range);
+	mmu_notifier_invalidate_range_start(mm_walk.mm,
+					    migrate->start,
+					    migrate->end);
+	walk_page_range(migrate->start, migrate->end, &mm_walk);
+	mmu_notifier_invalidate_range_end(mm_walk.mm,
+					  migrate->start,
+					  migrate->end);
 
-	walk_page_range(migrate->vma->vm_mm, migrate->start, migrate->end,
-			&migrate_vma_walk_ops, migrate);
-
-	mmu_notifier_invalidate_range_end(&range);
 	migrate->end = migrate->start + (migrate->npages << PAGE_SHIFT);
 }
 
@@ -2672,7 +2672,7 @@ static void migrate_vma_insert_page(struct migrate_vma *migrate,
 	 *
 	 * Here we only have down_read(mmap_sem).
 	 */
-	if (pte_alloc(mm, pmdp))
+	if (pte_alloc(mm, pmdp, addr))
 		goto abort;
 
 	/* See the comment in pte_alloc_one_map() */
