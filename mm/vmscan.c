@@ -3229,6 +3229,20 @@ static bool allow_direct_reclaim(pg_data_t *pgdat, bool using_kswapd)
 	return wmark_ok;
 }
 
+static __always_inline bool task_is_critical(void)
+{
+	if (!strncmp(current->comm, "surfaceflinger", TASK_COMM_LEN) ||
+	!strncmp(current->comm, "vendor.qti.display",
+		sizeof("vendor.qti.display") - 1) ||
+	!strncmp(current->comm, "vendor.qti.camera",
+		sizeof("vendor.qti.camera") - 1) ||
+	!strncmp(current->comm, "system_server", TASK_COMM_LEN) ||
+	!strncmp(current->comm, "cameraserver", TASK_COMM_LEN))
+		return true;
+
+	return false;
+}
+
 /*
  * Throttle direct reclaimers if backing storage is backed by the network
  * and the PFMEMALLOC reserve for the preferred node is getting dangerously
@@ -3290,6 +3304,9 @@ static bool throttle_direct_reclaim(gfp_t gfp_mask, struct zonelist *zonelist,
 
 	/* If no zone was usable by the allocation flags then do not throttle */
 	if (!pgdat)
+		goto out;
+
+	if (task_is_critical())
 		goto out;
 
 	/* Account for the throttling */
