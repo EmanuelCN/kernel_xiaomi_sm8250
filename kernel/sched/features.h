@@ -58,6 +58,8 @@
 #define SCHED_FEAT_DELAY_DEQUEUE 1
 #define SCHED_FEAT_DELAY_ZERO 1
 
+#define SCHED_FEAT_PARANOID_AVG 0
+
 /*
  * Allow wakeup-time preemption of the current task:
  */

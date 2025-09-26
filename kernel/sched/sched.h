@@ -643,8 +643,8 @@ struct cfs_rq {
 
 	s64			sum_w_vruntime;
 	u64			sum_weight;
-
 	u64			zero_vruntime;
+	unsigned int		sum_shift;
 
 	struct rb_root_cached	tasks_timeline;
 
