@@ -153,3 +153,8 @@
  * If disabled, boosts will only bias tasks to higher-capacity CPUs.
  */
 #define SCHED_FEAT_SCHEDTUNE_BOOST_UTIL 0
+
+/*
+ * Do newidle balancing proportional to its success rate using randomization.
+ */
+#define SCHED_FEAT_NI_RANDOM 1
