@@ -56,6 +56,7 @@
 
 #include <linux/swapops.h>
 #include <linux/balloon_compaction.h>
+#include <linux/sched/signal.h>
 
 #include "internal.h"
 
@@ -3229,18 +3230,17 @@ static bool allow_direct_reclaim(pg_data_t *pgdat, bool using_kswapd)
 	return wmark_ok;
 }
 
+#define CRITICAL_OOM_SCORE_ADJ	(-900)
+
 static __always_inline bool task_is_critical(void)
 {
-	if (!strncmp(current->comm, "surfaceflinger", TASK_COMM_LEN) ||
-	!strncmp(current->comm, "vendor.qti.display",
-		sizeof("vendor.qti.display") - 1) ||
-	!strncmp(current->comm, "vendor.qti.camera",
-		sizeof("vendor.qti.camera") - 1) ||
-	!strncmp(current->comm, "system_server", TASK_COMM_LEN) ||
-	!strncmp(current->comm, "cameraserver", TASK_COMM_LEN))
-		return true;
+	if (current->flags & PF_KTHREAD)
+		return false;
 
-	return false;
+	if (unlikely(!current->signal))
+		return false;
+
+	return READ_ONCE(current->signal->oom_score_adj) <= CRITICAL_OOM_SCORE_ADJ;
 }
 
 /*
