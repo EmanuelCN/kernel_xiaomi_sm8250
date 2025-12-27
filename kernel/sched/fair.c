@@ -12039,7 +12039,7 @@ static inline bool update_newidle_cost(struct sched_domain *sd, u64 cost)
 		 * limit, plus a litle extra to avoid off by ones.
 		 */
 		sd->max_newidle_lb_cost =
-			min(cost, (u64)sysctl_sched_migration_cost + 200);
+			min(cost, sysctl_sched_migration_cost + 200);
 		sd->last_decay_max_lb_cost = jiffies;
 	} else if (time_after(jiffies, sd->last_decay_max_lb_cost + HZ)) {
 		/*
