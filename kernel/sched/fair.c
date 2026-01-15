@@ -6804,7 +6804,6 @@ DEFINE_PER_CPU(cpumask_var_t, select_idle_mask);
 
 static struct {
 	cpumask_var_t idle_cpus_mask;
-	atomic_t nr_cpus;
 	int has_blocked;		/* Idle CPUS has blocked load */
 	int needs_update;		/* Newly idle CPUs need their next_balance collated */
 	unsigned long next_balance;     /* in jiffy units */
@@ -12638,7 +12637,7 @@ static void nohz_balancer_kick(struct rq *rq)
 	 * None are in tickless mode and hence no need for NOHZ idle load
 	 * balancing
 	 */
-	if (unlikely(!atomic_read(&nohz.nr_cpus)))
+	if (unlikely(cpumask_empty(nohz.idle_cpus_mask)))
 		return;
 
 	if (rq->nr_running >= 2) {
@@ -12736,7 +12735,6 @@ void nohz_balance_exit_idle(struct rq *rq)
 
 	rq->nohz_tick_stopped = 0;
 	cpumask_clear_cpu(rq->cpu, nohz.idle_cpus_mask);
-	atomic_dec(&nohz.nr_cpus);
 
 	set_cpu_sd_state_busy(rq->cpu);
 }
@@ -12809,7 +12807,6 @@ void nohz_balance_enter_idle(int cpu)
 	rq->nohz_tick_stopped = 1;
 
 	cpumask_set_cpu(cpu, nohz.idle_cpus_mask);
-	atomic_inc(&nohz.nr_cpus);
 
 	/*
 	 * Ensures that if nohz_idle_balance() fails to observe our
