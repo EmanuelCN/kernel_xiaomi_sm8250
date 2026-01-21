@@ -400,6 +400,7 @@ static void check_preempt_curr_idle(struct rq *rq, struct task_struct *p, int fl
 
 static void put_prev_task_idle(struct rq *rq, struct task_struct *prev)
 {
+	update_rq_avg_idle(rq);
 }
 
 static void set_next_task_idle(struct rq *rq, struct task_struct *next, bool first)
