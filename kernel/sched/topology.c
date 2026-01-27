@@ -2,6 +2,8 @@
 /*
  * Scheduler topology setup/handling methods
  */
+
+#include <linux/sched/clock.h>
 #include "sched.h"
 
 DEFINE_MUTEX(sched_domains_mutex);
@@ -1429,6 +1431,7 @@ sd_init(struct sched_domain_topology_level *tl,
 	struct sched_domain *sd = *per_cpu_ptr(sdd->sd, cpu);
 	int sd_id, sd_weight, sd_flags = 0;
 	struct cpumask *sd_span;
+	u64 now = sched_clock();
 
 #ifdef CONFIG_NUMA
 	/*
@@ -1474,6 +1477,7 @@ sd_init(struct sched_domain_topology_level *tl,
 		.newidle_call		= 512,
 		.newidle_success	= 256,
 		.newidle_ratio		= 512,
+		.newidle_stamp		= now,
 
 		.max_newidle_lb_cost	= 0,
 		.last_decay_max_lb_cost	= jiffies,
