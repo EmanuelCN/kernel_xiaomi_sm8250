@@ -12282,8 +12282,9 @@ static inline void update_newidle_stats(struct sched_domain *sd, unsigned int su
 	if (sd->newidle_call >= 1024) {
 		u64 now = sched_clock();
 		s64 delta = now - sd->newidle_stamp;
-		sd->newidle_stamp = now;
 		int ratio = 0;
+
+		sd->newidle_stamp = now;
 
 		if (delta < 0)
 			delta = 0;
