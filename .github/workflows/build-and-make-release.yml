@@ -1,0 +1,466 @@
+name: Kernel building with an automatic release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag name"
+        required: true
+        type: string
+      changelog:
+        description: "Changelog for the release"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CLANG_DOWNLOAD_URL: "https://github.com/Impqxr/aosp_clang_ci/releases/download/13289611/clang-13289611-linux-x86.tar.xz"
+  KERNEL_TREE_URL: "https://github.com/Impqxr/kernel_xiaomi_sm8250"
+  ANYKERNEL_URL_ALIOTH: "https://github.com/Impqxr/AKalioth"
+  ANYKERNEL_BRANCH_ALIOTH: "main"
+  ANYKERNEL_URL_MUNCH: "https://github.com/Impqxr/AKmunch"
+  ANYKERNEL_BRANCH_MUNCH: "main"
+  ANYKERNEL_URL_APOLLO: "https://github.com/Impqxr/AKapollo"
+  ANYKERNEL_BRANCH_APOLLO: "main"
+
+jobs:
+  cache_clang:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache Clang
+        id: cache-clang
+        uses: actions/cache@v4
+        with:
+          path: clang
+          key: clang-ci
+          restore-keys: |
+            clang-
+
+      - name: Download and Extract Clang (if not cached)
+        if: steps.cache-clang.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          wget "${{ env.CLANG_DOWNLOAD_URL }}" -O clang.tar.gz
+          mkdir -p clang
+          tar -xf clang.tar.gz -C clang
+          cd clang
+          if [ -d clang-* ]; then
+            mv clang-*/* .
+          fi
+          cd ..
+          rm clang.tar.gz
+
+  build:
+    needs: cache_clang
+    runs-on: ubuntu-latest
+    name: Build ${{ matrix.config.name }}
+    strategy:
+      matrix:
+        config:
+          # *-* Alioth *-*
+          - name: "KernelSU-Next Only (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "base"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/refs/heads/dev/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy"
+            KERNELSU_PATCHES: ""
+
+          - name: "KernelSU-Next Only + BPF (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "base-bpf"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/refs/heads/dev/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy"
+            KERNELSU_PATCHES: ""
+
+          - name: "KernelSU-Next with SuSFS (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/Impqxr/KernelSU-Next/refs/heads/legacy-susfs/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy-susfs"
+            KERNELSU_PATCHES: ""
+
+          - name: "KernelSU-Next with SuSFS + BPF (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test-bpf"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/Impqxr/KernelSU-Next/refs/heads/legacy-susfs/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy-susfs"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU Only (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "base"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "main"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU Only + BPF (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "base-bpf"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "main"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU with SuSFS (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "susfs-rksu-master"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU with SuSFS + BPF (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test-bpf"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "susfs-rksu-master"
+            KERNELSU_PATCHES: ""
+
+          - name: "No KSU (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "base"
+            KERNELSU_NAME: ""
+            KERNELSU_SETUP_URL: ""
+            KERNELSU_SETUP_BRANCH: ""
+            KERNELSU_PATCHES: ""
+
+          - name: "No KSU + BPF (alioth)"
+            KERNEL_DEVICE_CONFIG: "alioth"
+            KERNEL_TREE_BRANCH: "base-bpf"
+            KERNELSU_NAME: ""
+            KERNELSU_SETUP_URL: ""
+            KERNELSU_SETUP_BRANCH: ""
+            KERNELSU_PATCHES: ""
+
+          # *-* Munch *-*
+          - name: "KernelSU-Next Only (munch)"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "base"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/refs/heads/dev/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy"
+            KERNELSU_PATCHES: ""
+
+          - name: "KernelSU-Next Only + BPF (munch)"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "base-bpf"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/refs/heads/dev/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy"
+            KERNELSU_PATCHES: ""
+
+          - name: "KernelSU-Next with SuSFS (munch)"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/Impqxr/KernelSU-Next/refs/heads/legacy-susfs/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy-susfs"
+            KERNELSU_PATCHES: ""
+
+          - name: "KernelSU-Next with SuSFS + BPF (munch)"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test-bpf"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/Impqxr/KernelSU-Next/refs/heads/legacy-susfs/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy-susfs"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU Only (munch)"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "base"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_BRANCH: "main"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU Only + BPF (munch)"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "base-bpf"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_BRANCH: "main"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU with SuSFS (munch)"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_BRANCH: "susfs-rksu-master"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU with SuSFS + BPF (munch)"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test-bpf"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_BRANCH: "susfs-rksu-master"
+            KERNELSU_PATCHES: ""
+
+          - name: "No KSU (munch)"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "base"
+            KERNELSU_NAME: ""
+            KERNELSU_SETUP_URL: ""
+            KERNELSU_SETUP_BRANCH: ""
+            KERNELSU_PATCHES: ""
+
+          - name: "No KSU (munch) + BPF"
+            KERNEL_DEVICE_CONFIG: "munch"
+            KERNEL_TREE_BRANCH: "base-bpf"
+            KERNELSU_NAME: ""
+            KERNELSU_SETUP_URL: ""
+            KERNELSU_SETUP_BRANCH: ""
+            KERNELSU_PATCHES: ""
+
+          # *-* Apollo *-*
+          - name: "KernelSU-Next Only (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "base"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/refs/heads/dev/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy"
+            KERNELSU_PATCHES: ""
+
+          - name: "KernelSU-Next Only + BPF (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "base-bpf"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/refs/heads/dev/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy"
+            KERNELSU_PATCHES: ""
+
+          - name: "KernelSU-Next with SuSFS (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/Impqxr/KernelSU-Next/refs/heads/legacy-susfs/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy-susfs"
+            KERNELSU_PATCHES: ""
+
+          - name: "KernelSU-Next with SuSFS + BPF (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test-bpf"
+            KERNELSU_NAME: "KSUN"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/Impqxr/KernelSU-Next/refs/heads/legacy-susfs/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "legacy-susfs"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU Only (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "base"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "main"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU Only + BPF (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "base-bpf"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "main"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU with SuSFS (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "susfs-rksu-master"
+            KERNELSU_PATCHES: ""
+
+          - name: "Rissu's KernelSU with SuSFS + BPF (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "susfs-v2.0.0-test-bpf"
+            KERNELSU_NAME: "RKSU"
+            KERNELSU_SETUP_URL: "https://raw.githubusercontent.com/rsuntk/KernelSU/refs/heads/main/kernel/setup.sh"
+            KERNELSU_SETUP_BRANCH: "susfs-rksu-master"
+            KERNELSU_PATCHES: ""
+
+          - name: "No KSU (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "base"
+            KERNELSU_NAME: ""
+            KERNELSU_SETUP_URL: ""
+            KERNELSU_SETUP_BRANCH: ""
+            KERNELSU_PATCHES: ""
+
+          - name: "No KSU + BPF (apollo)"
+            KERNEL_DEVICE_CONFIG: "apollo"
+            KERNEL_TREE_BRANCH: "base-bpf"
+            KERNELSU_NAME: ""
+            KERNELSU_SETUP_URL: ""
+            KERNELSU_SETUP_BRANCH: ""
+            KERNELSU_PATCHES: ""
+
+    steps:
+      - name: Display Inputs
+        run: |
+          echo "::group::Inputs"
+          echo "Kernel Tree: ${{ env.KERNEL_TREE_URL }}/tree/${{ matrix.config.KERNEL_TREE_BRANCH }}"
+          echo "KernelSU Setup URL: ${{ matrix.config.KERNELSU_SETUP_URL }}"
+          echo "KernelSU Branch: ${{ matrix.config.KERNELSU_SETUP_BRANCH }}"
+          echo "KernelSU Name: ${{ matrix.config.KERNELSU_NAME }}"
+          echo "KernelSU Patches: ${{ matrix.config.KERNELSU_PATCHES }}"
+          echo "AnyKernel URL (alioth): ${{ env.ANYKERNEL_URL_ALIOTH }}/tree/${{ env.ANYKERNEL_BRANCH_ALIOTH }}"
+          echo "AnyKernel URL (munch): ${{ env.ANYKERNEL_URL_MUNCH }}/tree/${{ env.ANYKERNEL_BRANCH_MUNCH }}"
+          echo "AnyKernel URL (apollo): ${{ env.ANYKERNEL_URL_APOLLO }}/tree/${{ env.ANYKERNEL_BRANCH_APOLLO }}"
+          echo "::endgroup::"
+
+      - name: Restore Clang Cache
+        uses: actions/cache@v4
+        with:
+          path: clang
+          key: clang-ci
+          restore-keys: |
+            clang-
+
+      - name: Initialize workspace
+        id: workspace
+        run: |
+          echo "tools_folder=$(pwd)" >> "$GITHUB_OUTPUT"
+          git clone --depth=1 ${{ env.KERNEL_TREE_URL }} -b ${{ matrix.config.KERNEL_TREE_BRANCH }} kernel_tree
+          echo "kernel_folder=$(pwd)/kernel_tree" >> "$GITHUB_OUTPUT"
+
+      - name: Build kernel
+        id: build
+        working-directory: ${{ steps.workspace.outputs.kernel_folder }}
+        run: |
+          set -e
+          export ARCH=arm64
+          export SUBARCH=ARM64
+          export KBUILD_BUILD_USER="${{ github.actor }}"
+          export KBUILD_BUILD_HOST="github.com"
+          export PATH="${{ steps.workspace.outputs.tools_folder }}/clang/bin:$PATH"
+
+          if [[ -n "${{ matrix.config.KERNELSU_NAME }}" && -n "${{ matrix.config.KERNELSU_SETUP_BRANCH }}" && -n "${{ matrix.config.KERNELSU_SETUP_URL }}" ]]; then
+            curl -LSs "${{ matrix.config.KERNELSU_SETUP_URL }}" | bash -s ${{ matrix.config.KERNELSU_SETUP_BRANCH }}
+            if [ -n "${{ matrix.config.KERNELSU_PATCHES }}" ]; then
+              cd Kernel*
+              echo "${{ matrix.config.KERNELSU_PATCHES }}" | tr ',' '\n' | while read -r PATCH; do
+                TRIMMED=$(echo "$PATCH" | xargs)
+                TEMP_PATCH_FILE="/tmp/downloaded_patch_$(date +%s%N).patch"
+                curl -fsSL "$TRIMMED" -o "$TEMP_PATCH_FILE"
+                patch -p1 < "$TEMP_PATCH_FILE"
+              done
+              cd ..
+            fi
+          fi
+
+          make O=out vendor/${{ matrix.config.KERNEL_DEVICE_CONFIG }}_defconfig
+          make O=out CC=clang -j$(nproc --all) CROSS_COMPILE=aarch64-linux-gnu- LLVM=1 LLVM_IAS=1 2>&1 | tee build.log
+
+          SUSFS_VERSION=$(grep -oiP 'susfs.*?\Kv\d+(?:\.\d+)+' build.log | tail -n1 || echo "")
+          # Fallback for SuSFS version
+          if [[ -z "$SUSFS_VERSION" && -f include/linux/susfs.h ]]; then
+            SUSFS_VERSION=$(grep -Po '^#define\s+SUSFS_VERSION\s+"\Kv[0-9]+(?:\.[0-9]+)*' include/linux/susfs.h)
+          fi
+          echo "SUSFS_VERSION=$SUSFS_VERSION" >> "$GITHUB_OUTPUT"
+
+          KSU_VERSION="$(sed -nE 's/.*-- KernelSU(-Next)? version: ([0-9]+).*/\2/p' build.log)"
+          # Fallback for KSU version
+          if [[ -z "$KSU_VERSION" && -n "${{ matrix.config.KERNELSU_NAME }}" && -n "${{ matrix.config.KERNELSU_SETUP_BRANCH }}" ]]; then
+            cd Kernel*
+            KSU_VERSION="$(( $(git rev-list --count HEAD) + 30000 ))"
+            cd ..
+          fi
+          echo "KSU_VERSION=$KSU_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Package with AnyKernel3
+        if: success()
+        id: ak3
+        working-directory: ${{ steps.workspace.outputs.kernel_folder }}/out/arch/arm64/boot/
+        run: |
+          set -e
+          FINAL_ZIP_NAME="N0Kernel-${{ matrix.config.KERNEL_DEVICE_CONFIG }}-${{ inputs.release_tag }}"
+          FINAL_DISPLAY_NAME="N0Kernel ${{ matrix.config.KERNEL_DEVICE_CONFIG }}"
+
+          if [[ "${{ matrix.config.KERNEL_TREE_BRANCH }}" == *bpf* ]]; then
+            FINAL_ZIP_NAME="${FINAL_ZIP_NAME}-BPF"
+            FINAL_DISPLAY_NAME="${FINAL_DISPLAY_NAME} (BPF)"
+          fi
+
+          if [ -n "${{ steps.build.outputs.KSU_VERSION }}" ]; then
+            FINAL_ZIP_NAME="${FINAL_ZIP_NAME}-${{ matrix.config.KERNELSU_NAME }}-${{ steps.build.outputs.KSU_VERSION }}"
+            case "${{ matrix.config.KERNELSU_NAME }}" in
+              "KSUN") FINAL_DISPLAY_NAME="${FINAL_DISPLAY_NAME} : KernelSU Next ${{ steps.build.outputs.KSU_VERSION }}" ;;
+              "RKSU") FINAL_DISPLAY_NAME="${FINAL_DISPLAY_NAME} : Rissu's KernelSU ${{ steps.build.outputs.KSU_VERSION }}" ;;
+              *) FINAL_DISPLAY_NAME="${FINAL_DISPLAY_NAME} : ${{ matrix.config.KERNELSU_NAME }} ${{ steps.build.outputs.KSU_VERSION }}" ;;
+            esac
+          else
+            FINAL_ZIP_NAME="${FINAL_ZIP_NAME}-NONKSU"
+            FINAL_DISPLAY_NAME="${FINAL_DISPLAY_NAME} : No root"
+          fi
+          if [ -n "${{ steps.build.outputs.SUSFS_VERSION }}" ]; then
+            FINAL_ZIP_NAME="${FINAL_ZIP_NAME}-SUSFS-${{ steps.build.outputs.SUSFS_VERSION }}"
+            FINAL_DISPLAY_NAME="${FINAL_DISPLAY_NAME} : SuSFS ${{ steps.build.outputs.SUSFS_VERSION }}"
+          fi
+
+          echo "ZIP name is $FINAL_ZIP_NAME"
+          echo "Display name is $FINAL_DISPLAY_NAME"
+
+          case "${{ matrix.config.KERNEL_DEVICE_CONFIG }}" in
+            "alioth") git clone --recursive --depth=1 ${{ env.ANYKERNEL_URL_ALIOTH }} -b ${{ env.ANYKERNEL_BRANCH_ALIOTH }} AnyKernel3 ;;
+            "munch") git clone --recursive --depth=1 ${{ env.ANYKERNEL_URL_MUNCH }} -b ${{ env.ANYKERNEL_BRANCH_MUNCH }} AnyKernel3 ;;
+            "apollo") git clone --recursive --depth=1 ${{ env.ANYKERNEL_URL_APOLLO }} -b ${{ env.ANYKERNEL_BRANCH_APOLLO }} AnyKernel3 ;;
+            *) echo "no such device"; exit 1
+          esac
+
+          [ -e "Image.gz" ] && cp -f Image.gz AnyKernel3
+          [ -e "dtb.img" ] && cp -f dtb.img AnyKernel3/dtb
+          [ -e "dtbo.img" ] && cp -f dtbo.img AnyKernel3
+          cd AnyKernel3
+          zip -q -r "$FINAL_ZIP_NAME.zip" *
+          mv "$FINAL_ZIP_NAME.zip" ../
+          cd ..
+          echo "ZIP_PATH=$(pwd)/$FINAL_ZIP_NAME.zip" >> "$GITHUB_OUTPUT"
+          echo "DISPLAY_NAME=$FINAL_DISPLAY_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Create display name file
+        if: success()
+        working-directory: ${{ steps.workspace.outputs.kernel_folder }}/out/arch/arm64/boot/
+        run: echo "${{ steps.ak3.outputs.DISPLAY_NAME }}" > display_name.txt
+
+      - name: Upload kernel artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.config.name }}-kernel
+          path: |
+            ${{ steps.ak3.outputs.ZIP_PATH }}
+            ${{ steps.workspace.outputs.kernel_folder }}/out/arch/arm64/boot/display_name.txt
+
+  create_release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create a release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          gh release create "${{ inputs.release_tag }}" --title "Kernel build for ${{ inputs.release_tag }}" --notes "${{ inputs.changelog }}"
+          for dir in artifacts/*; do
+            if [ -d "$dir" ]; then
+              zip_path=$(find "$dir" -name "*.zip")
+              display_name=$(cat "$dir/display_name.txt")
+              gh release upload "${{ inputs.release_tag }}" "$zip_path#$display_name"
+            fi
+          done
